@@ -1,12 +1,12 @@
-import Image from "next/image";
+// import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { TestComp } from "@/features/test";
+// import { TestComp } from "@/features/test";
 import { Input } from "@/components/ui/input";
 
 export default function Home() {
   return ( 
     <div className="">
-      <Input />
+      
       <Button size="xs" >
         Primary
       </Button>
