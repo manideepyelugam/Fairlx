@@ -22,23 +22,18 @@ import{
     FormItem, 
     FormMessage,
 } from "@/components/ui/form" ;
-
-const formSchema = z.object({
-    email : z.string().email() , 
-    //in sign in 8 character not required as we are asking for it in sign up 
-    password : z.string().min(1,"Required") ,
-});
+import { loginSchema } from "../schemas";
 
 export const SignInCard=() => {
-    const form = useForm<z.infer<typeof formSchema>> ({
-        resolver : zodResolver(formSchema) , 
+    const form = useForm<z.infer<typeof loginSchema>> ({
+        resolver : zodResolver(loginSchema) , 
         defaultValues:{
             email:"" ,
             password:"",
         },
     });
 
-    const onSubmit = (values:z.infer<typeof formSchema>) =>{
+    const onSubmit = (values:z.infer<typeof loginSchema>) =>{
         console.log(values);
     }
 
