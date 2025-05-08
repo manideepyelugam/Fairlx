@@ -46,7 +46,14 @@ export const CreateWorkspaceForm=({ onCancel } :
 
          };
          
-            mutate({ form: finalValues }) ;
+         mutate(
+            { form: finalValues },
+            {
+              onSuccess: () => {
+                form.reset();
+              },
+            }
+          );
         };
 
         const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
