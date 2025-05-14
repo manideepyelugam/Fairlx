@@ -24,12 +24,10 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-
-
-import { registerSchema } from "../schemas";
-import { useRegister } from "../api/use-resgister";
 import { signUpWithGithub, signUpWithGoogle } from "@/lib/oauth";
 
+import { registerSchema } from "../schemas";
+import { useRegister } from "../api/use-register";
 
 export const SignUpCard = () => {
   const { mutate, isPending } = useRegister();
