@@ -11,9 +11,9 @@ export const Sidebar = () => {
     <aside className="h-full bg-neutral-100 p-4 w-full">
       <div className="flex items-center gap-2">
         <Link href="/">
-          <Image src="/logo.svg" alt="logo" width={50} height={39} />
+          <Image src="/logo.png" alt="logo" width={50} height={39} />
         </Link>
-        <p className="font-bold text-lg">Jira Clone</p>
+        <p className="font-bold text-lg">Scrumty</p>
       </div>
       <DottedSeparator className="my-4" />
       <WorkspaceSwitcher />

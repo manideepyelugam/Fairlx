@@ -1,1 +1,1 @@
-export const AUTH_COOKIE = "jcn-jira-clone-session";
+export const AUTH_COOKIE = "scrumty-session";
