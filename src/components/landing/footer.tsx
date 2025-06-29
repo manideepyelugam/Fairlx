@@ -73,7 +73,7 @@ export const Footer = () => {
         }
       `}</style>
 
-      <footer className="bg-gradient-to-br from-gray-50 to-white border-t border-gray-100 footer-animate">
+      <footer className="bg-gradient-to-br from-gray-50 to-white border-t border-gray-100 footer-animate overflow-x-hidden relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {/* Brand Section */}
@@ -183,7 +183,7 @@ export const Footer = () => {
         </div>
 
         {/* Decorative Elements */}
-        <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
+        <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 overflow-x-hidden"></div>
       </footer>
     </>
   );
