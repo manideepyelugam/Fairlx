@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "jira-clone",
+      "name": "scrumty",
       "dependencies": {
         "@hono/zod-validator": "0.3.0",
         "@hookform/resolvers": "^5.0.1",

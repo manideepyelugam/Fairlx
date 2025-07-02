@@ -14,9 +14,9 @@ const StandaloneLayout = ({ children }: StandaloneLayoutProps) => {
         <nav className="flex justify-between items-center h-[73px]">
           <div className="flex items-center gap-2">
             <Link href="/">
-              <Image src="/logo.svg" alt="logo" width={50} height={39} />
+              <Image src="/logo.png" alt="logo" width={50} height={39} />
             </Link>
-            <p className="font-bold text-lg">Jira Clone</p>
+            <p className="font-bold text-lg">Scrumty</p>
           </div>
           <UserButton />
         </nav>
