@@ -2,7 +2,8 @@
 
 <div align="center">
 
-![Scrumpty Logo](public/Logo.png)
+
+<img src="public/Logo.png" alt="Scrumpty Logo" width="120" height="120" />
 
 **Simplifying Task Management for Growing Teams**
 
@@ -307,19 +308,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **shadcn/ui** for the component library
 - **Tailwind CSS** for styling utilities
 
-## 📞 Support
-
-- 📧 Email: support@scrumpty.com
-- 💬 Discord: [Join our community](https://discord.gg/scrumpty)
-- 🐛 Issues: [GitHub Issues](https://github.com/yourusername/scrumpty/issues)
-- 📖 Docs: [Documentation](https://docs.scrumpty.com)
-
----
 
 <div align="center">
 
 **Built with ❤️ by the Scrumpty Team**
 
-[⭐ Star us on GitHub](https://github.com/yourusername/scrumpty) | [🐦 Follow on Twitter](https://twitter.com/scrumpty)
+[⭐ Star us on GitHub](https://github.com/yourusername/scrumpty)
 
 </div>
