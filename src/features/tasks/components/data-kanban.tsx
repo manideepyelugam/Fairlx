@@ -6,10 +6,14 @@ import {
   type DropResult,
 } from "@hello-pangea/dnd";
 
+import { Button } from "@/components/ui/button";
+
 import { KanbanCard } from "./kanban-card";
 import { KanbanColumnHeader } from "./kanban-column-header";
+import { BulkActionsToolbar } from "./bulk-actions-toolbar";
 
 import { Task, TaskStatus } from "../types";
+import { useBulkUpdateTasks } from "../api/use-bulk-update-tasks";
 
 const boards: TaskStatus[] = [
   TaskStatus.BACKLOG,
@@ -28,9 +32,16 @@ interface DataKanbanProps {
   onChange: (
     tasks: { $id: string; status: TaskStatus; position: number }[]
   ) => void;
+  isAdmin?: boolean;
+  members?: Array<{ $id: string; name: string }>;
 }
 
-export const DataKanban = ({ data, onChange }: DataKanbanProps) => {
+export const DataKanban = ({ 
+  data, 
+  onChange, 
+  isAdmin = false,
+  members = []
+}: DataKanbanProps) => {
   const [tasks, setTasks] = useState<TasksState>(() => {
     const initialTasks: TasksState = {
       [TaskStatus.BACKLOG]: [],
@@ -53,6 +64,12 @@ export const DataKanban = ({ data, onChange }: DataKanbanProps) => {
     return initialTasks;
   });
 
+  const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [columnsOrder, setColumnsOrder] = useState<TaskStatus[]>(boards);
+
+  const { mutate: bulkUpdateTasks } = useBulkUpdateTasks();
+
   useEffect(() => {
     const newTasks: TasksState = {
       [TaskStatus.BACKLOG]: [],
@@ -72,6 +89,74 @@ export const DataKanban = ({ data, onChange }: DataKanbanProps) => {
 
     setTasks(newTasks);
   }, [data]);
+
+  const handleTaskSelect = useCallback((taskId: string, selected: boolean) => {
+    setSelectedTasks(prev => {
+      const newSet = new Set(prev);
+      if (selected) {
+        newSet.add(taskId);
+      } else {
+        newSet.delete(taskId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const handleSelectAll = useCallback((status: TaskStatus, selected: boolean) => {
+    setSelectedTasks(prev => {
+      const newSet = new Set(prev);
+      const statusTasks = tasks[status];
+      
+      if (selected) {
+        statusTasks.forEach(task => newSet.add(task.$id));
+      } else {
+        statusTasks.forEach(task => newSet.delete(task.$id));
+      }
+      
+      return newSet;
+    });
+  }, [tasks]);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedTasks(new Set());
+  }, []);
+
+  const toggleSelectionMode = useCallback(() => {
+    setSelectionMode(prev => !prev);
+    if (selectionMode) {
+      setSelectedTasks(new Set());
+    }
+  }, [selectionMode]);
+
+  const handleBulkStatusChange = useCallback((status: TaskStatus) => {
+    if (selectedTasks.size === 0) return;
+
+    const updates = Array.from(selectedTasks).map(taskId => ({
+      $id: taskId,
+      status,
+    }));
+
+    bulkUpdateTasks({
+      json: { tasks: updates }
+    });
+
+    setSelectedTasks(new Set());
+  }, [selectedTasks, bulkUpdateTasks]);
+
+  const handleBulkAssigneeChange = useCallback((assigneeId: string) => {
+    if (selectedTasks.size === 0) return;
+
+    const updates = Array.from(selectedTasks).map(taskId => ({
+      $id: taskId,
+      assigneeId,
+    }));
+
+    bulkUpdateTasks({
+      json: { tasks: updates }
+    });
+
+    setSelectedTasks(new Set());
+  }, [selectedTasks, bulkUpdateTasks]);
 
   const onDragEnd = useCallback(
     (result: DropResult) => {
@@ -163,50 +248,93 @@ export const DataKanban = ({ data, onChange }: DataKanbanProps) => {
   );
 
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
-      <div className="flex overflow-x-auto">
-        {boards.map((board) => {
-          return (
-            <div
-              key={board}
-              className="flex-1 mx-2 bg-muted p-1.5 rounded-md min-w-[200px]"
+    <>
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <Button
+              variant={selectionMode ? "secondary" : "outline"}
+              size="sm"
+              onClick={toggleSelectionMode}
             >
-              <KanbanColumnHeader
-                board={board}
-                taskCount={tasks[board].length}
-              />
-              <Droppable droppableId={board}>
-                {(provided) => (
-                  <div
-                    {...provided.droppableProps}
-                    ref={provided.innerRef}
-                    className="min-h-[200px] py-1.5"
-                  >
-                    {tasks[board].map((task, index) => (
-                      <Draggable
-                        key={task.$id}
-                        draggableId={task.$id}
-                        index={index}
-                      >
-                        {(provided) => (
-                          <div
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                            ref={provided.innerRef}
-                          >
-                            <KanbanCard task={task} />
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-            </div>
-          );
-        })}
+              {selectionMode ? "Exit Selection" : "Select Tasks"}
+            </Button>
+          )}
+          {selectionMode && selectedTasks.size > 0 && (
+            <span className="text-sm text-gray-600">
+              {selectedTasks.size} task{selectedTasks.size !== 1 ? 's' : ''} selected
+            </span>
+          )}
+        </div>
       </div>
-    </DragDropContext>
+
+      <DragDropContext onDragEnd={onDragEnd}>
+        <div className="flex overflow-x-auto">
+          {columnsOrder.map((board) => {
+            const selectedInColumn = tasks[board].filter(task => 
+              selectedTasks.has(task.$id)
+            ).length;
+
+            return (
+              <div
+                key={board}
+                className="flex-1 mx-2 bg-muted p-1.5 rounded-md min-w-[200px]"
+              >
+                <KanbanColumnHeader
+                  board={board}
+                  taskCount={tasks[board].length}
+                  selectedCount={selectedInColumn}
+                  onSelectAll={handleSelectAll}
+                  showSelection={selectionMode}
+                />
+                <Droppable droppableId={board}>
+                  {(provided) => (
+                    <div
+                      {...provided.droppableProps}
+                      ref={provided.innerRef}
+                      className="min-h-[200px] py-1.5"
+                    >
+                      {tasks[board].map((task, index) => (
+                        <Draggable
+                          key={task.$id}
+                          draggableId={task.$id}
+                          index={index}
+                          isDragDisabled={selectionMode}
+                        >
+                          {(provided) => (
+                            <div
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              ref={provided.innerRef}
+                            >
+                              <KanbanCard 
+                                task={task} 
+                                isSelected={selectedTasks.has(task.$id)}
+                                onSelect={handleTaskSelect}
+                                showSelection={selectionMode}
+                              />
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </div>
+            );
+          })}
+        </div>
+      </DragDropContext>
+
+      <BulkActionsToolbar
+        selectedCount={selectedTasks.size}
+        onClearSelection={handleClearSelection}
+        onStatusChange={handleBulkStatusChange}
+        onAssigneeChange={handleBulkAssigneeChange}
+        isAdmin={isAdmin}
+        assignees={members}
+      />
+    </>
   );
 };

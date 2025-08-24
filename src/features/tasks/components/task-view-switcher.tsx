@@ -6,6 +6,8 @@ import { useCallback } from "react";
 
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
+import { useCurrentMember } from "@/features/members/hooks/use-current-member";
+import { useGetMembers } from "@/features/members/api/use-get-members";
 
 import { DottedSeparator } from "@/components/dotted-separator";
 import { Button } from "@/components/ui/button";
@@ -36,6 +38,10 @@ export const TaskViewSwitcher = ({
 
   const workspaceId = useWorkspaceId();
   const paramProjectId = useProjectId();
+  
+  const { isAdmin } = useCurrentMember({ workspaceId });
+  const { data: members } = useGetMembers({ workspaceId });
+  
   const { data: tasks, isLoading: isLoadingTasks } = useGetTasks({
     workspaceId,
     projectId: paramProjectId || projectId,
@@ -93,6 +99,8 @@ export const TaskViewSwitcher = ({
               <DataKanban
                 data={tasks?.documents ?? []}
                 onChange={onKanbanChange}
+                isAdmin={isAdmin}
+                members={members?.documents ?? []}
               />
             </TabsContent>
             <TabsContent value="calendar" className="mt-0 h-full pb-4">

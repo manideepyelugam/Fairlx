@@ -1,6 +1,7 @@
 import { MoreHorizontalIcon } from "lucide-react";
 
 import { DottedSeparator } from "@/components/dotted-separator";
+import { Checkbox } from "@/components/ui/checkbox";
 
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
@@ -12,13 +13,32 @@ import { Task } from "../types";
 
 interface KanbanCardProps {
   task: Task;
+  isSelected?: boolean;
+  onSelect?: (taskId: string, selected: boolean) => void;
+  showSelection?: boolean;
 }
 
-export const KanbanCard = ({ task }: KanbanCardProps) => {
+export const KanbanCard = ({ 
+  task, 
+  isSelected = false,
+  onSelect,
+  showSelection = false 
+}: KanbanCardProps) => {
   return (
-    <div className="bg-white p-2.5 mb-1.5 rounded shadow-sm space-y-3">
+    <div className={`bg-white p-2.5 mb-1.5 rounded shadow-sm space-y-3 ${
+      isSelected ? 'ring-2 ring-blue-500' : ''
+    } ${showSelection ? 'hover:bg-gray-50' : ''}`}>
       <div className="flex items-start justify-between gap-x-2">
-        <p className="text-sm line-clamp-2">{task.name}</p>
+        {showSelection && (
+          <div className="flex items-center">
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={(checked) => onSelect?.(task.$id, !!checked)}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        )}
+        <p className="text-sm line-clamp-2 flex-1">{task.name}</p>
         <TaskActions id={task.$id} projectId={task.projectId}>
           <MoreHorizontalIcon className="size-[18px] stroke-1 shrink-0 text-neutral-700 hover:opacity-75 transition" />
         </TaskActions>

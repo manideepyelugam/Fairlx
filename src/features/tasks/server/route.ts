@@ -312,8 +312,9 @@ const app = new Hono()
         tasks: z.array(
           z.object({
             $id: z.string(),
-            status: z.nativeEnum(TaskStatus),
-            position: z.number().int().positive().min(1000).max(1_000_000),
+            status: z.nativeEnum(TaskStatus).optional(),
+            position: z.number().int().positive().min(1000).max(1_000_000).optional(),
+            assigneeId: z.string().optional(),
           })
         ),
       })
@@ -363,11 +364,14 @@ const app = new Hono()
 
       const updatedTasks = await Promise.all(
         tasks.map(async (task) => {
-          const { $id, status, position } = task;
-          return databases.updateDocument<Task>(DATABASE_ID, TASKS_ID, $id, {
-            status,
-            position,
-          });
+          const { $id, status, position, assigneeId } = task;
+          const updateData: Partial<Task> = {};
+          
+          if (status !== undefined) updateData.status = status;
+          if (position !== undefined) updateData.position = position;
+          if (assigneeId !== undefined) updateData.assigneeId = assigneeId;
+          
+          return databases.updateDocument<Task>(DATABASE_ID, TASKS_ID, $id, updateData);
         })
       );
 
