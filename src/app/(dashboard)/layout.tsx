@@ -3,6 +3,7 @@ import { CreateWorkspaceModal } from "@/features/workspaces/components/create-wo
 import { CreateTaskModal } from "@/features/tasks/components/create-task-modal";
 import { EditTaskModal } from "@/features/tasks/components/edit-task-modal";
 import { CreateCustomColumnModalWrapper } from "@/features/custom-columns/components/create-custom-column-modal-wrapper";
+import { ManageColumnsModalWrapper } from "@/features/custom-columns/components/manage-columns-modal-wrapper";
 
 import { Navbar } from "@/components/navbar";
 import { Sidebar } from "@/components/sidebar";
@@ -19,6 +20,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <CreateTaskModal />
       <EditTaskModal />
       <CreateCustomColumnModalWrapper />
+      <ManageColumnsModalWrapper />
       <div className="flex w-full h-full">
         <div className="fixed left-0 top-0 hidden lg:block lg:w-[264px] h-full overflow-y-auto">
           <Sidebar />

@@ -3,7 +3,7 @@
 import React, { useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { DataKanban } from "@/features/tasks/components/data-kanban";
-import { useCreateCustomColumnModal } from "../hooks/use-create-custom-column-modal"; // shared via query param
+import { useManageColumnsModal } from "../hooks/use-manage-columns-modal"; // shared via query param
 
 import { Task, TaskStatus } from "@/features/tasks/types";
 
@@ -28,12 +28,12 @@ export const SafeEnhancedDataKanban = ({
     membersLength: Array.isArray(members) ? members.length : 'not-array' 
   });
 
-  const { open: openCreateModal } = useCreateCustomColumnModal();
+  const { open: openManageModal } = useManageColumnsModal();
   
-  const handleOpenCreateModal = useCallback(() => {
-    console.log('Add Custom Column clicked, opening modal...');
-    openCreateModal();
-  }, [openCreateModal]);
+  const handleOpenManageModal = useCallback(() => {
+    console.log('Manage Columns clicked, opening modal...');
+    openManageModal();
+  }, [openManageModal]);
 
   return (
     <>
@@ -42,9 +42,9 @@ export const SafeEnhancedDataKanban = ({
           <Button
             variant="outline"
             size="sm"
-            onClick={handleOpenCreateModal}
+            onClick={handleOpenManageModal}
           >
-            Add Custom Column
+            Manage Columns
           </Button>
         </div>
       </div>

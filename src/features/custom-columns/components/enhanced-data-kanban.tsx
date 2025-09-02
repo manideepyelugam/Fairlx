@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
 import {
   DragDropContext,
   Droppable,
   Draggable,
   type DropResult,
 } from "@hello-pangea/dnd";
-import { PlusIcon } from "lucide-react";
+import { Settings2Icon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/hooks/use-confirm";
@@ -22,17 +22,12 @@ import { useBulkUpdateTasks } from "@/features/tasks/api/use-bulk-update-tasks";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 
 import { useGetCustomColumns } from "../api/use-get-custom-columns";
-import { useCreateCustomColumnModal } from "../hooks/use-create-custom-column-modal";
+import { useManageColumnsModal } from "../hooks/use-manage-columns-modal";
+import { useDefaultColumns } from "../hooks/use-default-columns";
 import { CustomColumnHeader } from "./custom-column-header";
 import { CustomColumn } from "../types";
 
-const defaultBoards: TaskStatus[] = [
-  TaskStatus.BACKLOG,
-  TaskStatus.TODO,
-  TaskStatus.IN_PROGRESS,
-  TaskStatus.IN_REVIEW,
-  TaskStatus.DONE,
-];
+
 
 type TasksState = {
   [key: string]: Task[]; // Using string to support both TaskStatus and custom column IDs
@@ -73,7 +68,8 @@ export const EnhancedDataKanban = ({
     error: columnsError 
   });
 
-  const { open: openCreateModal } = useCreateCustomColumnModal();
+  const { open: openManageModal } = useManageColumnsModal();
+  const { getEnabledColumns } = useDefaultColumns(workspaceId);
 
   // Always call hooks – never inside conditionals/returns
   const [ConfirmDialog] = useConfirm(
@@ -82,15 +78,15 @@ export const EnhancedDataKanban = ({
     "outline"
   );
 
-  // Combine default boards with custom columns (safe when loading)
-  const allColumns = [
-    ...defaultBoards.map(status => ({ id: status, type: "default" as const, status })),
+  // Combine enabled default boards with custom columns (safe when loading)
+  const allColumns = useMemo(() => [
+    ...getEnabledColumns.map(col => ({ id: col.id, type: "default" as const, status: col.id })),
     ...(customColumns?.documents || []).map(col => ({ 
       id: col.$id, 
       type: "custom" as const, 
       customColumn: col 
     }))
-  ];
+  ], [getEnabledColumns, customColumns?.documents]);
 
   const [tasks, setTasks] = useState<TasksState>(() => {
     const initialTasks: TasksState = {};
@@ -157,7 +153,7 @@ export const EnhancedDataKanban = ({
     });
 
     setTasks(newTasks);
-  }, [data, customColumns?.documents]);
+  }, [data, allColumns]);
 
   const handleTaskSelect = useCallback((taskId: string, selected: boolean) => {
     setSelectedTasks(prev => {
@@ -346,10 +342,10 @@ export const EnhancedDataKanban = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={openCreateModal}
+                  onClick={openManageModal}
                 >
-                  <PlusIcon className="size-4 mr-2" />
-                  Add Column
+                  <Settings2Icon className="size-4 mr-2" />
+                  Manage Columns
                 </Button>
               </>
             )}
