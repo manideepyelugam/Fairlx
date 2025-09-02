@@ -34,7 +34,7 @@ import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useGetCustomColumns } from "@/features/custom-columns/api/use-get-custom-columns";
 
 // Combine all icon sets
-const allIcons = {
+export const allIcons = {
   ...Icons,
   ...BiIcons,
   ...BsIcons,
@@ -47,7 +47,7 @@ const allIcons = {
   ...TbIcons,
 };
 
-const statusIconMap: Record<TaskStatus, React.ReactNode> = {
+export const statusIconMap: Record<TaskStatus, React.ReactNode> = {
   [TaskStatus.BACKLOG]: (
     <CircleDashedIcon className="size-[18px] text-pink-400" />
   ),
