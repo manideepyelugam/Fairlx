@@ -6,11 +6,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 
 import { TaskStatus } from "../types";
+import { StatusSelector } from "@/features/custom-columns/components/status-selector";
 
 interface BulkActionsToolbarProps {
   selectedCount: number;
   onClearSelection: () => void;
-  onStatusChange: (status: TaskStatus) => void;
+  onStatusChange: (status: TaskStatus | string) => void;
   onAssigneeChange: (assigneeId: string) => void;
   isAdmin: boolean;
   assignees?: Array<{ $id: string; name: string }>;
@@ -36,18 +37,12 @@ export const BulkActionsToolbar = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <Select onValueChange={onStatusChange}>
-            <SelectTrigger className="w-[140px] h-8">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={TaskStatus.BACKLOG}>Backlog</SelectItem>
-              <SelectItem value={TaskStatus.TODO}>To Do</SelectItem>
-              <SelectItem value={TaskStatus.IN_PROGRESS}>In Progress</SelectItem>
-              <SelectItem value={TaskStatus.IN_REVIEW}>In Review</SelectItem>
-              <SelectItem value={TaskStatus.DONE}>Done</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="w-[140px]">
+            <StatusSelector
+              onChange={onStatusChange}
+              placeholder="Status"
+            />
+          </div>
 
           <Select onValueChange={onAssigneeChange}>
             <SelectTrigger className="w-[140px] h-8">

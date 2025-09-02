@@ -9,8 +9,12 @@ import { useCreateProjectModal } from "../hooks/use-create-project-modal";
 export const CreateProjectModal = () => {
   const { isOpen, setIsOpen, close } = useCreateProjectModal();
 
+  const handleOpenChange = (next: boolean) => {
+    if (next === isOpen) return;
+    setIsOpen(next);
+  };
   return (
-    <ResponsiveModal open={isOpen} onOpenChange={setIsOpen}>
+    <ResponsiveModal open={isOpen} onOpenChange={handleOpenChange}>
       <CreateProjectForm onCancel={close} />
     </ResponsiveModal>
   );

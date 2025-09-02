@@ -33,6 +33,7 @@ import {
 import { createTaskSchema } from "../schemas";
 import { useCreateTask } from "../api/use-create-task";
 import { TaskStatus } from "../types";
+import { StatusSelector } from "@/features/custom-columns/components/status-selector";
 
 interface CreateTaskFormProps {
   onCancel?: () => void;
@@ -143,31 +144,15 @@ export const CreateTaskForm = ({
                 name="status"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Assignee</FormLabel>
-                    <Select
-                      defaultValue={field.value}
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <FormMessage />
-                      <SelectContent>
-                        <SelectItem value={TaskStatus.BACKLOG}>
-                          Backlog
-                        </SelectItem>
-                        <SelectItem value={TaskStatus.IN_PROGRESS}>
-                          In Progress
-                        </SelectItem>
-                        <SelectItem value={TaskStatus.IN_REVIEW}>
-                          In Review
-                        </SelectItem>
-                        <SelectItem value={TaskStatus.TODO}>Todo</SelectItem>
-                        <SelectItem value={TaskStatus.DONE}>Done</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Status</FormLabel>
+                    <FormControl>
+                      <StatusSelector
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Select status"
+                      />
+                    </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />

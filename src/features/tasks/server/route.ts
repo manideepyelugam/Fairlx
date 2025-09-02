@@ -312,7 +312,7 @@ const app = new Hono()
         tasks: z.array(
           z.object({
             $id: z.string(),
-            status: z.nativeEnum(TaskStatus).optional(),
+            status: z.union([z.nativeEnum(TaskStatus), z.string()]).optional(),
             position: z.number().int().positive().min(1000).max(1_000_000).optional(),
             assigneeId: z.string().optional(),
           })
