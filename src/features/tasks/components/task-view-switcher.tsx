@@ -112,6 +112,7 @@ export const TaskViewSwitcher = ({
                 onChange={onKanbanChange}
                 isAdmin={isAdmin}
                 members={members?.documents ?? []}
+                projectId={paramProjectId || projectId || undefined}
               />
             </TabsContent>
             <TabsContent value="calendar" className="mt-0 h-full pb-4">

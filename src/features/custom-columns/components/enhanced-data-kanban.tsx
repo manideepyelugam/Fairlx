@@ -40,22 +40,27 @@ interface EnhancedDataKanbanProps {
   ) => void;
   isAdmin?: boolean;
   members?: Array<{ $id: string; name: string }>;
+  projectId?: string; // Add optional projectId prop
 }
 
 export const EnhancedDataKanban = ({ 
   data = [], // Default to empty array
   onChange, 
   isAdmin = false,
-  members = []
+  members = [],
+  projectId
 }: EnhancedDataKanbanProps) => {
   const workspaceId = useWorkspaceId();
   
 
-  const { data: customColumns, isLoading: isLoadingColumns, error: columnsError } = useGetCustomColumns({ workspaceId });
+  const { data: customColumns, isLoading: isLoadingColumns, error: columnsError } = useGetCustomColumns({ 
+    workspaceId, 
+    projectId: projectId || "" 
+  });
   
 
   const { open: openManageModal } = useManageColumnsModal();
-  const { getEnabledColumns } = useDefaultColumns(workspaceId);
+  const { getEnabledColumns } = useDefaultColumns(workspaceId, projectId);
 
   // Always call hooks – never inside conditionals/returns
   const [ConfirmDialog] = useConfirm(
@@ -406,6 +411,7 @@ export const EnhancedDataKanban = ({
           onAssigneeChange={handleBulkAssigneeChange}
           isAdmin={isAdmin}
           assignees={members}
+          projectId={projectId}
         />
       </>
     );

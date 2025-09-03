@@ -22,9 +22,8 @@ export const useCreateCustomColumn = () => {
     },
     onSuccess: ({ data }) => {
       toast.success("Custom column created");
-      // Invalidate both specific and any generic custom-column queries for safety
-      queryClient.invalidateQueries({ queryKey: ["custom-columns", data.workspaceId] });
-      queryClient.invalidateQueries({ queryKey: ["custom-columns"] });
+      // Invalidate queries for this specific workspace and project
+      queryClient.invalidateQueries({ queryKey: ["custom-columns", data.workspaceId, data.projectId] });
     },
     onError: () => {
       toast.error("Failed to create custom column");

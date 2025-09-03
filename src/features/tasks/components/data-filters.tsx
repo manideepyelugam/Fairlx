@@ -3,6 +3,7 @@ import { FolderIcon, ListChecksIcon, UserIcon } from "lucide-react";
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { useGetProjects } from "@/features/projects/api/use-get-projects";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
+import { useProjectId } from "@/features/projects/hooks/use-project-id";
 
 import { DatePicker } from "@/components/date-picker";
 import {
@@ -26,6 +27,7 @@ interface DataFiltersProps {
 
 export const DataFilters = ({ hideProjectFilter }: DataFiltersProps) => {
   const workspaceId = useWorkspaceId();
+  const currentProjectId = useProjectId();
 
   const { data: projects, isLoading: isLoadingProjects } = useGetProjects({
     workspaceId,
@@ -49,7 +51,10 @@ export const DataFilters = ({ hideProjectFilter }: DataFiltersProps) => {
   const [{ status, assigneeId, projectId, dueDate }, setFilters] =
     useTaskFilters();
 
-  const { data: customColumnsData } = useGetCustomColumns({ workspaceId });
+  const { data: customColumnsData } = useGetCustomColumns({ 
+    workspaceId, 
+    projectId: currentProjectId 
+  });
 
   const customColumnOptions: { value: string; label: string }[] | undefined =
     customColumnsData?.documents?.map((col) => {

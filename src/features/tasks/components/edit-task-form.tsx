@@ -158,6 +158,7 @@ export const EditTaskForm = ({
                         value={field.value}
                         onChange={field.onChange}
                         placeholder="Select status"
+                        projectId={initialValues.projectId}
                       />
                     </FormControl>
                     <FormMessage />

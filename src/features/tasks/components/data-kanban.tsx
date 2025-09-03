@@ -34,13 +34,15 @@ interface DataKanbanProps {
   ) => void;
   isAdmin?: boolean;
   members?: Array<{ $id: string; name: string }>;
+  projectId?: string;
 }
 
 export const DataKanban = ({ 
   data, 
   onChange, 
   isAdmin = false,
-  members = []
+  members = [],
+  projectId
 }: DataKanbanProps) => {
   const [tasks, setTasks] = useState<TasksState>(() => {
     const initialTasks: TasksState = {
@@ -340,6 +342,7 @@ export const DataKanban = ({
         onAssigneeChange={handleBulkAssigneeChange}
         isAdmin={isAdmin}
         assignees={members}
+        projectId={projectId}
       />
     </>
   );

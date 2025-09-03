@@ -11,9 +11,9 @@ import { TaskStatus } from "@/features/tasks/types";
 const app = new Hono()
   .get(
     "/",
-    zValidator("query", defaultColumnSettingsSchema.pick({ workspaceId: true })),
+    zValidator("query", defaultColumnSettingsSchema.pick({ workspaceId: true, projectId: true })),
     async (c) => {
-      const { workspaceId } = c.req.valid("query");
+      const { workspaceId, projectId } = c.req.valid("query");
 
       const { databases } = await createSessionClient();
 
@@ -22,6 +22,7 @@ const app = new Hono()
         DEFAULT_COLUMN_SETTINGS_ID,
         [
           Query.equal("workspaceId", workspaceId),
+          Query.equal("projectId", projectId),
         ]
       );
 
@@ -32,16 +33,17 @@ const app = new Hono()
     "/",
     zValidator("json", updateDefaultColumnSettingsSchema),
     async (c) => {
-      const { workspaceId, settings } = c.req.valid("json");
+      const { workspaceId, projectId, settings } = c.req.valid("json");
 
       const { databases } = await createSessionClient();
 
-      // First, delete existing settings for this workspace
+      // First, delete existing settings for this workspace and project
       const existingSettings = await databases.listDocuments(
         DATABASE_ID,
         DEFAULT_COLUMN_SETTINGS_ID,
         [
           Query.equal("workspaceId", workspaceId),
+          Query.equal("projectId", projectId),
         ]
       );
 
@@ -63,6 +65,7 @@ const app = new Hono()
           ID.unique(),
           {
             workspaceId,
+            projectId,
             columnId: setting.columnId,
             isEnabled: setting.isEnabled,
           }

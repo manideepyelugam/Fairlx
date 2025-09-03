@@ -4,14 +4,15 @@ import { client } from "@/lib/rpc";
 
 interface UseGetCustomColumnsProps {
   workspaceId: string;
+  projectId?: string;
 }
 
-export const useGetCustomColumns = ({ workspaceId }: UseGetCustomColumnsProps) => {
+export const useGetCustomColumns = ({ workspaceId, projectId }: UseGetCustomColumnsProps) => {
   const query = useQuery({
-    queryKey: ["custom-columns", workspaceId],
+    queryKey: ["custom-columns", workspaceId, projectId],
     queryFn: async () => {
       const response = await client.api["custom-columns"]["$get"]({
-        query: { workspaceId },
+        query: { workspaceId, projectId: projectId || "" },
       });
 
       if (!response.ok) {
@@ -21,6 +22,7 @@ export const useGetCustomColumns = ({ workspaceId }: UseGetCustomColumnsProps) =
       const { data } = await response.json();
       return data;
     },
+    enabled: !!workspaceId && !!projectId,
   });
 
   return query;

@@ -23,10 +23,12 @@ export const useUpdateDefaultColumnSettings = () => {
     onSuccess: ({ data }) => {
       toast.success("Column settings updated");
       
-      // Get workspace ID from the first setting (all settings should have the same workspace ID)
+      // Get workspace ID and project ID from the first setting (all settings should have the same IDs)
       const workspaceId = data[0]?.workspaceId;
-      if (workspaceId) {
-        queryClient.invalidateQueries({ queryKey: ["default-column-settings", workspaceId] });
+      const projectId = data[0]?.projectId;
+      
+      if (workspaceId && projectId) {
+        queryClient.invalidateQueries({ queryKey: ["default-column-settings", workspaceId, projectId] });
       }
     },
     onError: () => {

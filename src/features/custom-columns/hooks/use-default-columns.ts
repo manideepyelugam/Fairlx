@@ -19,8 +19,12 @@ const DEFAULT_COLUMNS_CONFIG: Omit<DefaultColumn, 'isEnabled'>[] = [
   { id: TaskStatus.DONE, name: "Done" },
 ];
 
-export const useDefaultColumns = (workspaceId: string) => {
-  const { data: settingsData, isLoading } = useGetDefaultColumnSettings({ workspaceId });
+export const useDefaultColumns = (workspaceId: string, projectId?: string) => {
+  // Only fetch settings if we have both workspaceId and projectId
+  const { data: settingsData, isLoading } = useGetDefaultColumnSettings({ 
+    workspaceId, 
+    projectId: projectId || "" 
+  });
   const { mutate: updateSettings } = useUpdateDefaultColumnSettings();
 
   const [defaultColumns, setDefaultColumns] = useState<DefaultColumn[]>(() => {
@@ -30,7 +34,7 @@ export const useDefaultColumns = (workspaceId: string) => {
 
   // Update local state when database data loads
   useEffect(() => {
-    if (settingsData?.documents) {
+    if (settingsData?.documents && projectId) {
       const updatedColumns = DEFAULT_COLUMNS_CONFIG.map(col => {
         const setting = settingsData.documents.find(s => s.columnId === col.id);
         return {
@@ -40,9 +44,12 @@ export const useDefaultColumns = (workspaceId: string) => {
       });
       setDefaultColumns(updatedColumns);
     }
-  }, [settingsData]);
+  }, [settingsData, projectId]);
 
   const saveSettingsToDatabase = (columns: DefaultColumn[]) => {
+    // Don't save if projectId is not provided
+    if (!projectId) return;
+    
     const settings = columns.map(col => ({
       columnId: col.id,
       isEnabled: col.isEnabled,
@@ -51,6 +58,7 @@ export const useDefaultColumns = (workspaceId: string) => {
     updateSettings({
       json: {
         workspaceId,
+        projectId,
         settings,
       },
     });
