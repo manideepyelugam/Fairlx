@@ -34,7 +34,7 @@ interface TaskViewSwitcherProps {
 export const TaskViewSwitcher = ({
   hideProjectFilter,
 }: TaskViewSwitcherProps) => {
-  console.log('TaskViewSwitcher render start');
+  
   
   const [{ status, assigneeId, projectId, dueDate }] = useTaskFilters();
   const [view, setView] = useQueryState("task-view", { defaultValue: "table" });
@@ -43,12 +43,12 @@ export const TaskViewSwitcher = ({
   const workspaceId = useWorkspaceId();
   const paramProjectId = useProjectId();
   
-  console.log('TaskViewSwitcher hooks initialized:', { workspaceId, paramProjectId, status, assigneeId, projectId, dueDate });
+  
   
   const { isAdmin } = useCurrentMember({ workspaceId });
   const { data: members } = useGetMembers({ workspaceId });
   
-  console.log('TaskViewSwitcher member data:', { isAdmin, membersCount: members?.documents?.length });
+  
   
   const { data: tasks, isLoading: isLoadingTasks } = useGetTasks({
     workspaceId,
@@ -58,19 +58,17 @@ export const TaskViewSwitcher = ({
     dueDate,
   });
 
-  console.log('TaskViewSwitcher task data:', { tasksCount: tasks?.documents?.length, isLoadingTasks });
+  
 
   const onKanbanChange = useCallback(
     (tasks: { $id: string; status: TaskStatus | string; position: number }[]) => {
-      console.log('TaskViewSwitcher onKanbanChange called:', tasks);
       bulkUpdate({ json: { tasks } });
     },
     [bulkUpdate]
   );
 
   const { open } = useCreateTaskModal();
-
-  console.log('TaskViewSwitcher before render return');
+  
 
   return (
     <Tabs

@@ -29,7 +29,7 @@ export const ResponsiveModal = ({ children, open, onOpenChange }: ResponsiveModa
 
   if (process.env.NODE_ENV !== "production") {
     // Light dev-only instrumentation (comment out if noisy)
-    // console.debug(`[ResponsiveModal] render variant=${variant} open=${open}`);
+  // Debug logging removed
   }
 
   if (variant === "desktop") {

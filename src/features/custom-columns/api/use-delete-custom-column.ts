@@ -60,7 +60,7 @@ export const useDeleteCustomColumn = (props?: UseDeleteCustomColumnProps) => {
               );
             });
           } catch (error) {
-            console.error("Failed to move tasks:", error);
+            console.warn("Failed to move tasks:", error);
           }
         }
       }

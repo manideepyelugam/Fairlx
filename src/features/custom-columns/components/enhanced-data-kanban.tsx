@@ -48,25 +48,11 @@ export const EnhancedDataKanban = ({
   isAdmin = false,
   members = []
 }: EnhancedDataKanbanProps) => {
-  // Log basic props each render (non-conditional to avoid hook order issues)
-  console.log('EnhancedDataKanban render:', { 
-    dataLength: Array.isArray(data) ? data.length : 'not-array', 
-    isAdmin, 
-    membersLength: Array.isArray(members) ? members.length : 'not-array' 
-  });
-
   const workspaceId = useWorkspaceId();
-  console.log('workspaceId:', workspaceId);
+  
 
   const { data: customColumns, isLoading: isLoadingColumns, error: columnsError } = useGetCustomColumns({ workspaceId });
-  if (process.env.NODE_ENV !== 'production') {
-    console.debug('Custom column count:', customColumns?.documents?.length ?? 0);
-  }
-  console.log('customColumns:', { 
-    columns: customColumns, 
-    isLoading: isLoadingColumns, 
-    error: columnsError 
-  });
+  
 
   const { open: openManageModal } = useManageColumnsModal();
   const { getEnabledColumns } = useDefaultColumns(workspaceId);
@@ -118,18 +104,18 @@ export const EnhancedDataKanban = ({
         // Check if task belongs to an enabled column
         if (newTasks[taskStatus]) {
           newTasks[taskStatus].push(task);
-        } else {
-          // Task is in a disabled/non-existent column, move to TODO if available
-          if (newTasks[TaskStatus.TODO]) {
-            newTasks[TaskStatus.TODO].push(task);
           } else {
-            // If TODO is also disabled, move to first available enabled column
-            const firstEnabledColumn = Object.keys(newTasks)[0];
-            if (firstEnabledColumn) {
-              newTasks[firstEnabledColumn].push(task);
+            // Task is in a disabled/non-existent column, move to TODO if available
+            if (newTasks[TaskStatus.TODO]) {
+              newTasks[TaskStatus.TODO].push(task);
+            } else {
+              // If TODO is also disabled, move to first available enabled column
+              const firstEnabledColumn = Object.keys(newTasks)[0];
+              if (firstEnabledColumn) {
+                newTasks[firstEnabledColumn].push(task);
+              }
             }
           }
-        }
       });
     }
 
@@ -234,7 +220,7 @@ export const EnhancedDataKanban = ({
         const [movedTask] = sourceColumn.splice(source.index, 1);
 
         if (!movedTask) {
-          console.error("No task found at the source index");
+            console.warn("No task found at the source index");
           return prevTasks;
         }
 
