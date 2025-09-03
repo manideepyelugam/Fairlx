@@ -50,8 +50,7 @@ export const CreateCustomColumnForm = ({ onCancel }: CreateCustomColumnFormProps
 
   const onSubmit = (values: FormData) => {
     if (!projectId) {
-  console.error("Project ID is required to create a custom column");
-  toast.error("Can't create column: missing project context");
+      toast.error("Can't create column: missing project context");
       return;
     }
     
@@ -100,18 +99,15 @@ export const CreateCustomColumnForm = ({ onCancel }: CreateCustomColumnFormProps
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Icon</FormLabel>
-                    <FormControl>
                       <div className="flex items-center gap-2">
-                        <input
-                          type="hidden"
-                          {...field}
-                        />
+                        <FormControl>
+                          <input type="hidden" {...field} />
+                        </FormControl>
                         <IconPicker
                           value={field.value}
                           onChange={field.onChange}
                         />
                       </div>
-                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -122,18 +118,15 @@ export const CreateCustomColumnForm = ({ onCancel }: CreateCustomColumnFormProps
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Color</FormLabel>
-                    <FormControl>
                       <div className="flex items-center gap-2">
-                        <input
-                          type="hidden"
-                          {...field}
-                        />
+                        <FormControl>
+                          <input type="hidden" {...field} />
+                        </FormControl>
                         <ColorPicker
                           value={field.value}
                           onChange={field.onChange}
                         />
                       </div>
-                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

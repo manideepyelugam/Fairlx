@@ -215,14 +215,15 @@ export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-sm font-medium">Icon</FormLabel>
-                            <FormControl>
-                              <div className="h-11">
-                                <IconPicker
-                                  value={field.value}
-                                  onChange={field.onChange}
-                                />
-                              </div>
-                            </FormControl>
+                            <div className="flex items-center gap-2 h-11">
+                              <FormControl>
+                                <input type="hidden" {...field} />
+                              </FormControl>
+                              <IconPicker
+                                value={field.value}
+                                onChange={field.onChange}
+                              />
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -234,14 +235,15 @@ export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-sm font-medium">Color</FormLabel>
-                            <FormControl>
-                              <div className="h-11">
-                                <ColorPicker
-                                  value={field.value}
-                                  onChange={field.onChange}
-                                />
-                              </div>
-                            </FormControl>
+                            <div className="flex items-center gap-2 h-11">
+                              <FormControl>
+                                <input type="hidden" {...field} />
+                              </FormControl>
+                              <ColorPicker
+                                value={field.value}
+                                onChange={field.onChange}
+                              />
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
