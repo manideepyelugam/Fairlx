@@ -26,7 +26,8 @@ export const useConfirm = (
   };
 
   const handleClose = () => {
-    setPromise(null);
+    // Guard against redundant state updates that can contribute to deep update loops
+    setPromise((prev) => (prev === null ? prev : null));
   };
 
   const handleConfirm = () => {

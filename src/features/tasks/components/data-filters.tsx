@@ -15,6 +15,9 @@ import {
 } from "@/components/ui/select";
 
 import { useTaskFilters } from "../hooks/use-task-filters";
+import { useGetCustomColumns } from "@/features/custom-columns/api/use-get-custom-columns";
+import { CustomColumn } from "@/features/custom-columns/types";
+import { allIcons, statusIconMap } from "@/features/custom-columns/components/status-selector";
 import { TaskStatus } from "../types";
 
 interface DataFiltersProps {
@@ -45,6 +48,14 @@ export const DataFilters = ({ hideProjectFilter }: DataFiltersProps) => {
 
   const [{ status, assigneeId, projectId, dueDate }, setFilters] =
     useTaskFilters();
+
+  const { data: customColumnsData } = useGetCustomColumns({ workspaceId });
+
+  const customColumnOptions: { value: string; label: string }[] | undefined =
+    customColumnsData?.documents?.map((col) => {
+      const c = col as unknown as CustomColumn;
+      return { value: c.$id, label: c.name };
+    });
 
   const onStatusChange = (value: string) => {
     if (value === "all") {
@@ -89,11 +100,43 @@ export const DataFilters = ({ hideProjectFilter }: DataFiltersProps) => {
         <SelectContent>
           <SelectItem value="all">All statuses</SelectItem>
           <SelectSeparator />
-          <SelectItem value={TaskStatus.BACKLOG}>Backlog</SelectItem>
-          <SelectItem value={TaskStatus.IN_PROGRESS}>In Progress</SelectItem>
-          <SelectItem value={TaskStatus.IN_REVIEW}>In Review</SelectItem>
-          <SelectItem value={TaskStatus.TODO}>Todo</SelectItem>
-          <SelectItem value={TaskStatus.DONE}>Done</SelectItem>
+          <SelectItem value={TaskStatus.BACKLOG}>
+            <div className="flex items-center gap-x-2">{statusIconMap[TaskStatus.BACKLOG]}Backlog</div>
+          </SelectItem>
+          <SelectItem value={TaskStatus.IN_PROGRESS}>
+            <div className="flex items-center gap-x-2">{statusIconMap[TaskStatus.IN_PROGRESS]}In Progress</div>
+          </SelectItem>
+          <SelectItem value={TaskStatus.IN_REVIEW}>
+            <div className="flex items-center gap-x-2">{statusIconMap[TaskStatus.IN_REVIEW]}In Review</div>
+          </SelectItem>
+          <SelectItem value={TaskStatus.TODO}>
+            <div className="flex items-center gap-x-2">{statusIconMap[TaskStatus.TODO]}Todo</div>
+          </SelectItem>
+          <SelectItem value={TaskStatus.DONE}>
+            <div className="flex items-center gap-x-2">{statusIconMap[TaskStatus.DONE]}Done</div>
+          </SelectItem>
+
+          {customColumnOptions && customColumnOptions.length > 0 && (
+            <>
+              <SelectSeparator />
+              {customColumnOptions.map((col) => {
+                const raw = customColumnsData?.documents?.find((d) => d.$id === col.value);
+                const c = raw as unknown as CustomColumn | undefined;
+                const IconComp = c ? (allIcons[c.icon as keyof typeof allIcons] as any) : null;
+                const icon = IconComp ? (
+                  <IconComp className="size-[18px]" style={{ color: c?.color }} />
+                ) : (
+                  <span className="w-4 h-4 rounded-full" style={{ background: c?.color }} />
+                );
+
+                return (
+                  <SelectItem key={col.value} value={col.value}>
+                    <div className="flex items-center gap-x-2">{icon}{col.label}</div>
+                  </SelectItem>
+                );
+              })}
+            </>
+          )}
         </SelectContent>
       </Select>
       <Select

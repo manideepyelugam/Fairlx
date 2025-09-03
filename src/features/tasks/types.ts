@@ -10,7 +10,7 @@ export enum TaskStatus {
 
 export type Task = Models.Document & {
   name: string;
-  status: TaskStatus;
+  status: TaskStatus | string; // Allow custom column IDs as status
   workspaceId: string;
   assigneeId: string;
   projectId: string;
