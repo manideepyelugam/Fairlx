@@ -371,7 +371,6 @@ export const EnhancedDataKanban = ({
                       selectedCount={selectedInColumn}
                       onSelectAll={handleSelectAll}
                       showSelection={selectionMode}
-                      showDelete={isAdmin}
                     />
                   )}
                   <Droppable droppableId={column.id}>
