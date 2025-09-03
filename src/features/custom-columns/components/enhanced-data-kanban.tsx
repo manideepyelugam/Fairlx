@@ -88,66 +88,52 @@ export const EnhancedDataKanban = ({
     }))
   ], [getEnabledColumns, customColumns?.documents]);
 
-  const [tasks, setTasks] = useState<TasksState>(() => {
-    const initialTasks: TasksState = {};
-    
-    // Initialize all columns
-    allColumns.forEach(col => {
-      initialTasks[col.id] = [];
-    });
-
-    // Distribute tasks to columns (with safety check for data array)
-    if (Array.isArray(data) && data.length > 0) {
-      data.forEach((task) => {
-        const columnId = typeof task.status === "string" && task.status in TaskStatus 
-          ? task.status 
-          : task.status; // Custom column ID
-          
-        if (initialTasks[columnId]) {
-          initialTasks[columnId].push(task);
-        } else {
-          // If column doesn't exist, move to TODO
-          initialTasks[TaskStatus.TODO].push(task);
-        }
-      });
-    }
-
-    // Sort tasks by position in each column
-    Object.keys(initialTasks).forEach((columnId) => {
-      initialTasks[columnId].sort((a, b) => a.position - b.position);
-    });
-
-    return initialTasks;
-  });
+  const [tasks, setTasks] = useState<TasksState>({});
 
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
 
   const { mutate: bulkUpdateTasks } = useBulkUpdateTasks();
 
-  // Update tasks when data changes
+  // Update tasks when data changes or columns change
   useEffect(() => {
     const newTasks: TasksState = {};
     
+    // Initialize all enabled columns
     allColumns.forEach(col => {
       newTasks[col.id] = [];
     });
 
+    // Ensure TODO exists as fallback (if it's enabled)
+    const todoColumn = allColumns.find(col => col.id === TaskStatus.TODO);
+    if (!newTasks[TaskStatus.TODO] && todoColumn) {
+      newTasks[TaskStatus.TODO] = [];
+    }
+
     // Process data with safety check
     if (Array.isArray(data) && data.length > 0) {
       data.forEach((task) => {
-        const columnId = typeof task.status === "string" && task.status in TaskStatus 
-          ? task.status 
-          : task.status;
-          
-        if (newTasks[columnId]) {
-          newTasks[columnId].push(task);
+        const taskStatus = task.status;
+        
+        // Check if task belongs to an enabled column
+        if (newTasks[taskStatus]) {
+          newTasks[taskStatus].push(task);
         } else {
-          newTasks[TaskStatus.TODO].push(task);
+          // Task is in a disabled/non-existent column, move to TODO if available
+          if (newTasks[TaskStatus.TODO]) {
+            newTasks[TaskStatus.TODO].push(task);
+          } else {
+            // If TODO is also disabled, move to first available enabled column
+            const firstEnabledColumn = Object.keys(newTasks)[0];
+            if (firstEnabledColumn) {
+              newTasks[firstEnabledColumn].push(task);
+            }
+          }
         }
       });
     }
 
+    // Sort tasks by position in each column
     Object.keys(newTasks).forEach((columnId) => {
       newTasks[columnId].sort((a, b) => a.position - b.position);
     });

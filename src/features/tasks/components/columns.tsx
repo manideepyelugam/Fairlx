@@ -13,7 +13,7 @@ import { snakeCaseToTitleCase } from "@/lib/utils";
 import { TaskActions } from "./task-actions";
 import { TaskDate } from "./task-date";
 
-import { Task } from "../types";
+import { Task, TaskStatus } from "../types";
 
 export const columns: ColumnDef<Task>[] = [
   {
@@ -125,8 +125,12 @@ export const columns: ColumnDef<Task>[] = [
     },
     cell: ({ row }) => {
       const status = row.original.status;
+      
+      // Check if status is a valid TaskStatus, otherwise use default variant
+      const isValidTaskStatus = Object.values(TaskStatus).includes(status as TaskStatus);
+      const badgeVariant = isValidTaskStatus ? (status as TaskStatus) : "default";
 
-      return <Badge variant={status}>{snakeCaseToTitleCase(status)}</Badge>;
+      return <Badge variant={badgeVariant}>{snakeCaseToTitleCase(status)}</Badge>;
     },
   },
   {

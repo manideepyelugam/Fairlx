@@ -52,7 +52,10 @@ export const DataKanban = ({
     };
 
     data.forEach((task) => {
-      initialTasks[task.status].push(task);
+      // Only add to initialTasks if it's a valid TaskStatus, ignore custom columns
+      if (task.status in initialTasks) {
+        (initialTasks as any)[task.status].push(task);
+      }
     });
 
     Object.keys(initialTasks).forEach((status) => {
@@ -80,7 +83,10 @@ export const DataKanban = ({
     };
 
     data.forEach((task) => {
-      newTasks[task.status].push(task);
+      // Only add to newTasks if it's a valid TaskStatus, ignore custom columns
+      if (task.status in newTasks) {
+        (newTasks as any)[task.status].push(task);
+      }
     });
 
     Object.keys(newTasks).forEach((status) => {
@@ -128,7 +134,7 @@ export const DataKanban = ({
     }
   }, [selectionMode]);
 
-  const handleBulkStatusChange = useCallback((status: TaskStatus) => {
+  const handleBulkStatusChange = useCallback((status: TaskStatus | string) => {
     if (selectedTasks.size === 0) return;
 
     const updates = Array.from(selectedTasks).map(taskId => ({

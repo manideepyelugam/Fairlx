@@ -11,7 +11,7 @@ import { OverviewProperty } from "./overview-property";
 import { TaskDate } from "./task-date";
 
 import { useEditTaskModal } from "../hooks/use-edit-task-modal";
-import { Task } from "../types";
+import { Task, TaskStatus } from "../types";
 
 interface TaskOverviewProps {
   task: Task;
@@ -40,7 +40,7 @@ export const TaskOverview = ({ task }: TaskOverviewProps) => {
             <TaskDate value={task.dueDate} className="text-sm font-medium" />
           </OverviewProperty>
           <OverviewProperty label="Status">
-            <Badge variant={task.status}>
+            <Badge variant={Object.values(TaskStatus).includes(task.status as TaskStatus) ? task.status as TaskStatus : "secondary"}>
               {snakeCaseToTitleCase(task.status)}
             </Badge>
           </OverviewProperty>
