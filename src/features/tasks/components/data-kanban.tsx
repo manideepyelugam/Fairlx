@@ -34,13 +34,15 @@ interface DataKanbanProps {
   ) => void;
   isAdmin?: boolean;
   members?: Array<{ $id: string; name: string }>;
+  projectId?: string;
 }
 
 export const DataKanban = ({ 
   data, 
   onChange, 
   isAdmin = false,
-  members = []
+  members = [],
+  projectId
 }: DataKanbanProps) => {
   const [tasks, setTasks] = useState<TasksState>(() => {
     const initialTasks: TasksState = {
@@ -52,7 +54,10 @@ export const DataKanban = ({
     };
 
     data.forEach((task) => {
-      initialTasks[task.status].push(task);
+      // Only add to initialTasks if it's a valid TaskStatus, ignore custom columns
+      if (task.status in initialTasks) {
+        (initialTasks as any)[task.status].push(task);
+      }
     });
 
     Object.keys(initialTasks).forEach((status) => {
@@ -80,7 +85,10 @@ export const DataKanban = ({
     };
 
     data.forEach((task) => {
-      newTasks[task.status].push(task);
+      // Only add to newTasks if it's a valid TaskStatus, ignore custom columns
+      if (task.status in newTasks) {
+        (newTasks as any)[task.status].push(task);
+      }
     });
 
     Object.keys(newTasks).forEach((status) => {
@@ -128,7 +136,7 @@ export const DataKanban = ({
     }
   }, [selectionMode]);
 
-  const handleBulkStatusChange = useCallback((status: TaskStatus) => {
+  const handleBulkStatusChange = useCallback((status: TaskStatus | string) => {
     if (selectedTasks.size === 0) return;
 
     const updates = Array.from(selectedTasks).map(taskId => ({
@@ -181,7 +189,7 @@ export const DataKanban = ({
 
         // If there's no moved task (shouldn't happen, but just in case), return the previous state
         if (!movedTask) {
-          console.error("No task found at the source index");
+      console.warn("No task found at the source index");
           return prevTasks;
         }
 
@@ -334,6 +342,7 @@ export const DataKanban = ({
         onAssigneeChange={handleBulkAssigneeChange}
         isAdmin={isAdmin}
         assignees={members}
+        projectId={projectId}
       />
     </>
   );

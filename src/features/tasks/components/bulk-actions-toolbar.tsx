@@ -1,5 +1,5 @@
 import React from "react";
-import { X, Users, Tags, RotateCcw } from "lucide-react";
+import { X, Users, Tags } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,6 +15,7 @@ interface BulkActionsToolbarProps {
   onAssigneeChange: (assigneeId: string) => void;
   isAdmin: boolean;
   assignees?: Array<{ $id: string; name: string }>;
+  projectId?: string;
 }
 
 export const BulkActionsToolbar = ({
@@ -24,6 +25,7 @@ export const BulkActionsToolbar = ({
   onAssigneeChange,
   isAdmin,
   assignees = [],
+  projectId,
 }: BulkActionsToolbarProps) => {
   if (!isAdmin || selectedCount === 0) return null;
 
@@ -41,6 +43,7 @@ export const BulkActionsToolbar = ({
             <StatusSelector
               onChange={onStatusChange}
               placeholder="Status"
+              projectId={projectId}
             />
           </div>
 

@@ -28,11 +28,15 @@ export const useDeleteCustomColumn = (props?: UseDeleteCustomColumnProps) => {
         
         // Find tasks in the column being deleted
         const tasksToMove: string[] = [];
-        workspaceTasks.forEach(([, data]: [any, any]) => {
-          if (data?.documents) {
-            data.documents.forEach((task: any) => {
-              if (task.status === param.customColumnId) {
-                tasksToMove.push(task.$id);
+        workspaceTasks.forEach(([, data]: [unknown, unknown]) => {
+          if (data && typeof data === 'object' && 'documents' in data) {
+            const documents = (data as { documents: unknown[] }).documents;
+            documents.forEach((task: unknown) => {
+              if (task && typeof task === 'object' && '$id' in task && 'status' in task) {
+                const taskObj = task as { $id: string; status: string };
+                if (taskObj.status === param.customColumnId) {
+                  tasksToMove.push(taskObj.$id);
+                }
               }
             });
           }
@@ -56,7 +60,7 @@ export const useDeleteCustomColumn = (props?: UseDeleteCustomColumnProps) => {
               );
             });
           } catch (error) {
-            console.error("Failed to move tasks:", error);
+            console.warn("Failed to move tasks:", error);
           }
         }
       }
@@ -70,7 +74,7 @@ export const useDeleteCustomColumn = (props?: UseDeleteCustomColumnProps) => {
 
       return await response.json();
     },
-    onSuccess: ({ data }) => {
+    onSuccess: () => {
       toast.success("Custom column deleted");
       queryClient.invalidateQueries({ queryKey: ["custom-columns"] });
       queryClient.invalidateQueries({ queryKey: ["tasks"] });

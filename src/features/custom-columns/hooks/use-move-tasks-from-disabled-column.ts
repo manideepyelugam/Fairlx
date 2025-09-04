@@ -22,11 +22,15 @@ export const useMoveTasksFromDisabledColumn = () => {
       
       // Find tasks in the column being disabled
       const tasksToMove: string[] = [];
-      workspaceTasks.forEach(([, data]: [any, any]) => {
-        if (data?.documents) {
-          data.documents.forEach((task: any) => {
-            if (task.status === fromColumn) {
-              tasksToMove.push(task.$id);
+      workspaceTasks.forEach(([, data]: [unknown, unknown]) => {
+        if (data && typeof data === 'object' && 'documents' in data) {
+          const documents = (data as { documents: unknown[] }).documents;
+          documents.forEach((task: unknown) => {
+            if (task && typeof task === 'object' && '$id' in task && 'status' in task) {
+              const taskObj = task as { $id: string; status: string };
+              if (taskObj.status === fromColumn) {
+                tasksToMove.push(taskObj.$id);
+              }
             }
           });
         }

@@ -15,9 +15,8 @@ const ErrorPage = ({
 }) => {
   useEffect(() => {
     // Log the error to console so we can see what's happening
-    console.error('Error boundary caught:', error);
-    console.error('Error stack:', error.stack);
-    console.error('Error message:', error.message);
+  // Log a concise error for visibility without spamming the console
+  console.error('Unhandled error in app error boundary');
   }, [error]);
 
   return (

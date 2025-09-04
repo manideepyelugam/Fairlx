@@ -18,6 +18,8 @@ import {
 import { Input } from "@/components/ui/input";
 
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
+import { useProjectId } from "@/features/projects/hooks/use-project-id";
+import { toast } from "sonner";
 
 import { createCustomColumnSchema } from "../schemas";
 import { useCreateCustomColumn } from "../api/use-create-custom-column";
@@ -28,14 +30,17 @@ interface CreateCustomColumnFormProps {
   onCancel?: () => void;
 }
 
-type FormData = z.infer<typeof createCustomColumnSchema>;
+// Form schema excludes workspaceId & projectId because they're injected programmatically
+const formSchema = createCustomColumnSchema.omit({ workspaceId: true, projectId: true });
+type FormData = z.infer<typeof formSchema>;
 
 export const CreateCustomColumnForm = ({ onCancel }: CreateCustomColumnFormProps) => {
   const workspaceId = useWorkspaceId();
+  const projectId = useProjectId();
   const { mutate, isPending } = useCreateCustomColumn();
 
   const form = useForm<FormData>({
-    resolver: zodResolver(createCustomColumnSchema.omit({ workspaceId: true })),
+    resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
       icon: "FiFlag",
@@ -44,10 +49,16 @@ export const CreateCustomColumnForm = ({ onCancel }: CreateCustomColumnFormProps
   });
 
   const onSubmit = (values: FormData) => {
+    if (!projectId) {
+      toast.error("Can't create column: missing project context");
+      return;
+    }
+    
     mutate({ 
       json: { 
         ...values, 
-        workspaceId 
+        workspaceId,
+        projectId
       } 
     }, {
       onSuccess: () => {
@@ -88,12 +99,15 @@ export const CreateCustomColumnForm = ({ onCancel }: CreateCustomColumnFormProps
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Icon</FormLabel>
-                    <FormControl>
-                      <IconPicker
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
+                      <div className="flex items-center gap-2">
+                        <FormControl>
+                          <input type="hidden" {...field} />
+                        </FormControl>
+                        <IconPicker
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
+                      </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -104,12 +118,15 @@ export const CreateCustomColumnForm = ({ onCancel }: CreateCustomColumnFormProps
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Color</FormLabel>
-                    <FormControl>
-                      <ColorPicker
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
+                      <div className="flex items-center gap-2">
+                        <FormControl>
+                          <input type="hidden" {...field} />
+                        </FormControl>
+                        <ColorPicker
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
+                      </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -127,7 +144,7 @@ export const CreateCustomColumnForm = ({ onCancel }: CreateCustomColumnFormProps
                 Cancel
               </Button>
               <Button type="submit" size="lg" disabled={isPending}>
-                Create Column
+                {isPending ? "Creating..." : "Create Column"}
               </Button>
             </div>
           </form>

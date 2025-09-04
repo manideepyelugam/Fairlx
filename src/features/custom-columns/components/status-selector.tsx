@@ -67,16 +67,19 @@ interface StatusSelectorProps {
   value?: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  projectId?: string;
 }
 
 export const StatusSelector = ({
   value,
   onChange,
   placeholder = "Select status",
+  projectId,
 }: StatusSelectorProps) => {
   const workspaceId = useWorkspaceId();
   const { data: customColumns = { documents: [] } } = useGetCustomColumns({
     workspaceId,
+    projectId,
   });
 
   const renderStatusItem = (statusValue: string, label: string, icon: React.ReactNode) => (

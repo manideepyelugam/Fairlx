@@ -150,6 +150,7 @@ export const CreateTaskForm = ({
                         value={field.value}
                         onChange={field.onChange}
                         placeholder="Select status"
+                        projectId={form.watch("projectId")}
                       />
                     </FormControl>
                     <FormMessage />

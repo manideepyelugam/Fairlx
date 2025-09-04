@@ -23,7 +23,7 @@ export const useUpdateCustomColumn = () => {
 
       return await response.json();
     },
-    onSuccess: ({ data }) => {
+    onSuccess: () => {
       toast.success("Custom column updated");
       queryClient.invalidateQueries({ queryKey: ["custom-columns"] });
     },

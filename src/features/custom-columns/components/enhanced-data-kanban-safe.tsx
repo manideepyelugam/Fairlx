@@ -22,16 +22,12 @@ export const SafeEnhancedDataKanban = ({
   isAdmin = false,
   members = []
 }: SafeEnhancedDataKanbanProps) => {
-  console.log('SafeEnhancedDataKanban render:', { 
-    dataLength: Array.isArray(data) ? data.length : 'not-array', 
-    isAdmin, 
-    membersLength: Array.isArray(members) ? members.length : 'not-array' 
-  });
+  
 
   const { open: openManageModal } = useManageColumnsModal();
   
   const handleOpenManageModal = useCallback(() => {
-    console.log('Manage Columns clicked, opening modal...');
+    // Manage Columns modal opened
     openManageModal();
   }, [openManageModal]);
 

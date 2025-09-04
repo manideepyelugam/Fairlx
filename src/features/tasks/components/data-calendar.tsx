@@ -13,9 +13,9 @@ import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 
 import { Button } from "@/components/ui/button";
 
-import { EventCard } from "./event-card";
+import { Task, TaskStatus } from "../types";
 
-import { Task } from "../types";
+import { EventCard } from "./event-card";
 
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "./data-calendar.css";
@@ -77,7 +77,9 @@ export const DataCalendar = ({ data }: DataCalendarProps) => {
     title: task.name,
     project: task.project,
     assignee: task.assignee,
-    status: task.status,
+    status: Object.values(TaskStatus).includes(task.status as TaskStatus) 
+      ? task.status as TaskStatus 
+      : TaskStatus.TODO, // Default fallback for custom columns
     id: task.$id,
   }));
 

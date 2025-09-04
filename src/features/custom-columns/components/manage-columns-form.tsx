@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { useConfirm } from "@/hooks/use-confirm";
 
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
+import { useProjectId } from "@/features/projects/hooks/use-project-id";
 import { TaskStatus } from "@/features/tasks/types";
 
 import { createCustomColumnSchema } from "../schemas";
@@ -38,21 +39,27 @@ interface ManageColumnsFormProps {
   onCancel?: () => void;
 }
 
-type FormData = z.infer<typeof createCustomColumnSchema>;
+// Omit workspaceId & projectId; they are injected on submit
+const formSchema = createCustomColumnSchema.omit({ workspaceId: true, projectId: true });
+type FormData = z.infer<typeof formSchema>;
 
 export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
   const workspaceId = useWorkspaceId();
+  const projectId = useProjectId();
   const [showCreateForm, setShowCreateForm] = useState(false);
   
   const { mutate: createColumn, isPending: isCreating } = useCreateCustomColumn();
   const { mutate: deleteColumn, isPending: isDeleting } = useDeleteCustomColumn();
-  const { data: customColumns, isLoading: isLoadingColumns } = useGetCustomColumns({ workspaceId });
+  const { data: customColumns, isLoading: isLoadingColumns } = useGetCustomColumns({ 
+    workspaceId, 
+    projectId: projectId || "" 
+  });
   const { mutate: moveTasksFromDisabledColumn } = useMoveTasksFromDisabledColumn();
   
   const {
     defaultColumns,
     toggleColumn,
-  } = useDefaultColumns(workspaceId);
+  } = useDefaultColumns(workspaceId, projectId);
 
   const [ConfirmHideDialog, confirmHide] = useConfirm(
     "Hide Column",
@@ -67,7 +74,7 @@ export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
   );
 
   const form = useForm<FormData>({
-    resolver: zodResolver(createCustomColumnSchema.omit({ workspaceId: true })),
+    resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
       icon: "FiFlag",
@@ -76,10 +83,15 @@ export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
   });
 
   const onSubmit = (values: FormData) => {
+    if (!projectId) {
+      toast.error("Project context missing");
+      return;
+    }
     createColumn({ 
       json: { 
         ...values, 
-        workspaceId 
+        workspaceId,
+        projectId
       } 
     }, {
       onSuccess: () => {
@@ -203,14 +215,15 @@ export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-sm font-medium">Icon</FormLabel>
-                            <FormControl>
-                              <div className="h-11">
-                                <IconPicker
-                                  value={field.value}
-                                  onChange={field.onChange}
-                                />
-                              </div>
-                            </FormControl>
+                            <div className="flex items-center gap-2 h-11">
+                              <FormControl>
+                                <input type="hidden" {...field} />
+                              </FormControl>
+                              <IconPicker
+                                value={field.value}
+                                onChange={field.onChange}
+                              />
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -222,14 +235,15 @@ export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-sm font-medium">Color</FormLabel>
-                            <FormControl>
-                              <div className="h-11">
-                                <ColorPicker
-                                  value={field.value}
-                                  onChange={field.onChange}
-                                />
-                              </div>
-                            </FormControl>
+                            <div className="flex items-center gap-2 h-11">
+                              <FormControl>
+                                <input type="hidden" {...field} />
+                              </FormControl>
+                              <ColorPicker
+                                value={field.value}
+                                onChange={field.onChange}
+                              />
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -321,17 +335,18 @@ export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
 
           <DottedSeparator />
 
-          {/* Default Columns Section - Moved to bottom */}
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <h3 className="text-lg font-semibold">Default Columns</h3>
-              <Badge variant="outline" className="text-xs">
-                System
-              </Badge>
-            </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              Show or hide the default workflow columns. Hidden columns will move all tasks to &ldquo;Todo&rdquo;.
-            </p>
+          {/* Default Columns Section - Only show if we have a projectId */}
+          {projectId && (
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <h3 className="text-lg font-semibold">Default Columns</h3>
+                <Badge variant="outline" className="text-xs">
+                  Project-specific
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Show or hide the default workflow columns for this project. Hidden columns will move all tasks to &ldquo;Todo&rdquo;.
+              </p>
             <div className="space-y-3">
               {defaultColumns.map((column) => (
                 <div key={column.id} className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/20 transition-colors">
@@ -358,7 +373,8 @@ export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
                 </div>
               ))}
             </div>
-          </div>
+            </div>
+          )}
 
           <DottedSeparator />
 

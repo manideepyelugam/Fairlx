@@ -1,8 +1,9 @@
 "use client";
 
 import React from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 interface ResponsiveModalProps {
   children: React.ReactNode;
@@ -29,13 +30,19 @@ export const ResponsiveModal = ({ children, open, onOpenChange }: ResponsiveModa
 
   if (process.env.NODE_ENV !== "production") {
     // Light dev-only instrumentation (comment out if noisy)
-    // console.debug(`[ResponsiveModal] render variant=${variant} open=${open}`);
+  // Debug logging removed
   }
 
   if (variant === "desktop") {
     return (
       <Dialog open={open} onOpenChange={handleChange}>
         <DialogContent className="w-full sm:max-w-lg p-0 border-none overflow-y-auto hide-scrollbar max-h-[85vh]">
+          <VisuallyHidden>
+            <DialogTitle>Modal</DialogTitle>
+          </VisuallyHidden>
+          <VisuallyHidden>
+            <DialogDescription>Modal content</DialogDescription>
+          </VisuallyHidden>
           {children}
         </DialogContent>
       </Dialog>

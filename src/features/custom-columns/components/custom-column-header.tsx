@@ -83,7 +83,10 @@ export const CustomColumnHeader = ({
             <Checkbox
               checked={isAllSelected}
               ref={(ref) => {
-                if (ref) (ref as any).indeterminate = isPartiallySelected;
+                if (ref) {
+                  const element = ref as HTMLInputElement;
+                  element.indeterminate = isPartiallySelected;
+                }
               }}
               onCheckedChange={(checked) => onSelectAll?.(customColumn.$id, !!checked)}
             />

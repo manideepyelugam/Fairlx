@@ -10,9 +10,9 @@ import { createCustomColumnSchema, updateCustomColumnSchema } from "../schemas";
 const app = new Hono()
   .get(
     "/",
-    zValidator("query", createCustomColumnSchema.pick({ workspaceId: true })),
+    zValidator("query", createCustomColumnSchema.pick({ workspaceId: true, projectId: true })),
     async (c) => {
-      const { workspaceId } = c.req.valid("query");
+      const { workspaceId, projectId } = c.req.valid("query");
 
       const { databases } = await createSessionClient();
 
@@ -21,6 +21,7 @@ const app = new Hono()
         CUSTOM_COLUMNS_ID,
         [
           Query.equal("workspaceId", workspaceId),
+          Query.equal("projectId", projectId),
           Query.orderAsc("position"),
         ]
       );
@@ -32,7 +33,7 @@ const app = new Hono()
     "/",
     zValidator("json", createCustomColumnSchema),
     async (c) => {
-      const { name, workspaceId, icon, color, position } = c.req.valid("json");
+      const { name, workspaceId, projectId, icon, color, position } = c.req.valid("json");
 
       const { databases } = await createSessionClient();
 
@@ -44,6 +45,7 @@ const app = new Hono()
           CUSTOM_COLUMNS_ID,
           [
             Query.equal("workspaceId", workspaceId),
+            Query.equal("projectId", projectId),
             Query.orderDesc("position"),
             Query.limit(1),
           ]
@@ -61,6 +63,7 @@ const app = new Hono()
         {
           name,
           workspaceId,
+          projectId,
           icon,
           color,
           position: finalPosition,
