@@ -26,12 +26,21 @@ import { useManageColumnsModal } from "../hooks/use-manage-columns-modal";
 import { useDefaultColumns } from "../hooks/use-default-columns";
 import { CustomColumnHeader } from "./custom-column-header";
 import { CustomColumn } from "../types";
+import { useUpdateColumnOrder } from "@/features/default-column-settings/api/use-update-column-order";
 
 
 
 type TasksState = {
   [key: string]: Task[]; // Using string to support both TaskStatus and custom column IDs
 };
+
+interface ColumnData {
+  id: string;
+  type: "default" | "custom";
+  status?: TaskStatus;
+  customColumn?: CustomColumn;
+  position: number;
+}
 
 interface EnhancedDataKanbanProps {
   data: Task[] | undefined; // Allow undefined data
@@ -61,6 +70,7 @@ export const EnhancedDataKanban = ({
 
   const { open: openManageModal } = useManageColumnsModal();
   const { getEnabledColumns } = useDefaultColumns(workspaceId, projectId);
+  const { mutate: updateColumnOrder } = useUpdateColumnOrder();
 
   // Always call hooks – never inside conditionals/returns
   const [ConfirmDialog] = useConfirm(
@@ -70,33 +80,50 @@ export const EnhancedDataKanban = ({
   );
 
   // Combine enabled default boards with custom columns (safe when loading)
-  const allColumns = useMemo(() => [
-    ...getEnabledColumns.map(col => ({ id: col.id, type: "default" as const, status: col.id })),
-    ...(customColumns?.documents || []).map(col => ({ 
-      id: col.$id, 
-      type: "custom" as const, 
-      customColumn: col 
-    }))
-  ], [getEnabledColumns, customColumns?.documents]);
+  const allColumns = useMemo(() => {
+    const columns: ColumnData[] = [
+      ...getEnabledColumns.map(col => ({ 
+        id: col.id, 
+        type: "default" as const, 
+        status: col.id,
+        position: col.position || 0
+      })),
+      ...(customColumns?.documents || []).map(col => ({ 
+        id: col.$id, 
+        type: "custom" as const, 
+        customColumn: col as CustomColumn,
+        position: col.position
+      }))
+    ];
+    
+    // Sort by position
+    return columns.sort((a, b) => a.position - b.position);
+  }, [getEnabledColumns, customColumns?.documents]);
 
   const [tasks, setTasks] = useState<TasksState>({});
+  const [orderedColumns, setOrderedColumns] = useState<ColumnData[]>([]);
 
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
 
   const { mutate: bulkUpdateTasks } = useBulkUpdateTasks();
 
+  // Update ordered columns when allColumns changes
+  useEffect(() => {
+    setOrderedColumns(allColumns);
+  }, [allColumns]);
+
   // Update tasks when data changes or columns change
   useEffect(() => {
     const newTasks: TasksState = {};
     
     // Initialize all enabled columns
-    allColumns.forEach(col => {
+    orderedColumns.forEach(col => {
       newTasks[col.id] = [];
     });
 
     // Ensure TODO exists as fallback (if it's enabled)
-    const todoColumn = allColumns.find(col => col.id === TaskStatus.TODO);
+    const todoColumn = orderedColumns.find(col => col.id === TaskStatus.TODO);
     if (!newTasks[TaskStatus.TODO] && todoColumn) {
       newTasks[TaskStatus.TODO] = [];
     }
@@ -130,7 +157,7 @@ export const EnhancedDataKanban = ({
     });
 
     setTasks(newTasks);
-  }, [data, allColumns]);
+  }, [data, orderedColumns]);
 
   const handleTaskSelect = useCallback((taskId: string, selected: boolean) => {
     setSelectedTasks(prev => {
@@ -208,7 +235,43 @@ export const EnhancedDataKanban = ({
     (result: DropResult) => {
       if (!result.destination) return;
 
-      const { source, destination } = result;
+      const { source, destination, type } = result;
+
+      // Handle column reordering
+      if (type === "column") {
+        const sourceIndex = source.index;
+        const destIndex = destination.index;
+
+        if (sourceIndex === destIndex) return;
+
+        const newColumns = Array.from(orderedColumns);
+        const [movedColumn] = newColumns.splice(sourceIndex, 1);
+        newColumns.splice(destIndex, 0, movedColumn);
+
+        // Update local state immediately for smooth UX
+        setOrderedColumns(newColumns);
+
+        // Update positions in database
+        const updatedColumns = newColumns.map((col, index) => ({
+          id: col.id,
+          type: col.type,
+          position: (index + 1) * 1000,
+        }));
+
+        if (projectId) {
+          updateColumnOrder({
+            json: {
+              workspaceId,
+              projectId,
+              columns: updatedColumns,
+            },
+          });
+        }
+
+        return;
+      }
+
+      // Handle task dragging (existing logic)
       const sourceColumnId = source.droppableId;
       const destColumnId = destination.droppableId;
 
@@ -284,7 +347,7 @@ export const EnhancedDataKanban = ({
         onChange(updatesPayload);
       }
     },
-    [onChange]
+    [orderedColumns, onChange, updateColumnOrder, workspaceId, projectId]
   );
 
   // Derive body content states (keep hooks above regardless of state)
@@ -335,73 +398,100 @@ export const EnhancedDataKanban = ({
         </div>
 
         <DragDropContext onDragEnd={onDragEnd}>
-          <div className="flex overflow-x-auto">
-            {allColumns.map((column) => {
-              const columnTasks = tasks[column.id] || [];
-              const selectedInColumn = columnTasks.filter(task => 
-                selectedTasks.has(task.$id)
-              ).length;
+          <Droppable droppableId="columns" direction="horizontal" type="column">
+            {(provided) => (
+              <div
+                {...provided.droppableProps}
+                ref={provided.innerRef}
+                className="flex overflow-x-auto"
+              >
+                {orderedColumns.map((column, index) => {
+                  const columnTasks = tasks[column.id] || [];
+                  const selectedInColumn = columnTasks.filter(task => 
+                    selectedTasks.has(task.$id)
+                  ).length;
 
-              return (
-                <div
-                  key={column.id}
-                  className="flex-1 mx-2 bg-muted p-1.5 rounded-md min-w-[200px]"
-                >
-                  {column.type === "default" ? (
-                    <KanbanColumnHeader
-                      board={column.status}
-                      taskCount={columnTasks.length}
-                      selectedCount={selectedInColumn}
-                      onSelectAll={(status, selected) => handleSelectAll(column.id, selected)}
-                      showSelection={selectionMode}
-                    />
-                  ) : (
-                    <CustomColumnHeader
-                      customColumn={column.customColumn as CustomColumn}
-                      taskCount={columnTasks.length}
-                      selectedCount={selectedInColumn}
-                      onSelectAll={handleSelectAll}
-                      showSelection={selectionMode}
-                    />
-                  )}
-                  <Droppable droppableId={column.id}>
-                    {(provided) => (
-                      <div
-                        {...provided.droppableProps}
-                        ref={provided.innerRef}
-                        className="min-h-[200px] py-1.5"
-                      >
-                        {columnTasks.map((task, index) => (
-                          <Draggable
-                            key={task.$id}
-                            draggableId={task.$id}
-                            index={index}
-                            isDragDisabled={selectionMode}
+                  return (
+                    <Draggable
+                      key={column.id}
+                      draggableId={`column-${column.id}`}
+                      index={index}
+                      isDragDisabled={selectionMode}
+                    >
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          className={`flex-1 mx-2 bg-muted p-1.5 rounded-md min-w-[200px] ${
+                            snapshot.isDragging ? 'shadow-lg' : ''
+                          }`}
+                        >
+                          <div
+                            {...provided.dragHandleProps}
+                            className={`${!selectionMode ? 'cursor-grab active:cursor-grabbing' : ''}`}
                           >
+                            {column.type === "default" ? (
+                              <KanbanColumnHeader
+                                board={column.status!}
+                                taskCount={columnTasks.length}
+                                selectedCount={selectedInColumn}
+                                onSelectAll={(status, selected) => handleSelectAll(column.id, selected)}
+                                showSelection={selectionMode}
+                              />
+                            ) : (
+                              <CustomColumnHeader
+                                customColumn={column.customColumn!}
+                                taskCount={columnTasks.length}
+                                selectedCount={selectedInColumn}
+                                onSelectAll={handleSelectAll}
+                                showSelection={selectionMode}
+                              />
+                            )}
+                          </div>
+                          
+                          <Droppable droppableId={column.id} type="task">
                             {(provided) => (
                               <div
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
+                                {...provided.droppableProps}
                                 ref={provided.innerRef}
+                                className="min-h-[200px] py-1.5"
                               >
-                                <KanbanCard 
-                                  task={task} 
-                                  isSelected={selectedTasks.has(task.$id)}
-                                  onSelect={handleTaskSelect}
-                                  showSelection={selectionMode}
-                                />
+                                {columnTasks.map((task, index) => (
+                                  <Draggable
+                                    key={task.$id}
+                                    draggableId={task.$id}
+                                    index={index}
+                                    isDragDisabled={selectionMode}
+                                  >
+                                    {(provided) => (
+                                      <div
+                                        {...provided.draggableProps}
+                                        {...provided.dragHandleProps}
+                                        ref={provided.innerRef}
+                                      >
+                                        <KanbanCard 
+                                          task={task} 
+                                          isSelected={selectedTasks.has(task.$id)}
+                                          onSelect={handleTaskSelect}
+                                          showSelection={selectionMode}
+                                        />
+                                      </div>
+                                    )}
+                                  </Draggable>
+                                ))}
+                                {provided.placeholder}
                               </div>
                             )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
-                      </div>
-                    )}
-                  </Droppable>
-                </div>
-              );
-            })}
-          </div>
+                          </Droppable>
+                        </div>
+                      )}
+                    </Draggable>
+                  );
+                })}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
         </DragDropContext>
 
         <BulkActionsToolbar
