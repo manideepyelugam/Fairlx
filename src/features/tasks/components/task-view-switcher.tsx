@@ -8,6 +8,7 @@ import { useProjectId } from "@/features/projects/hooks/use-project-id";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { useGetMembers } from "@/features/members/api/use-get-members";
+import { useCurrent } from "@/features/auth/api/use-current";
 
 import { DottedSeparator } from "@/components/dotted-separator";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import { DataCalendar } from "./data-calendar";
 import { DataFilters } from "./data-filters";
 import { DataKanban } from "./data-kanban";
 import { DataTable } from "./data-table";
+import { SimpleTimeline } from "./simple-timeline";
 // Use full EnhancedDataKanban so custom columns show up
 import { EnhancedDataKanban } from "@/features/custom-columns/components/enhanced-data-kanban";
 
@@ -29,10 +31,12 @@ import { useBulkUpdateTasks } from "../api/use-bulk-update-tasks";
 
 interface TaskViewSwitcherProps {
   hideProjectFilter?: boolean;
+  showMyTasksOnly?: boolean; // New prop to filter by current user
 }
 
 export const TaskViewSwitcher = ({
   hideProjectFilter,
+  showMyTasksOnly = false,
 }: TaskViewSwitcherProps) => {
   
   
@@ -43,17 +47,19 @@ export const TaskViewSwitcher = ({
   const workspaceId = useWorkspaceId();
   const paramProjectId = useProjectId();
   
-  
-  
+  // Get current user data
+  const { data: currentUser } = useCurrent();
+  const { data: currentMember } = useCurrentMember({ workspaceId });
   const { isAdmin } = useCurrentMember({ workspaceId });
   const { data: members } = useGetMembers({ workspaceId });
   
-  
+  // Determine the effective assigneeId - if showMyTasksOnly is true, use current member's ID
+  const effectiveAssigneeId = showMyTasksOnly && currentMember ? currentMember.$id : assigneeId;
   
   const { data: tasks, isLoading: isLoadingTasks } = useGetTasks({
     workspaceId,
     projectId: paramProjectId || projectId,
-    assigneeId,
+    assigneeId: effectiveAssigneeId,
     status,
     dueDate,
   });
@@ -88,6 +94,9 @@ export const TaskViewSwitcher = ({
             <TabsTrigger className="h-8 w-full lg:w-auto" value="calendar">
               Calendar
             </TabsTrigger>
+            <TabsTrigger className="h-8 w-full lg:w-auto" value="timeline">
+              Timeline
+            </TabsTrigger>
           </TabsList>
           <Button onClick={open} size="sm" className="w-full lg:w-auto">
             <PlusIcon className="size-4 mr-2" />
@@ -95,7 +104,7 @@ export const TaskViewSwitcher = ({
           </Button>
         </div>
         <DottedSeparator className="my-4" />
-        <DataFilters hideProjectFilter={hideProjectFilter} />
+        <DataFilters hideProjectFilter={hideProjectFilter} showMyTasksOnly={showMyTasksOnly} />
         <DottedSeparator className="my-4" />
         {isLoadingTasks ? (
           <div className="w-full border rounded-lg h-[200px] flex flex-col items-center justify-center">
@@ -113,10 +122,14 @@ export const TaskViewSwitcher = ({
                 isAdmin={isAdmin}
                 members={members?.documents ?? []}
                 projectId={paramProjectId || projectId || undefined}
+                showMyTasksOnly={showMyTasksOnly}
               />
             </TabsContent>
             <TabsContent value="calendar" className="mt-0 h-full pb-4">
               <DataCalendar data={tasks?.documents ?? []} />
+            </TabsContent>
+            <TabsContent value="timeline" className="mt-0 h-full pb-4">
+              <SimpleTimeline data={tasks?.documents ?? []} />
             </TabsContent>
           </>
         )}

@@ -50,6 +50,7 @@ interface EnhancedDataKanbanProps {
   isAdmin?: boolean;
   members?: Array<{ $id: string; name: string }>;
   projectId?: string; // Add optional projectId prop
+  showMyTasksOnly?: boolean; // New prop to show column management for all users
 }
 
 export const EnhancedDataKanban = ({ 
@@ -57,7 +58,8 @@ export const EnhancedDataKanban = ({
   onChange, 
   isAdmin = false,
   members = [],
-  projectId
+  projectId,
+  showMyTasksOnly = false
 }: EnhancedDataKanbanProps) => {
   const workspaceId = useWorkspaceId();
   
@@ -370,7 +372,7 @@ export const EnhancedDataKanban = ({
       <>
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center gap-2">
-            {isAdmin && (
+            {(isAdmin || showMyTasksOnly) && (
               <>
                 <Button
                   variant={selectionMode ? "secondary" : "outline"}

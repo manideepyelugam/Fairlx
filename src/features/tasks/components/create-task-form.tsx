@@ -98,7 +98,20 @@ export const CreateTaskForm = ({
                 name="dueDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Due Date</FormLabel>
+                    <FormLabel>Start Date</FormLabel>
+                    <FormControl>
+                      <DatePicker {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="endDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>End Date (Optional)</FormLabel>
                     <FormControl>
                       <DatePicker {...field} />
                     </FormControl>

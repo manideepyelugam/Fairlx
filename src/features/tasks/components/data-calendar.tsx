@@ -71,17 +71,23 @@ export const DataCalendar = ({ data }: DataCalendarProps) => {
     data.length > 0 ? new Date(data[0].dueDate) : new Date()
   );
 
-  const events = data.map((task) => ({
-    start: new Date(task.dueDate),
-    end: new Date(task.dueDate),
-    title: task.name,
-    project: task.project,
-    assignee: task.assignee,
-    status: Object.values(TaskStatus).includes(task.status as TaskStatus) 
-      ? task.status as TaskStatus 
-      : TaskStatus.TODO, // Default fallback for custom columns
-    id: task.$id,
-  }));
+  const events = data.map((task) => {
+    // Check if it's a milestone (same start and end date)
+    const isMilestone = !task.endDate || task.dueDate === task.endDate;
+    
+    return {
+      start: new Date(task.dueDate),
+      end: task.endDate && !isMilestone ? new Date(task.endDate) : new Date(task.dueDate),
+      title: task.name,
+      project: task.project,
+      assignee: task.assignee,
+      status: Object.values(TaskStatus).includes(task.status as TaskStatus) 
+        ? task.status as TaskStatus 
+        : TaskStatus.TODO, // Default fallback for custom columns
+      id: task.$id,
+      isMilestone,
+    };
+  });
 
   const handleNavigate = (action: "PREV" | "NEXT" | "TODAY") => {
     if (action === "PREV") {
@@ -116,6 +122,7 @@ export const DataCalendar = ({ data }: DataCalendarProps) => {
             assignee={event.assignee}
             project={event.project}
             status={event.status}
+            isMilestone={event.isMilestone}
           />
         ),
         toolbar: () => (
