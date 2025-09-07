@@ -135,8 +135,8 @@ export const CreateTimeLogModal = ({
                     <Input
                       {...field}
                       type="number"
-                      step="0.25"
-                      min="0.1"
+                      step="0.01"
+                      min="0.01"
                       max="24"
                       placeholder="Enter hours..."
                       onChange={(e) => field.onChange(parseFloat(e.target.value))}

@@ -4,13 +4,14 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { startOfWeek, endOfWeek, format, parseISO, addWeeks } from "date-fns";
 
-import { DATABASE_ID, MEMBERS_ID, PROJECTS_ID, TASKS_ID, TIME_LOGS_ID } from "@/config";
+import { DATABASE_ID, MEMBERS_ID, PROJECTS_ID, TASKS_ID, TIME_LOGS_ID, CUSTOM_COLUMNS_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
 
 import { getMember } from "@/features/members/utils";
 import { Project } from "@/features/projects/types";
-import { Task } from "@/features/tasks/types";
+import { Task, TaskStatus } from "@/features/tasks/types";
+import { CustomColumn } from "@/features/custom-columns/types";
 
 import { 
   createTimeLogSchema, 
@@ -457,6 +458,25 @@ const app = new Hono()
         projectIds.length > 0 ? [Query.contains("$id", projectIds)] : []
       );
 
+      // Get custom columns for proper status names
+      const customColumns = await databases.listDocuments<CustomColumn>(
+        DATABASE_ID,
+        CUSTOM_COLUMNS_ID,
+        [Query.equal("workspaceId", workspaceId)]
+      );
+
+      // Helper function to get status display name
+      const getStatusName = (status: string) => {
+        // Check if it's a standard TaskStatus
+        if (Object.values(TaskStatus).includes(status as TaskStatus)) {
+          return status;
+        }
+        
+        // Otherwise, look up in custom columns
+        const customColumn = customColumns.documents.find(col => col.$id === status);
+        return customColumn?.name || status;
+      };
+
       // Calculate estimates vs actuals
       const estimatesVsActuals: EstimateVsActual[] = tasks.documents.map(task => {
         const taskTimeLogs = timeLogs.documents.filter(log => log.taskId === task.$id);
@@ -475,7 +495,7 @@ const app = new Hono()
           actualHours,
           variance,
           variancePercent,
-          status: task.status,
+          status: getStatusName(task.status),
         };
       }).filter(item => item.estimatedHours > 0 || item.actualHours > 0); // Only show tasks with estimates or actuals
 

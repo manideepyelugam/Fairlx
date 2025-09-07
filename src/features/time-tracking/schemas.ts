@@ -3,7 +3,7 @@ import { z } from "zod";
 export const createTimeLogSchema = z.object({
   taskId: z.string().trim().min(1, "Task is required"),
   date: z.coerce.date(),
-  hours: z.number().min(0.1, "Hours must be at least 0.1").max(24, "Hours cannot exceed 24"),
+  hours: z.number().min(0.01, "Hours must be at least 0.01").max(24, "Hours cannot exceed 24").step(0.01),
   description: z.string().trim().min(1, "Description is required"),
   startTime: z.string().optional(),
   endTime: z.string().optional(),
@@ -11,7 +11,7 @@ export const createTimeLogSchema = z.object({
 
 export const updateTimeLogSchema = z.object({
   date: z.coerce.date().optional(),
-  hours: z.number().min(0.1, "Hours must be at least 0.1").max(24, "Hours cannot exceed 24").optional(),
+  hours: z.number().min(0.01, "Hours must be at least 0.01").max(24, "Hours cannot exceed 24").step(0.01).optional(),
   description: z.string().trim().min(1, "Description is required").optional(),
   startTime: z.string().optional(),
   endTime: z.string().optional(),
