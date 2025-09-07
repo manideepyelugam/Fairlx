@@ -58,6 +58,9 @@ export const EditTaskForm = ({
       dueDate: initialValues.dueDate
         ? new Date(initialValues.dueDate)
         : undefined,
+      endDate: initialValues.endDate
+        ? new Date(initialValues.endDate)
+        : undefined,
     },
   });
 
@@ -106,7 +109,20 @@ export const EditTaskForm = ({
                 name="dueDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Due Date</FormLabel>
+                    <FormLabel>Start Date</FormLabel>
+                    <FormControl>
+                      <DatePicker {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="endDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>End Date (Optional)</FormLabel>
                     <FormControl>
                       <DatePicker {...field} />
                     </FormControl>
@@ -196,6 +212,26 @@ export const EditTaskForm = ({
                         ))}
                       </SelectContent>
                     </Select>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="estimatedHours"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Estimated Hours (Optional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        placeholder="Enter estimated hours..."
+                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                      />
+                    </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />

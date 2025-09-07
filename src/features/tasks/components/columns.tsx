@@ -6,14 +6,13 @@ import { ColumnDef } from "@tanstack/react-table";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { snakeCaseToTitleCase } from "@/lib/utils";
 
 import { TaskActions } from "./task-actions";
 import { TaskDate } from "./task-date";
+import { StatusDisplay } from "@/features/custom-columns/components/status-display";
 
-import { Task, TaskStatus } from "../types";
+import { Task } from "../types";
 
 export const columns: ColumnDef<Task>[] = [
   {
@@ -125,12 +124,9 @@ export const columns: ColumnDef<Task>[] = [
     },
     cell: ({ row }) => {
       const status = row.original.status;
-      
-      // Check if status is a valid TaskStatus, otherwise use default variant
-      const isValidTaskStatus = Object.values(TaskStatus).includes(status as TaskStatus);
-      const badgeVariant = isValidTaskStatus ? (status as TaskStatus) : "default";
+      const projectId = row.original.projectId;
 
-      return <Badge variant={badgeVariant}>{snakeCaseToTitleCase(status)}</Badge>;
+      return <StatusDisplay status={status} projectId={projectId} />;
     },
   },
   {

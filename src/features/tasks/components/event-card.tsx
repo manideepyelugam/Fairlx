@@ -1,4 +1,5 @@
 import { useRouter } from "next/navigation";
+import { FlagIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -12,10 +13,11 @@ import { TaskStatus } from "../types";
 
 interface EventCardProps {
   title: string;
-  assignee: Member;
-  project: Project;
+  assignee?: Member | { $id: string; name: string };
+  project?: Project | { $id: string; name: string };
   status: TaskStatus;
   id: string;
+  isMilestone?: boolean;
 }
 
 const statusColorMap: Record<TaskStatus, string> = {
@@ -32,6 +34,7 @@ export const EventCard = ({
   project,
   status,
   id,
+  isMilestone = false,
 }: EventCardProps) => {
   const workspaceId = useWorkspaceId();
   const router = useRouter();
@@ -50,11 +53,17 @@ export const EventCard = ({
           statusColorMap[status]
         )}
       >
-        <p>{title}</p>
+        <div className="flex items-center justify-between">
+          <p className="flex-1">{title}</p>
+          {isMilestone && <FlagIcon className="size-3 text-primary ml-1" />}
+        </div>
         <div className="flex items-center gap-x-1">
           <MemberAvatar name={assignee?.name} />
           <div className="size-1 rounded-full bg-neutral-300" />
-          <ProjectAvatar name={project?.name} image={project?.imageUrl} />
+          <ProjectAvatar 
+            name={project?.name || ""} 
+            image={project && 'imageUrl' in project ? project.imageUrl : ""} 
+          />
         </div>
       </div>
     </div>

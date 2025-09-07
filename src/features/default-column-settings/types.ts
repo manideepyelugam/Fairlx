@@ -6,6 +6,7 @@ export interface DefaultColumnSetting {
   projectId: string;
   columnId: TaskStatus;
   isEnabled: boolean;
+  position?: number;
   $createdAt: string;
   $updatedAt: string;
 }

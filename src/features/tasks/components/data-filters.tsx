@@ -23,9 +23,10 @@ import { TaskStatus } from "../types";
 
 interface DataFiltersProps {
   hideProjectFilter?: boolean;
+  showMyTasksOnly?: boolean; // New prop to hide assignee filter in My Tasks
 }
 
-export const DataFilters = ({ hideProjectFilter }: DataFiltersProps) => {
+export const DataFilters = ({ hideProjectFilter, showMyTasksOnly }: DataFiltersProps) => {
   const workspaceId = useWorkspaceId();
   const currentProjectId = useProjectId();
 
@@ -144,28 +145,30 @@ export const DataFilters = ({ hideProjectFilter }: DataFiltersProps) => {
           )}
         </SelectContent>
       </Select>
-      <Select
-        defaultValue={assigneeId ?? undefined}
-        onValueChange={(value) => {
-          onAssigneeChange(value);
-        }}
-      >
-        <SelectTrigger className="w-full lg:w-auto h-8">
-          <div className="flex items-center pr-2">
-            <UserIcon className="size-4 mr-2" />
-            <SelectValue placeholder="All assignees" />
-          </div>
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All assignees</SelectItem>
-          <SelectSeparator />
-          {memberOptions?.map((member) => (
-            <SelectItem key={member.value} value={member.value}>
-              {member.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      {!showMyTasksOnly && (
+        <Select
+          defaultValue={assigneeId ?? undefined}
+          onValueChange={(value) => {
+            onAssigneeChange(value);
+          }}
+        >
+          <SelectTrigger className="w-full lg:w-auto h-8">
+            <div className="flex items-center pr-2">
+              <UserIcon className="size-4 mr-2" />
+              <SelectValue placeholder="All assignees" />
+            </div>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All assignees</SelectItem>
+            <SelectSeparator />
+            {memberOptions?.map((member) => (
+              <SelectItem key={member.value} value={member.value}>
+                {member.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
       {!hideProjectFilter && (
         <Select
           defaultValue={projectId ?? undefined}

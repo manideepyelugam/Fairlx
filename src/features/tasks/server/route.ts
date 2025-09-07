@@ -155,7 +155,7 @@ const app = new Hono()
     async (c) => {
       const user = c.get("user");
       const databases = c.get("databases");
-      const { name, status, workspaceId, projectId, dueDate, assigneeId } =
+      const { name, status, workspaceId, projectId, dueDate, assigneeId, description, estimatedHours } =
         c.req.valid("json");
 
       const member = await getMember({
@@ -196,6 +196,8 @@ const app = new Hono()
           dueDate,
           assigneeId,
           position: newPosition,
+          description,
+          estimatedHours,
         }
       );
 
@@ -209,7 +211,7 @@ const app = new Hono()
     async (c) => {
       const user = c.get("user");
       const databases = c.get("databases");
-      const { name, status, projectId, dueDate, assigneeId, description } =
+      const { name, status, projectId, dueDate, assigneeId, description, estimatedHours } =
         c.req.valid("json");
 
       const { taskId } = c.req.param();
@@ -241,6 +243,7 @@ const app = new Hono()
           dueDate,
           assigneeId,
           description,
+          estimatedHours,
         }
       );
 
