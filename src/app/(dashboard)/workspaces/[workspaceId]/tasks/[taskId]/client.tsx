@@ -9,9 +9,12 @@ import { TaskBreadcrumbs } from "@/features/tasks/components/task-breadcrumbs";
 import { TaskDescription } from "@/features/tasks/components/task-description";
 import { TaskOverview } from "@/features/tasks/components/task-overview";
 import { useTaskId } from "@/features/tasks/hooks/use-task-id";
+import { TaskTimeLogs } from "@/features/time-tracking/components/task-time-logs";
+import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 
 export const TaskIdClient = () => {
   const taskId = useTaskId();
+  const workspaceId = useWorkspaceId();
   const { data, isLoading } = useGetTask({ taskId });
 
   if (isLoading) {
@@ -29,6 +32,14 @@ export const TaskIdClient = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <TaskOverview task={data} />
         <TaskDescription task={data} />
+      </div>
+      <DottedSeparator className="my-6" />
+      <div className="w-full">
+        <TaskTimeLogs 
+          taskId={data.$id}
+          taskName={data.name}
+          workspaceId={workspaceId}
+        />
       </div>
     </div>
   );

@@ -49,8 +49,7 @@ export const TaskViewSwitcher = ({
   
   // Get current user data
   const { data: currentUser } = useCurrent();
-  const { data: currentMember } = useCurrentMember({ workspaceId });
-  const { isAdmin } = useCurrentMember({ workspaceId });
+  const { member: currentMember, isAdmin } = useCurrentMember({ workspaceId });
   const { data: members } = useGetMembers({ workspaceId });
   
   // Determine the effective assigneeId - if showMyTasksOnly is true, use current member's ID

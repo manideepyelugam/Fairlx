@@ -18,4 +18,10 @@ export type Task = Models.Document & {
   dueDate: string;
   endDate?: string;
   description?: string;
+  estimatedHours?: number;
+};
+
+export type PopulatedTask = Task & {
+  assignee?: { $id: string; name: string };
+  project?: { $id: string; name: string };
 };

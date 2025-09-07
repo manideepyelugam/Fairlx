@@ -10,13 +10,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
-import { Task, TaskStatus } from "../types";
+import { Task, TaskStatus, PopulatedTask } from "../types";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
 import { cn } from "@/lib/utils";
 
 interface TimelineGanttProps {
-  data: Task[];
+  data: PopulatedTask[];
 }
 
 type ViewType = "week" | "month" | "quarter";
@@ -142,7 +142,7 @@ export const TimelineGantt = ({ data }: TimelineGanttProps) => {
               {(["week", "month", "quarter"] as ViewType[]).map((view) => (
                 <Button
                   key={view}
-                  variant={viewType === view ? "default" : "ghost"}
+                  variant={viewType === view ? "secondary" : "ghost"}
                   size="sm"
                   onClick={() => setViewType(view)}
                   className="capitalize"
@@ -256,7 +256,7 @@ export const TimelineGantt = ({ data }: TimelineGanttProps) => {
                           {task.project && (
                             <ProjectAvatar 
                               name={task.project.name} 
-                              image={task.project.imageUrl}
+                              image={'imageUrl' in task.project ? (task.project as any).imageUrl : ""}
                               className="h-5 w-5"
                             />
                           )}

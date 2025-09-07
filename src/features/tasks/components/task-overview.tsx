@@ -44,6 +44,11 @@ export const TaskOverview = ({ task }: TaskOverviewProps) => {
               {snakeCaseToTitleCase(task.status)}
             </Badge>
           </OverviewProperty>
+          {task.estimatedHours && (
+            <OverviewProperty label="Estimated Hours">
+              <p className="text-sm font-medium">{task.estimatedHours}h</p>
+            </OverviewProperty>
+          )}
         </div>
       </div>
     </div>

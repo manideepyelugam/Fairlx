@@ -13,7 +13,7 @@ import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 
 import { Button } from "@/components/ui/button";
 
-import { Task, TaskStatus } from "../types";
+import { Task, TaskStatus, PopulatedTask } from "../types";
 
 import { EventCard } from "./event-card";
 
@@ -63,7 +63,7 @@ const CustomToolbar = ({ date, onNavigate }: CustomToolbarProps) => {
 };
 
 interface DataCalendarProps {
-  data: Task[];
+  data: PopulatedTask[];
 }
 
 export const DataCalendar = ({ data }: DataCalendarProps) => {

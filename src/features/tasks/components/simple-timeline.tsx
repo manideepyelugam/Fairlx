@@ -9,12 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 
-import { Task, TaskStatus } from "../types";
+import { Task, TaskStatus, PopulatedTask } from "../types";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { cn } from "@/lib/utils";
 
 interface SimpleTimelineProps {
-  data: Task[];
+  data: PopulatedTask[];
 }
 
 type ViewType = "week" | "month" | "quarter";

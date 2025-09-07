@@ -9,12 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-import { Task, TaskStatus } from "../types";
+import { Task, TaskStatus, PopulatedTask } from "../types";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { cn } from "@/lib/utils";
 
 interface CalendarMilestonesProps {
-  data: Task[];
+  data: PopulatedTask[];
 }
 
 const statusConfig = {
@@ -56,7 +56,8 @@ export const CalendarMilestones = ({ data }: CalendarMilestonesProps) => {
 
   // Group tasks by date
   const tasksByDate = useMemo(() => {
-    const grouped: Record<string, typeof tasksWithDates> = {};
+    type TaskWithDateInfo = typeof tasksWithDates[0] & { isEndDate?: boolean };
+    const grouped: Record<string, TaskWithDateInfo[]> = {};
     
     tasksWithDates.forEach(task => {
       const dateKey = format(task.startDate, 'yyyy-MM-dd');

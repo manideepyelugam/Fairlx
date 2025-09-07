@@ -215,6 +215,26 @@ export const EditTaskForm = ({
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="estimatedHours"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Estimated Hours (Optional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        placeholder="Enter estimated hours..."
+                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
             <DottedSeparator className="py-7" />
             <div className="flex items-center justify-between">
