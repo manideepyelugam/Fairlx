@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 
-import { DATABASE_ID, MEMBERS_ID, PROJECTS_ID, TASKS_ID } from "@/config";
+import { DATABASE_ID, MEMBERS_ID, PROJECTS_ID, TASKS_ID, TIME_LOGS_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
 
@@ -35,9 +35,27 @@ const app = new Hono()
       return c.json({ error: "Unauthorized" }, 401);
     }
 
-    await databases.deleteDocument(DATABASE_ID, TASKS_ID, taskId);
+    // Delete all time logs for this task first
+    try {
+      const timeLogs = await databases.listDocuments(
+        DATABASE_ID,
+        TIME_LOGS_ID,
+        [Query.equal("taskId", taskId)]
+      );
 
-    return c.json({ data: { $id: task.$id } });
+      // Delete all time logs for this task
+      for (const timeLog of timeLogs.documents) {
+        await databases.deleteDocument(DATABASE_ID, TIME_LOGS_ID, timeLog.$id);
+      }
+
+      // Delete the task
+      await databases.deleteDocument(DATABASE_ID, TASKS_ID, taskId);
+
+      return c.json({ data: { $id: task.$id } });
+    } catch (error) {
+      console.error("Error during task deletion:", error);
+      return c.json({ error: "Failed to delete task and related data" }, 500);
+    }
   })
   .get(
     "/",

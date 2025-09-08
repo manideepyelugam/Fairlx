@@ -23,5 +23,5 @@ export type Task = Models.Document & {
 
 export type PopulatedTask = Task & {
   assignee?: { $id: string; name: string };
-  project?: { $id: string; name: string };
+  project?: { $id: string; name: string; imageUrl: string };
 };
