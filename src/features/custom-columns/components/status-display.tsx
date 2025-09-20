@@ -15,13 +15,7 @@ import * as TbIcons from "react-icons/tb";
 import { Badge } from "@/components/ui/badge";
 import { snakeCaseToTitleCase } from "@/lib/utils";
 
-import {
-  CircleCheckIcon,
-  CircleDashedIcon,
-  CircleDotDashedIcon,
-  CircleDotIcon,
-  CircleIcon,
-} from "lucide-react";
+import { CircleIcon } from "lucide-react";
 
 import { TaskStatus } from "@/features/tasks/types";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
@@ -39,22 +33,6 @@ const allIcons = {
   ...MdIcons,
   ...RiIcons,
   ...TbIcons,
-};
-
-const statusIconMap: Record<TaskStatus, React.ReactNode> = {
-  [TaskStatus.BACKLOG]: (
-    <CircleDashedIcon className="size-[18px] text-pink-400" />
-  ),
-  [TaskStatus.TODO]: <CircleIcon className="size-[18px] text-red-400" />,
-  [TaskStatus.IN_PROGRESS]: (
-    <CircleDotDashedIcon className="size-[18px] text-yellow-400" />
-  ),
-  [TaskStatus.IN_REVIEW]: (
-    <CircleDotIcon className="size-[18px] text-blue-400" />
-  ),
-  [TaskStatus.DONE]: (
-    <CircleCheckIcon className="size-[18px] text-emerald-400" />
-  ),
 };
 
 interface StatusDisplayProps {

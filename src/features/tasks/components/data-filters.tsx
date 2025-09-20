@@ -128,7 +128,7 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly }: DataFiltersP
               {customColumnOptions.map((col) => {
                 const raw = customColumnsData?.documents?.find((d) => d.$id === col.value);
                 const c = raw as unknown as CustomColumn | undefined;
-                const IconComp = c ? (allIcons[c.icon as keyof typeof allIcons] as any) : null;
+                const IconComp = c ? (allIcons[c.icon as keyof typeof allIcons] as React.ComponentType<React.SVGProps<SVGSVGElement>>) : null;
                 const icon = IconComp ? (
                   <IconComp className="size-[18px]" style={{ color: c?.color }} />
                 ) : (

@@ -29,9 +29,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { createTaskSchema, updateTaskSchema } from "../schemas";
+import { updateTaskSchema } from "../schemas";
 import { useUpdateTask } from "../api/use-update-task";
-import { Task, TaskStatus } from "../types";
+import { Task } from "../types";
 import { StatusSelector } from "@/features/custom-columns/components/status-selector";
 
 interface EditTaskFormProps {

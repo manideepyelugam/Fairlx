@@ -30,6 +30,19 @@ export const createTaskSchema = baseTaskSchema.refine(
   }
 );
 
+export const createTaskFormSchema = baseTaskSchema.omit({ workspaceId: true }).refine(
+  (data) => {
+    if (data.endDate && data.dueDate) {
+      return data.endDate >= data.dueDate;
+    }
+    return true;
+  },
+  {
+    message: "End date must be after or equal to start date",
+    path: ["endDate"],
+  }
+);
+
 export const updateTaskSchema = baseTaskSchema.omit({ workspaceId: true }).partial().refine(
   (data) => {
     if (data.endDate && data.dueDate) {
