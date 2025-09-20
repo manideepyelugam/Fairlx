@@ -1,5 +1,3 @@
-'use client';
-
 import { useQueryState, parseAsBoolean } from "nuqs";
 
 export const useCreateWorkspaceModal = () => {

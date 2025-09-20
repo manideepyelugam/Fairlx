@@ -24,12 +24,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-
-
-import { registerSchema } from "../schemas";
-import { useRegister } from "../api/use-resgister";
+import { PasswordInput } from "@/components/ui/password-input";
 import { signUpWithGithub, signUpWithGoogle } from "@/lib/oauth";
 
+import { registerSchema } from "../schemas";
+import { useRegister } from "../api/use-register";
 
 export const SignUpCard = () => {
   const { mutate, isPending } = useRegister();
@@ -107,8 +106,7 @@ export const SignUpCard = () => {
               render={({ field }) => (
                 <FormItem>
                   <FormControl>
-                    <Input
-                      type="password"
+                    <PasswordInput
                       placeholder="Enter your password"
                       {...field}
                     />

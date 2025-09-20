@@ -15,7 +15,7 @@ export const useGetWorkspaces = () => {
       const { data } = await response.json();
 
       return data;
-    }, 
+    },
   });
 
   return query;

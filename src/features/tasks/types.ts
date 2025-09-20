@@ -1,0 +1,27 @@
+import { Models } from "node-appwrite";
+
+export enum TaskStatus {
+  BACKLOG = "BACKLOG",
+  TODO = "TODO",
+  IN_PROGRESS = "IN_PROGRESS",
+  IN_REVIEW = "IN_REVIEW",
+  DONE = "DONE",
+}
+
+export type Task = Models.Document & {
+  name: string;
+  status: TaskStatus | string; // Allow custom column IDs as status
+  workspaceId: string;
+  assigneeId: string;
+  projectId: string;
+  position: number;
+  dueDate: string;
+  endDate?: string;
+  description?: string;
+  estimatedHours?: number;
+};
+
+export type PopulatedTask = Task & {
+  assignee?: { $id: string; name: string };
+  project?: { $id: string; name: string; imageUrl: string };
+};
