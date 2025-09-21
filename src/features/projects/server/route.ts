@@ -7,7 +7,7 @@ import { z } from "zod";
 import { getMember } from "@/features/members/utils";
 import { TaskStatus } from "@/features/tasks/types";
 
-import { DATABASE_ID, IMAGES_BUCKET_ID, PROJECTS_ID, TASKS_ID } from "@/config";
+import { DATABASE_ID, IMAGES_BUCKET_ID, PROJECTS_ID, TASKS_ID, TIME_LOGS_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 
 import { createProjectSchema, updateProjectSchema } from "../schemas";
@@ -205,11 +205,40 @@ const app = new Hono()
       return c.json({ error: "Unauthorized" }, 401);
     }
 
-    // TODO: Delete tasks
+    // Delete all related data when project is deleted
+    try {
+      // Get all tasks for this project
+      const tasks = await databases.listDocuments(
+        DATABASE_ID,
+        TASKS_ID,
+        [Query.equal("projectId", projectId)]
+      );
 
-    await databases.deleteDocument(DATABASE_ID, PROJECTS_ID, projectId);
+      // Get all time logs for this project
+      const timeLogs = await databases.listDocuments(
+        DATABASE_ID,
+        TIME_LOGS_ID,
+        [Query.equal("projectId", projectId)]
+      );
 
-    return c.json({ data: { $id: existingProject.$id } });
+      // Delete all time logs for this project
+      for (const timeLog of timeLogs.documents) {
+        await databases.deleteDocument(DATABASE_ID, TIME_LOGS_ID, timeLog.$id);
+      }
+
+      // Delete all tasks for this project
+      for (const task of tasks.documents) {
+        await databases.deleteDocument(DATABASE_ID, TASKS_ID, task.$id);
+      }
+
+      // Finally delete the project
+      await databases.deleteDocument(DATABASE_ID, PROJECTS_ID, projectId);
+
+      return c.json({ data: { $id: existingProject.$id } });
+    } catch (error) {
+      console.error("Error during project deletion:", error);
+      return c.json({ error: "Failed to delete project and related data" }, 500);
+    }
   })
   .get("/:projectId/analytics", sessionMiddleware, async (c) => {
     const user = c.get("user");

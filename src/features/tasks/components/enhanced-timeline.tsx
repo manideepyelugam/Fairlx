@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, differenceInDays, parseISO, startOfDay, isSameDay, isWeekend } from "date-fns";
-import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon, FlagIcon, UserIcon, ProjectorIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon, FlagIcon, ProjectorIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,9 +10,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-import { Task, TaskStatus, PopulatedTask } from "../types";
+import { TaskStatus, PopulatedTask } from "../types";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
-import { ProjectAvatar } from "@/features/projects/components/project-avatar";
 import { cn } from "@/lib/utils";
 
 interface EnhancedTimelineProps {
@@ -151,7 +150,7 @@ export const EnhancedTimeline = ({ data }: EnhancedTimelineProps) => {
       }
       acc[projectId].tasks.push(task);
       return acc;
-    }, {} as Record<string, { projectId: string; projectName: string; tasks: any[] }>);
+    }, {} as Record<string, { projectId: string; projectName: string; tasks: PopulatedTask[] }>);
 
     return Object.values(grouped);
   }, [processedTasks]);
@@ -319,7 +318,7 @@ export const EnhancedTimeline = ({ data }: EnhancedTimelineProps) => {
                       </div>
 
                       {/* Project Tasks */}
-                      {projectGroup.tasks.map((task, index) => (
+                      {projectGroup.tasks.map((task, _index) => (
                         <div 
                           key={task.$id} 
                           className={cn(
@@ -377,7 +376,7 @@ export const EnhancedTimeline = ({ data }: EnhancedTimelineProps) => {
                           {/* Gantt Chart Column */}
                           <div className="flex-1 relative">
                             <div className="flex min-w-max relative">
-                              {timelineDays.map((day, dayIndex) => (
+                              {timelineDays.map((day, _dayIndex) => (
                                 <div
                                   key={day.date.toISOString()}
                                   className={cn(

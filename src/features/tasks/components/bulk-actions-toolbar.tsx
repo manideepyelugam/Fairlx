@@ -1,5 +1,5 @@
 import React from "react";
-import { X, Users, Tags } from "lucide-react";
+import { X, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";

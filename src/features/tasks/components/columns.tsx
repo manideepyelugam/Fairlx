@@ -12,9 +12,9 @@ import { TaskActions } from "./task-actions";
 import { TaskDate } from "./task-date";
 import { StatusDisplay } from "@/features/custom-columns/components/status-display";
 
-import { Task } from "../types";
+import { PopulatedTask } from "../types";
 
-export const columns: ColumnDef<Task>[] = [
+export const columns: ColumnDef<PopulatedTask>[] = [
   {
     accessorKey: "name",
     header: ({ column }) => {
@@ -50,6 +50,10 @@ export const columns: ColumnDef<Task>[] = [
     cell: ({ row }) => {
       const project = row.original.project;
 
+      if (!project) {
+        return <p className="text-sm text-muted-foreground">No Project</p>;
+      }
+
       return (
         <div className="flex items-center gap-x-2 text-sm font-medium">
           <ProjectAvatar
@@ -77,6 +81,10 @@ export const columns: ColumnDef<Task>[] = [
     },
     cell: ({ row }) => {
       const assignee = row.original.assignee;
+
+      if (!assignee) {
+        return <p className="text-sm text-muted-foreground">Unassigned</p>;
+      }
 
       return (
         <div className="flex items-center gap-x-2 text-sm font-medium">

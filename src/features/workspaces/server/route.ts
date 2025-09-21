@@ -8,8 +8,12 @@ import {
   DATABASE_ID,
   IMAGES_BUCKET_ID,
   MEMBERS_ID,
+  PROJECTS_ID,
   TASKS_ID,
+  TIME_LOGS_ID,
   WORKSPACES_ID,
+  CUSTOM_COLUMNS_ID,
+  DEFAULT_COLUMN_SETTINGS_ID,
 } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { generateInviteCode } from "@/lib/utils";
@@ -205,11 +209,88 @@ const app = new Hono()
       return c.json({ error: "Unauthorized" }, 401);
     }
 
-    // TODO: Delete members, projects, and tasks
+    // Delete all related data when workspace is deleted
+    try {
+      // Get all projects in this workspace
+      const projects = await databases.listDocuments(
+        DATABASE_ID,
+        PROJECTS_ID,
+        [Query.equal("workspaceId", workspaceId)]
+      );
 
-    await databases.deleteDocument(DATABASE_ID, WORKSPACES_ID, workspaceId);
+      // Get all tasks in this workspace
+      const tasks = await databases.listDocuments(
+        DATABASE_ID,
+        TASKS_ID,
+        [Query.equal("workspaceId", workspaceId)]
+      );
 
-    return c.json({ data: { $id: workspaceId } });
+      // Get all time logs in this workspace
+      const timeLogs = await databases.listDocuments(
+        DATABASE_ID,
+        TIME_LOGS_ID,
+        [Query.equal("workspaceId", workspaceId)]
+      );
+
+      // Get all members in this workspace
+      const members = await databases.listDocuments(
+        DATABASE_ID,
+        MEMBERS_ID,
+        [Query.equal("workspaceId", workspaceId)]
+      );
+
+      // Get all custom columns in this workspace
+      const customColumns = await databases.listDocuments(
+        DATABASE_ID,
+        CUSTOM_COLUMNS_ID,
+        [Query.equal("workspaceId", workspaceId)]
+      );
+
+      // Get all default column settings in this workspace
+      const defaultColumnSettings = await databases.listDocuments(
+        DATABASE_ID,
+        DEFAULT_COLUMN_SETTINGS_ID,
+        [Query.equal("workspaceId", workspaceId)]
+      );
+
+      // Delete all time logs
+      for (const timeLog of timeLogs.documents) {
+        await databases.deleteDocument(DATABASE_ID, TIME_LOGS_ID, timeLog.$id);
+      }
+
+      // Delete all tasks
+      for (const task of tasks.documents) {
+        await databases.deleteDocument(DATABASE_ID, TASKS_ID, task.$id);
+      }
+
+      // Delete all projects
+      for (const project of projects.documents) {
+        await databases.deleteDocument(DATABASE_ID, PROJECTS_ID, project.$id);
+      }
+
+      // Delete all members
+      for (const member of members.documents) {
+        await databases.deleteDocument(DATABASE_ID, MEMBERS_ID, member.$id);
+      }
+
+      // Delete all custom columns
+      for (const customColumn of customColumns.documents) {
+        await databases.deleteDocument(DATABASE_ID, CUSTOM_COLUMNS_ID, customColumn.$id);
+      }
+
+      // Delete all default column settings
+      for (const setting of defaultColumnSettings.documents) {
+        await databases.deleteDocument(DATABASE_ID, DEFAULT_COLUMN_SETTINGS_ID, setting.$id);
+      }
+
+      // Finally delete the workspace
+      await databases.deleteDocument(DATABASE_ID, WORKSPACES_ID, workspaceId);
+
+      return c.json({ data: { $id: workspaceId } });
+    } catch (error) {
+      console.error("Error during workspace deletion:", error);
+      return c.json({ error: "Failed to delete workspace and related data" }, 500);
+    }
   })
   .post("/:workspaceId/reset-invite-code", sessionMiddleware, async (c) => {
     const databases = c.get("databases");

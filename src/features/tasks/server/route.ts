@@ -3,14 +3,14 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 
-import { DATABASE_ID, MEMBERS_ID, PROJECTS_ID, TASKS_ID } from "@/config";
+import { DATABASE_ID, MEMBERS_ID, PROJECTS_ID, TASKS_ID, TIME_LOGS_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
 
 import { getMember } from "@/features/members/utils";
 import { Project } from "@/features/projects/types";
 
-import { createTaskSchema } from "../schemas";
+import { createTaskSchema, updateTaskSchema } from "../schemas";
 import { Task, TaskStatus } from "../types";
 
 const app = new Hono()
@@ -35,9 +35,27 @@ const app = new Hono()
       return c.json({ error: "Unauthorized" }, 401);
     }
 
-    await databases.deleteDocument(DATABASE_ID, TASKS_ID, taskId);
+    // Delete all time logs for this task first
+    try {
+      const timeLogs = await databases.listDocuments(
+        DATABASE_ID,
+        TIME_LOGS_ID,
+        [Query.equal("taskId", taskId)]
+      );
 
-    return c.json({ data: { $id: task.$id } });
+      // Delete all time logs for this task
+      for (const timeLog of timeLogs.documents) {
+        await databases.deleteDocument(DATABASE_ID, TIME_LOGS_ID, timeLog.$id);
+      }
+
+      // Delete the task
+      await databases.deleteDocument(DATABASE_ID, TASKS_ID, taskId);
+
+      return c.json({ data: { $id: task.$id } });
+    } catch (error) {
+      console.error("Error during task deletion:", error);
+      return c.json({ error: "Failed to delete task and related data" }, 500);
+    }
   })
   .get(
     "/",
@@ -155,7 +173,7 @@ const app = new Hono()
     async (c) => {
       const user = c.get("user");
       const databases = c.get("databases");
-      const { name, status, workspaceId, projectId, dueDate, assigneeId, description, estimatedHours } =
+      const { name, status, workspaceId, projectId, dueDate, assigneeId, description, estimatedHours, endDate } =
         c.req.valid("json");
 
       const member = await getMember({
@@ -198,6 +216,7 @@ const app = new Hono()
           position: newPosition,
           description,
           estimatedHours,
+          endDate,
         }
       );
 
@@ -207,11 +226,11 @@ const app = new Hono()
   .patch(
     "/:taskId",
     sessionMiddleware,
-    zValidator("json", createTaskSchema.partial()),
+    zValidator("json", updateTaskSchema),
     async (c) => {
       const user = c.get("user");
       const databases = c.get("databases");
-      const { name, status, projectId, dueDate, assigneeId, description, estimatedHours } =
+      const { name, status, projectId, dueDate, assigneeId, description, estimatedHours, endDate } =
         c.req.valid("json");
 
       const { taskId } = c.req.param();
@@ -244,6 +263,7 @@ const app = new Hono()
           assigneeId,
           description,
           estimatedHours,
+          endDate,
         }
       );
 

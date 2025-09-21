@@ -6,7 +6,6 @@ import { createSessionClient } from "@/lib/appwrite";
 import { DATABASE_ID, DEFAULT_COLUMN_SETTINGS_ID, CUSTOM_COLUMNS_ID } from "@/config";
 
 import { defaultColumnSettingsSchema, updateDefaultColumnSettingsSchema, updateColumnOrderSchema } from "../schemas";
-import { TaskStatus } from "@/features/tasks/types";
 
 const app = new Hono()
   .get(

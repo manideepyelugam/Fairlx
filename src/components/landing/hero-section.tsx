@@ -3,7 +3,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Play } from "lucide-react";
 
 export const HeroSection = () => {
   return (
