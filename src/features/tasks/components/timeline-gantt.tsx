@@ -2,15 +2,14 @@
 
 import { useState, useMemo } from "react";
 import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, differenceInDays, parseISO, startOfDay } from "date-fns";
-import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon, ZoomInIcon, ZoomOutIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 
-import { Task, TaskStatus, PopulatedTask } from "../types";
+import { TaskStatus, PopulatedTask } from "../types";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
 import { cn } from "@/lib/utils";
@@ -42,7 +41,7 @@ export const TimelineGantt = ({ data }: TimelineGanttProps) => {
   const [viewType, setViewType] = useState<ViewType>("week");
 
   // Calculate date range based on view type
-  const { startDate, endDate, timelineUnit } = useMemo(() => {
+  const { startDate, endDate } = useMemo(() => {
     const start = startOfWeek(currentDate);
     let end: Date;
     let unit: string;
@@ -196,7 +195,7 @@ export const TimelineGantt = ({ data }: TimelineGanttProps) => {
             </div>
             <ScrollArea className="flex-1">
               <div className="flex min-w-max">
-                {timelineDays.map((day, index) => (
+                {timelineDays.map((day) => (
                   <div
                     key={day.date.toISOString()}
                     className={cn(
@@ -256,7 +255,7 @@ export const TimelineGantt = ({ data }: TimelineGanttProps) => {
                           {task.project && (
                             <ProjectAvatar 
                               name={task.project.name} 
-                              image={'imageUrl' in task.project ? (task.project as any).imageUrl : ""}
+                              image={'imageUrl' in task.project ? (task.project as { imageUrl?: string }).imageUrl || "" : ""}
                               className="h-5 w-5"
                             />
                           )}
@@ -267,7 +266,7 @@ export const TimelineGantt = ({ data }: TimelineGanttProps) => {
                     {/* Gantt Chart Column */}
                     <div className="flex-1 relative">
                       <div className="flex min-w-max relative h-full">
-                        {timelineDays.map((day, index) => (
+                        {timelineDays.map((day) => (
                           <div
                             key={day.date.toISOString()}
                             className={cn(

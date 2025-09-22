@@ -35,7 +35,6 @@ import { Task } from "../types";
 import { StatusSelector } from "@/features/custom-columns/components/status-selector";
 import { PrioritySelector } from "./priority-selector";
 import { LabelSelector } from "./label-management";
-import { TaskPriority } from "../types";
 import { Textarea } from "@/components/ui/textarea";
 
 interface EditTaskFormProps {

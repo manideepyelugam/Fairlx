@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 
-import { Task, TaskStatus, PopulatedTask } from "../types";
+import { TaskStatus, PopulatedTask } from "../types";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { cn } from "@/lib/utils";
 

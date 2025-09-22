@@ -8,7 +8,6 @@ import { useProjectId } from "@/features/projects/hooks/use-project-id";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { useGetMembers } from "@/features/members/api/use-get-members";
-import { useCurrent } from "@/features/auth/api/use-current";
 
 import { DottedSeparator } from "@/components/dotted-separator";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { columns } from "./columns";
 import { DataCalendar } from "./data-calendar";
 import { DataFilters } from "./data-filters";
-import { DataKanban } from "./data-kanban";
 import { DataTable } from "./data-table";
 import { SimpleTimeline } from "./simple-timeline";
 // Use full EnhancedDataKanban so custom columns show up
@@ -49,7 +47,6 @@ export const TaskViewSwitcher = ({
   const paramProjectId = useProjectId();
   
   // Get current user data
-  const { data: currentUser } = useCurrent();
   const { member: currentMember, isAdmin } = useCurrentMember({ workspaceId });
   const { data: members } = useGetMembers({ workspaceId });
   

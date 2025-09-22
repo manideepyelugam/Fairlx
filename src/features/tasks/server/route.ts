@@ -78,7 +78,7 @@ const app = new Hono()
       const databases = c.get("databases");
       const user = c.get("user");
 
-      const { workspaceId, projectId, assigneeId, status, search, dueDate, priority, labels } =
+      const { workspaceId, projectId, assigneeId, status, dueDate, priority, labels } =
         c.req.valid("query");
 
       const member = await getMember({

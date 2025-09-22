@@ -11,7 +11,7 @@ import { TaskDate } from "./task-date";
 import { PriorityBadge } from "./priority-selector";
 import { LabelsDisplay } from "./label-management";
 
-import { Task, PopulatedTask } from "../types";
+import { PopulatedTask } from "../types";
 
 interface KanbanCardProps {
   task: PopulatedTask;

@@ -152,7 +152,7 @@ export const LabelSelector = ({
                 variant="ghost"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Create "{newLabel.trim()}"
+                Create &quot;{newLabel.trim()}&quot;
               </Button>
             )}
 

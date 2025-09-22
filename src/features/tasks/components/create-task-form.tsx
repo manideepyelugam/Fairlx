@@ -30,12 +30,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { createTaskSchema, createTaskFormSchema } from "../schemas";
+import { createTaskFormSchema } from "../schemas";
 import { useCreateTask } from "../api/use-create-task";
 import { StatusSelector } from "@/features/custom-columns/components/status-selector";
 import { PrioritySelector } from "./priority-selector";
 import { LabelSelector } from "./label-management";
-import { TaskPriority } from "../types";
 import { Textarea } from "@/components/ui/textarea";
 
 interface CreateTaskFormProps {

@@ -59,8 +59,8 @@ export const KanbanColumnHeader = ({
           <Checkbox
             checked={isAllSelected}
             ref={(ref) => {
-              // Checkbox component forwards a button ref; cast to any to set indeterminate
-              if (ref) (ref as any).indeterminate = isPartiallySelected;
+              // Checkbox component forwards a button ref; cast to HTMLInputElement to set indeterminate
+              if (ref) (ref as HTMLInputElement).indeterminate = isPartiallySelected;
             }}
             onCheckedChange={(checked) => onSelectAll?.(board, !!checked)}
           />

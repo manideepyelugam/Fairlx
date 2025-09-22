@@ -1,4 +1,4 @@
-import { FolderIcon, ListChecksIcon, UserIcon, AlertTriangleIcon, TagIcon } from "lucide-react";
+import { FolderIcon, ListChecksIcon, UserIcon, AlertTriangleIcon } from "lucide-react";
 
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { useGetProjects } from "@/features/projects/api/use-get-projects";
@@ -20,7 +20,7 @@ import { useGetCustomColumns } from "@/features/custom-columns/api/use-get-custo
 import { CustomColumn } from "@/features/custom-columns/types";
 import { allIcons, statusIconMap } from "@/features/custom-columns/components/status-selector";
 import { TaskStatus, TaskPriority } from "../types";
-import { PrioritySelector, PriorityIcon } from "./priority-selector";
+import { PriorityIcon } from "./priority-selector";
 import { LabelFilter } from "./label-management";
 import { TaskSearch } from "./task-search";
 
