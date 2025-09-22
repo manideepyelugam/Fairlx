@@ -33,6 +33,10 @@ import {
 import { createTaskSchema, createTaskFormSchema } from "../schemas";
 import { useCreateTask } from "../api/use-create-task";
 import { StatusSelector } from "@/features/custom-columns/components/status-selector";
+import { PrioritySelector } from "./priority-selector";
+import { LabelSelector } from "./label-management";
+import { TaskPriority } from "../types";
+import { Textarea } from "@/components/ui/textarea";
 
 interface CreateTaskFormProps {
   onCancel?: () => void;
@@ -47,6 +51,12 @@ export const CreateTaskForm = ({
 }: CreateTaskFormProps) => {
   const workspaceId = useWorkspaceId();
   const { mutate, isPending } = useCreateTask();
+
+  // Mock available labels - in a real app, this would come from an API
+  const availableLabels = [
+    "frontend", "backend", "bug", "feature", "urgent", "documentation", 
+    "testing", "design", "security", "performance", "api", "ui/ux"
+  ];
 
   const form = useForm<z.infer<typeof createTaskFormSchema>>({
     resolver: zodResolver(createTaskFormSchema),
@@ -216,6 +226,60 @@ export const CreateTaskForm = ({
                         min="0"
                         placeholder="Enter estimated hours..."
                         onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="priority"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Priority (Optional)</FormLabel>
+                    <FormControl>
+                      <PrioritySelector
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        placeholder="Select priority"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="labels"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Labels (Optional)</FormLabel>
+                    <FormControl>
+                      <LabelSelector
+                        selectedLabels={field.value ?? []}
+                        onLabelsChange={field.onChange}
+                        availableLabels={availableLabels}
+                        placeholder="Add labels..."
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        value={field.value || ""}
+                        placeholder="Enter task description..."
+                        className="resize-none"
+                        rows={4}
                       />
                     </FormControl>
                     <FormMessage />

@@ -11,7 +11,7 @@ import { getMember } from "@/features/members/utils";
 import { Project } from "@/features/projects/types";
 
 import { createTaskSchema, updateTaskSchema } from "../schemas";
-import { Task, TaskStatus } from "../types";
+import { Task, TaskStatus, TaskPriority } from "../types";
 
 const app = new Hono()
   .delete("/:taskId", sessionMiddleware, async (c) => {
@@ -69,6 +69,8 @@ const app = new Hono()
         status: z.nativeEnum(TaskStatus).nullish(),
         search: z.string().nullish(),
         dueDate: z.string().nullish(),
+        priority: z.nativeEnum(TaskPriority).nullish(),
+        labels: z.string().nullish(), // Will be comma-separated list
       })
     ),
     async (c) => {
@@ -76,7 +78,7 @@ const app = new Hono()
       const databases = c.get("databases");
       const user = c.get("user");
 
-      const { workspaceId, projectId, assigneeId, status, search, dueDate } =
+      const { workspaceId, projectId, assigneeId, status, search, dueDate, priority, labels } =
         c.req.valid("query");
 
       const member = await getMember({
@@ -111,7 +113,24 @@ const app = new Hono()
       }
 
       if (search) {
+        // Search in both name and description fields
         query.push(Query.search("name", search));
+        // Note: We can't use multiple search queries in Appwrite, so we'll search name first
+        // If you need to search description too, you'd need to use Query.or() with contains()
+        // For now, we'll keep it simple with just name search
+      }
+
+      if (priority) {
+        query.push(Query.equal("priority", priority));
+      }
+
+      if (labels) {
+        // For labels, we need to check if any of the provided labels match
+        // Since labels is an array field, we'll use Query.contains for each label
+        const labelList = labels.split(",").map(label => label.trim());
+        for (const label of labelList) {
+          query.push(Query.contains("labels", label));
+        }
       }
 
       const tasks = await databases.listDocuments<Task>(
@@ -173,7 +192,7 @@ const app = new Hono()
     async (c) => {
       const user = c.get("user");
       const databases = c.get("databases");
-      const { name, status, workspaceId, projectId, dueDate, assigneeId, description, estimatedHours, endDate } =
+      const { name, status, workspaceId, projectId, dueDate, assigneeId, description, estimatedHours, endDate, priority, labels } =
         c.req.valid("json");
 
       const member = await getMember({
@@ -217,6 +236,8 @@ const app = new Hono()
           description,
           estimatedHours,
           endDate,
+          priority,
+          labels,
         }
       );
 
@@ -230,7 +251,7 @@ const app = new Hono()
     async (c) => {
       const user = c.get("user");
       const databases = c.get("databases");
-      const { name, status, projectId, dueDate, assigneeId, description, estimatedHours, endDate } =
+      const { name, status, projectId, dueDate, assigneeId, description, estimatedHours, endDate, priority, labels } =
         c.req.valid("json");
 
       const { taskId } = c.req.param();
@@ -264,6 +285,8 @@ const app = new Hono()
           description,
           estimatedHours,
           endDate,
+          priority,
+          labels,
         }
       );
 

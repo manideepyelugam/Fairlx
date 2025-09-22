@@ -26,7 +26,7 @@ import { EnhancedDataKanban } from "@/features/custom-columns/components/enhance
 import { useGetTasks } from "../api/use-get-tasks";
 import { useCreateTaskModal } from "../hooks/use-create-task-modal";
 import { useTaskFilters } from "../hooks/use-task-filters";
-import { TaskStatus } from "../types";
+import { TaskStatus, TaskPriority } from "../types";
 import { useBulkUpdateTasks } from "../api/use-bulk-update-tasks";
 
 interface TaskViewSwitcherProps {
@@ -40,7 +40,8 @@ export const TaskViewSwitcher = ({
 }: TaskViewSwitcherProps) => {
   
   
-  const [{ status, assigneeId, projectId, dueDate }] = useTaskFilters();
+    const [{ status, assigneeId, projectId, dueDate, search, priority, labels }] =
+    useTaskFilters();
   const [view, setView] = useQueryState("task-view", { defaultValue: "table" });
   const { mutate: bulkUpdate } = useBulkUpdateTasks();
 
@@ -61,6 +62,9 @@ export const TaskViewSwitcher = ({
     assigneeId: effectiveAssigneeId,
     status,
     dueDate,
+    search,
+    priority: priority as TaskPriority | null,
+    labels,
   });
 
   
