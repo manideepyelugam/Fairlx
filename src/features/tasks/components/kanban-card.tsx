@@ -8,11 +8,13 @@ import { ProjectAvatar } from "@/features/projects/components/project-avatar";
 
 import { TaskActions } from "./task-actions";
 import { TaskDate } from "./task-date";
+import { PriorityBadge } from "./priority-selector";
+import { LabelsDisplay } from "./label-management";
 
-import { Task } from "../types";
+import { Task, PopulatedTask } from "../types";
 
 interface KanbanCardProps {
-  task: Task;
+  task: PopulatedTask;
   isSelected?: boolean;
   onSelect?: (taskId: string, selected: boolean) => void;
   showSelection?: boolean;
@@ -39,27 +41,39 @@ export const KanbanCard = ({
           </div>
         )}
         <p className="text-sm line-clamp-2 flex-1">{task.name}</p>
-        <TaskActions id={task.$id} projectId={task.projectId}>
-          <MoreHorizontalIcon className="size-[18px] stroke-1 shrink-0 text-neutral-700 hover:opacity-75 transition" />
-        </TaskActions>
+        <div className="flex items-center gap-1">
+          {task.priority && <PriorityBadge priority={task.priority} />}
+          <TaskActions id={task.$id} projectId={task.projectId}>
+            <MoreHorizontalIcon className="size-[18px] stroke-1 shrink-0 text-neutral-700 hover:opacity-75 transition" />
+          </TaskActions>
+        </div>
       </div>
+      
+      {task.labels && task.labels.length > 0 && (
+        <LabelsDisplay labels={task.labels} maxDisplay={2} />
+      )}
+      
       <DottedSeparator />
       <div className="flex items-center gap-x-1.5">
-        <MemberAvatar
-          name={task.assignee.name}
-          fallbackClassName="text-[10px]"
-        />
+        {task.assignee && (
+          <MemberAvatar
+            name={task.assignee.name}
+            fallbackClassName="text-[10px]"
+          />
+        )}
         <div className="size-1 rounded-full bg-neutral-300" />
         <TaskDate value={task.dueDate} className="text-xs" />
       </div>
-      <div className="flex items-center gap-x-1.5">
-        <ProjectAvatar
-          name={task.project.name}
-          image={task.project.imageUrl}
-          fallbackClassName="text-[10px]"
-        />
-        <span className="text-xs font-medium">{task.project.name}</span>
-      </div>
+      {task.project && (
+        <div className="flex items-center gap-x-1.5">
+          <ProjectAvatar
+            name={task.project.name}
+            image={task.project.imageUrl}
+            fallbackClassName="text-[10px]"
+          />
+          <span className="text-xs font-medium">{task.project.name}</span>
+        </div>
+      )}
     </div>
   );
 };

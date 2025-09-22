@@ -51,7 +51,7 @@ export const TaskDescription = ({ task }: TaskDescriptionProps) => {
         <div className="flex flex-col gap-y-4">
           <Textarea
             placeholder="Add a description..."
-            value={value}
+            value={value || ""}
             rows={4}
             onChange={(e) => setValue(e.target.value)}
             disabled={isPending}
