@@ -30,6 +30,7 @@ export const TaskSearch = ({
     if (debouncedSearch !== search) {
       setFilters({ search: debouncedSearch || null });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch]);
 
   // Sync local state with URL state when search changes from outside
@@ -37,6 +38,7 @@ export const TaskSearch = ({
     if (search !== searchValue) {
       setSearchValue(search ?? "");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
   const clearSearch = () => {

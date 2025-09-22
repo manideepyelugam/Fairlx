@@ -14,7 +14,14 @@ const baseTaskSchema = z.object({
   endDate: z.coerce.date().optional(),
   assigneeId: z.string().trim().min(1, "Required"),
   description: z.string().nullable().optional(),
-  estimatedHours: z.number().min(0).optional(),
+  estimatedHours: z
+    .union([z.number().min(0), z.string(), z.undefined(), z.null()])
+    .transform((val) => {
+      if (val === "" || val === null || val === undefined) return undefined;
+      const num = typeof val === "string" ? parseFloat(val) : val;
+      return isNaN(num) ? undefined : num;
+    })
+    .optional(),
   priority: z.nativeEnum(TaskPriority).optional(),
   labels: z.array(z.string()).optional(),
 });

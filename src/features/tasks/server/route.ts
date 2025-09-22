@@ -66,8 +66,8 @@ const app = new Hono()
         workspaceId: z.string(),
         projectId: z.string().nullish(),
         assigneeId: z.string().nullish(),
-        status: z.nativeEnum(TaskStatus).nullish(),
-        search: z.string().nullish(),
+        status: z.union([z.nativeEnum(TaskStatus), z.string()]).nullish(),
+        search: z.string().nullish().transform(val => val === "" ? null : val),
         dueDate: z.string().nullish(),
         priority: z.nativeEnum(TaskPriority).nullish(),
         labels: z.string().nullish(), // Will be comma-separated list
@@ -112,13 +112,10 @@ const app = new Hono()
         query.push(Query.equal("dueDate", dueDate));
       }
 
-      if (search) {
-        // Search in both name and description fields
-        query.push(Query.search("name", search));
-        // Note: We can't use multiple search queries in Appwrite, so we'll search name first
-        // If you need to search description too, you'd need to use Query.or() with contains()
-        // For now, we'll keep it simple with just name search
-      }
+      // Don't filter by search on server side - we'll do it client side
+      // if (search) {
+      //   query.push(Query.contains("name", search));
+      // }
 
       if (priority) {
         query.push(Query.equal("priority", priority));
