@@ -12,7 +12,7 @@ import { TaskActions } from "./task-actions";
 import { TaskDate } from "./task-date";
 import { StatusDisplay } from "@/features/custom-columns/components/status-display";
 
-import { Task, PopulatedTask } from "../types";
+import { PopulatedTask } from "../types";
 
 export const columns: ColumnDef<PopulatedTask>[] = [
   {

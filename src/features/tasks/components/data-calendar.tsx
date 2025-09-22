@@ -13,7 +13,7 @@ import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 
 import { Button } from "@/components/ui/button";
 
-import { Task, TaskStatus, PopulatedTask } from "../types";
+import { TaskStatus, PopulatedTask } from "../types";
 
 import { EventCard } from "./event-card";
 

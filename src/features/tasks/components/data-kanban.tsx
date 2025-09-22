@@ -56,7 +56,7 @@ export const DataKanban = ({
     data.forEach((task) => {
       // Only add to initialTasks if it's a valid TaskStatus, ignore custom columns
       if (task.status in initialTasks) {
-        (initialTasks as any)[task.status].push(task);
+        initialTasks[task.status as TaskStatus].push(task);
       }
     });
 
@@ -71,7 +71,7 @@ export const DataKanban = ({
 
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
-  const [columnsOrder, setColumnsOrder] = useState<TaskStatus[]>(boards);
+  const [columnsOrder] = useState<TaskStatus[]>(boards);
 
   const { mutate: bulkUpdateTasks } = useBulkUpdateTasks();
 
@@ -87,7 +87,7 @@ export const DataKanban = ({
     data.forEach((task) => {
       // Only add to newTasks if it's a valid TaskStatus, ignore custom columns
       if (task.status in newTasks) {
-        (newTasks as any)[task.status].push(task);
+        newTasks[task.status as TaskStatus].push(task);
       }
     });
 

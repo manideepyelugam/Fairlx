@@ -30,9 +30,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { createTaskSchema } from "../schemas";
+import { createTaskSchema, createTaskFormSchema } from "../schemas";
 import { useCreateTask } from "../api/use-create-task";
-import { TaskStatus } from "../types";
 import { StatusSelector } from "@/features/custom-columns/components/status-selector";
 
 interface CreateTaskFormProps {
@@ -49,14 +48,13 @@ export const CreateTaskForm = ({
   const workspaceId = useWorkspaceId();
   const { mutate, isPending } = useCreateTask();
 
-  const form = useForm<z.infer<typeof createTaskSchema>>({
-    resolver: zodResolver(createTaskSchema.omit({ workspaceId: true })),
+  const form = useForm<z.infer<typeof createTaskFormSchema>>({
+    resolver: zodResolver(createTaskFormSchema),
     defaultValues: {
-      workspaceId,
     },
   });
 
-  const onSubmit = (values: z.infer<typeof createTaskSchema>) => {
+  const onSubmit = (values: z.infer<typeof createTaskFormSchema>) => {
     mutate(
       { json: { ...values, workspaceId } },
       {

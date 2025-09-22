@@ -10,7 +10,7 @@ import { createAdminClient } from "@/lib/appwrite";
 import { getMember } from "@/features/members/utils";
 import { Project } from "@/features/projects/types";
 
-import { createTaskSchema } from "../schemas";
+import { createTaskSchema, updateTaskSchema } from "../schemas";
 import { Task, TaskStatus } from "../types";
 
 const app = new Hono()
@@ -173,7 +173,7 @@ const app = new Hono()
     async (c) => {
       const user = c.get("user");
       const databases = c.get("databases");
-      const { name, status, workspaceId, projectId, dueDate, assigneeId, description, estimatedHours } =
+      const { name, status, workspaceId, projectId, dueDate, assigneeId, description, estimatedHours, endDate } =
         c.req.valid("json");
 
       const member = await getMember({
@@ -216,6 +216,7 @@ const app = new Hono()
           position: newPosition,
           description,
           estimatedHours,
+          endDate,
         }
       );
 
@@ -225,11 +226,11 @@ const app = new Hono()
   .patch(
     "/:taskId",
     sessionMiddleware,
-    zValidator("json", createTaskSchema.partial()),
+    zValidator("json", updateTaskSchema),
     async (c) => {
       const user = c.get("user");
       const databases = c.get("databases");
-      const { name, status, projectId, dueDate, assigneeId, description, estimatedHours } =
+      const { name, status, projectId, dueDate, assigneeId, description, estimatedHours, endDate } =
         c.req.valid("json");
 
       const { taskId } = c.req.param();
@@ -262,6 +263,7 @@ const app = new Hono()
           assigneeId,
           description,
           estimatedHours,
+          endDate,
         }
       );
 
