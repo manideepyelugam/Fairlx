@@ -9,6 +9,7 @@ import tasks from "@/features/tasks/server/route";
 import timeLogs from "@/features/time-tracking/server/route";
 import customColumns from "@/features/custom-columns/api/route";
 import defaultColumnSettings from "@/features/default-column-settings/api/route";
+import attachments from "@/features/attachments/api/route";
 
 const app = new Hono().basePath("/api");
 
@@ -21,7 +22,8 @@ const routes = app
   .route("/tasks", tasks)
   .route("/timeLogs", timeLogs)
   .route("/custom-columns", customColumns)
-  .route("/default-column-settings", defaultColumnSettings);
+  .route("/default-column-settings", defaultColumnSettings)
+  .route("/attachments", attachments);
 
 export const GET = handle(app);
 export const POST = handle(app);
