@@ -2,13 +2,12 @@
 
 import { LoaderIcon, PlusIcon } from "lucide-react";
 import { useQueryState } from "nuqs";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { useGetMembers } from "@/features/members/api/use-get-members";
-import { useCurrent } from "@/features/auth/api/use-current";
 
 import { DottedSeparator } from "@/components/dotted-separator";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { columns } from "./columns";
 import { DataCalendar } from "./data-calendar";
 import { DataFilters } from "./data-filters";
-import { DataKanban } from "./data-kanban";
 import { DataTable } from "./data-table";
 import { SimpleTimeline } from "./simple-timeline";
 // Use full EnhancedDataKanban so custom columns show up
@@ -26,7 +24,7 @@ import { EnhancedDataKanban } from "@/features/custom-columns/components/enhance
 import { useGetTasks } from "../api/use-get-tasks";
 import { useCreateTaskModal } from "../hooks/use-create-task-modal";
 import { useTaskFilters } from "../hooks/use-task-filters";
-import { TaskStatus } from "../types";
+import { TaskStatus, TaskPriority } from "../types";
 import { useBulkUpdateTasks } from "../api/use-bulk-update-tasks";
 
 interface TaskViewSwitcherProps {
@@ -40,7 +38,8 @@ export const TaskViewSwitcher = ({
 }: TaskViewSwitcherProps) => {
   
   
-  const [{ status, assigneeId, projectId, dueDate }] = useTaskFilters();
+    const [{ status, assigneeId, projectId, dueDate, search, priority, labels }] =
+    useTaskFilters();
   const [view, setView] = useQueryState("task-view", { defaultValue: "table" });
   const { mutate: bulkUpdate } = useBulkUpdateTasks();
 
@@ -48,7 +47,6 @@ export const TaskViewSwitcher = ({
   const paramProjectId = useProjectId();
   
   // Get current user data
-  const { data: currentUser } = useCurrent();
   const { member: currentMember, isAdmin } = useCurrentMember({ workspaceId });
   const { data: members } = useGetMembers({ workspaceId });
   
@@ -61,7 +59,32 @@ export const TaskViewSwitcher = ({
     assigneeId: effectiveAssigneeId,
     status,
     dueDate,
+    search: null, // Don't filter on server side
+    priority: priority as TaskPriority | null,
+    labels,
   });
+
+  // Client-side filtering for search
+  const filteredTasks = useMemo(() => {
+    if (!tasks?.documents) return undefined;
+    
+    let filtered = tasks.documents;
+    
+    // Apply search filter
+    if (search) {
+      const searchLower = search.toLowerCase();
+      filtered = filtered.filter(task => 
+        task.name.toLowerCase().includes(searchLower) ||
+        (task.description && task.description.toLowerCase().includes(searchLower))
+      );
+    }
+    
+    return {
+      ...tasks,
+      documents: filtered,
+      total: filtered.length
+    };
+  }, [tasks, search]);
 
   
 
@@ -112,11 +135,11 @@ export const TaskViewSwitcher = ({
         ) : (
           <>
             <TabsContent value="table" className="mt-0">
-              <DataTable columns={columns} data={tasks?.documents ?? []} />
+              <DataTable columns={columns} data={filteredTasks?.documents ?? []} />
             </TabsContent>
             <TabsContent value="kanban" className="mt-0">
               <EnhancedDataKanban
-                data={tasks?.documents ?? []}
+                data={filteredTasks?.documents ?? []}
                 onChange={onKanbanChange}
                 isAdmin={isAdmin}
                 members={members?.documents ?? []}
@@ -125,10 +148,10 @@ export const TaskViewSwitcher = ({
               />
             </TabsContent>
             <TabsContent value="calendar" className="mt-0 h-full pb-4">
-              <DataCalendar data={tasks?.documents ?? []} />
+              <DataCalendar data={filteredTasks?.documents ?? []} />
             </TabsContent>
             <TabsContent value="timeline" className="mt-0 h-full pb-4">
-              <SimpleTimeline data={tasks?.documents ?? []} />
+              <SimpleTimeline data={filteredTasks?.documents ?? []} />
             </TabsContent>
           </>
         )}

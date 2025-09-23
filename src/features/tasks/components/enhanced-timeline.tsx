@@ -318,7 +318,7 @@ export const EnhancedTimeline = ({ data }: EnhancedTimelineProps) => {
                       </div>
 
                       {/* Project Tasks */}
-                      {projectGroup.tasks.map((task, _index) => (
+                      {projectGroup.tasks.map((task) => (
                         <div 
                           key={task.$id} 
                           className={cn(
@@ -376,7 +376,7 @@ export const EnhancedTimeline = ({ data }: EnhancedTimelineProps) => {
                           {/* Gantt Chart Column */}
                           <div className="flex-1 relative">
                             <div className="flex min-w-max relative">
-                              {timelineDays.map((day, _dayIndex) => (
+                              {timelineDays.map((day) => (
                                 <div
                                   key={day.date.toISOString()}
                                   className={cn(

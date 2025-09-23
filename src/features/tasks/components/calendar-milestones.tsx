@@ -164,7 +164,7 @@ export const CalendarMilestones = ({ data }: CalendarMilestonesProps) => {
             </div>
             
             <div className="grid grid-cols-7">
-              {calendarDays.map((day, index) => {
+              {calendarDays.map((day) => {
                 const dateKey = format(day, 'yyyy-MM-dd');
                 const dayTasks = tasksByDate[dateKey] || [];
                 const isCurrentMonth = isSameMonth(day, currentDate);

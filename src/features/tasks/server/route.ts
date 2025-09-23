@@ -11,7 +11,7 @@ import { getMember } from "@/features/members/utils";
 import { Project } from "@/features/projects/types";
 
 import { createTaskSchema, updateTaskSchema } from "../schemas";
-import { Task, TaskStatus } from "../types";
+import { Task, TaskStatus, TaskPriority } from "../types";
 
 const app = new Hono()
   .delete("/:taskId", sessionMiddleware, async (c) => {
@@ -66,9 +66,11 @@ const app = new Hono()
         workspaceId: z.string(),
         projectId: z.string().nullish(),
         assigneeId: z.string().nullish(),
-        status: z.nativeEnum(TaskStatus).nullish(),
-        search: z.string().nullish(),
+        status: z.union([z.nativeEnum(TaskStatus), z.string()]).nullish(),
+        search: z.string().nullish().transform(val => val === "" ? null : val),
         dueDate: z.string().nullish(),
+        priority: z.nativeEnum(TaskPriority).nullish(),
+        labels: z.string().nullish(), // Will be comma-separated list
       })
     ),
     async (c) => {
@@ -76,7 +78,7 @@ const app = new Hono()
       const databases = c.get("databases");
       const user = c.get("user");
 
-      const { workspaceId, projectId, assigneeId, status, search, dueDate } =
+      const { workspaceId, projectId, assigneeId, status, dueDate, priority, labels } =
         c.req.valid("query");
 
       const member = await getMember({
@@ -110,8 +112,22 @@ const app = new Hono()
         query.push(Query.equal("dueDate", dueDate));
       }
 
-      if (search) {
-        query.push(Query.search("name", search));
+      // Don't filter by search on server side - we'll do it client side
+      // if (search) {
+      //   query.push(Query.contains("name", search));
+      // }
+
+      if (priority) {
+        query.push(Query.equal("priority", priority));
+      }
+
+      if (labels) {
+        // For labels, we need to check if any of the provided labels match
+        // Since labels is an array field, we'll use Query.contains for each label
+        const labelList = labels.split(",").map(label => label.trim());
+        for (const label of labelList) {
+          query.push(Query.contains("labels", label));
+        }
       }
 
       const tasks = await databases.listDocuments<Task>(
@@ -173,7 +189,7 @@ const app = new Hono()
     async (c) => {
       const user = c.get("user");
       const databases = c.get("databases");
-      const { name, status, workspaceId, projectId, dueDate, assigneeId, description, estimatedHours, endDate } =
+      const { name, status, workspaceId, projectId, dueDate, assigneeId, description, estimatedHours, endDate, priority, labels } =
         c.req.valid("json");
 
       const member = await getMember({
@@ -217,6 +233,8 @@ const app = new Hono()
           description,
           estimatedHours,
           endDate,
+          priority,
+          labels,
         }
       );
 
@@ -230,7 +248,7 @@ const app = new Hono()
     async (c) => {
       const user = c.get("user");
       const databases = c.get("databases");
-      const { name, status, projectId, dueDate, assigneeId, description, estimatedHours, endDate } =
+      const { name, status, projectId, dueDate, assigneeId, description, estimatedHours, endDate, priority, labels } =
         c.req.valid("json");
 
       const { taskId } = c.req.param();
@@ -264,6 +282,8 @@ const app = new Hono()
           description,
           estimatedHours,
           endDate,
+          priority,
+          labels,
         }
       );
 

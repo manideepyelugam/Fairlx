@@ -1,4 +1,4 @@
-import { parseAsString, useQueryStates } from "nuqs";
+import { parseAsString, parseAsArrayOf, useQueryStates } from "nuqs";
 
 // Use parseAsString for status to allow both enum values and custom column IDs
 export const useTaskFilters = () => {
@@ -8,5 +8,7 @@ export const useTaskFilters = () => {
     assigneeId: parseAsString,
     search: parseAsString,
     dueDate: parseAsString,
+    priority: parseAsString,
+    labels: parseAsArrayOf(parseAsString),
   });
 };

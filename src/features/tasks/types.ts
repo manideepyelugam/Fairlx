@@ -8,6 +8,13 @@ export enum TaskStatus {
   DONE = "DONE",
 }
 
+export enum TaskPriority {
+  LOW = "LOW",
+  MEDIUM = "MEDIUM",
+  HIGH = "HIGH",
+  URGENT = "URGENT",
+}
+
 export type Task = Models.Document & {
   name: string;
   status: TaskStatus | string; // Allow custom column IDs as status
@@ -17,8 +24,10 @@ export type Task = Models.Document & {
   position: number;
   dueDate: string;
   endDate?: string;
-  description?: string;
+  description?: string | null;
   estimatedHours?: number;
+  priority?: TaskPriority;
+  labels?: string[];
 };
 
 export type PopulatedTask = Task & {

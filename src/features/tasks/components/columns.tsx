@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { TaskActions } from "./task-actions";
 import { TaskDate } from "./task-date";
 import { StatusDisplay } from "@/features/custom-columns/components/status-display";
+import { PriorityBadge } from "./priority-selector";
+import { LabelsDisplay } from "./label-management";
 
 import { PopulatedTask } from "../types";
 
@@ -135,6 +137,38 @@ export const columns: ColumnDef<PopulatedTask>[] = [
       const projectId = row.original.projectId;
 
       return <StatusDisplay status={status} projectId={projectId} />;
+    },
+  },
+  {
+    accessorKey: "priority",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Priority
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
+    cell: ({ row }) => {
+      const priority = row.original.priority;
+
+      return priority ? <PriorityBadge priority={priority} /> : <span className="text-muted-foreground">-</span>;
+    },
+  },
+  {
+    accessorKey: "labels",
+    header: "Labels",
+    cell: ({ row }) => {
+      const labels = row.original.labels;
+
+      return labels && labels.length > 0 ? (
+        <LabelsDisplay labels={labels} maxDisplay={2} />
+      ) : (
+        <span className="text-muted-foreground">-</span>
+      );
     },
   },
   {

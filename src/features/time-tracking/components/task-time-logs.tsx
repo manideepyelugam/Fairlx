@@ -130,7 +130,7 @@ export const TaskTimeLogs = ({ taskId, taskName, workspaceId }: TaskTimeLogsProp
                         {log.description}
                       </TableCell>
                       <TableCell>
-                        {(log as any).user?.name || "Unknown User"}
+                        {(log as { user?: { name: string } }).user?.name || "Unknown User"}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
