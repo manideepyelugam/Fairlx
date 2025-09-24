@@ -1,8 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { client } from "@/lib/rpc";
-
 interface UploadAttachmentRequest {
   form: FormData;
 }

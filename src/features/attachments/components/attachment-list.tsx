@@ -27,6 +27,7 @@ interface AttachmentItemProps {
 
 const getFileIcon = (mimeType: string) => {
   if (mimeType.startsWith("image/")) {
+    // eslint-disable-next-line jsx-a11y/alt-text
     return <Image className="h-4 w-4" />;
   }
   if (mimeType.includes("pdf") || mimeType.includes("document") || mimeType.includes("text")) {
