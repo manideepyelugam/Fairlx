@@ -44,9 +44,7 @@ export const createAttachment = async (data: {
       uploadedBy: data.uploadedBy,
       uploadedAt: new Date().toISOString(),
     }
-  );
-
-  return attachment as Attachment;
+  );  return attachment as Attachment;
 };
 
 export const deleteAttachment = async (attachmentId: string, workspaceId: string): Promise<void> => {

@@ -3,7 +3,7 @@ import { zValidator } from "@hono/zod-validator";
 import { ID } from "node-appwrite";
 
 import { sessionMiddleware } from "@/lib/session-middleware";
-import { ATTACHMENTS_BUCKET_ID } from "@/config";
+import { ATTACHMENTS_BUCKET_ID, DATABASE_ID, ATTACHMENTS_ID } from "@/config";
 import { getMember } from "@/features/members/utils";
 
 import {
@@ -177,20 +177,78 @@ const app = new Hono()
       }
 
       try {
-        // Get attachment to get fileId
-        const attachments = await getAttachments("", workspaceId);
-        const attachment = attachments.find(a => a.$id === attachmentId);
+        // Get attachment by ID
+        const attachment = await databases.getDocument(
+          DATABASE_ID,
+          ATTACHMENTS_ID,
+          attachmentId
+        );
         
-        if (!attachment) {
+        if (!attachment || attachment.workspaceId !== workspaceId) {
           return c.json({ error: "Attachment not found" }, 404);
         }
 
-        const downloadUrl = storage.getFileDownload(ATTACHMENTS_BUCKET_ID, attachment.fileId).toString();
+        // Get file from storage and return it directly
+        const file = await storage.getFileDownload(ATTACHMENTS_BUCKET_ID, attachment.fileId);
         
-        return c.json({ data: { downloadUrl } });
+        // Return the file directly with proper headers
+        return new Response(file, {
+          headers: {
+            'Content-Disposition': `attachment; filename="${attachment.name}"`,
+            'Content-Type': attachment.mimeType || 'application/octet-stream',
+          },
+        });
       } catch (error) {
         console.error("Download error:", error);
-        return c.json({ error: "Failed to get download URL" }, 500);
+        return c.json({ error: "Failed to download file" }, 500);
+      }
+    }
+  )
+  .get(
+    "/:attachmentId/preview",
+    sessionMiddleware,
+    zValidator("query", deleteAttachmentSchema.pick({ workspaceId: true })),
+    async (c) => {
+      const user = c.get("user");
+      const databases = c.get("databases");
+      const storage = c.get("storage");
+      const { attachmentId } = c.req.param();
+      const { workspaceId } = c.req.valid("query");
+
+      const member = await getMember({
+        databases,
+        workspaceId,
+        userId: user.$id,
+      });
+
+      if (!member) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      try {
+        // Get attachment by ID
+        const attachment = await databases.getDocument(
+          DATABASE_ID,
+          ATTACHMENTS_ID,
+          attachmentId
+        );
+        
+        if (!attachment || attachment.workspaceId !== workspaceId) {
+          return c.json({ error: "Attachment not found" }, 404);
+        }
+
+        // Get file from storage and return it directly for preview
+        const file = await storage.getFileView(ATTACHMENTS_BUCKET_ID, attachment.fileId);
+        
+        // Return the file directly with proper headers for preview
+        return new Response(file, {
+          headers: {
+            'Content-Type': attachment.mimeType || 'application/octet-stream',
+          },
+        });
+      } catch (error) {
+        console.error("Preview error:", error);
+        return c.json({ error: "Failed to preview file" }, 500);
       }
     }
   );

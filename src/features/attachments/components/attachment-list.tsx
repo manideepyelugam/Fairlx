@@ -65,20 +65,18 @@ const AttachmentItem = ({ attachment, workspaceId }: AttachmentItemProps) => {
   };
 
   const handleDownload = () => {
-    if (attachment.url) {
-      const link = document.createElement("a");
-      link.href = attachment.url;
-      link.download = attachment.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
+    const downloadUrl = `/api/attachments/${attachment.$id}/download?workspaceId=${workspaceId}`;
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = attachment.name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handlePreview = () => {
-    if (attachment.url) {
-      window.open(attachment.url, "_blank");
-    }
+    const previewUrl = `/api/attachments/${attachment.$id}/preview?workspaceId=${workspaceId}`;
+    window.open(previewUrl, "_blank");
   };
 
   const isPreviewable = PREVIEWABLE_TYPES.includes(attachment.mimeType);

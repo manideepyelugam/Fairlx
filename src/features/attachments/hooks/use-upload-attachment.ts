@@ -27,7 +27,11 @@ export const useUploadAttachment = () => {
 
   const mutation = useMutation<UploadAttachmentResponse, Error, UploadAttachmentRequest>({
     mutationFn: async ({ form }) => {
-      const response = await client.api.attachments.upload["$post"]({ form });
+      // Use fetch directly to bypass hono client issues
+      const response = await fetch('/api/attachments/upload', {
+        method: 'POST',
+        body: form
+      });
 
       if (!response.ok) {
         const errorData = await response.json() as { error?: string };
