@@ -11,6 +11,7 @@ import { TaskOverview } from "@/features/tasks/components/task-overview";
 import { useTaskId } from "@/features/tasks/hooks/use-task-id";
 import { TaskTimeLogs } from "@/features/time-tracking/components/task-time-logs";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
+import { TaskAttachments } from "@/features/attachments/components/task-attachments";
 
 export const TaskIdClient = () => {
   const taskId = useTaskId();
@@ -34,12 +35,20 @@ export const TaskIdClient = () => {
         <TaskDescription task={data} />
       </div>
       <DottedSeparator className="my-6" />
-      <div className="w-full">
-        <TaskTimeLogs 
-          taskId={data.$id}
-          taskName={data.name}
-          workspaceId={workspaceId}
-        />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="w-full">
+          <TaskTimeLogs 
+            taskId={data.$id}
+            taskName={data.name}
+            workspaceId={workspaceId}
+          />
+        </div>
+        <div className="w-full">
+          <TaskAttachments 
+            taskId={data.$id}
+            workspaceId={workspaceId}
+          />
+        </div>
       </div>
     </div>
   );
