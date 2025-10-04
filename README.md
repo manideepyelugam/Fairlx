@@ -124,7 +124,18 @@
    NEXT_APPWRITE_KEY=your_appwrite_server_key
    ```
 
-4. **Run the development server**
+4. **Configure Email Verification (Important!)**
+   
+   For email verification to work, you need to configure SMTP in your Appwrite project:
+   
+   - Go to your Appwrite Console → Settings → SMTP
+   - Enable "Custom SMTP server"
+   - Configure your SMTP provider (Gmail, SendGrid, AWS SES, etc.)
+   - Test the configuration
+   
+   📋 **Detailed Setup Guide**: See [SMTP_CONFIGURATION_GUIDE.md](./SMTP_CONFIGURATION_GUIDE.md) for complete instructions.
+
+5. **Run the development server**
    ```bash
    npm run dev
    # or
@@ -195,6 +206,14 @@ scrumpty/
 - Real-time updates
 - Team member management
 - Activity tracking
+
+### 📧 Email Verification System
+- **Secure Registration**: Email verification required for all new accounts
+- **SMTP Integration**: Custom SMTP server configuration via Appwrite
+- **Password Recovery**: Secure password reset with email verification
+- **Professional Templates**: Customizable email templates for all communications
+- **Resend Functionality**: Users can resend verification emails
+- **Security Features**: Token expiration, one-time use links, session protection
 
 ### 📈 Analytics & Reporting
 - Workspace performance metrics

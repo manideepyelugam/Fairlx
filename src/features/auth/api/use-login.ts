@@ -16,15 +16,30 @@ export const useLogin = () => {
   const mutation = useMutation<ResponseType, Error, RequestType>({
     mutationFn: async ({ json }) => {
       const response = await client.api.auth.login.$post({ json });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw errorData;
+      }
+      
       return await response.json();
     },
-    onSuccess: () => {
-      toast.success("Logged in.");
-      router.refresh();
-      queryClient.invalidateQueries({ queryKey: ["current"] });
+    onSuccess: (data) => {
+      if ('success' in data && data.success) {
+        toast.success("Logged in.");
+        router.refresh();
+        queryClient.invalidateQueries({ queryKey: ["current"] });
+      }
     },
-    onError: () => {
-      toast.error("Failed to log in.");
+    onError: (error: { needsVerification?: boolean; error?: string; email?: string } | Error) => {
+      if ('needsVerification' in error && error.needsVerification) {
+        toast.error(error.error || "Email verification required");
+        // Create a more comprehensive verification page URL with user info
+        router.push(`/verify-email-needed?email=${encodeURIComponent(error.email || '')}`);
+      } else {
+        const errorMessage = error instanceof Error ? error.message : (error.error || "Failed to log in.");
+        toast.error(errorMessage);
+      }
     },
   });
 

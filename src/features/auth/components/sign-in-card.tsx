@@ -86,6 +86,13 @@ export const SignInCard = () => {
             </Button>
           </form>
         </Form>
+        <div className="mt-4">
+          <Link href="/forgot-password">
+            <span className="text-sm text-blue-700 hover:underline">
+              Forgot your password?
+            </span>
+          </Link>
+        </div>
       </CardContent>
       <div className="px-7">
         <DottedSeparator />

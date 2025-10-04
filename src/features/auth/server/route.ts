@@ -3,9 +3,17 @@ import { zValidator } from "@hono/zod-validator";
 import { deleteCookie, setCookie } from "hono/cookie";
 import { z } from "zod";
 
-import { loginSchema, registerSchema, updateProfileSchema } from "../schemas";
+import { 
+  loginSchema, 
+  registerSchema, 
+  updateProfileSchema,
+  verifyEmailSchema,
+  resendVerificationSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema 
+} from "../schemas";
 import { createAdminClient } from "@/lib/appwrite";
-import { ID, ImageFormat } from "node-appwrite";
+import { ID, ImageFormat, Client, Account } from "node-appwrite";
 import { AUTH_COOKIE } from "../constants";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { IMAGES_BUCKET_ID } from "@/config";
@@ -20,35 +28,90 @@ const app = new Hono()
     const { email, password } = c.req.valid("json");
 
     const { account } = await createAdminClient();
-    const session = await account.createEmailPasswordSession(email, password);
+    
+    try {
+      // First, try to create a session to validate credentials
+      const session = await account.createEmailPasswordSession(email, password);
+      
+      // Set the session to check user details
+      const tempClient = new Client()
+        .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
+        .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT!)
+        .setSession(session.secret);
+      
+      const tempAccount = new Account(tempClient);
+      const user = await tempAccount.get();
+      
+      // Check if email is verified
+      if (!user.emailVerification) {
+        // Delete the session since email is not verified
+        await tempAccount.deleteSession("current");
+        return c.json({ 
+          error: "Please verify your email before logging in. Check your inbox for the verification link.",
+          needsVerification: true,
+          email: email
+        }, 400);
+      }
 
-    setCookie(c, AUTH_COOKIE, session.secret, {
-      path: "/",
-      httpOnly: true,
-      secure: true,
-      sameSite: "strict",
-      maxAge: 60 * 60 * 24 * 30,
-    });
+      // Email is verified, set the cookie
+      setCookie(c, AUTH_COOKIE, session.secret, {
+        path: "/",
+        httpOnly: true,
+        secure: true,
+        sameSite: "strict",
+        maxAge: 60 * 60 * 24 * 30,
+      });
 
-    return c.json({ success: true });
+      return c.json({ success: true });
+    } catch (error: unknown) {
+      const appwriteError = error as { code?: number };
+      if (appwriteError.code === 401) {
+        return c.json({ error: "Invalid email or password" }, 401);
+      }
+      throw error;
+    }
   })
   .post("/register", zValidator("json", registerSchema), async (c) => {
     const { name, email, password } = c.req.valid("json");
 
-    const { account } = await createAdminClient();
-    await account.create(ID.unique(), email, password, name);
+    try {
+      const { account } = await createAdminClient();
+      
+      // Create user account
+      const user = await account.create(ID.unique(), email, password, name);
+      
+      // Create a temporary session to send verification email
+      const session = await account.createEmailPasswordSession(email, password);
+      
+      // Create a new client with the user session to send verification
+      const userClient = new Client()
+        .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
+        .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT!)
+        .setSession(session.secret);
+      
+      const userAccount = new Account(userClient);
+      
+      // Send email verification using user session
+      await userAccount.createVerification(
+        `${process.env.NEXT_PUBLIC_APP_URL}/verify-email`
+      );
+      
+      // Delete the temporary session since email is not verified yet
+      await userAccount.deleteSession("current");
 
-    const session = await account.createEmailPasswordSession(email, password);
-
-    setCookie(c, AUTH_COOKIE, session.secret, {
-      path: "/",
-      httpOnly: true,
-      secure: true,
-      sameSite: "strict",
-      maxAge: 60 * 60 * 24 * 30,
-    });
-
-    return c.json({ success: true });
+      return c.json({ 
+        success: true, 
+        message: "Registration successful! Please check your email to verify your account.",
+        userId: user.$id 
+      });
+    } catch (error: unknown) {
+      const appwriteError = error as { code?: number };
+      if (appwriteError.code === 409) {
+        return c.json({ error: "A user with this email already exists." }, 409);
+      }
+      
+      return c.json({ error: "Registration failed. Please try again." }, 500);
+    }
   })
   .post("/logout", sessionMiddleware, async (c) => {
     const account = c.get("account");
@@ -163,6 +226,124 @@ const app = new Hono()
       }
       
       return c.json({ error: "Failed to upload profile image" }, 500);
+    }
+  })
+  .post("/verify-email", zValidator("json", verifyEmailSchema), async (c) => {
+    const { userId, secret } = c.req.valid("json");
+
+    try {
+      // Create a lightweight client without admin credentials because verification
+      // is performed against the public Account API using the secret from the email.
+      const verificationClient = new Client()
+        .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
+        .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT!);
+
+      const account = new Account(verificationClient);
+
+      // Verify the email using the secret from the verification link
+      await account.updateVerification(userId, secret);
+
+      return c.json({ 
+        success: true, 
+        message: "Email verified successfully! You can now log in." 
+      });
+    } catch (error: unknown) {
+      const appwriteError = error as { code?: number; type?: string; message?: string };
+      if (appwriteError.code === 401) {
+        return c.json({ error: "Invalid or expired verification link" }, 400);
+      }
+      if (appwriteError.code === 404) {
+        return c.json({ error: "Verification link not found or already used" }, 400);
+      }
+      if (appwriteError.code === 500 && appwriteError.type === "general_argument_invalid") {
+        return c.json({ error: "Verification request was rejected by Appwrite. Please request a new link." }, 400);
+      }
+      return c.json({ error: "Failed to verify email: " + (appwriteError.message || "Unknown error") }, 500);
+    }
+  })
+  .post("/resend-verification", zValidator("json", resendVerificationSchema), async (c) => {
+    const { email, password } = c.req.valid("json");
+
+    try {
+      const { account } = await createAdminClient();
+      
+      // Create a temporary session to check user status and send verification
+      const session = await account.createEmailPasswordSession(email, password);
+      
+      // Create user client with session
+      const userClient = new Client()
+        .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
+        .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT!)
+        .setSession(session.secret);
+      
+      const userAccount = new Account(userClient);
+      const user = await userAccount.get();
+      
+      if (user.emailVerification) {
+        await userAccount.deleteSession("current");
+        return c.json({ error: "Email is already verified. You can log in normally." }, 400);
+      }
+      
+      // Send verification email
+      await userAccount.createVerification(
+        `${process.env.NEXT_PUBLIC_APP_URL}/verify-email`
+      );
+      
+      // Delete the temporary session
+      await userAccount.deleteSession("current");
+      
+      return c.json({ 
+        success: true, 
+        message: "Verification email sent! Please check your inbox and click the verification link." 
+      });
+    } catch (error: unknown) {
+      const appwriteError = error as { code?: number };
+      if (appwriteError.code === 401) {
+        return c.json({ error: "Invalid email or password." }, 401);
+      }
+      
+      return c.json({ error: "Failed to send verification email. Please try again." }, 500);
+    }
+  })
+  .post("/forgot-password", zValidator("json", forgotPasswordSchema), async (c) => {
+    const { email } = c.req.valid("json");
+
+    try {
+      const { account } = await createAdminClient();
+      
+      // Send password recovery email
+      await account.createRecovery(
+        email,
+        `${process.env.NEXT_PUBLIC_APP_URL}/reset-password`
+      );
+      
+      return c.json({ 
+        success: true, 
+        message: "Password recovery email sent! Please check your inbox." 
+      });
+    } catch {
+      return c.json({ error: "Failed to send recovery email. Please try again." }, 500);
+    }
+  })
+  .post("/reset-password", zValidator("json", resetPasswordSchema), async (c) => {
+    const { userId, secret, password } = c.req.valid("json");
+
+    try {
+      const { account } = await createAdminClient();
+      
+      // Reset the password
+      await account.updateRecovery(userId, secret, password);
+      
+      return c.json({ 
+        success: true, 
+        message: "Password reset successfully! You can now log in with your new password." 
+      });
+    } catch (error: unknown) {
+      const appwriteError = error as { code?: number };
+      if (appwriteError.code === 401) {
+        return c.json({ error: "Invalid or expired recovery link" }, 400);
+      }
+      return c.json({ error: "Failed to reset password" }, 500);
     }
   });
 

@@ -66,10 +66,10 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
       type: file.type
     });
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
       console.error("[Profile Client] File too large:", file.size);
-      toast.error("File size should be less than 5MB");
+      toast.error("File size should be less than 2MB");
       return;
     }
 
@@ -157,7 +157,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
             </div>
             <div className="flex-1">
               <p className="text-sm text-muted-foreground">
-                Click the camera icon to upload a new profile picture. Maximum file size is 5MB.
+                Click the camera icon to upload a new profile picture. Maximum file size is 2MB.
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 Supported formats: JPG, PNG, GIF
