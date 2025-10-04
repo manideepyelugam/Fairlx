@@ -10,3 +10,11 @@ export const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8, "Password must be at least 8 characters."),
 });
+
+export const updateProfileSchema = z.object({
+  name: z.string().trim().min(1, "Name is required."),
+});
+
+export const uploadProfileImageSchema = z.object({
+  file: z.instanceof(File),
+});
