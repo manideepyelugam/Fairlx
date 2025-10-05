@@ -1,8 +1,9 @@
 "use client";
 
-import { Loader, LogOut } from "lucide-react";
+import { Loader, LogOut, User } from "lucide-react";
+import Link from "next/link";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,6 +41,9 @@ export const UserButton = () => {
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger className="outline-none relative">
         <Avatar className="size-10 hover:opacity-75 transition border border-neutral-300">
+          {user.prefs?.profileImageUrl && (
+            <AvatarImage src={user.prefs.profileImageUrl} alt={name} />
+          )}
           <AvatarFallback className="bg-neutral-200 font-medium text-neutral-500 flex items-center justify-center">
             {avatarFallback}
           </AvatarFallback>
@@ -53,6 +57,9 @@ export const UserButton = () => {
       >
         <div className="flex flex-col items-center justify-center gap-2 px-2.5 py-4">
           <Avatar className="size-[52px] border border-neutral-300">
+            {user.prefs?.profileImageUrl && (
+              <AvatarImage src={user.prefs.profileImageUrl} alt={name} />
+            )}
             <AvatarFallback className="bg-neutral-200 text-xl font-medium text-neutral-500 flex items-center justify-center">
               {avatarFallback}
             </AvatarFallback>
@@ -65,6 +72,13 @@ export const UserButton = () => {
           </div>
         </div>
         <DottedSeparator className="mb-1" />
+        <DropdownMenuItem asChild className="h-10 cursor-pointer">
+          <Link href="/profile" className="flex items-center justify-center font-medium">
+            <User className="size-4 mr-2" />
+            Profile Settings
+          </Link>
+        </DropdownMenuItem>
+        <DottedSeparator className="my-1" />
         <DropdownMenuItem
           onClick={() => logout()}
           className="h-10 flex items-center justify-center text-amber-700 font-medium cursor-pointer"
