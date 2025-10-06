@@ -105,9 +105,24 @@ const app = new Hono()
         userId: user.$id 
       });
     } catch (error: unknown) {
-      const appwriteError = error as { code?: number };
+      console.error("Registration error:", error);
+      const appwriteError = error as { code?: number; message?: string; type?: string };
+      
       if (appwriteError.code === 409) {
         return c.json({ error: "A user with this email already exists." }, 409);
+      }
+      
+      // Check for SMTP configuration issues during registration
+      if (appwriteError.type === "general_smtp_disabled" || 
+          (appwriteError.message && appwriteError.message.toLowerCase().includes("smtp"))) {
+        return c.json({ 
+          error: "Account created but verification email could not be sent. Please contact support.",
+          smtpError: true
+        }, 500);
+      }
+      
+      if (appwriteError.message) {
+        return c.json({ error: `Registration failed: ${appwriteError.message}` }, 500);
       }
       
       return c.json({ error: "Registration failed. Please try again." }, 500);
@@ -297,9 +312,32 @@ const app = new Hono()
         message: "Verification email sent! Please check your inbox and click the verification link." 
       });
     } catch (error: unknown) {
-      const appwriteError = error as { code?: number };
+      console.error("Resend verification error:", error);
+      const appwriteError = error as { code?: number; message?: string; type?: string };
+      
       if (appwriteError.code === 401) {
         return c.json({ error: "Invalid email or password." }, 401);
+      }
+      
+      if (appwriteError.code === 404) {
+        return c.json({ error: "User not found." }, 404);
+      }
+      
+      if (appwriteError.code === 429) {
+        return c.json({ error: "Too many requests. Please wait before trying again." }, 429);
+      }
+      
+      // Check for SMTP configuration issues
+      if (appwriteError.type === "general_smtp_disabled" || 
+          (appwriteError.message && appwriteError.message.toLowerCase().includes("smtp"))) {
+        return c.json({ 
+          error: "Email service is not configured. Please contact support to set up SMTP configuration.",
+          smtpError: true
+        }, 500);
+      }
+      
+      if (appwriteError.message) {
+        return c.json({ error: `Failed to send verification email: ${appwriteError.message}` }, 500);
       }
       
       return c.json({ error: "Failed to send verification email. Please try again." }, 500);
@@ -321,7 +359,27 @@ const app = new Hono()
         success: true, 
         message: "Password recovery email sent! Please check your inbox." 
       });
-    } catch {
+    } catch (error: unknown) {
+      console.error("Forgot password error:", error);
+      const appwriteError = error as { code?: number; message?: string; type?: string };
+      
+      // Check for SMTP configuration issues
+      if (appwriteError.type === "general_smtp_disabled" || 
+          (appwriteError.message && appwriteError.message.toLowerCase().includes("smtp"))) {
+        return c.json({ 
+          error: "Email service is not configured. Please contact support.",
+          smtpError: true
+        }, 500);
+      }
+      
+      if (appwriteError.code === 404) {
+        return c.json({ error: "User not found." }, 404);
+      }
+      
+      if (appwriteError.code === 429) {
+        return c.json({ error: "Too many requests. Please wait before trying again." }, 429);
+      }
+      
       return c.json({ error: "Failed to send recovery email. Please try again." }, 500);
     }
   })

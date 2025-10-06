@@ -15,6 +15,10 @@ export const useForgotPassword = () => {
   const mutation = useMutation<ResponseType, Error, RequestType>({
     mutationFn: async ({ json }) => {
       const response = await client.api.auth["forgot-password"].$post({ json });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(JSON.stringify(errorData));
+      }
       return await response.json();
     },
     onSuccess: (data) => {
@@ -24,8 +28,19 @@ export const useForgotPassword = () => {
         toast.error(String(data.error));
       }
     },
-    onError: () => {
-      toast.error("Failed to send recovery email.");
+    onError: (error) => {
+      try {
+        const errorData = JSON.parse(error.message);
+        if ('smtpError' in errorData && errorData.smtpError) {
+          toast.error("Email service is not configured. Please contact support.");
+        } else if ('error' in errorData) {
+          toast.error(String(errorData.error));
+        } else {
+          toast.error("Failed to send recovery email.");
+        }
+      } catch {
+        toast.error("Failed to send recovery email.");
+      }
     },
   });
 

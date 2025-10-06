@@ -1,6 +1,6 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Mail, RefreshCw } from "lucide-react";
 
@@ -9,12 +9,17 @@ import { Button } from "@/components/ui/button";
 
 const VerifyEmailSentPage = () => {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const email = searchParams.get("email") || "";
 
   const handleResendVerification = () => {
-    // For now, just show a message directing users to try logging in
-    // This will trigger the verification resend in the login flow
-    alert("To resend verification email, please try logging in with your credentials. You'll be redirected to resend the verification email if your account is unverified.");
+    if (!email) {
+      router.push("/verify-email-needed");
+      return;
+    }
+    
+    // Redirect to verify-email-needed page with the email pre-filled
+    router.push(`/verify-email-needed?email=${encodeURIComponent(email)}`);
   };
 
   return (

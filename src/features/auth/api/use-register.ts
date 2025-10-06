@@ -18,6 +18,10 @@ export const useRegister = () => {
   const mutation = useMutation<ResponseType, Error, RequestType>({
     mutationFn: async ({ json }) => {
       const response = await client.api.auth.register.$post({ json });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(JSON.stringify(errorData));
+      }
       return await response.json();
     },
     onSuccess: (data) => {
@@ -29,8 +33,19 @@ export const useRegister = () => {
       }
       queryClient.invalidateQueries({ queryKey: ["current"] });
     },
-    onError: () => {
-      toast.error("Failed to sign up.");
+    onError: (error) => {
+      try {
+        const errorData = JSON.parse(error.message);
+        if ('smtpError' in errorData && errorData.smtpError) {
+          toast.error("Account created but verification email could not be sent. Please contact support.");
+        } else if ('error' in errorData) {
+          toast.error(String(errorData.error));
+        } else {
+          toast.error("Failed to sign up.");
+        }
+      } catch {
+        toast.error("Failed to sign up.");
+      }
     },
   });
 
