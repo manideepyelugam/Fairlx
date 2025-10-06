@@ -10,7 +10,8 @@ import {
   verifyEmailSchema,
   resendVerificationSchema,
   forgotPasswordSchema,
-  resetPasswordSchema 
+  resetPasswordSchema,
+  changePasswordSchema
 } from "../schemas";
 import { createAdminClient } from "@/lib/appwrite";
 import { ID, ImageFormat, Client, Account } from "node-appwrite";
@@ -243,6 +244,37 @@ const app = new Hono()
       return c.json({ error: "Failed to upload profile image" }, 500);
     }
   })
+  .patch(
+    "/change-password",
+    sessionMiddleware,
+    zValidator("json", changePasswordSchema),
+    async (c) => {
+      try {
+        const account = c.get("account");
+        const { currentPassword, newPassword } = c.req.valid("json");
+
+        // Update password using Appwrite's updatePassword method
+        await account.updatePassword(newPassword, currentPassword);
+
+        return c.json({ success: true, message: "Password updated successfully" });
+      } catch (error: any) {
+        console.error("Change password error:", error);
+        
+        // Handle Appwrite specific errors
+        if (error.type === "user_invalid_credentials") {
+          return c.json({ error: "Current password is incorrect" }, 400);
+        }
+        
+        if (error.type === "user_password_recently_used") {
+          return c.json({ error: "Please choose a different password" }, 400);
+        }
+        
+        return c.json({ 
+          error: error.message || "Failed to change password. Please try again." 
+        }, 500);
+      }
+    }
+  )
   .post("/verify-email", zValidator("json", verifyEmailSchema), async (c) => {
     const { userId, secret } = c.req.valid("json");
 

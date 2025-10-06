@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Camera, Loader2, Mail, User, Calendar } from "lucide-react";
 import { useUpdateProfile } from "../api/use-update-profile";
 import { useUploadProfileImage } from "../api/use-upload-profile-image";
+import { ChangePasswordModal } from "./change-password-modal";
 import { Models } from "node-appwrite";
 import { toast } from "sonner";
 
@@ -20,6 +21,7 @@ interface ProfileClientProps {
 export const ProfileClient = ({ initialData }: ProfileClientProps) => {
   const [name, setName] = useState(initialData.name || "");
   const [isEditing, setIsEditing] = useState(false);
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(
     initialData.prefs?.profileImageUrl ?? null
   );
@@ -308,7 +310,12 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
                   disabled
                   className="bg-neutral-50"
                 />
-                <Button variant="outline">Change Password</Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => setIsChangePasswordModalOpen(true)}
+                >
+                  Change Password
+                </Button>
               </div>
               <p className="text-xs text-muted-foreground">
                 Last changed: Never
@@ -349,6 +356,11 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
           </CardContent>
         </Card>
       </div>
+
+      <ChangePasswordModal
+        open={isChangePasswordModalOpen}
+        onOpenChange={setIsChangePasswordModalOpen}
+      />
     </div>
   );
 };
