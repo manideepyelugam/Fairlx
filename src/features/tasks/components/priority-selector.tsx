@@ -1,3 +1,4 @@
+import * as React from "react";
 import { cn } from "@/lib/utils";
 import { TaskPriority } from "../types";
 import {
@@ -87,47 +88,70 @@ export const PriorityBadge = ({ priority, className }: PriorityBadgeProps) => {
   );
 };
 
-interface PrioritySelectorProps {
+type SelectTriggerProps = React.ComponentPropsWithoutRef<typeof SelectTrigger>;
+
+interface PrioritySelectorProps
+  extends Omit<
+    SelectTriggerProps,
+    "children" | "value" | "defaultValue" | "onValueChange"
+  > {
   value?: TaskPriority;
   onValueChange: (value: TaskPriority) => void;
   placeholder?: string;
   disabled?: boolean;
 }
 
-export const PrioritySelector = ({
-  value,
-  onValueChange,
-  placeholder = "Select priority",
-  disabled = false,
-}: PrioritySelectorProps) => {
-  return (
-    <Select
-      value={value}
-      onValueChange={onValueChange}
-      disabled={disabled}
-    >
-      <SelectTrigger className="h-8">
-        <SelectValue placeholder={placeholder}>
-          {value && (
-            <div className="flex items-center">
-              <PriorityIcon priority={value} className="mr-2" />
-              {value}
-            </div>
-          )}
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent>
-        {Object.values(TaskPriority).map((priority) => (
-          <SelectItem key={priority} value={priority}>
-            <div className="flex items-center">
-              <PriorityIcon priority={priority} className="mr-2" />
-              {priority}
-            </div>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-};
+export const PrioritySelector = React.forwardRef<
+  HTMLButtonElement,
+  PrioritySelectorProps
+>(
+  (
+    {
+      value,
+      onValueChange,
+      placeholder = "Select priority",
+      disabled = false,
+      className,
+      ...triggerProps
+    },
+    ref
+  ) => {
+    return (
+      <Select
+        value={value}
+        onValueChange={onValueChange}
+        disabled={disabled}
+      >
+        <SelectTrigger
+          ref={ref}
+          className={cn("h-8", className)}
+          disabled={disabled}
+          {...triggerProps}
+        >
+          <SelectValue placeholder={placeholder}>
+            {value && (
+              <div className="flex items-center">
+                <PriorityIcon priority={value} className="mr-2" />
+                {value}
+              </div>
+            )}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {Object.values(TaskPriority).map((priority) => (
+            <SelectItem key={priority} value={priority}>
+              <div className="flex items-center">
+                <PriorityIcon priority={priority} className="mr-2" />
+                {priority}
+              </div>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    );
+  }
+);
+
+PrioritySelector.displayName = "PrioritySelector";
 
 export { PriorityIcon };

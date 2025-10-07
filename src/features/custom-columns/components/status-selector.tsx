@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { snakeCaseToTitleCase } from "@/lib/utils";
+import { cn, snakeCaseToTitleCase } from "@/lib/utils";
 
 import {
   CircleCheckIcon,
@@ -63,70 +63,103 @@ export const statusIconMap: Record<TaskStatus, React.ReactNode> = {
   ),
 };
 
-interface StatusSelectorProps {
+type SelectTriggerProps = React.ComponentPropsWithoutRef<typeof SelectTrigger>;
+
+interface StatusSelectorProps
+  extends Omit<
+    SelectTriggerProps,
+    "children" | "value" | "defaultValue" | "onValueChange" | "onChange"
+  > {
   value?: string;
   onChange: (value: string) => void;
   placeholder?: string;
   projectId?: string;
+  disabled?: boolean;
 }
 
-export const StatusSelector = ({
-  value,
-  onChange,
-  placeholder = "Select status",
-  projectId,
-}: StatusSelectorProps) => {
-  const workspaceId = useWorkspaceId();
-  const { data: customColumns = { documents: [] } } = useGetCustomColumns({
-    workspaceId,
-    projectId,
-  });
+export const StatusSelector = React.forwardRef<
+  HTMLButtonElement,
+  StatusSelectorProps
+>(
+  (
+    {
+      value,
+      onChange,
+      placeholder = "Select status",
+      projectId,
+      className,
+      disabled = false,
+      ...triggerProps
+    },
+    ref
+  ) => {
+    const workspaceId = useWorkspaceId();
+    const { data: customColumns = { documents: [] } } = useGetCustomColumns({
+      workspaceId,
+      projectId,
+    });
 
-  const renderStatusItem = (statusValue: string, label: string, icon: React.ReactNode) => (
-    <SelectItem key={statusValue} value={statusValue}>
-      <div className="flex items-center gap-x-2">
-        {icon}
-        {label}
-      </div>
-    </SelectItem>
-  );
+    const renderStatusItem = (
+      statusValue: string,
+      label: string,
+      icon: React.ReactNode
+    ) => (
+      <SelectItem key={statusValue} value={statusValue}>
+        <div className="flex items-center gap-x-2">
+          {icon}
+          {label}
+        </div>
+      </SelectItem>
+    );
 
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-8">
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {/* Default status options */}
-        {Object.values(TaskStatus).map((status) => 
-          renderStatusItem(
-            status,
-            snakeCaseToTitleCase(status),
-            statusIconMap[status]
-          )
-        )}
-        
-        {/* Custom column options */}
-        {customColumns.documents.length > 0 && (
-          <>
-            {/* Separator */}
-            <div className="border-t my-1" />
-            {customColumns.documents.map((column) => {
-              const IconComponent = allIcons[column.icon as keyof typeof allIcons];
-              const icon = IconComponent ? (
-                <IconComponent 
-                  className="size-[18px]" 
-                  style={{ color: column.color }}
-                />
-              ) : (
-                <CircleIcon className="size-[18px]" style={{ color: column.color }} />
-              );
-              
-              return renderStatusItem(column.$id, column.name, icon);
-            })}
-          </>
-        )}
-      </SelectContent>
-    </Select>
-  );
-};
+    return (
+      <Select value={value} onValueChange={onChange} disabled={disabled}>
+        <SelectTrigger
+          ref={ref}
+          className={cn("h-8", className)}
+          disabled={disabled}
+          {...triggerProps}
+        >
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {/* Default status options */}
+          {Object.values(TaskStatus).map((status) =>
+            renderStatusItem(
+              status,
+              snakeCaseToTitleCase(status),
+              statusIconMap[status]
+            )
+          )}
+
+          {/* Custom column options */}
+          {customColumns.documents.length > 0 && (
+            <>
+              {/* Separator */}
+              <div className="border-t my-1" />
+              {customColumns.documents.map((column) => {
+                const IconComponent =
+                  allIcons[column.icon as keyof typeof allIcons];
+                const icon = IconComponent ? (
+                  <IconComponent
+                    className="size-[18px]"
+                    style={{ color: column.color }}
+                  />
+                ) : (
+                  <CircleIcon
+                    className="size-[18px]"
+                    style={{ color: column.color }}
+                  />
+                );
+
+                return renderStatusItem(column.$id, column.name, icon);
+              })}
+            </>
+          )}
+        </SelectContent>
+      </Select>
+    );
+  }
+);
+
+StatusSelector.displayName = "StatusSelector";

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import * as React from "react";
 import { X, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -72,24 +72,38 @@ export const LabelsDisplay = ({
   );
 };
 
-interface LabelSelectorProps {
+type ButtonProps = React.ComponentPropsWithoutRef<typeof Button>;
+
+interface LabelSelectorProps
+  extends Omit<ButtonProps, "children" | "onClick" | "type"> {
   selectedLabels: string[];
   onLabelsChange: (labels: string[]) => void;
   availableLabels?: string[];
   placeholder?: string;
-  disabled?: boolean;
+  wrapperClassName?: string;
 }
 
-export const LabelSelector = ({
-  selectedLabels = [],
-  onLabelsChange,
-  availableLabels = [],
-  placeholder = "Add labels...",
-  disabled = false,
-}: LabelSelectorProps) => {
-  const [open, setOpen] = useState(false);
-  const [newLabel, setNewLabel] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+export const LabelSelector = React.forwardRef<
+  HTMLButtonElement,
+  LabelSelectorProps
+>(
+  (
+    {
+      selectedLabels = [],
+      onLabelsChange,
+      availableLabels = [],
+      placeholder = "Add labels...",
+      wrapperClassName,
+      className,
+      disabled = false,
+      variant = "outline",
+      ...buttonProps
+    },
+    ref
+  ) => {
+  const [open, setOpen] = React.useState(false);
+  const [newLabel, setNewLabel] = React.useState("");
+  const [searchTerm, setSearchTerm] = React.useState("");
 
   const addLabel = (label: string) => {
     if (label && !selectedLabels.includes(label)) {
@@ -116,7 +130,7 @@ export const LabelSelector = ({
   );
 
   return (
-    <div className="space-y-2">
+    <div className={cn("space-y-2", wrapperClassName)}>
       {selectedLabels.length > 0 && (
         <LabelsDisplay labels={selectedLabels} onRemove={removeLabel} />
       )}
@@ -124,11 +138,13 @@ export const LabelSelector = ({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
-            variant="outline"
+            ref={ref}
+            variant={variant}
             role="combobox"
             aria-expanded={open}
-            className="h-8 justify-start"
+            className={cn("h-8 justify-start", className)}
             disabled={disabled}
+            {...buttonProps}
           >
             <Plus className="h-4 w-4 mr-2" />
             {placeholder}
@@ -183,7 +199,9 @@ export const LabelSelector = ({
       </Popover>
     </div>
   );
-};
+});
+
+LabelSelector.displayName = "LabelSelector";
 
 interface LabelFilterProps {
   selectedLabels: string[];
@@ -198,8 +216,8 @@ export const LabelFilter = ({
   availableLabels = [],
   placeholder = "Filter by labels",
 }: LabelFilterProps) => {
-  const [open, setOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [open, setOpen] = React.useState(false);
+  const [searchTerm, setSearchTerm] = React.useState("");
 
   const toggleLabel = (label: string) => {
     if (selectedLabels.includes(label)) {
