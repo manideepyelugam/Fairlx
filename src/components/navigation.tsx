@@ -52,26 +52,36 @@ export const Navigation = () => {
   const pathname = usePathname();
 
   return (
-    <ul className="flex flex-col">
+    <div className="p-3 border-b-[1.5px] border-neutral-200">
+      <p className="text-[13px] tracking-normal font-medium pb-3 pt-2 pl-2 text-primary">Main</p>
+ <ul className="flex flex-col ">
       {routes.map((item) => {
         const fullHref = `/workspaces/${workspaceId}${item.href}`;
         const isActive = pathname === fullHref;
         const Icon = isActive ? item.activeIcon : item.icon;
 
         return (
-          <Link key={item.href} href={fullHref}>
+          <div key={item.href}>
+           
+<Link href={fullHref}>
             <div
               className={cn(
-                "flex items-center gap-2.5 p-2.5 rounded-md font-medium hover:text-primary transition text-neutral-500",
-                isActive && "bg-white shadow-sm hover:opacity-100 text-primary"
+                "flex items-center gap-2.5 p-2.5 rounded-md font-medium  transition text-neutral-500",
+                isActive && "bg-neutral-200 shadow-sm hover:opacity-100 text-primary"
               )}
             >
-              <Icon className="size-5 text-neutral-500" />
-              {item.label}
+              <Icon className={cn("size-5 text-neutral-500", isActive && "text-primary")} />
+              <p className="text-[13px] tracking-tight font-medium">
+                {item.label}
+              </p>
             </div>
           </Link>
+          </div>
+          
         );
       })}
     </ul>
+    </div>
+
   );
 };

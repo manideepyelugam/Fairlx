@@ -1,17 +1,16 @@
-import { MoreHorizontalIcon } from "lucide-react";
-
-import { DottedSeparator } from "@/components/dotted-separator";
-import { Checkbox } from "@/components/ui/checkbox";
+import { CalendarIcon, MessageSquareIcon, PaperclipIcon, MoreHorizontalIcon } from "lucide-react";
 
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
+import { DottedSeparator } from "@/components/dotted-separator";
+import { Checkbox } from "@/components/ui/checkbox";
 
 import { TaskActions } from "./task-actions";
-import { TaskDate } from "./task-date";
-import { PriorityBadge } from "./priority-selector";
-import { LabelsDisplay } from "./label-management";
+import { LabelBadge } from "./LabelBadge";
+import { PriorityBadge } from "./PriorityBadge";
 
 import { PopulatedTask } from "../types";
+import { ta } from "date-fns/locale";
 
 interface KanbanCardProps {
   task: PopulatedTask;
@@ -26,12 +25,26 @@ export const KanbanCard = ({
   onSelect,
   showSelection = false 
 }: KanbanCardProps) => {
+  // Format the date to match screenshot (e.g., "Mar 13, 2024")
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
+  };
+
+  console.log("Rendering KanbanCard for task:", task);
+
   return (
-    <div className={`bg-white p-2.5 mb-1.5 rounded shadow-sm space-y-3 ${
+    <div className={`bg-white  mb-2.5 rounded-xl border  shadow-sm cursor-pointer ${
       isSelected ? 'ring-2 ring-blue-500' : ''
     } ${showSelection ? 'hover:bg-gray-50' : ''}`}>
-      <div className="flex items-start justify-between gap-x-2">
-        {showSelection && (
+      <div className="flex p-4 flex-col items-start justify-between gap-x-2">
+        
+        
+        {/* {showSelection && (
           <div className="flex items-center">
             <Checkbox
               checked={isSelected}
@@ -39,41 +52,66 @@ export const KanbanCard = ({
               onClick={(e) => e.stopPropagation()}
             />
           </div>
-        )}
-        <p className="text-sm line-clamp-2 flex-1">{task.name}</p>
+        )} */}
+
+        <div className="flex-1 flex w-full justify-between ">
+
+        <div className="flex gap-2">
+{task.priority && <PriorityBadge priority={task.priority} />}
+
+                {task.labels && task.labels.length > 0 && (
+  <div className="flex flex-wrap gap-1 ">
+    {task.labels.slice(0, 2).map((label, index) => (
+      <LabelBadge key={index} label={label} />
+    ))}
+   
+  </div>
+)}
+
+        </div>
+                 
+
         <div className="flex items-center gap-1">
-          {task.priority && <PriorityBadge priority={task.priority} />}
           <TaskActions id={task.$id} projectId={task.projectId}>
             <MoreHorizontalIcon className="size-[18px] stroke-1 shrink-0 text-neutral-700 hover:opacity-75 transition" />
           </TaskActions>
         </div>
-      </div>
-      
-      {task.labels && task.labels.length > 0 && (
-        <LabelsDisplay labels={task.labels} maxDisplay={2} />
-      )}
-      
-      <DottedSeparator />
-      <div className="flex items-center gap-x-1.5">
-        {task.assignee && (
-          <MemberAvatar
-            name={task.assignee.name}
-            fallbackClassName="text-[10px]"
-          />
-        )}
-        <div className="size-1 rounded-full bg-neutral-300" />
-        <TaskDate value={task.dueDate} className="text-xs" />
-      </div>
-      {task.project && (
-        <div className="flex items-center gap-x-1.5">
-          <ProjectAvatar
-            name={task.project.name}
-            image={task.project.imageUrl}
-            fallbackClassName="text-[10px]"
-          />
-          <span className="text-xs font-medium">{task.project.name}</span>
+
         </div>
-      )}
+
+        <h1 className="text-sm line-clamp-2 mt-4 font-semibold flex-1">{task.name}</h1>
+       <p className="text-xs text-gray-600 mt-1 line-clamp-3">
+  {task.description
+    ?.split(" ")
+    .slice(0, 10)
+    .join(" ")}
+  {task.description?.split(" ").length > 10 ? "..." : ""}
+</p>
+
+      </div>
+      
+     
+      
+
+              
+
+      <div className="flex items-center border-t py-3 px-4 border-gray-200 gap-x-1.5">
+
+        
+
+<p className="text-xs flex gap-0.5 items-center">
+  <CalendarIcon className="size-[14px] inline-block mr-1 text-gray-500" />
+  {task.dueDate
+    ? new Date(task.dueDate).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }).replace(/ /g, "-") // replaces spaces with hyphens
+    : "No Date"}
+</p>
+         
+      </div>
+    
     </div>
   );
 };

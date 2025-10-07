@@ -7,7 +7,7 @@ import {
   Draggable,
   type DropResult,
 } from "@hello-pangea/dnd";
-import { Settings2Icon } from "lucide-react";
+import { Settings2Icon, PlusIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/hooks/use-confirm";
@@ -15,6 +15,7 @@ import { useConfirm } from "@/hooks/use-confirm";
 import { KanbanCard } from "@/features/tasks/components/kanban-card";
 import { KanbanColumnHeader } from "@/features/tasks/components/kanban-column-header";
 import { BulkActionsToolbar } from "@/features/tasks/components/bulk-actions-toolbar";
+import { useCreateTaskModal } from "@/features/tasks/hooks/use-create-task-modal";
 
 import { Task, TaskStatus } from "@/features/tasks/types";
 import { useBulkUpdateTasks } from "@/features/tasks/api/use-bulk-update-tasks";
@@ -71,6 +72,7 @@ export const EnhancedDataKanban = ({
   
 
   const { open: openManageModal } = useManageColumnsModal();
+  const { open: openCreateTask } = useCreateTaskModal();
   const { getEnabledColumns } = useDefaultColumns(workspaceId, projectId);
   const { mutate: updateColumnOrder } = useUpdateColumnOrder();
 
@@ -386,7 +388,7 @@ export const EnhancedDataKanban = ({
                   size="sm"
                   onClick={openManageModal}
                 >
-                  <Settings2Icon className="size-4 mr-2" />
+                  <Settings2Icon className="size-4 !text-xs mr-2" />
                   Manage Columns
                 </Button>
               </>
@@ -405,7 +407,7 @@ export const EnhancedDataKanban = ({
               <div
                 {...provided.droppableProps}
                 ref={provided.innerRef}
-                className="flex overflow-x-auto"
+                className="flex overflow-x-auto gap-4 pb-4"
               >
                 {orderedColumns.map((column, index) => {
                   const columnTasks = tasks[column.id] || [];
@@ -424,7 +426,7 @@ export const EnhancedDataKanban = ({
                         <div
                           ref={provided.innerRef}
                           {...provided.draggableProps}
-                          className={`flex-1 mx-2 bg-muted p-1.5 rounded-md min-w-[200px] ${
+                          className={`flex-1 bg-gray-50 rounded-xl min-w-[280px] border shadow-sm max-w-[360px] ${
                             snapshot.isDragging ? 'shadow-lg' : ''
                           }`}
                         >
@@ -456,7 +458,7 @@ export const EnhancedDataKanban = ({
                               <div
                                 {...provided.droppableProps}
                                 ref={provided.innerRef}
-                                className="min-h-[200px] py-1.5"
+                                className="min-h-[500px] px-3 pb-3"
                               >
                                 {columnTasks.map((task, index) => (
                                   <Draggable
@@ -482,6 +484,15 @@ export const EnhancedDataKanban = ({
                                   </Draggable>
                                 ))}
                                 {provided.placeholder}
+                                {/* Add Task Button */}
+                                <Button
+                                  onClick={openCreateTask}
+                                  variant="ghost"
+                                  className="w-full text-xs bg-white border border-gray-200 shadow-sm justify-start text-gray-500  mt-2"
+                                >
+                                  <PlusIcon className="h-4 w-4 " />
+                                  Add Task
+                                </Button>
                               </div>
                             )}
                           </Droppable>

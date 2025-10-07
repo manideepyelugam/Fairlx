@@ -108,7 +108,7 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly }: DataFiltersP
 
   return (
     <div className="flex flex-col lg:flex-row gap-2">
-      <TaskSearch className="w-full lg:w-64" />
+      <TaskSearch className="w-full text-xs lg:w-64" />
       
       <Select
         value={status ?? "all"}
@@ -116,29 +116,32 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly }: DataFiltersP
           onStatusChange(value);
         }}
       >
+        
         <SelectTrigger className="w-full lg:w-auto h-8">
-          <div className="flex items-center pr-2">
+          <div className="flex text-xs items-center pr-2">
             <ListChecksIcon className="size-4 mr-2" />
             <SelectValue placeholder="All statuses" />
           </div>
         </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All statuses</SelectItem>
+
+
+        <SelectContent >
+          <SelectItem value="all" className="text-xs">All statuses</SelectItem>
           <SelectSeparator />
           <SelectItem value={TaskStatus.BACKLOG}>
-            <div className="flex items-center gap-x-2">{statusIconMap[TaskStatus.BACKLOG]}Backlog</div>
+            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.BACKLOG]}Backlog</div>
           </SelectItem>
           <SelectItem value={TaskStatus.IN_PROGRESS}>
-            <div className="flex items-center gap-x-2">{statusIconMap[TaskStatus.IN_PROGRESS]}In Progress</div>
+            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.IN_PROGRESS]}In Progress</div>
           </SelectItem>
           <SelectItem value={TaskStatus.IN_REVIEW}>
-            <div className="flex items-center gap-x-2">{statusIconMap[TaskStatus.IN_REVIEW]}In Review</div>
+            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.IN_REVIEW]}In Review</div>
           </SelectItem>
           <SelectItem value={TaskStatus.TODO}>
-            <div className="flex items-center gap-x-2">{statusIconMap[TaskStatus.TODO]}Todo</div>
+            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.TODO]}Todo</div>
           </SelectItem>
           <SelectItem value={TaskStatus.DONE}>
-            <div className="flex items-center gap-x-2">{statusIconMap[TaskStatus.DONE]}Done</div>
+            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.DONE]}Done</div>
           </SelectItem>
 
           {customColumnOptions && customColumnOptions.length > 0 && (
@@ -172,22 +175,24 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly }: DataFiltersP
           }}
         >
           <SelectTrigger className="w-full lg:w-auto h-8">
-            <div className="flex items-center pr-2">
+            <div className="flex text-xs items-center pr-2">
               <UserIcon className="size-4 mr-2" />
               <SelectValue placeholder="All assignees" />
             </div>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All assignees</SelectItem>
+            <SelectItem className="text-xs" value="all">All assignees</SelectItem>
             <SelectSeparator />
             {memberOptions?.map((member) => (
-              <SelectItem key={member.value} value={member.value}>
+              <SelectItem className="text-xs" key={member.value} value={member.value}>
                 {member.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       )}
+
+
       {!hideProjectFilter && (
         <Select
           value={projectId ?? "all"}
@@ -214,7 +219,7 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly }: DataFiltersP
       )}
       <DatePicker
         placeholder="Due date"
-        className="h-8 w-full lg:w-auto"
+        className="h-8 text-xs w-full lg:w-auto"
         value={dueDate ? new Date(dueDate) : undefined}
         onChange={(date) => {
           setFilters({ dueDate: date ? date.toISOString() : null });
@@ -231,7 +236,7 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly }: DataFiltersP
           }
         }}
       >
-        <SelectTrigger className="w-full lg:w-auto h-8">
+        <SelectTrigger className="w-full !text-xs lg:w-auto h-8">
           <div className="flex items-center pr-2">
             <AlertTriangleIcon className="size-4 mr-2" />
             <SelectValue placeholder="All priorities">
@@ -244,12 +249,12 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly }: DataFiltersP
             </SelectValue>
           </div>
         </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All priorities</SelectItem>
+        <SelectContent className="!text-xs">
+          <SelectItem className="text-xs" value="all">All priorities</SelectItem>
           <SelectSeparator />
           {Object.values(TaskPriority).map((priorityValue) => (
             <SelectItem key={priorityValue} value={priorityValue}>
-              <div className="flex items-center">
+              <div className="flex text-xs items-center">
                 <PriorityIcon priority={priorityValue as TaskPriority} className="mr-2" />
                 {priorityValue}
               </div>
@@ -258,12 +263,13 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly }: DataFiltersP
         </SelectContent>
       </Select>
 
-      <div className="w-full lg:w-auto">
+      <div className="w-full  lg:w-auto">
         <LabelFilter
           selectedLabels={labels ?? []}
           onLabelsChange={onLabelsChange}
           availableLabels={availableLabels}
           placeholder="Filter by labels"
+          
         />
       </div>
     </div>

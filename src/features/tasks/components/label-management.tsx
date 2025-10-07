@@ -223,27 +223,30 @@ export const LabelFilter = ({
           }
         />
       )}
-      
+
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="h-8 justify-start"
+            className="h-8 text-xs font-normal justify-start"
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="h-4 w-4 font-normal text-xs " />
             {placeholder}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-80 p-2">
+
+        <PopoverContent className="w-80 !text-xs p-2">
           <div className="space-y-2">
-            <Input
+            <input
+              className="w-full px-2 py-2 border rounded text-xs"
+              type="text"
               placeholder="Search labels..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            
+
             <div className="max-h-40 overflow-y-auto space-y-1">
               {filteredLabels.map((label) => (
                 <div
@@ -255,13 +258,13 @@ export const LabelFilter = ({
                     type="checkbox"
                     checked={selectedLabels.includes(label)}
                     onChange={() => toggleLabel(label)}
-                    className="h-4 w-4"
+                    className="h-4 w-4 text-xs"
                   />
-                  <span className="text-sm">{label}</span>
+                  <span className="text-xs">{label}</span>
                 </div>
               ))}
             </div>
-            
+
             {filteredLabels.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-2">
                 No labels found
@@ -272,4 +275,5 @@ export const LabelFilter = ({
       </Popover>
     </div>
   );
+
 };

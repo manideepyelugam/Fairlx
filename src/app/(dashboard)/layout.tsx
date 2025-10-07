@@ -21,14 +21,16 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <EditTaskModal />
       <CreateCustomColumnModalWrapper />
       <ManageColumnsModalWrapper />
-      <div className="flex w-full h-full">
+      <div className="flex w-full h-screen">
         <div className="fixed left-0 top-0 hidden lg:block lg:w-[264px] h-full overflow-y-auto">
           <Sidebar />
         </div>
-        <div className="lg:pl-[264px] w-full">
-          <div className="mx-auto max-w-screen-2xl h-full">
-            <Navbar />
-            <main className="h-full py-8 px-6 flex flex-col">{children}</main>
+        <div className="lg:pl-[264px] w-full h-full flex flex-col">
+          <Navbar />
+          <div className="flex-1 overflow-y-scroll">
+            <div className="mx-auto max-w-screen-2xl">
+              <main className="py-8 px-6 flex flex-col overflow-y-scroll">{children}</main>
+            </div>
           </div>
         </div>
       </div>

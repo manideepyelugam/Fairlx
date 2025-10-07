@@ -9,7 +9,7 @@ import { ProjectAvatar } from "@/features/projects/components/project-avatar";
 import { Button } from "@/components/ui/button";
 
 import { TaskActions } from "./task-actions";
-import { TaskDate } from "./task-date";
+// import { TaskDate } from "./task-date";
 import { StatusDisplay } from "@/features/custom-columns/components/status-display";
 import { PriorityBadge } from "./priority-selector";
 import { LabelsDisplay } from "./label-management";
@@ -100,25 +100,25 @@ export const columns: ColumnDef<PopulatedTask>[] = [
       );
     },
   },
-  {
-    accessorKey: "dueDate",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Due Date
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: ({ row }) => {
-      const dueDate = row.original.dueDate;
+  // {
+  //   accessorKey: "dueDate",
+  //   header: ({ column }) => {
+  //     return (
+  //       <Button
+  //         variant="ghost"
+  //         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+  //       >
+  //         Due Date
+  //         <ArrowUpDown className="ml-2 h-4 w-4" />
+  //       </Button>
+  //     );
+  //   },
+  //   cell: ({ row }) => {
+  //     const dueDate = row.original.dueDate;
 
-      return <TaskDate value={dueDate} />;
-    },
-  },
+  //     return <TaskDate value={dueDate} />;
+  //   },
+  // },
   {
     accessorKey: "status",
     header: ({ column }) => {

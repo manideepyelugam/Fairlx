@@ -34,27 +34,34 @@ export const ProjectIdClient = () => {
 
   return (
     <div className="flex flex-col gap-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-x-2">
-          <ProjectAvatar
-            name={project.name}
-            image={project.imageUrl}
-            className="size-8"
-          />
-          <p className="text-lg font-semibold">{project.name}</p>
+      
+      <div className="flex items-center mb-4 justify-between">
+
+
+        <div className="flex  gap-x-2 flex-col items-start gap-y-1.5">
+          <p className="text-2xl tracking-tight  font-semibold">{project.name}</p>
+          <p className="text-sm tracking-normal font-medium text-neutral-500">Track your project and goals with full AI Assistance</p>
         </div>
+
+
         <div>
-          <Button variant="secondary" size="sm" asChild>
-            <Link
-              href={`/workspaces/${project.workspaceId}/projects/${project.$id}/settings`}
-            >
-              <PencilIcon className="size-4 mr-2" />
-              Edit Project
-            </Link>
-          </Button>
+       
+
+<Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/settings`} className="!text-sm" >
+ <button 
+  type="button" 
+  className="inline-flex items-center rounded-md border border-input px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+>
+  
+  <PencilIcon className="size-4 mr-3" />
+  Edit Project
+</button></Link>
+
         </div>
+
+
       </div>
-      {analytics && <Analytics data={analytics} />}
+      {/* {analytics && <Analytics data={analytics} />} */}
       <TaskViewSwitcher hideProjectFilter={true} />
     </div>
   );

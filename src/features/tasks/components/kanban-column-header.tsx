@@ -5,6 +5,7 @@ import {
   CircleDotIcon,
   CircleIcon,
   PlusIcon,
+  MoreHorizontalIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -48,12 +49,12 @@ export const KanbanColumnHeader = ({
   const { open } = useCreateTaskModal();
 
   const icon = statusIconMap[board];
-
+  
   const isAllSelected = taskCount > 0 && selectedCount === taskCount;
   const isPartiallySelected = selectedCount > 0 && selectedCount < taskCount;
 
   return (
-    <div className="px-2 py-1.5 flex items-center justify-between">
+    <div className="px-3 py-2 flex items-center justify-between mb-2">
       <div className="flex items-center gap-x-2">
         {showSelection && (
           <Checkbox
@@ -66,19 +67,17 @@ export const KanbanColumnHeader = ({
           />
         )}
         {icon}
-        <h2 className="text-sm font-medium">{snakeCaseToTitleCase(board)}</h2>
-        <div className="size-5 flex items-center justify-center rounded-md bg-neutral-200 text-xs text-neutral-700 font-medium">
-          {taskCount}
-        </div>
-        {showSelection && selectedCount > 0 && (
-          <div className="size-5 flex items-center justify-center rounded-md bg-blue-200 text-xs text-blue-700 font-medium">
-            {selectedCount}
-          </div>
-        )}
+        <h2 className="text-sm font-semibold text-gray-700">{snakeCaseToTitleCase(board)}</h2>
       </div>
-      <Button onClick={open} variant="ghost" size="icon" className="size-5">
-        <PlusIcon className="size-4 text-neutral-500" />
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button onClick={open} variant="ghost" size="icon" className="h-6 w-6 hover:bg-gray-100">
+          <PlusIcon className="h-4 w-4 text-gray-500" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-gray-100">
+          <MoreHorizontalIcon className="h-4 w-4 text-gray-500" />
+        </Button>
+      </div>
     </div>
   );
 };
+
