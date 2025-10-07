@@ -1,1 +1,1 @@
-export const AUTH_COOKIE = "scrumty-session";
+export const AUTH_COOKIE = "fairlx-session";

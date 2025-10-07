@@ -18,14 +18,14 @@ export const Navigation = () => {
             <div className="relative">
               <Image 
                 src="/logo.png" 
-                alt="Scrumty" 
+                alt="Fairlx" 
                 width={32} 
                 height={32} 
                 className="transition-transform group-hover:scale-110"
               />
             </div>
             <span className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
-              Scrumty
+              Fairlx
             </span>
           </Link>
 

@@ -1,9 +1,9 @@
-# 🚀 Scrumpty - Modern Task Management for Growing Teams
+# 🚀 Fairlx - Modern Task Management for Growing Teams
 
 <div align="center">
 
 
-<img src="public/Logo.png" alt="Scrumpty Logo" width="120" height="120" />
+<img src="public/Logo.png" alt="Fairlx Logo" width="120" height="120" />
 
 **Simplifying Task Management for Growing Teams**
 
@@ -14,7 +14,7 @@
 
 *Empower your team with tools that simplify task management, improve coordination, and ensure nothing slips through the cracks as your business expands.*
 
-[🌐 Live Demo](#) | [📖 Documentation](#) | [🐛 Report Bug](https://github.com/yourusername/scrumpty/issues)
+[🌐 Live Demo](#) | [📖 Documentation](#) | [🐛 Report Bug](https://github.com/yourusername/fairlx/issues)
 
 </div>
 
@@ -90,8 +90,8 @@
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/scrumpty.git
-   cd scrumpty
+   git clone https://github.com/yourusername/fairlx.git
+   cd fairlx
    ```
 
 2. **Install dependencies**
@@ -149,7 +149,7 @@
 ## 📁 Project Structure
 
 ```
-scrumpty/
+fairlx/
 ├── public/                 # Static assets
 │   ├── Logo.png           # App logo
 │   ├── heroimg.jpg        # Landing page hero image
@@ -330,8 +330,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 <div align="center">
 
-**Built with ❤️ by the Scrumpty Team**
+**Built with ❤️ by the Fairlx Team**
 
-[⭐ Star us on GitHub](https://github.com/yourusername/scrumpty)
+[⭐ Star us on GitHub](https://github.com/yourusername/fairlx)
 
 </div>
