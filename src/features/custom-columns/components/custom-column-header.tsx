@@ -46,10 +46,6 @@ interface CustomColumnHeaderProps {
 
 export const CustomColumnHeader = ({
   customColumn,
-  taskCount,
-  selectedCount = 0,
-  onSelectAll,
-  showSelection = false,
   showDelete = false,
 }: CustomColumnHeaderProps) => {
   const { open } = useCreateTaskModal();

@@ -32,7 +32,7 @@ export const Navbar = () => {
   const pathnameParts = pathname.split("/");
   const pathnameKey = pathnameParts[3] as keyof typeof pathnameMap;
 
-  const { title, description } = pathnameMap[pathnameKey] || defaultMap;
+  const { title } = pathnameMap[pathnameKey] || defaultMap;
 
   return (
     <nav className="py-[15px] px-6 flex items-center border-b border-neutral-200 sticky top-0 left-0 right-0 z-10 justify-between bg-white">

@@ -1,16 +1,10 @@
-import { CalendarIcon, MessageSquareIcon, PaperclipIcon, MoreHorizontalIcon } from "lucide-react";
-
-import { MemberAvatar } from "@/features/members/components/member-avatar";
-import { ProjectAvatar } from "@/features/projects/components/project-avatar";
-import { DottedSeparator } from "@/components/dotted-separator";
-import { Checkbox } from "@/components/ui/checkbox";
+import { CalendarIcon, MoreHorizontalIcon } from "lucide-react";
 
 import { TaskActions } from "./task-actions";
 import { LabelBadge } from "./LabelBadge";
 import { PriorityBadge } from "./PriorityBadge";
 
 import { PopulatedTask } from "../types";
-import { ta } from "date-fns/locale";
 
 interface KanbanCardProps {
   task: PopulatedTask;
@@ -20,25 +14,12 @@ interface KanbanCardProps {
 }
 
 export const KanbanCard = ({ 
-  task, 
+  task,
   isSelected = false,
-  onSelect,
-  showSelection = false 
+  showSelection = false
 }: KanbanCardProps) => {
-  // Format the date to match screenshot (e.g., "Mar 13, 2024")
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric' 
-    });
-  };
-
-  console.log("Rendering KanbanCard for task:", task);
-
   return (
-    <div className={`bg-white  mb-2.5 rounded-xl border  shadow-sm cursor-pointer ${
+    <div className={`bg-white mb-2.5 rounded-xl border shadow-sm cursor-pointer ${
       isSelected ? 'ring-2 ring-blue-500' : ''
     } ${showSelection ? 'hover:bg-gray-50' : ''}`}>
       <div className="flex p-4 flex-col items-start justify-between gap-x-2">
@@ -85,7 +66,7 @@ export const KanbanCard = ({
     ?.split(" ")
     .slice(0, 10)
     .join(" ")}
-  {task.description?.split(" ").length > 10 ? "..." : ""}
+  {task.description?.split(" ").length && task.description.split(" ").length > 10 ? "..." : ""}
 </p>
 
       </div>
