@@ -1,6 +1,7 @@
 "use client";
 
 import { Mail } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -10,11 +11,16 @@ interface EmailVerificationPromptProps {
 }
 
 export const EmailVerificationPrompt = ({ email, onClose }: EmailVerificationPromptProps) => {
+  const router = useRouter();
+
   const handleResendVerification = () => {
-    if (!email) return;
+    if (!email) {
+      router.push("/verify-email-needed");
+      return;
+    }
     
-    // Direct users to try logging in, which will handle the resend flow
-    alert("To resend the verification email, please try logging in with your credentials. If your email isn't verified, you'll be guided through the resend process.");
+    // Navigate to verify-email-needed page with email pre-filled
+    router.push(`/verify-email-needed?email=${encodeURIComponent(email)}`);
   };
 
   return (
