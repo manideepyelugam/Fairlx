@@ -52,7 +52,7 @@ export const Navigation = () => {
   const pathname = usePathname();
 
   return (
-    <div className="p-3 border-b-[1.5px] border-neutral-200">
+    <div className="p-3 border-b-[1.5px] border-neutral-200 flex-shrink-0">
       <p className="text-[13px] tracking-normal font-medium pb-3 pt-2 pl-2 text-primary">Main</p>
  <ul className="flex flex-col ">
       {routes.map((item) => {
