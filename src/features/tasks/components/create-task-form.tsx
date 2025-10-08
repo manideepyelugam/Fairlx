@@ -40,7 +40,7 @@ import { AssigneeMultiSelect } from "./assignee-multi-select";
 interface CreateTaskFormProps {
   onCancel?: () => void;
   projectOptions: { id: string; name: string; imageUrl: string }[];
-  memberOptions: { id: string; name: string }[];
+  memberOptions: { id: string; name: string; imageUrl?: string | null }[];
 }
 
 export const CreateTaskForm = ({

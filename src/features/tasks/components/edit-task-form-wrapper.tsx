@@ -40,6 +40,7 @@ export const EditTaskFormWrapper = ({
   const memberOptions = members?.documents.map((member) => ({
     id: member.$id,
     name: member.name,
+    imageUrl: member.profileImageUrl ?? undefined,
   }));
 
   const isLoading = isLoadingProjects || isLoadingMembers || isLoadingTask;

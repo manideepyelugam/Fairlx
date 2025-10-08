@@ -74,6 +74,11 @@ export const DataCalendar = ({ data }: DataCalendarProps) => {
   const events = data.map((task) => {
     // Check if it's a milestone (same start and end date)
     const isMilestone = !task.endDate || task.dueDate === task.endDate;
+    const assigneeList = task.assignees?.length
+      ? task.assignees
+      : task.assignee
+      ? [task.assignee]
+      : [];
     
     return {
       start: new Date(task.dueDate),
@@ -81,6 +86,7 @@ export const DataCalendar = ({ data }: DataCalendarProps) => {
       title: task.name,
       project: task.project,
       assignee: task.assignee,
+      assignees: assigneeList,
       status: Object.values(TaskStatus).includes(task.status as TaskStatus) 
         ? task.status as TaskStatus 
         : TaskStatus.TODO, // Default fallback for custom columns
@@ -120,6 +126,7 @@ export const DataCalendar = ({ data }: DataCalendarProps) => {
             id={event.id}
             title={event.title}
             assignee={event.assignee}
+            assignees={event.assignees}
             project={event.project}
             status={event.status}
             isMilestone={event.isMilestone}

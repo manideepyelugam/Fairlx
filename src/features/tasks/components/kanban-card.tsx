@@ -3,6 +3,7 @@ import { CalendarIcon, MoreHorizontalIcon } from "lucide-react";
 import { TaskActions } from "./task-actions";
 import { LabelBadge } from "./LabelBadge";
 import { PriorityBadge } from "./PriorityBadge";
+import { AssigneeAvatarGroup } from "./assignee-avatar-group";
 
 import { PopulatedTask } from "../types";
 
@@ -18,6 +19,12 @@ export const KanbanCard = ({
   isSelected = false,
   showSelection = false
 }: KanbanCardProps) => {
+  const assignees = task.assignees?.length
+    ? task.assignees
+    : task.assignee
+    ? [task.assignee]
+    : [];
+
   return (
     <div className={`bg-white mb-2.5 rounded-xl border shadow-sm cursor-pointer ${
       isSelected ? 'ring-2 ring-blue-500' : ''
@@ -76,21 +83,35 @@ export const KanbanCard = ({
 
               
 
-      <div className="flex items-center border-t py-3 px-4 border-gray-200 gap-x-1.5">
+      <div className="flex items-center border-t py-3 px-4 border-gray-200 gap-x-1.5 justify-between">
+        <p className="text-xs flex gap-0.5 items-center text-muted-foreground">
+          <CalendarIcon className="size-[14px] inline-block mr-1 text-gray-500" />
+          {task.dueDate
+            ? new Date(task.dueDate)
+                .toLocaleDateString("en-GB", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
+                .replace(/ /g, "-")
+            : "No Date"}
+        </p>
 
-        
-
-<p className="text-xs flex gap-0.5 items-center">
-  <CalendarIcon className="size-[14px] inline-block mr-1 text-gray-500" />
-  {task.dueDate
-    ? new Date(task.dueDate).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }).replace(/ /g, "-") // replaces spaces with hyphens
-    : "No Date"}
-</p>
-         
+        <div className="flex items-center gap-x-2">
+          {assignees.length > 0 ? (
+            <AssigneeAvatarGroup
+              assignees={assignees}
+              visibleCount={3}
+              avatarClassName="size-6 border-2 border-white"
+              fallbackClassName="text-xs"
+              extraCountClassName="size-6 rounded-full bg-muted text-xs font-medium flex items-center justify-center border-2 border-white"
+              popoverAlign="end"
+              ariaLabel={`View ${assignees.length} assignees`}
+            />
+          ) : (
+            <span className="text-xs text-muted-foreground">Unassigned</span>
+          )}
+        </div>
       </div>
     
     </div>

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { snakeCaseToTitleCase } from "@/lib/utils";
 
 import { MemberAvatar } from "@/features/members/components/member-avatar";
+import { AssigneeAvatarGroup } from "./assignee-avatar-group";
 
 import { OverviewProperty } from "./overview-property";
 import { TaskDate } from "./task-date";
@@ -35,30 +36,27 @@ export const TaskOverview = ({ task }: TaskOverviewProps) => {
           <OverviewProperty label={task.assignees && task.assignees.length > 1 ? "Assignees" : "Assignee"}>
             {task.assignees && task.assignees.length > 0 ? (
               <div className="flex items-center gap-x-2">
-                <div className="flex -space-x-2">
-                  {task.assignees.slice(0, 3).map((assignee: { $id: string; name: string }) => (
-                    <MemberAvatar
-                      key={assignee.$id}
-                      name={assignee.name}
-                      className="size-6 border-2 border-white"
-                    />
-                  ))}
-                  {task.assignees.length > 3 && (
-                    <div className="size-6 bg-muted border-2 border-white rounded-full flex items-center justify-center">
-                      <span className="text-xs font-medium">+{task.assignees.length - 3}</span>
-                    </div>
-                  )}
-                </div>
+                <AssigneeAvatarGroup
+                  assignees={task.assignees}
+                  visibleCount={3}
+                  avatarClassName="size-6 border-2 border-white"
+                  fallbackClassName="text-xs"
+                  extraCountClassName="size-6 bg-muted border-2 border-white rounded-full flex items-center justify-center text-xs font-medium"
+                  popoverAlign="start"
+                  ariaLabel={`View ${task.assignees.length} assignees`}
+                />
                 <div className="flex flex-col">
                   <p className="text-sm font-medium">
-                    {task.assignees.length === 1 
-                      ? task.assignees[0].name 
-                      : `${task.assignees.length} assignees`
-                    }
+                    {task.assignees.length === 1
+                      ? task.assignees[0].name || task.assignees[0].email || "Unknown member"
+                      : `${task.assignees.length} assignees`}
                   </p>
                   {task.assignees.length > 1 && (
                     <p className="text-xs text-muted-foreground">
-                      {task.assignees.slice(0, 2).map((a: { name: string }) => a.name).join(", ")}
+                      {task.assignees
+                        .slice(0, 2)
+                        .map((a) => a.name || a.email || "Unknown member")
+                        .join(", ")}
                       {task.assignees.length > 2 && "..."}
                     </p>
                   )}
@@ -66,7 +64,11 @@ export const TaskOverview = ({ task }: TaskOverviewProps) => {
               </div>
             ) : task.assignee ? (
               <>
-                <MemberAvatar name={task.assignee.name} className="size-6" />
+                <MemberAvatar
+                  name={task.assignee.name}
+                  className="size-6"
+                  imageUrl={task.assignee.profileImageUrl}
+                />
                 <p className="text-sm font-medium">{task.assignee.name}</p>
               </>
             ) : (

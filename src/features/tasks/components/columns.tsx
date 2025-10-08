@@ -3,8 +3,8 @@
 import { ArrowUpDown, MoreVertical } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 
-import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
+import { AssigneeAvatarGroup } from "./assignee-avatar-group";
 
 import { Button } from "@/components/ui/button";
 
@@ -82,20 +82,33 @@ export const columns: ColumnDef<PopulatedTask>[] = [
       );
     },
     cell: ({ row }) => {
-      const assignee = row.original.assignee;
+      const assignees = row.original.assignees?.length
+        ? row.original.assignees
+        : row.original.assignee
+        ? [row.original.assignee]
+        : [];
 
-      if (!assignee) {
+      if (assignees.length === 0) {
         return <p className="text-sm text-muted-foreground">Unassigned</p>;
       }
 
+      const summaryText =
+        assignees.length === 1
+          ? assignees[0].name || assignees[0].email || "Unknown member"
+          : `${assignees.length} assignees`;
+
       return (
         <div className="flex items-center gap-x-2 text-sm font-medium">
-          <MemberAvatar
-            className="size-6"
+          <AssigneeAvatarGroup
+            assignees={assignees}
+            visibleCount={3}
+            avatarClassName="size-6 border-2 border-white"
             fallbackClassName="text-xs"
-            name={assignee.name}
+            extraCountClassName="size-6 rounded-full bg-muted text-xs font-medium flex items-center justify-center border-2 border-white"
+            popoverAlign="start"
+            ariaLabel={`View ${assignees.length} assignees`}
           />
-          <p className="line-clamp-1">{assignee.name}</p>
+          <p className="line-clamp-1">{summaryText}</p>
         </div>
       );
     },

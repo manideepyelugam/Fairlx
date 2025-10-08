@@ -31,8 +31,15 @@ export type Task = Models.Document & {
   labels?: string[];
 };
 
+export type TaskAssignee = {
+  $id: string;
+  name: string;
+  email?: string;
+  profileImageUrl?: string | null;
+};
+
 export type PopulatedTask = Task & {
-  assignee?: { $id: string; name: string };
-  assignees?: { $id: string; name: string }[]; // New field for multiple assignees
+  assignee?: TaskAssignee;
+  assignees?: TaskAssignee[]; // New field for multiple assignees
   project?: { $id: string; name: string; imageUrl: string };
 };

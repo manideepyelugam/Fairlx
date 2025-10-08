@@ -4,7 +4,7 @@ import { MultiSelect, Option } from "@/components/ui/multi-select-simple"
 import { MemberAvatar } from "@/features/members/components/member-avatar"
 
 interface AssigneeMultiSelectProps {
-  memberOptions: { id: string; name: string }[]
+  memberOptions: { id: string; name: string; imageUrl?: string | null }[]
   selectedAssigneeIds: string[]
   onAssigneesChange: (assigneeIds: string[]) => void
   placeholder?: string
@@ -27,6 +27,7 @@ export const AssigneeMultiSelect = ({
       <MemberAvatar
         className={className}
         name={member.name}
+        imageUrl={member.imageUrl}
       />
     ),
   }));
