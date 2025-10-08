@@ -12,7 +12,7 @@ const baseTaskSchema = z.object({
   projectId: z.string().trim().min(1, "Required"),
   dueDate: z.coerce.date(),
   endDate: z.coerce.date().optional(),
-  assigneeId: z.string().trim().min(1, "Required"),
+  assigneeIds: z.array(z.string().trim().min(1)).min(1, "At least one assignee is required"),
   description: z.string().nullable().optional(),
   estimatedHours: z
     .union([z.number().min(0), z.string(), z.undefined(), z.null()])

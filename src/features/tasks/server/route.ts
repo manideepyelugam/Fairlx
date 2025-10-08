@@ -105,7 +105,13 @@ const app = new Hono()
       }
 
       if (assigneeId) {
-        query.push(Query.equal("assigneeId", assigneeId));
+        // Search in both single assignee and multiple assignees
+        query.push(
+          Query.or([
+            Query.equal("assigneeId", assigneeId),
+            Query.contains("assigneeIds", assigneeId)
+          ])
+        );
       }
 
       if (dueDate) {
@@ -137,7 +143,17 @@ const app = new Hono()
       );
 
       const projectIds = tasks.documents.map((task) => task.projectId);
-      const assigneeIds = tasks.documents.map((task) => task.assigneeId);
+      
+      // Collect all assignee IDs from both single assignee and multiple assignees
+      const allAssigneeIds = new Set<string>();
+      tasks.documents.forEach((task) => {
+        if (task.assigneeId) {
+          allAssigneeIds.add(task.assigneeId);
+        }
+        if (task.assigneeIds && task.assigneeIds.length > 0) {
+          task.assigneeIds.forEach(id => allAssigneeIds.add(id));
+        }
+      });
 
       const projects = await databases.listDocuments<Project>(
         DATABASE_ID,
@@ -148,7 +164,7 @@ const app = new Hono()
       const members = await databases.listDocuments(
         DATABASE_ID,
         MEMBERS_ID,
-        assigneeIds.length > 0 ? [Query.contains("$id", assigneeIds)] : []
+        allAssigneeIds.size > 0 ? [Query.contains("$id", Array.from(allAssigneeIds))] : []
       );
 
       const assignees = await Promise.all(
@@ -168,14 +184,21 @@ const app = new Hono()
           (project) => project.$id === task.projectId
         );
 
+        // Handle single assignee (backward compatibility)
         const assignee = assignees.find(
           (assignee) => assignee.$id === task.assigneeId
         );
 
+        // Handle multiple assignees
+        const taskAssignees = task.assigneeIds
+          ? assignees.filter((assignee) => task.assigneeIds!.includes(assignee.$id))
+          : assignee ? [assignee] : [];
+
         return {
           ...task,
           project,
-          assignee,
+          assignee, // Keep for backward compatibility
+          assignees: taskAssignees, // New field for multiple assignees
         };
       });
 
@@ -189,7 +212,7 @@ const app = new Hono()
     async (c) => {
       const user = c.get("user");
       const databases = c.get("databases");
-      const { name, status, workspaceId, projectId, dueDate, assigneeId, description, estimatedHours, endDate, priority, labels } =
+      const { name, status, workspaceId, projectId, dueDate, assigneeIds, description, estimatedHours, endDate, priority, labels } =
         c.req.valid("json");
 
       const member = await getMember({
@@ -228,7 +251,8 @@ const app = new Hono()
           workspaceId,
           projectId,
           dueDate,
-          assigneeId,
+          assigneeId: assigneeIds[0], // Keep backward compatibility - use first assignee as primary
+          assigneeIds,
           position: newPosition,
           description,
           estimatedHours,
@@ -248,7 +272,7 @@ const app = new Hono()
     async (c) => {
       const user = c.get("user");
       const databases = c.get("databases");
-      const { name, status, projectId, dueDate, assigneeId, description, estimatedHours, endDate, priority, labels } =
+      const { name, status, projectId, dueDate, assigneeIds, description, estimatedHours, endDate, priority, labels } =
         c.req.valid("json");
 
       const { taskId } = c.req.param();
@@ -269,22 +293,29 @@ const app = new Hono()
         return c.json({ error: "Unauthorized" }, 401);
       }
 
+      const updateData: Record<string, unknown> = {
+        name,
+        status,
+        projectId,
+        dueDate,
+        description,
+        estimatedHours,
+        endDate,
+        priority,
+        labels,
+      };
+
+      // Handle assignees - update both single assignee and multiple assignees
+      if (assigneeIds && assigneeIds.length > 0) {
+        updateData.assigneeIds = assigneeIds;
+        updateData.assigneeId = assigneeIds[0]; // Keep backward compatibility
+      }
+
       const task = await databases.updateDocument(
         DATABASE_ID,
         TASKS_ID,
         taskId,
-        {
-          name,
-          status,
-          projectId,
-          dueDate,
-          assigneeId,
-          description,
-          estimatedHours,
-          endDate,
-          priority,
-          labels,
-        }
+        updateData
       );
 
       return c.json({ data: task });
@@ -319,25 +350,50 @@ const app = new Hono()
       task.projectId
     );
 
-    const member = await databases.getDocument(
+    // Collect all assignee IDs from both single assignee and multiple assignees
+    const allAssigneeIds = new Set<string>();
+    if (task.assigneeId) {
+      allAssigneeIds.add(task.assigneeId);
+    }
+    if (task.assigneeIds && task.assigneeIds.length > 0) {
+      task.assigneeIds.forEach(id => allAssigneeIds.add(id));
+    }
+
+    // Get all assignee members
+    const members = await databases.listDocuments(
       DATABASE_ID,
       MEMBERS_ID,
-      task.assigneeId
+      allAssigneeIds.size > 0 ? [Query.contains("$id", Array.from(allAssigneeIds))] : []
     );
 
-    const user = await users.get(member.userId);
+    const assignees = await Promise.all(
+      members.documents.map(async (member) => {
+        const user = await users.get(member.userId);
 
-    const assignee = {
-      ...member,
-      name: user.name || user.email,
-      email: user.email,
-    };
+        return {
+          ...member,
+          name: user.name || user.email,
+          email: user.email,
+        };
+      })
+    );
+
+    // Handle single assignee (backward compatibility)
+    const assignee = assignees.find(
+      (assignee) => assignee.$id === task.assigneeId
+    );
+
+    // Handle multiple assignees
+    const taskAssignees = task.assigneeIds
+      ? assignees.filter((assignee) => task.assigneeIds!.includes(assignee.$id))
+      : assignee ? [assignee] : [];
 
     return c.json({
       data: {
         ...task,
         project,
-        assignee,
+        assignee, // Keep for backward compatibility
+        assignees: taskAssignees, // New field for multiple assignees
       },
     });
   })

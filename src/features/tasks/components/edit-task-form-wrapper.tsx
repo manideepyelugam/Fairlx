@@ -57,13 +57,26 @@ export const EditTaskFormWrapper = ({
   if (!initialValues) {
     return null;
   }
+  // Ensure we always pass an `assigneeIds` array to the form.
+  // The server may return populated `assignees` (member objects) or a legacy `assigneeId`.
+  const enrichedInitialValues = {
+    ...initialValues,
+    assigneeIds:
+      initialValues.assigneeIds && initialValues.assigneeIds.length > 0
+        ? initialValues.assigneeIds
+        : initialValues.assignees && initialValues.assignees.length > 0
+        ? initialValues.assignees.map((a: { $id: string; name: string }) => a.$id)
+        : initialValues.assigneeId
+        ? [initialValues.assigneeId]
+        : [],
+  };
 
   return (
     <EditTaskForm
       onCancel={onCancel}
       projectOptions={projectOptions ?? []}
       memberOptions={memberOptions ?? []}
-      initialValues={initialValues}
+      initialValues={enrichedInitialValues}
     />
   );
 };
