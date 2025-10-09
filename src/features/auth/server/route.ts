@@ -257,20 +257,22 @@ const app = new Hono()
         await account.updatePassword(newPassword, currentPassword);
 
         return c.json({ success: true, message: "Password updated successfully" });
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Change password error:", error);
         
         // Handle Appwrite specific errors
-        if (error.type === "user_invalid_credentials") {
+        const appwriteError = error as { type?: string; message?: string };
+        
+        if (appwriteError.type === "user_invalid_credentials") {
           return c.json({ error: "Current password is incorrect" }, 400);
         }
         
-        if (error.type === "user_password_recently_used") {
+        if (appwriteError.type === "user_password_recently_used") {
           return c.json({ error: "Please choose a different password" }, 400);
         }
         
         return c.json({ 
-          error: error.message || "Failed to change password. Please try again." 
+          error: appwriteError.message || "Failed to change password. Please try again." 
         }, 500);
       }
     }

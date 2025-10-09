@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { InferRequestType, InferResponseType } from "hono";
 
 import { client } from "@/lib/rpc";
@@ -12,8 +12,6 @@ type RequestType = InferRequestType<
 >;
 
 export const useChangePassword = () => {
-  const queryClient = useQueryClient();
-
   const mutation = useMutation<ResponseType, Error, RequestType>({
     mutationFn: async ({ json }) => {
       const response = await client.api.auth["change-password"].$patch({ json });

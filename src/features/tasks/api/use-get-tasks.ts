@@ -4,6 +4,16 @@ import { client } from "@/lib/rpc";
 
 import { TaskStatus, TaskPriority } from "../types";
 
+const sanitizeString = (value?: string | null) => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
 interface UseGetTasksProps {
   workspaceId: string;
   projectId?: string | null;
@@ -25,29 +35,47 @@ export const useGetTasks = ({
   priority,
   labels,
 }: UseGetTasksProps) => {
+  const sanitizedWorkspaceId = sanitizeString(workspaceId);
+  const sanitizedProjectId = sanitizeString(projectId ?? undefined);
+  const sanitizedStatus = sanitizeString(status ?? undefined);
+  const sanitizedAssigneeId = sanitizeString(assigneeId ?? undefined);
+  const sanitizedDueDate = sanitizeString(dueDate ?? undefined);
+  const sanitizedSearch = sanitizeString(search ?? undefined);
+  const sanitizedPriority = sanitizeString(priority ?? undefined) as
+    | TaskPriority
+    | undefined;
+  const sanitizedLabels = labels?.map((label) => label.trim()).filter(Boolean);
+
   const query = useQuery({
     queryKey: [
       "tasks",
-      workspaceId,
-      projectId,
-      status,
-      assigneeId,
-      dueDate,
-      search,
-      priority,
-      labels,
+      sanitizedWorkspaceId,
+      sanitizedProjectId,
+      sanitizedStatus,
+      sanitizedAssigneeId,
+      sanitizedDueDate,
+      sanitizedSearch,
+      sanitizedPriority,
+      sanitizedLabels,
     ],
+    enabled: Boolean(sanitizedWorkspaceId),
     queryFn: async () => {
+      if (!sanitizedWorkspaceId) {
+        throw new Error("workspaceId is required to fetch tasks.");
+      }
+
       const response = await client.api.tasks.$get({
         query: {
-          workspaceId,
-          projectId: projectId ?? undefined,
-          status: status ?? undefined,
-          assigneeId: assigneeId ?? undefined,
-          dueDate: dueDate ?? undefined,
-          search: search ?? undefined,
-          priority: priority ?? undefined,
-          labels: labels ? labels.join(",") : undefined,
+          workspaceId: sanitizedWorkspaceId,
+          projectId: sanitizedProjectId,
+          status: sanitizedStatus,
+          assigneeId: sanitizedAssigneeId,
+          dueDate: sanitizedDueDate,
+          search: sanitizedSearch,
+          priority: sanitizedPriority,
+          labels: sanitizedLabels?.length
+            ? sanitizedLabels.join(",")
+            : undefined,
         },
       });
 

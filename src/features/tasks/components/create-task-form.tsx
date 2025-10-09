@@ -5,7 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
-import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
 
 import { cn } from "@/lib/utils";
@@ -36,11 +35,12 @@ import { StatusSelector } from "@/features/custom-columns/components/status-sele
 import { PrioritySelector } from "./priority-selector";
 import { LabelSelector } from "./label-management";
 import { Textarea } from "@/components/ui/textarea";
+import { AssigneeMultiSelect } from "./assignee-multi-select";
 
 interface CreateTaskFormProps {
   onCancel?: () => void;
   projectOptions: { id: string; name: string; imageUrl: string }[];
-  memberOptions: { id: string; name: string }[];
+  memberOptions: { id: string; name: string; imageUrl?: string | null }[];
 }
 
 export const CreateTaskForm = ({
@@ -128,34 +128,19 @@ export const CreateTaskForm = ({
               />
               <FormField
                 control={form.control}
-                name="assigneeId"
+                name="assigneeIds"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Assignee</FormLabel>
-                    <Select
-                      defaultValue={field.value}
-                      onValueChange={field.onChange}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select assignee" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <FormMessage />
-                      <SelectContent>
-                        {memberOptions.map((member) => (
-                          <SelectItem key={member.id} value={member.id}>
-                            <div className="flex items-center gap-x-2">
-                              <MemberAvatar
-                                className="size-6"
-                                name={member.name}
-                              />
-                              {member.name}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Assignees</FormLabel>
+                    <FormControl>
+                      <AssigneeMultiSelect
+                        memberOptions={memberOptions}
+                        selectedAssigneeIds={field.value || []}
+                        onAssigneesChange={field.onChange}
+                        placeholder="Select assignees..."
+                      />
+                    </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />

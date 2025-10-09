@@ -81,7 +81,7 @@ export const Footer = () => {
                 <div className="relative">
                   <Image 
                     src="/logo.png" 
-                    alt="Scrumty" 
+                    alt="Fairlx" 
                     width={40} 
                     height={32}
                     className="transition-transform duration-300 group-hover:scale-110"

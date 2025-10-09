@@ -84,7 +84,7 @@ export const HeroSection = () => {
             <div className="bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden w-full">
               <Image 
                 src="/heroimg.jpg" 
-                alt="Scrumpty Dashboard Preview" 
+                alt="Fairlx Dashboard Preview" 
                 width={640} 
                 height={384} 
                 className="w-full h-auto object-cover max-h-80 mx-auto" // Increased height and width

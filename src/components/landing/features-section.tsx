@@ -94,7 +94,7 @@ export const FeaturesSection = () => {
 		 <div className="max-w-4xl mx-auto">
 			<div className="text-center mb-12">
 			   <h2 id="demo-video-title" className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-				  See Scrumpty in Action
+				  See Fairlx in Action
 			   </h2>
 			   <p className="text-xl text-gray-600 max-w-2xl mx-auto">
 				  Watch our demo video to experience the intuitive dashboard and features that make project management effortless.
@@ -106,7 +106,7 @@ export const FeaturesSection = () => {
 					 controls
 					 poster="/Logo.png"
 					 className="w-full h-full object-cover"
-					 aria-label="Demo video showing Scrumpty dashboard and features"
+					 aria-label="Demo video showing Fairlx dashboard and features"
 				  >
 					 <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4" />
 					 Your browser does not support the video tag.

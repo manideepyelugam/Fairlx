@@ -5,6 +5,7 @@ import {
   Draggable,
   type DropResult,
 } from "@hello-pangea/dnd";
+import { PlusIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -14,6 +15,7 @@ import { BulkActionsToolbar } from "./bulk-actions-toolbar";
 
 import { Task, TaskStatus } from "../types";
 import { useBulkUpdateTasks } from "../api/use-bulk-update-tasks";
+import { useCreateTaskModal } from "../hooks/use-create-task-modal";
 
 const boards: TaskStatus[] = [
   TaskStatus.BACKLOG,
@@ -74,6 +76,7 @@ export const DataKanban = ({
   const [columnsOrder] = useState<TaskStatus[]>(boards);
 
   const { mutate: bulkUpdateTasks } = useBulkUpdateTasks();
+  const { open: openCreateTask } = useCreateTaskModal();
 
   useEffect(() => {
     const newTasks: TasksState = {
@@ -277,7 +280,7 @@ export const DataKanban = ({
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex overflow-x-auto">
+        <div className="flex overflow-x-auto gap-4 pb-4">
           {columnsOrder.map((board) => {
             const selectedInColumn = tasks[board].filter(task => 
               selectedTasks.has(task.$id)
@@ -286,7 +289,7 @@ export const DataKanban = ({
             return (
               <div
                 key={board}
-                className="flex-1 mx-2 bg-muted p-1.5 rounded-md min-w-[200px]"
+                className="flex-1 bg-gray-50 rounded-xl min-w-[280px] max-w-[320px]"
               >
                 <KanbanColumnHeader
                   board={board}
@@ -300,7 +303,7 @@ export const DataKanban = ({
                     <div
                       {...provided.droppableProps}
                       ref={provided.innerRef}
-                      className="min-h-[200px] py-1.5"
+                      className="min-h-[500px] px-3 pb-3"
                     >
                       {tasks[board].map((task, index) => (
                         <Draggable
@@ -326,6 +329,15 @@ export const DataKanban = ({
                         </Draggable>
                       ))}
                       {provided.placeholder}
+                      {/* Add Task Button */}
+                      <Button
+                        onClick={openCreateTask}
+                        variant="ghost"
+                        className="w-full justify-start text-gray-500 hover:text-gray-700 hover:bg-gray-100 mt-2"
+                      >
+                        <PlusIcon className="h-4 w-4 mr-2" />
+                        Add Task
+                      </Button>
                     </div>
                   )}
                 </Droppable>

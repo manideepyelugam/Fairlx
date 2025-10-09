@@ -1,5 +1,6 @@
-import { differenceInDays, format } from "date-fns";
+"use client";
 
+import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
 interface TaskDateProps {
@@ -8,23 +9,24 @@ interface TaskDateProps {
 }
 
 export const TaskDate = ({ value, className }: TaskDateProps) => {
-  const today = new Date();
-  const endDate = new Date(value);
-  const diffInDays = differenceInDays(endDate, today);
-
-  let textColor = "text-muted-foreground";
-
-  if (diffInDays <= 3) {
-    textColor = "text-red-500";
-  } else if (diffInDays <= 7) {
-    textColor = "text-orange-500";
-  } else if (diffInDays <= 14) {
-    textColor = "text-yellow-500";
+  if (!value) {
+    return <span className={cn("text-muted-foreground", className)}>No date</span>;
   }
 
-  return (
-    <div className={textColor}>
-      <span className={cn("truncate", className)}>{format(value, "PPP")}</span>
-    </div>
-  );
+  try {
+    const date = new Date(value);
+    
+    // Check if the date is valid
+    if (isNaN(date.getTime())) {
+      return <span className={cn("text-muted-foreground", className)}>Invalid date</span>;
+    }
+
+    return (
+      <span className={className}>
+        {format(date, "MMM dd, yyyy")}
+      </span>
+    );
+  } catch {
+    return <span className={cn("text-muted-foreground", className)}>Invalid date</span>;
+  }
 };

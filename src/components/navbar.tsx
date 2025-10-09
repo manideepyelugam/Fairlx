@@ -5,6 +5,7 @@ import { UserButton } from "@/features/auth/components/user-button";
 import { usePathname } from "next/navigation";
 
 import { MobileSidebar } from "./mobile-sidebar";
+import { Breadcrumb } from "./breadcrumb";
 
 const pathnameMap = {
   tasks: {
@@ -31,13 +32,17 @@ export const Navbar = () => {
   const pathnameParts = pathname.split("/");
   const pathnameKey = pathnameParts[3] as keyof typeof pathnameMap;
 
-  const { title, description } = pathnameMap[pathnameKey] || defaultMap;
+  const { title } = pathnameMap[pathnameKey] || defaultMap;
 
   return (
-    <nav className="pt-4 px-6 flex items-center justify-between">
-      <div className="flex-col hidden lg:flex">
-        <h1 className="text-2xl font-semibold">{title}</h1>
-        <p className="text-muted-foreground">{description}</p>
+    <nav className="py-[15px] px-6 flex items-center border-b border-neutral-200 sticky top-0 left-0 right-0 z-10 justify-between bg-white">
+      <div className="flex flex-col ">
+        <div className="hidden lg:flex">
+          <Breadcrumb />
+        </div>
+        <div className="flex lg:hidden">
+          <h1 className="text-lg font-semibold">{title}</h1>
+        </div>
       </div>
       <MobileSidebar />
       <UserButton />

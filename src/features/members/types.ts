@@ -9,4 +9,7 @@ export type Member = Models.Document & {
   workspaceId: string;
   userId: string;
   role: MemberRole;
+  name?: string;
+  email?: string;
+  profileImageUrl?: string | null;
 };
