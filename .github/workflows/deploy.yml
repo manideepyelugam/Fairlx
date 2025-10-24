@@ -42,135 +42,95 @@ jobs:
           NEXT_APPWRITE_KEY: ${{ secrets.NEXT_APPWRITE_KEY }}
         run: npm run build
 
-      - name: Create deployment package
-        run: |
-          mkdir -p deploy
-          
-          # Copy standalone output
-          cp -r .next/standalone/* deploy/
-          
-          # Copy static files
-          mkdir -p deploy/.next
-          cp -r .next/static deploy/.next/static
-          
-          # Copy public directory
-          cp -r public deploy/public
-          
-          tar -czf deploy.tar.gz -C deploy .
-
-      - name: Install sshpass
-        run: sudo apt-get update && sudo apt-get install -y sshpass
+      - name: Transfer files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DO_HOST }}
+          username: ${{ secrets.DO_USERNAME }}
+          password: ${{ secrets.DO_PASSWORD }}
+          port: 22
+          source: "."
+          target: "/var/www/scrumpty"
+          rm: true
 
       - name: Deploy to Digital Ocean
-        env:
-          DO_HOST: ${{ secrets.DO_HOST }}
-          DO_USERNAME: ${{ secrets.DO_USERNAME }}
-          DO_PASSWORD: ${{ secrets.DO_PASSWORD }}
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H $DO_HOST >> ~/.ssh/known_hosts
-          
-          sshpass -p "$DO_PASSWORD" scp -o StrictHostKeyChecking=no deploy.tar.gz $DO_USERNAME@$DO_HOST:/tmp/
-          
-          sshpass -p "$DO_PASSWORD" ssh -o StrictHostKeyChecking=no $DO_USERNAME@$DO_HOST bash << 'ENDSSH'
-            set -e
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DO_HOST }}
+          username: ${{ secrets.DO_USERNAME }}
+          password: ${{ secrets.DO_PASSWORD }}
+          port: 22
+          script: |
+            # Ensure PM2 is installed globally
+            if ! command -v pm2 &> /dev/null; then
+              npm install -g pm2
+            fi
             
-            echo "Starting deployment..."
-            
-            # Create deployment directory
-            mkdir -p /var/www/scrumpty
+            # Navigate to app directory
             cd /var/www/scrumpty
             
-            # Backup current deployment
-            if [ -d ".next" ]; then
-              echo "Creating backup..."
-              mkdir -p ../scrumpty_backup
-              cp -r .next ../scrumpty_backup/ 2>/dev/null || true
-            fi
+            # Create .env.local file with production environment variables
+            cat > .env.local << EOF
+            NODE_ENV=production
+            NEXT_PUBLIC_APPWRITE_ENDPOINT=${{ secrets.NEXT_PUBLIC_APPWRITE_ENDPOINT }}
+            NEXT_PUBLIC_APPWRITE_PROJECT=${{ secrets.NEXT_PUBLIC_APPWRITE_PROJECT }}
+            NEXT_PUBLIC_APPWRITE_DATABASE_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_DATABASE_ID }}
+            NEXT_PUBLIC_APPWRITE_WORKSPACES_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_WORKSPACES_ID }}
+            NEXT_PUBLIC_APPWRITE_MEMBERS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_MEMBERS_ID }}
+            NEXT_PUBLIC_APPWRITE_PROJECTS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_PROJECTS_ID }}
+            NEXT_PUBLIC_APPWRITE_TASKS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_TASKS_ID }}
+            NEXT_PUBLIC_APPWRITE_IMAGES_BUCKET_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_IMAGES_BUCKET_ID }}
+            NEXT_PUBLIC_APPWRITE_ATTACHMENTS_BUCKET_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_ATTACHMENTS_BUCKET_ID }}
+            NEXT_PUBLIC_APPWRITE_ATTACHMENTS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_ATTACHMENTS_ID }}
+            NEXT_PUBLIC_APPWRITE_CUSTOM_COLUMNS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_CUSTOM_COLUMNS_ID }}
+            NEXT_PUBLIC_APPWRITE_DEFAULT_COLUMN_SETTINGS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_DEFAULT_COLUMN_SETTINGS_ID }}
+            NEXT_PUBLIC_APPWRITE_TIME_LOGS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_TIME_LOGS_ID }}
+            NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
+            NEXT_APPWRITE_KEY=${{ secrets.NEXT_APPWRITE_KEY }}
+            EOF
             
-            # Extract new deployment
-            echo "Extracting new deployment..."
-            tar -xzf /tmp/deploy.tar.gz
-            rm /tmp/deploy.tar.gz
+            # Ensure proper permissions
+            chmod 600 .env.local
             
-            # Create environment file
-            echo "Creating environment file..."
-            cat > .env.production << 'EOF'
-          NEXT_PUBLIC_APPWRITE_ENDPOINT=${{ secrets.NEXT_PUBLIC_APPWRITE_ENDPOINT }}
-          NEXT_PUBLIC_APPWRITE_PROJECT=${{ secrets.NEXT_PUBLIC_APPWRITE_PROJECT }}
-          NEXT_PUBLIC_APPWRITE_DATABASE_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_DATABASE_ID }}
-          NEXT_PUBLIC_APPWRITE_WORKSPACES_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_WORKSPACES_ID }}
-          NEXT_PUBLIC_APPWRITE_MEMBERS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_MEMBERS_ID }}
-          NEXT_PUBLIC_APPWRITE_PROJECTS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_PROJECTS_ID }}
-          NEXT_PUBLIC_APPWRITE_TASKS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_TASKS_ID }}
-          NEXT_PUBLIC_APPWRITE_IMAGES_BUCKET_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_IMAGES_BUCKET_ID }}
-          NEXT_PUBLIC_APPWRITE_ATTACHMENTS_BUCKET_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_ATTACHMENTS_BUCKET_ID }}
-          NEXT_PUBLIC_APPWRITE_ATTACHMENTS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_ATTACHMENTS_ID }}
-          NEXT_PUBLIC_APPWRITE_CUSTOM_COLUMNS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_CUSTOM_COLUMNS_ID }}
-          NEXT_PUBLIC_APPWRITE_DEFAULT_COLUMN_SETTINGS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_DEFAULT_COLUMN_SETTINGS_ID }}
-          NEXT_PUBLIC_APPWRITE_TIME_LOGS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_TIME_LOGS_ID }}
-          NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
-          NEXT_APPWRITE_KEY=${{ secrets.NEXT_APPWRITE_KEY }}
-          HOSTNAME=0.0.0.0
-          PORT=3000
-          EOF
+            # Install dependencies (production only)
+            npm ci --omit=dev
             
-            # Create PM2 ecosystem file for standalone server
-            echo "Creating PM2 configuration..."
+            # Create PM2 ecosystem config if it doesn't exist
             cat > ecosystem.config.js << 'EOFPM2'
-          module.exports = {
-            apps: [{
-              name: 'scrumpty',
-              script: './server.js',
-              instances: 1,
-              autorestart: true,
-              watch: false,
-              max_memory_restart: '1G',
-              env_file: '.env.production',
-              env: {
-                NODE_ENV: 'production',
-                PORT: 3000,
-                HOSTNAME: '0.0.0.0'
-              }
-            }]
-          };
-          EOFPM2
+            module.exports = {
+              apps: [{
+                name: 'scrumpty',
+                script: 'npm',
+                args: 'start',
+                cwd: '/var/www/scrumpty',
+                env: {
+                  NODE_ENV: 'production',
+                  PORT: 3000
+                }
+              }]
+            };
+            EOFPM2
             
-            # Restart with PM2
-            echo "Restarting application with PM2..."
-            if pm2 describe scrumpty > /dev/null 2>&1; then
-              echo "Reloading existing application..."
-              pm2 reload scrumpty --update-env
-            else
-              echo "Starting new application..."
-              pm2 start ecosystem.config.js
-            fi
+            # Restart PM2 process
+            pm2 restart scrumpty || pm2 start ecosystem.config.js --name scrumpty
+            
+            # Wait for the application to start
+            sleep 10
+            
+            # Check if the application is running
+            pm2 list
+            
+            # Test if the application responds
+            curl -f http://localhost:3000 || {
+              echo "Application health check failed"
+              pm2 logs scrumpty --lines 50
+              exit 1
+            }
             
             # Save PM2 configuration
             pm2 save
             
-            # Setup PM2 startup (ignore if already configured)
-            env PATH=$PATH:/usr/bin pm2 startup systemd -u root --hp /root > /dev/null 2>&1 || true
+            # Setup PM2 to start on boot
+            env PATH=$PATH:/usr/bin pm2 startup systemd -u root --hp /root || true
             
             echo "Deployment completed successfully!"
-          ENDSSH
-
-      - name: Verify deployment
-        env:
-          DO_HOST: ${{ secrets.DO_HOST }}
-          DO_USERNAME: ${{ secrets.DO_USERNAME }}
-          DO_PASSWORD: ${{ secrets.DO_PASSWORD }}
-        run: |
-          echo "Waiting 10 seconds for application to start..."
-          sleep 10
-          
-          sshpass -p "$DO_PASSWORD" ssh -o StrictHostKeyChecking=no $DO_USERNAME@$DO_HOST bash << 'ENDSSH'
-            echo "=== PM2 Process Status ==="
-            pm2 list
-            echo ""
-            echo "=== Recent Application Logs ==="
-            pm2 logs scrumpty --lines 30 --nostream
-            echo ""
-            echo "=== Application Info ==="
-            pm2 info scrumpty
-          ENDSSH
