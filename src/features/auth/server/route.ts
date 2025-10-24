@@ -58,8 +58,8 @@ const app = new Hono()
       setCookie(c, AUTH_COOKIE, session.secret, {
         path: "/",
         httpOnly: true,
-        secure: true,
-        sameSite: "strict",
+        secure: false, // Set to true when using HTTPS
+        sameSite: "lax",
         maxAge: 60 * 60 * 24 * 30,
       });
 
