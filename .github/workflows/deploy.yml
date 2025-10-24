@@ -45,13 +45,17 @@ jobs:
       - name: Create deployment package
         run: |
           mkdir -p deploy
-          cp -r .next deploy/
-          cp -r public deploy/
-          cp -r src deploy/
-          cp package.json deploy/
-          cp package-lock.json deploy/
-          cp next.config.mjs deploy/
-          cp -r node_modules deploy/ || echo "Skipping node_modules"
+          
+          # Copy standalone output
+          cp -r .next/standalone/* deploy/
+          
+          # Copy static files
+          mkdir -p deploy/.next
+          cp -r .next/static deploy/.next/static
+          
+          # Copy public directory
+          cp -r public deploy/public
+          
           tar -czf deploy.tar.gz -C deploy .
 
       - name: Install sshpass
@@ -91,7 +95,7 @@ jobs:
             
             # Create environment file
             echo "Creating environment file..."
-            cat > .env.local << 'EOF'
+            cat > .env.production << 'EOF'
           NEXT_PUBLIC_APPWRITE_ENDPOINT=${{ secrets.NEXT_PUBLIC_APPWRITE_ENDPOINT }}
           NEXT_PUBLIC_APPWRITE_PROJECT=${{ secrets.NEXT_PUBLIC_APPWRITE_PROJECT }}
           NEXT_PUBLIC_APPWRITE_DATABASE_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_DATABASE_ID }}
@@ -107,29 +111,26 @@ jobs:
           NEXT_PUBLIC_APPWRITE_TIME_LOGS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_TIME_LOGS_ID }}
           NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
           NEXT_APPWRITE_KEY=${{ secrets.NEXT_APPWRITE_KEY }}
+          HOSTNAME=0.0.0.0
+          PORT=3000
           EOF
             
-            # Install production dependencies if node_modules doesn't exist
-            if [ ! -d "node_modules" ]; then
-              echo "Installing production dependencies..."
-              npm ci --omit=dev
-            fi
-            
-            # Create PM2 ecosystem file
+            # Create PM2 ecosystem file for standalone server
             echo "Creating PM2 configuration..."
             cat > ecosystem.config.js << 'EOFPM2'
           module.exports = {
             apps: [{
               name: 'scrumpty',
-              script: './node_modules/.bin/next',
-              args: 'start -p 3000',
+              script: './server.js',
               instances: 1,
               autorestart: true,
               watch: false,
               max_memory_restart: '1G',
+              env_file: '.env.production',
               env: {
                 NODE_ENV: 'production',
-                PORT: 3000
+                PORT: 3000,
+                HOSTNAME: '0.0.0.0'
               }
             }]
           };
