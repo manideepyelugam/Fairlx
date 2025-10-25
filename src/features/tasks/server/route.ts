@@ -105,13 +105,9 @@ const app = new Hono()
       }
 
       if (assigneeId) {
-        // Search in both single assignee and multiple assignees
-        query.push(
-          Query.or([
-            Query.equal("assigneeId", assigneeId),
-            Query.contains("assigneeIds", assigneeId)
-          ])
-        );
+        // Note: Appwrite doesn't support OR queries directly, so we filter by assigneeIds array
+        // which should contain the assigneeId. Legacy assigneeId field handling removed.
+        query.push(Query.contains("assigneeIds", assigneeId));
       }
 
       if (dueDate) {
@@ -142,7 +138,7 @@ const app = new Hono()
         query
       );
 
-      const projectIds = tasks.documents.map((task) => task.projectId);
+      const projectIds = [...new Set(tasks.documents.map((task) => task.projectId).filter(Boolean))];
       
       // Collect all assignee IDs from both single assignee and multiple assignees
       const allAssigneeIds = new Set<string>();
@@ -158,28 +154,34 @@ const app = new Hono()
       const projects = await databases.listDocuments<Project>(
         DATABASE_ID,
         PROJECTS_ID,
-        projectIds.length > 0 ? [Query.contains("$id", projectIds)] : []
+        projectIds.length > 0 ? [Query.equal("$id", projectIds)] : []
       );
 
       const members = await databases.listDocuments(
         DATABASE_ID,
         MEMBERS_ID,
-        allAssigneeIds.size > 0 ? [Query.contains("$id", Array.from(allAssigneeIds))] : []
+        allAssigneeIds.size > 0 ? [Query.equal("$id", Array.from(allAssigneeIds))] : []
       );
 
-      const assignees = await Promise.all(
+      const assignees = (await Promise.all(
         members.documents.map(async (member) => {
-          const user = await users.get(member.userId);
-          const prefs = user.prefs as { profileImageUrl?: string | null } | undefined;
+          try {
+            const user = await users.get(member.userId);
+            const prefs = user.prefs as { profileImageUrl?: string | null } | undefined;
 
-          return {
-            ...member,
-            name: user.name || user.email,
-            email: user.email,
-            profileImageUrl: prefs?.profileImageUrl ?? null,
-          };
+            return {
+              ...member,
+              name: user.name || user.email,
+              email: user.email,
+              profileImageUrl: prefs?.profileImageUrl ?? null,
+            };
+          } catch {
+            // User not found - skip this member
+            console.warn(`Skipping member ${member.$id}: User ${member.userId} not found`);
+            return null;
+          }
         })
-      );
+      )).filter((assignee): assignee is NonNullable<typeof assignee> => assignee !== null);
 
       const populatedTasks = tasks.documents.map((task) => {
         const project = projects.documents.find(
