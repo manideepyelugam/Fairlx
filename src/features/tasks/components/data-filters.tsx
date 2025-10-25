@@ -1,4 +1,4 @@
-import { FolderIcon, ListChecksIcon, UserIcon, AlertTriangleIcon } from "lucide-react";
+import { FolderIcon, ListChecksIcon, UserIcon, AlertTriangleIcon, Settings2Icon } from "lucide-react";
 
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { useGetProjects } from "@/features/projects/api/use-get-projects";
@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 
 import { useTaskFilters } from "../hooks/use-task-filters";
 import { useGetCustomColumns } from "@/features/custom-columns/api/use-get-custom-columns";
@@ -23,6 +24,7 @@ import { TaskStatus, TaskPriority } from "../types";
 import { PriorityIcon } from "./priority-selector";
 import { LabelFilter } from "./label-management";
 import { TaskSearch } from "./task-search";
+import { useManageColumnsModal } from "@/features/custom-columns/hooks/use-manage-columns-modal";
 
 interface DataFiltersProps {
   hideProjectFilter?: boolean;
@@ -41,6 +43,8 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly }: DataFiltersP
   });
 
   const isLoading = isLoadingProjects || isLoadingMembers;
+
+  const { open: openManageModal } = useManageColumnsModal();
 
   const projectOptions = projects?.documents.map((project) => ({
     value: project.$id,
@@ -272,6 +276,16 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly }: DataFiltersP
           
         />
       </div>
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={openManageModal}
+        className="h-8 text-xs lg:ml-auto bg-black text-white hover:bg-gray-800 hover:text-white"
+      >
+        <Settings2Icon className="size-4 mr-2" />
+        Manage Columns
+      </Button>
     </div>
   );
 };
