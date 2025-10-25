@@ -144,7 +144,6 @@ export const TaskViewSwitcher = ({
                 isAdmin={isAdmin}
                 members={members?.documents ?? []}
                 projectId={paramProjectId || projectId || undefined}
-                showMyTasksOnly={showMyTasksOnly}
               />
             </TabsContent>
             <TabsContent value="calendar" className="mt-0 h-full pb-4">
