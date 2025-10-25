@@ -281,7 +281,7 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly }: DataFiltersP
         variant="outline"
         size="sm"
         onClick={openManageModal}
-        className="h-8 text-xs lg:ml-auto"
+        className="h-8 text-xs lg:ml-auto bg-black text-white hover:bg-gray-800 hover:text-white"
       >
         <Settings2Icon className="size-4 mr-2" />
         Manage Columns
