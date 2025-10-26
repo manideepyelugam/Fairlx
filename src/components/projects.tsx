@@ -26,6 +26,12 @@ export const Projects = () => {
   const projectId = params.projectId as string;
 
   const onSelect = (id: string) => {
+    // Always navigate to the project, even if it's already selected
+    router.push(`/workspaces/${workspaceId}/projects/${id}`);
+  };
+
+  const handleProjectClick = (id: string) => {
+    // Navigate to the project when clicked
     router.push(`/workspaces/${workspaceId}/projects/${id}`);
   };
 
@@ -46,7 +52,15 @@ export const Projects = () => {
 
         <SelectContent>
           {data?.documents.map((project) => (
-            <SelectItem key={project.$id} value={project.$id}>
+            <SelectItem 
+              key={project.$id} 
+              value={project.$id}
+              onPointerDown={(e) => {
+                // Allow clicking on already selected item
+                e.stopPropagation();
+                handleProjectClick(project.$id);
+              }}
+            >
               <div className="flex justify-start items-center gap-3 font-medium">
                 <ProjectAvatar
                   name={project.name}
