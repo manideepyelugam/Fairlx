@@ -81,8 +81,8 @@ export function MultiSelect({
                     <option.icon className="mr-1 h-3 w-3" />
                   )}
                   {option.label}
-                  <button
-                    className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  <div
+                    className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer inline-flex items-center justify-center"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         handleUnselect(item)
@@ -92,10 +92,16 @@ export function MultiSelect({
                       e.preventDefault()
                       e.stopPropagation()
                     }}
-                    onClick={() => handleUnselect(item)}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleUnselect(item)
+                    }}
+                    role="button"
+                    tabIndex={0}
                   >
                     <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                  </button>
+                  </div>
                 </Badge>
               )
             })}
@@ -119,10 +125,18 @@ export function MultiSelect({
               </div>
             ) : (
               filteredOptions.map((option) => (
-                <button
+                <div
                   key={option.value}
-                  className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+                  className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
                   onClick={() => handleSelect(option.value)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      handleSelect(option.value)
+                    }
+                  }}
                 >
                   <Check
                     className={cn(
@@ -136,7 +150,7 @@ export function MultiSelect({
                     <option.icon className="h-4 w-4" />
                   )}
                   {option.label}
-                </button>
+                </div>
               ))
             )}
           </div>

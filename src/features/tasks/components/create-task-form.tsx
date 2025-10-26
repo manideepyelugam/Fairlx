@@ -60,12 +60,35 @@ export const CreateTaskForm = ({
   const form = useForm<z.infer<typeof createTaskFormSchema>>({
     resolver: zodResolver(createTaskFormSchema),
     defaultValues: {
+      name: "",
+      description: "",
+      assigneeIds: [],
+      labels: [],
+      estimatedHours: undefined,
+      priority: undefined,
+      status: undefined,
+      projectId: "",
+      dueDate: undefined,
+      endDate: undefined,
     },
   });
 
   const onSubmit = (values: z.infer<typeof createTaskFormSchema>) => {
+    const assigneeIds = values.assigneeIds && values.assigneeIds.length > 0 ? values.assigneeIds : [];
+    
+    if (assigneeIds.length === 0) {
+      form.setError("assigneeIds", { message: "At least one assignee is required" });
+      return;
+    }
+
     mutate(
-      { json: { ...values, workspaceId } },
+      { 
+        json: { 
+          ...values, 
+          workspaceId,
+          assigneeIds
+        } 
+      },
       {
         onSuccess: () => {
           form.reset();
@@ -204,7 +227,6 @@ export const CreateTaskForm = ({
                     <FormLabel>Estimated Hours (Optional)</FormLabel>
                     <FormControl>
                       <Input
-                        {...field}
                         type="number"
                         step="0.5"
                         min="0"
@@ -212,7 +234,7 @@ export const CreateTaskForm = ({
                         value={field.value ?? ""}
                         onChange={(e) => {
                           const value = e.target.value;
-                          field.onChange(value === "" ? undefined : parseFloat(value));
+                          field.onChange(value === "" ? undefined : parseFloat(value) || undefined);
                         }}
                       />
                     </FormControl>
@@ -263,11 +285,11 @@ export const CreateTaskForm = ({
                     <FormLabel>Description (Optional)</FormLabel>
                     <FormControl>
                       <Textarea
-                        {...field}
-                        value={field.value || ""}
                         placeholder="Enter task description..."
                         className="resize-none"
                         rows={4}
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value)}
                       />
                     </FormControl>
                     <FormMessage />

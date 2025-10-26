@@ -216,12 +216,15 @@ export const EditTaskForm = ({
                     <FormLabel>Estimated Hours (Optional)</FormLabel>
                     <FormControl>
                       <Input
-                        {...field}
                         type="number"
                         step="0.5"
                         min="0"
                         placeholder="Enter estimated hours..."
-                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                        value={field.value ?? ""}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          field.onChange(value === "" ? undefined : parseFloat(value) || undefined);
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -271,11 +274,11 @@ export const EditTaskForm = ({
                     <FormLabel>Description (Optional)</FormLabel>
                     <FormControl>
                       <Textarea
-                        {...field}
-                        value={field.value || ""}
                         placeholder="Enter task description..."
                         className="resize-none"
                         rows={4}
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value)}
                       />
                     </FormControl>
                     <FormMessage />

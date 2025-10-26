@@ -39,7 +39,9 @@ export const createTaskSchema = baseTaskSchema.refine(
   }
 );
 
-export const createTaskFormSchema = baseTaskSchema.omit({ workspaceId: true }).refine(
+export const createTaskFormSchema = baseTaskSchema.omit({ workspaceId: true }).extend({
+  assigneeIds: z.array(z.string().trim().min(1)).optional(),
+}).refine(
   (data) => {
     if (data.endDate && data.dueDate) {
       return data.endDate >= data.dueDate;

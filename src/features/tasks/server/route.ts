@@ -6,6 +6,7 @@ import { z } from "zod";
 import { DATABASE_ID, MEMBERS_ID, PROJECTS_ID, TASKS_ID, TIME_LOGS_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
+import { notifyTaskAssignees, notifyWorkspaceAdmins } from "@/lib/notifications";
 
 import { getMember } from "@/features/members/utils";
 import { Project } from "@/features/projects/types";
@@ -52,8 +53,7 @@ const app = new Hono()
       await databases.deleteDocument(DATABASE_ID, TASKS_ID, taskId);
 
       return c.json({ data: { $id: task.$id } });
-    } catch (error) {
-      console.error("Error during task deletion:", error);
+    } catch {
       return c.json({ error: "Failed to delete task and related data" }, 500);
     }
   })
@@ -177,7 +177,6 @@ const app = new Hono()
             };
           } catch {
             // User not found - skip this member
-            console.warn(`Skipping member ${member.$id}: User ${member.userId} not found`);
             return null;
           }
         })
@@ -264,7 +263,30 @@ const app = new Hono()
           priority,
           labels,
         }
-      );
+      ) as Task;
+
+      // Send notifications asynchronously (non-blocking)
+      const userName = user.name || user.email || "Someone";
+      
+      // Notify assignees
+      notifyTaskAssignees({
+        databases,
+        task,
+        triggeredByUserId: user.$id,
+        triggeredByName: userName,
+        notificationType: "task_assigned",
+        workspaceId,
+      }).catch(() => {});
+
+      // Notify workspace admins
+      notifyWorkspaceAdmins({
+        databases,
+        task,
+        triggeredByUserId: user.$id,
+        triggeredByName: userName,
+        notificationType: "task_assigned",
+        workspaceId,
+      }).catch(() => {});
 
       return c.json({ data: task });
     }
@@ -320,7 +342,31 @@ const app = new Hono()
         TASKS_ID,
         taskId,
         updateData
-      );
+      ) as Task;
+
+      // Send notifications asynchronously (non-blocking)
+      const userName = user.name || user.email || "Someone";
+      const notificationType = status === "DONE" ? "task_completed" : "task_updated";
+      
+      // Notify assignees
+      notifyTaskAssignees({
+        databases,
+        task,
+        triggeredByUserId: user.$id,
+        triggeredByName: userName,
+        notificationType,
+        workspaceId: existingTask.workspaceId,
+      }).catch(() => {});
+
+      // Notify workspace admins
+      notifyWorkspaceAdmins({
+        databases,
+        task,
+        triggeredByUserId: user.$id,
+        triggeredByName: userName,
+        notificationType,
+        workspaceId: existingTask.workspaceId,
+      }).catch(() => {});
 
       return c.json({ data: task });
     }
@@ -465,17 +511,68 @@ const app = new Hono()
       const updatedTasks = await Promise.all(
         tasks.map(async (task) => {
           const { $id, status, position, assigneeId } = task;
+          
+          // Get existing task to compare status
+          const existingTask = await databases.getDocument<Task>(DATABASE_ID, TASKS_ID, $id);
+          
           const updateData: Partial<Task> = {};
           
           if (status !== undefined) updateData.status = status;
           if (position !== undefined) updateData.position = position;
           if (assigneeId !== undefined) updateData.assigneeId = assigneeId;
           
-          return databases.updateDocument<Task>(DATABASE_ID, TASKS_ID, $id, updateData);
+          const updatedTask = await databases.updateDocument<Task>(DATABASE_ID, TASKS_ID, $id, updateData);
+          
+          // Return both old and new task for notification metadata
+          return { task: updatedTask, oldStatus: existingTask.status, statusChanged: status !== undefined && existingTask.status !== status };
         })
       );
 
-      return c.json({ data: updatedTasks });
+      // Send notifications for bulk updates (non-blocking)
+      const userName = user.name || user.email || "Someone";
+      
+      updatedTasks.forEach(({ task, oldStatus, statusChanged }) => {
+        // Determine notification type based on what changed
+        let notificationType: "task_completed" | "task_status_changed" | "task_updated";
+        
+        if (task.status === "DONE" && statusChanged) {
+          notificationType = "task_completed";
+        } else if (statusChanged) {
+          notificationType = "task_status_changed";
+        } else {
+          notificationType = "task_updated";
+        }
+        
+        // Notify assignees
+        notifyTaskAssignees({
+          databases,
+          task,
+          triggeredByUserId: user.$id,
+          triggeredByName: userName,
+          notificationType,
+          workspaceId: task.workspaceId,
+          metadata: statusChanged ? {
+            oldStatus,
+            newStatus: task.status,
+          } : undefined,
+        }).catch(() => {});
+
+        // Notify workspace admins
+        notifyWorkspaceAdmins({
+          databases,
+          task,
+          triggeredByUserId: user.$id,
+          triggeredByName: userName,
+          notificationType,
+          workspaceId: task.workspaceId,
+          metadata: statusChanged ? {
+            oldStatus,
+            newStatus: task.status,
+          } : undefined,
+        }).catch(() => {});
+      });
+
+      return c.json({ data: updatedTasks.map(({ task }) => task) });
     }
   );
 
