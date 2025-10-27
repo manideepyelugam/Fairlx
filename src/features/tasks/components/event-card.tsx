@@ -1,4 +1,3 @@
-import { useRouter } from "next/navigation";
 import { FlagIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -6,7 +5,6 @@ import { cn } from "@/lib/utils";
 import { Member } from "@/features/members/types";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
 import { Project } from "@/features/projects/types";
-import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 
 import { TaskStatus } from "../types";
 import {
@@ -42,8 +40,6 @@ export const EventCard = ({
   id,
   isMilestone = false,
 }: EventCardProps) => {
-  const workspaceId = useWorkspaceId();
-  const router = useRouter();
   const { open } = useTaskDetailsModal();
 
   const combinedAssignees: (

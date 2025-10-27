@@ -1,6 +1,5 @@
 "use client";
 
-import { DottedSeparator } from "@/components/dotted-separator";
 import { PageError } from "@/components/page-error";
 import { PageLoader } from "@/components/page-loader";
 import { TaskDetailsModal } from "@/components/task-details-modal";
@@ -8,7 +7,6 @@ import { useRouter } from "next/navigation";
 import { TrashIcon } from "lucide-react";
 
 import { useGetTask } from "@/features/tasks/api/use-get-task";
-import { TaskBreadcrumbs } from "@/features/tasks/components/task-breadcrumbs";
 import { TaskDescription } from "@/features/tasks/components/task-description";
 import { TaskOverview } from "@/features/tasks/components/task-overview";
 import { TaskTimeLogs } from "@/features/time-tracking/components/task-time-logs";

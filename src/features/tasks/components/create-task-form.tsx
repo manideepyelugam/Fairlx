@@ -8,10 +8,7 @@ import { useState } from "react";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
 
-import { cn } from "@/lib/utils";
 import { DatePicker } from "@/components/date-picker";
-import { DottedSeparator } from "@/components/dotted-separator";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form,

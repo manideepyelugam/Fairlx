@@ -86,7 +86,7 @@ export function DataTable<TData, TValue>({
                   data-state={row.getIsSelected() && "selected"}
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() => {
-                    const taskId = (row.original as any)?.$id;
+                    const taskId = (row.original as { $id?: string })?.$id;
                     if (taskId) {
                       open(taskId);
                     }
