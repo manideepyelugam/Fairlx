@@ -104,8 +104,8 @@ export const TaskViewSwitcher = ({
       onValueChange={setView}
       className="flex-1 w-full border rounded-lg"
     >
-      <div className="h-full flex flex-col overflow-auto p-4">
-        <div className="flex flex-col gap-y-2 lg:flex-row justify-between items-center">
+      <div className="h-full flex flex-col overflow-auto ">
+        <div className="flex flex-col gap-y-2  px-4 py-6 lg:flex-row justify-between items-center">
           <TabsList className="w-full lg:w-auto">
             <TabsTrigger className="h-8 w-full text-xs lg:w-auto" value="table">
               Table
@@ -120,24 +120,26 @@ export const TaskViewSwitcher = ({
               Timeline
             </TabsTrigger>
           </TabsList>
-          <Button onClick={open} size="xs" className="w-full !bg-[#1262e8] lg:w-auto">
+          <Button onClick={open} size="xs" className="w-full font-medium px-3 py-2 tracking-tight !bg-[#2663ec] lg:w-auto">
             <PlusIcon className="size-3 " />
             Add Task
           </Button>
         </div>
-        <DottedSeparator className="my-4" />
+
+
         <DataFilters hideProjectFilter={hideProjectFilter} showMyTasksOnly={showMyTasksOnly} />
-        <DottedSeparator className="my-4" />
+
+
         {isLoadingTasks ? (
           <div className="w-full border rounded-lg h-[200px] flex flex-col items-center justify-center">
             <LoaderIcon className="size-5 animate-spin text-muted-foreground" />
           </div>
         ) : (
           <>
-            <TabsContent value="table" className="mt-0">
+            <TabsContent value="table" className="mt-0 p-4">
               <DataTable columns={columns} data={filteredTasks?.documents ?? []} />
             </TabsContent>
-            <TabsContent value="kanban" className="mt-0">
+            <TabsContent value="kanban" className="mt-0 p-4">
               <EnhancedDataKanban
                 data={filteredTasks?.documents ?? []}
                 onChange={onKanbanChange}
@@ -146,10 +148,10 @@ export const TaskViewSwitcher = ({
                 projectId={paramProjectId || projectId || undefined}
               />
             </TabsContent>
-            <TabsContent value="calendar" className="mt-0 h-full pb-4">
+            <TabsContent value="calendar" className="mt-0 h-full p-4 pb-4">
               <DataCalendar data={filteredTasks?.documents ?? []} />
             </TabsContent>
-            <TabsContent value="timeline" className="mt-0 h-full pb-4">
+            <TabsContent value="timeline" className="mt-0 h-full p-4 pb-4">
               <SimpleTimeline data={filteredTasks?.documents ?? []} />
             </TabsContent>
           </>

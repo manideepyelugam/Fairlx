@@ -10,7 +10,7 @@ const baseTaskSchema = z.object({
   ),
   workspaceId: z.string().trim().min(1, "Required"),
   projectId: z.string().trim().min(1, "Required"),
-  dueDate: z.coerce.date(),
+  dueDate: z.coerce.date().optional(),
   endDate: z.coerce.date().optional(),
   assigneeIds: z.array(z.string().trim().min(1)).min(1, "At least one assignee is required"),
   description: z.string().nullable().optional(),

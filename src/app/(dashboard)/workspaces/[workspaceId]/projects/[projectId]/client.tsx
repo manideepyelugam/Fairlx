@@ -28,6 +28,8 @@ export const ProjectIdClient = () => {
     return <PageError message="Project not found." />;
   }
 
+  console.log("Project Data:", project);
+
   return (
     <div className="flex flex-col gap-y-4">
       
