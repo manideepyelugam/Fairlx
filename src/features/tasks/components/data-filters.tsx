@@ -111,7 +111,7 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly }: DataFiltersP
   if (isLoading) return null;
 
   return (
-    <div className="flex flex-col lg:flex-row gap-2">
+    <div className="flex flex-col px-4 py-6 border border-b-gray-200 border-t-none border-r-none  border-l-none lg:flex-row gap-2">
       <TaskSearch className="w-full text-xs lg:w-64" />
       
       <Select

@@ -13,7 +13,9 @@ import {
 export const useConfirm = (
   title: string,
   message: string,
-  variant: ButtonProps["variant"] = "primary"
+  variant: ButtonProps["variant"] = "primary",
+  confirmText: string = "Confirm",
+  cancelText: string = "Cancel"
 ): [() => React.JSX.Element, () => Promise<unknown>] => {
   const [promise, setPromise] = useState<{
     resolve: (value: boolean) => void;
@@ -54,14 +56,14 @@ export const useConfirm = (
               variant="outline"
               className="w-full lg:w-auto"
             >
-              Cancel
+              {cancelText}
             </Button>
             <Button
               onClick={handleConfirm}
               variant={variant}
               className="w-full lg:w-auto"
             >
-              Confirm
+              {confirmText}
             </Button>
           </div>
         </CardContent>

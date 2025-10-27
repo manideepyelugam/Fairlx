@@ -13,6 +13,7 @@ import {
   AssigneeAvatarGroup,
   AssigneeLike,
 } from "./assignee-avatar-group";
+import { useTaskDetailsModal } from "../hooks/use-task-details-modal";
 
 interface EventCardProps {
   title: string;
@@ -43,6 +44,7 @@ export const EventCard = ({
 }: EventCardProps) => {
   const workspaceId = useWorkspaceId();
   const router = useRouter();
+  const { open } = useTaskDetailsModal();
 
   const combinedAssignees: (
     | AssigneeLike
@@ -66,7 +68,7 @@ export const EventCard = ({
 
   const onClick = (e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation();
-    router.push(`/workspaces/${workspaceId}/tasks/${id}`);
+    open(id);
   };
 
   return (

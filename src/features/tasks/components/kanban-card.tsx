@@ -6,6 +6,7 @@ import { PriorityBadge } from "./PriorityBadge";
 import { AssigneeAvatarGroup } from "./assignee-avatar-group";
 
 import { PopulatedTask } from "../types";
+import { useTaskDetailsModal } from "../hooks/use-task-details-modal";
 
 interface KanbanCardProps {
   task: PopulatedTask;
@@ -19,16 +20,25 @@ export const KanbanCard = ({
   isSelected = false,
   showSelection = false
 }: KanbanCardProps) => {
+  const { open } = useTaskDetailsModal();
+  
   const assignees = task.assignees?.length
     ? task.assignees
     : task.assignee
     ? [task.assignee]
     : [];
 
+  const handleCardClick = () => {
+    open(task.$id);
+  };
+
   return (
-    <div className={`bg-white mb-2.5 rounded-xl border shadow-sm cursor-pointer ${
-      isSelected ? 'ring-2 ring-blue-500' : ''
-    } ${showSelection ? 'hover:bg-gray-50' : ''}`}>
+    <div 
+      onClick={handleCardClick}
+      className={`bg-white mb-2.5 rounded-xl border shadow-sm cursor-pointer hover:shadow-md transition-shadow ${
+        isSelected ? 'ring-2 ring-blue-500' : ''
+      } ${showSelection ? 'hover:bg-gray-50' : ''}`}
+    >
       <div className="flex p-4 flex-col items-start justify-between gap-x-2">
         
         
@@ -61,7 +71,10 @@ export const KanbanCard = ({
 
         <div className="flex items-center gap-1">
           <TaskActions id={task.$id} projectId={task.projectId}>
-            <MoreHorizontalIcon className="size-[18px] stroke-1 shrink-0 text-neutral-700 hover:opacity-75 transition" />
+            <MoreHorizontalIcon 
+              className="size-[18px] stroke-1 shrink-0 text-neutral-700 hover:opacity-75 transition" 
+              onClick={(e) => e.stopPropagation()}
+            />
           </TaskActions>
         </div>
 
@@ -69,12 +82,17 @@ export const KanbanCard = ({
 
         <h1 className="text-sm line-clamp-2 mt-4 font-semibold flex-1">{task.name}</h1>
        <p className="text-xs text-gray-600 mt-1 line-clamp-3">
-  {task.description
-    ?.split(" ")
-    .slice(0, 10)
-    .join(" ")}
-  {task.description?.split(" ").length && task.description.split(" ").length > 10 ? "..." : ""}
+  {(() => {
+    const words = task.description?.split(/\s+/) ?? [];
+    const shouldEllipsize = words.length > 5 || words.some((w) => w.length > 20);
+    const preview = words
+      .slice(0, 5)
+      .map((word) => (word.length > 20 ? word.slice(0, 20) + "..." : word))
+      .join(" ");
+    return preview + (shouldEllipsize ? "....." : "");
+  })()}
 </p>
+
 
       </div>
       
