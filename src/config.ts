@@ -12,3 +12,7 @@ export const IMAGES_BUCKET_ID =
 export const ATTACHMENTS_BUCKET_ID =
   process.env.NEXT_PUBLIC_APPWRITE_ATTACHMENTS_BUCKET_ID!
 export const ATTACHMENTS_ID = process.env.NEXT_PUBLIC_APPWRITE_ATTACHMENTS_ID!
+
+// Email/Messaging Configuration
+export const SMTP_PROVIDER_ID = process.env.NEXT_PUBLIC_APPWRITE_SMTP_PROVIDER_ID!;
+export const EMAIL_TOPIC_ID = process.env.NEXT_PUBLIC_APPWRITE_EMAIL_TOPIC_ID!;

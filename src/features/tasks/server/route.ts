@@ -360,17 +360,34 @@ const app = new Hono()
       // Send notifications asynchronously (non-blocking)
       const userName = user.name || user.email || "Someone";
       
-      // Determine notification type based on what changed
-      let notificationType: "task_assigned" | "task_completed" | "task_updated";
+      // Track changes for detailed notifications
       const statusChanged = status !== undefined && existingTask.status !== status;
+      const priorityChanged = priority !== undefined && existingTask.priority !== priority;
+      const dueDateChanged = dueDate !== undefined && String(existingTask.dueDate) !== String(dueDate);
+      
+      // Determine notification type based on what changed
+      let notificationType: "task_assigned" | "task_completed" | "task_updated" | "task_status_changed" | "task_priority_changed" | "task_due_date_changed";
       
       if (assigneesChanged) {
         notificationType = "task_assigned"; // New assignees should get "assigned" notification
       } else if (status === "DONE" && statusChanged) {
         notificationType = "task_completed";
+      } else if (statusChanged) {
+        notificationType = "task_status_changed";
+      } else if (priorityChanged) {
+        notificationType = "task_priority_changed";
+      } else if (dueDateChanged) {
+        notificationType = "task_due_date_changed";
       } else {
-        notificationType = "task_updated"; // This covers status changes and other updates
+        notificationType = "task_updated"; // This covers other updates
       }
+
+      // Prepare metadata with change information
+      const changeMetadata = {
+        ...(statusChanged && { oldStatus: existingTask.status, newStatus: status }),
+        ...(priorityChanged && { oldPriority: existingTask.priority, newPriority: priority }),
+        ...(dueDateChanged && { oldDueDate: existingTask.dueDate, newDueDate: dueDate }),
+      };
       
       // Notify assignees
       notifyTaskAssignees({
@@ -380,6 +397,7 @@ const app = new Hono()
         triggeredByName: userName,
         notificationType,
         workspaceId: existingTask.workspaceId,
+        metadata: changeMetadata,
       }).catch((error) => {
         console.error('Failed to notify assignees:', error);
       });
@@ -392,6 +410,7 @@ const app = new Hono()
         triggeredByName: userName,
         notificationType,
         workspaceId: existingTask.workspaceId,
+        metadata: changeMetadata,
       }).catch((error) => {
         console.error('Failed to notify workspace admins:', error);
       });

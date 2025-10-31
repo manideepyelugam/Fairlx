@@ -1,7 +1,15 @@
 import { ID, Models, Databases, Query } from "node-appwrite";
-import { DATABASE_ID, NOTIFICATIONS_ID, MEMBERS_ID } from "@/config";
+import { DATABASE_ID, NOTIFICATIONS_ID, MEMBERS_ID, PROJECTS_ID } from "@/config";
 import { Task } from "@/features/tasks/types";
 import { createAdminClient } from "@/lib/appwrite";
+import {
+  taskAssignedTemplate,
+  taskStatusChangedTemplate,
+  taskCompletedTemplate,
+  taskUpdatedTemplate,
+  taskPriorityChangedTemplate,
+  taskDueDateChangedTemplate,
+} from "@/lib/email-templates";
 
 export type NotificationType = 
   | "task_assigned" 
@@ -23,6 +31,143 @@ interface CreateNotificationParams {
   workspaceId: string;
   triggeredBy: string;
   metadata?: Record<string, unknown>;
+  task?: Task;
+  triggeredByName?: string;
+}
+
+/**
+ * Send email notification to a user with professional templates
+ */
+async function sendEmailNotification({
+  userId,
+  title,
+  taskId,
+  workspaceId,
+  notificationType,
+  task,
+  triggeredByName,
+  metadata = {},
+}: {
+  userId: string;
+  title: string;
+  taskId: string;
+  workspaceId: string;
+  notificationType: NotificationType;
+  task: Task;
+  triggeredByName: string;
+  metadata?: Record<string, unknown>;
+}): Promise<void> {
+  try {
+    const { messaging, users, databases } = await createAdminClient();
+    
+    // Get user details to get their email
+    const user = await users.get(userId);
+    
+    if (!user.email) {
+      console.log('[sendEmailNotification] User has no email:', userId);
+      return;
+    }
+
+    // Get project details if available
+    let projectName: string | undefined;
+    if (task.projectId) {
+      try {
+        const project = await databases.getDocument(DATABASE_ID, PROJECTS_ID, task.projectId);
+        projectName = project.name;
+      } catch {
+        // Project not found or error, continue without it
+      }
+    }
+
+    const taskUrl = `${process.env.NEXT_PUBLIC_APP_URL}/workspaces/${workspaceId}/tasks/${taskId}`;
+    
+    // Generate appropriate email template based on notification type
+    let emailBody: string;
+    
+    switch (notificationType) {
+      case "task_assigned":
+        emailBody = taskAssignedTemplate({
+          assignerName: triggeredByName,
+          taskName: task.name,
+          taskDescription: task.description || undefined,
+          projectName,
+          dueDate: task.dueDate,
+          priority: task.priority || undefined,
+          taskUrl,
+        });
+        break;
+        
+      case "task_status_changed":
+        emailBody = taskStatusChangedTemplate({
+          updaterName: triggeredByName,
+          taskName: task.name,
+          oldStatus: (metadata.oldStatus as string) || "UNKNOWN",
+          newStatus: task.status,
+          projectName,
+          taskUrl,
+        });
+        break;
+        
+      case "task_completed":
+        emailBody = taskCompletedTemplate({
+          completerName: triggeredByName,
+          taskName: task.name,
+          taskDescription: task.description || undefined,
+          projectName,
+          completedAt: new Date().toISOString(),
+          taskUrl,
+        });
+        break;
+        
+      case "task_priority_changed":
+        emailBody = taskPriorityChangedTemplate({
+          updaterName: triggeredByName,
+          taskName: task.name,
+          oldPriority: (metadata.oldPriority as string) || "MEDIUM",
+          newPriority: task.priority || "MEDIUM",
+          projectName,
+          taskUrl,
+        });
+        break;
+        
+      case "task_due_date_changed":
+        emailBody = taskDueDateChangedTemplate({
+          updaterName: triggeredByName,
+          taskName: task.name,
+          oldDueDate: metadata.oldDueDate as string,
+          newDueDate: task.dueDate,
+          projectName,
+          taskUrl,
+        });
+        break;
+        
+      case "task_updated":
+      default:
+        emailBody = taskUpdatedTemplate({
+          updaterName: triggeredByName,
+          taskName: task.name,
+          projectName,
+          changesDescription: metadata.changesDescription as string,
+          taskUrl,
+        });
+        break;
+    }
+
+    await messaging.createEmail(
+      ID.unique(),
+      title,
+      emailBody,
+      [], // Topics
+      [userId], // Users to send to
+      [], // Targets
+      [], // CC
+      [] // BCC
+    );
+    
+    console.log('[sendEmailNotification] Email sent successfully to:', user.email);
+  } catch (error) {
+    console.error('[sendEmailNotification] Failed to send email:', error);
+  }
 }
 
 /**
@@ -38,8 +183,11 @@ export async function createNotification({
   workspaceId,
   triggeredBy,
   metadata = {},
+  task,
+  triggeredByName,
 }: CreateNotificationParams): Promise<Models.Document> {
-  return await databases.createDocument(
+  // Create in-app notification
+  const notification = await databases.createDocument(
     DATABASE_ID,
     NOTIFICATIONS_ID,
     ID.unique(),
@@ -51,22 +199,39 @@ export async function createNotification({
       taskId,
       workspaceId,
       triggeredBy,
-      metadata: JSON.stringify(metadata), // Convert object to string
+      metadata: JSON.stringify(metadata),
       read: false,
     },
     [
-      `read("user:${userId}")`, // Allow the assigned user to read the notification
-      `update("user:${userId}")`, // Allow the assigned user to update (mark as read)
-      `delete("user:${userId}")` // Allow the assigned user to delete the notification
+      `read("user:${userId}")`,
+      `update("user:${userId}")`,
+      `delete("user:${userId}")`
     ]
   );
+
+  // Send email notification asynchronously (don't await to avoid blocking)
+  if (task && triggeredByName) {
+    sendEmailNotification({
+      userId,
+      title,
+      taskId,
+      workspaceId,
+      notificationType: type,
+      task,
+      triggeredByName,
+      metadata,
+    }).catch((error) => {
+      console.error('[createNotification] Email notification failed:', error);
+    });
+  }
+
+  return notification;
 }
 
 /**
  * Notify assignees about a task change
  */
 export async function notifyTaskAssignees({
-  databases,
   task,
   triggeredByUserId,
   triggeredByName,
@@ -159,6 +324,8 @@ export async function notifyTaskAssignees({
             projectId: task.projectId,
             ...extraMetadata,
           },
+          task,
+          triggeredByName,
         });
       } catch {
         // Silently fail - notifications are non-critical
@@ -175,7 +342,6 @@ export async function notifyTaskAssignees({
  * Notify workspace admins about a task change
  */
 export async function notifyWorkspaceAdmins({
-  databases,
   task,
   triggeredByUserId,
   triggeredByName,
@@ -284,6 +450,8 @@ export async function notifyWorkspaceAdmins({
             projectId: task.projectId,
             ...extraMetadata,
           },
+          task,
+          triggeredByName,
         });
         console.log('[notifyWorkspaceAdmins] Notification created successfully for:', member.userId);
       } catch (error) {
