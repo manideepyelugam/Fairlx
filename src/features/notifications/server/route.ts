@@ -155,7 +155,7 @@ const app = new Hono()
     return c.json({ data: { count: unreadNotifications.total } });
   })
 
-  // Mark notification as read
+  // Mark notification as read (deletes the notification)
   .patch(
     "/:notificationId/read",
     sessionMiddleware,
@@ -176,15 +176,14 @@ const app = new Hono()
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      // Update notification
-      const updatedNotification = await databases.updateDocument(
+      // Delete notification when marked as read
+      await databases.deleteDocument(
         DATABASE_ID,
         NOTIFICATIONS_ID,
-        notificationId,
-        { read: true }
+        notificationId
       );
 
-      return c.json({ data: updatedNotification });
+      return c.json({ data: { $id: notificationId } });
     }
   )
 
@@ -221,14 +220,13 @@ const app = new Hono()
         ]
       );
 
-      // Mark all as read
+      // Delete all unread notifications (marking as read now deletes them)
       await Promise.all(
         unreadNotifications.documents.map((notification) =>
-          databases.updateDocument(
+          databases.deleteDocument(
             DATABASE_ID,
             NOTIFICATIONS_ID,
-            notification.$id,
-            { read: true }
+            notification.$id
           )
         )
       );
