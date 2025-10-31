@@ -5,7 +5,8 @@ export const useTaskFilters = () => {
   return useQueryStates({
     projectId: parseAsString,
     status: parseAsString,
-    assigneeId: parseAsString,
+    assigneeId: parseAsString, // Keep for backward compatibility
+    assigneeIds: parseAsArrayOf(parseAsString), // New field for multiple assignees
     search: parseAsString,
     dueDate: parseAsString,
     priority: parseAsString,

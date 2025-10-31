@@ -1,6 +1,7 @@
 import { ID, Models, Databases, Query } from "node-appwrite";
 import { DATABASE_ID, NOTIFICATIONS_ID, MEMBERS_ID } from "@/config";
 import { Task } from "@/features/tasks/types";
+import { createAdminClient } from "@/lib/appwrite";
 
 export type NotificationType = 
   | "task_assigned" 
@@ -52,7 +53,12 @@ export async function createNotification({
       triggeredBy,
       metadata: JSON.stringify(metadata), // Convert object to string
       read: false,
-    }
+    },
+    [
+      `read("user:${userId}")`, // Allow the assigned user to read the notification
+      `update("user:${userId}")`, // Allow the assigned user to update (mark as read)
+      `delete("user:${userId}")` // Allow the assigned user to delete the notification
+    ]
   );
 }
 
@@ -77,6 +83,9 @@ export async function notifyTaskAssignees({
   metadata?: Record<string, unknown>;
 }): Promise<void> {
   try {
+    // Use admin client to ensure we can create notifications for any user
+    const { databases: adminDatabases } = await createAdminClient();
+    
     const assigneeIds = task.assigneeIds || (task.assigneeId ? [task.assigneeId] : []);
 
     if (assigneeIds.length === 0) {
@@ -123,6 +132,10 @@ export async function notifyTaskAssignees({
         break;
     }
 
+    // Map notification types to supported database enum values
+    const supportedTypes = ["task_assigned", "task_updated", "task_completed", "task_deleted", "task_comment"];
+    const dbNotificationType = supportedTypes.includes(notificationType) ? notificationType : "task_updated";
+
     // Create notifications for each assignee
     const notificationPromises = assigneeIds.map(async (assigneeId: string) => {
       // Don't notify the user who made the change
@@ -132,9 +145,9 @@ export async function notifyTaskAssignees({
       
       try {
         await createNotification({
-          databases,
+          databases: adminDatabases,
           userId: assigneeId,
-          type: notificationType,
+          type: dbNotificationType,
           title,
           message,
           taskId: task.$id,
@@ -179,13 +192,26 @@ export async function notifyWorkspaceAdmins({
   metadata?: Record<string, unknown>;
 }): Promise<void> {
   try {
+    console.log('[notifyWorkspaceAdmins] Starting notification process', {
+      taskId: task.$id,
+      triggeredByUserId,
+      notificationType,
+      workspaceId
+    });
+
+    // Use admin client to ensure we can create notifications for any user
+    const { databases: adminDatabases } = await createAdminClient();
+
     // Get all workspace members
-    const members = await databases.listDocuments(DATABASE_ID, MEMBERS_ID, [
+    const members = await adminDatabases.listDocuments(DATABASE_ID, MEMBERS_ID, [
       Query.equal("workspaceId", workspaceId),
       Query.equal("role", "ADMIN"),
     ]);
 
+    console.log('[notifyWorkspaceAdmins] Found admin members:', members.documents.length);
+
     if (members.documents.length === 0) {
+      console.log('[notifyWorkspaceAdmins] No admin members found');
       return;
     }
 
@@ -228,18 +254,25 @@ export async function notifyWorkspaceAdmins({
         break;
     }
 
+    // Map notification types to supported database enum values
+    const supportedTypes = ["task_assigned", "task_updated", "task_completed", "task_deleted", "task_comment"];
+    const dbNotificationType = supportedTypes.includes(notificationType) ? notificationType : "task_updated";
+
     // Create notifications for admin members
     const notificationPromises = members.documents.map(async (member: Models.Document) => {
       // Don't notify the user who made the change
       if (member.userId === triggeredByUserId) {
+        console.log('[notifyWorkspaceAdmins] Skipping notification for triggering user:', member.userId);
         return;
       }
 
+      console.log('[notifyWorkspaceAdmins] Creating notification for admin:', member.userId);
+
       try {
         await createNotification({
-          databases,
+          databases: adminDatabases,
           userId: member.userId,
-          type: notificationType,
+          type: dbNotificationType,
           title,
           message,
           taskId: task.$id,
@@ -252,13 +285,15 @@ export async function notifyWorkspaceAdmins({
             ...extraMetadata,
           },
         });
-      } catch {
-        // Silently fail - notifications are non-critical
+        console.log('[notifyWorkspaceAdmins] Notification created successfully for:', member.userId);
+      } catch (error) {
+        console.error('[notifyWorkspaceAdmins] Failed to create notification:', error);
       }
     });
 
     await Promise.all(notificationPromises);
-  } catch {
-    // Silently fail - notifications are non-critical
+    console.log('[notifyWorkspaceAdmins] All notifications processed');
+  } catch (error) {
+    console.error('[notifyWorkspaceAdmins] Error in notification process:', error);
   }
 }

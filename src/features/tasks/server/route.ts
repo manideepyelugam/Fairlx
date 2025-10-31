@@ -105,9 +105,14 @@ const app = new Hono()
       }
 
       if (assigneeId) {
-        // Note: Appwrite doesn't support OR queries directly, so we filter by assigneeIds array
-        // which should contain the assigneeId. Legacy assigneeId field handling removed.
-        query.push(Query.contains("assigneeIds", assigneeId));
+        // Since Appwrite doesn't support OR queries directly in the native client,
+        // we'll handle both assigneeId (legacy) and assigneeIds (new) by using separate queries
+        // and merging results, or filtering client-side. For now, we'll query by assigneeIds
+        // and handle legacy assigneeId in post-processing.
+        query.push(Query.or([
+          Query.equal("assigneeId", assigneeId), // Legacy field
+          Query.contains("assigneeIds", assigneeId) // New array field
+        ]));
       }
 
       if (dueDate) {
@@ -254,7 +259,7 @@ const app = new Hono()
           workspaceId,
           projectId,
           dueDate,
-          assigneeId: assigneeIds[0], // Keep backward compatibility - use first assignee as primary
+          assigneeId: assigneeIds?.[0] || "", // Keep backward compatibility - use first assignee as primary
           assigneeIds,
           position: newPosition,
           description,
@@ -331,6 +336,14 @@ const app = new Hono()
         labels,
       };
 
+      // Track if assignees changed for notification purposes
+      const oldAssigneeIds = existingTask.assigneeIds || (existingTask.assigneeId ? [existingTask.assigneeId] : []);
+      const newAssigneeIds = assigneeIds || [];
+      const assigneesChanged = assigneeIds && (
+        oldAssigneeIds.length !== newAssigneeIds.length ||
+        !oldAssigneeIds.every(id => newAssigneeIds.includes(id))
+      );
+
       // Handle assignees - update both single assignee and multiple assignees
       if (assigneeIds && assigneeIds.length > 0) {
         updateData.assigneeIds = assigneeIds;
@@ -346,7 +359,18 @@ const app = new Hono()
 
       // Send notifications asynchronously (non-blocking)
       const userName = user.name || user.email || "Someone";
-      const notificationType = status === "DONE" ? "task_completed" : "task_updated";
+      
+      // Determine notification type based on what changed
+      let notificationType: "task_assigned" | "task_completed" | "task_updated";
+      const statusChanged = status !== undefined && existingTask.status !== status;
+      
+      if (assigneesChanged) {
+        notificationType = "task_assigned"; // New assignees should get "assigned" notification
+      } else if (status === "DONE" && statusChanged) {
+        notificationType = "task_completed";
+      } else {
+        notificationType = "task_updated"; // This covers status changes and other updates
+      }
       
       // Notify assignees
       notifyTaskAssignees({
@@ -356,7 +380,9 @@ const app = new Hono()
         triggeredByName: userName,
         notificationType,
         workspaceId: existingTask.workspaceId,
-      }).catch(() => {});
+      }).catch((error) => {
+        console.error('Failed to notify assignees:', error);
+      });
 
       // Notify workspace admins
       notifyWorkspaceAdmins({
@@ -366,7 +392,9 @@ const app = new Hono()
         triggeredByName: userName,
         notificationType,
         workspaceId: existingTask.workspaceId,
-      }).catch(() => {});
+      }).catch((error) => {
+        console.error('Failed to notify workspace admins:', error);
+      });
 
       return c.json({ data: task });
     }
@@ -460,7 +488,8 @@ const app = new Hono()
             $id: z.string(),
             status: z.union([z.nativeEnum(TaskStatus), z.string()]).optional(),
             position: z.number().int().positive().min(1000).max(1_000_000).optional(),
-            assigneeId: z.string().optional(),
+            assigneeId: z.string().optional(), // Keep for backward compatibility
+            assigneeIds: z.array(z.string()).optional(), // New field for multiple assignees
           })
         ),
       })
@@ -510,7 +539,7 @@ const app = new Hono()
 
       const updatedTasks = await Promise.all(
         tasks.map(async (task) => {
-          const { $id, status, position, assigneeId } = task;
+          const { $id, status, position, assigneeId, assigneeIds } = task;
           
           // Get existing task to compare status
           const existingTask = await databases.getDocument<Task>(DATABASE_ID, TASKS_ID, $id);
@@ -519,7 +548,15 @@ const app = new Hono()
           
           if (status !== undefined) updateData.status = status;
           if (position !== undefined) updateData.position = position;
-          if (assigneeId !== undefined) updateData.assigneeId = assigneeId;
+          
+          // Handle assignees - prioritize assigneeIds over assigneeId
+          if (assigneeIds !== undefined && assigneeIds.length > 0) {
+            updateData.assigneeIds = assigneeIds;
+            updateData.assigneeId = assigneeIds[0]; // Keep backward compatibility
+          } else if (assigneeId !== undefined) {
+            updateData.assigneeId = assigneeId;
+            updateData.assigneeIds = [assigneeId]; // Convert single to array
+          }
           
           const updatedTask = await databases.updateDocument<Task>(DATABASE_ID, TASKS_ID, $id, updateData);
           

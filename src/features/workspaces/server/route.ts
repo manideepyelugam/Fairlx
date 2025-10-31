@@ -408,7 +408,10 @@ const app = new Hono()
       TASKS_ID,
       [
         Query.equal("workspaceId", workspaceId),
-        Query.equal("assigneeId", member.$id),
+        Query.or([
+          Query.equal("assigneeId", member.$id),
+          Query.contains("assigneeIds", member.$id)
+        ]),
         Query.greaterThanEqual("$createdAt", thisMonthStart.toISOString()),
         Query.lessThanEqual("$createdAt", thisMonthEnd.toISOString()),
       ]
@@ -419,7 +422,10 @@ const app = new Hono()
       TASKS_ID,
       [
         Query.equal("workspaceId", workspaceId),
-        Query.equal("assigneeId", member.$id),
+        Query.or([
+          Query.equal("assigneeId", member.$id), // Backward compatibility
+          Query.contains("assigneeIds", member.$id) // New multiple assignees field
+        ]),
         Query.greaterThanEqual("$createdAt", lastMonthStart.toISOString()),
         Query.lessThanEqual("$createdAt", lastMonthEnd.toISOString()),
       ]

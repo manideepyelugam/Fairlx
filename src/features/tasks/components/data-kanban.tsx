@@ -159,7 +159,7 @@ export const DataKanban = ({
 
     const updates = Array.from(selectedTasks).map(taskId => ({
       $id: taskId,
-      assigneeId,
+      assigneeIds: [assigneeId], // Replace all assignees with the selected one
     }));
 
     bulkUpdateTasks({

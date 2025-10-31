@@ -56,7 +56,7 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly }: DataFiltersP
     label: member.name,
   }));
 
-  const [{ status, assigneeId, projectId, dueDate, priority, labels }, setFilters] =
+  const [{ status, assigneeId, assigneeIds, projectId, dueDate, priority, labels }, setFilters] =
     useTaskFilters();
 
   const { data: customColumnsData } = useGetCustomColumns({ 
