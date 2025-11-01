@@ -132,17 +132,14 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly }: DataFiltersP
         <SelectContent >
           <SelectItem value="all" className="text-xs">All statuses</SelectItem>
           <SelectSeparator />
-          <SelectItem value={TaskStatus.BACKLOG}>
-            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.BACKLOG]}Backlog</div>
+          <SelectItem value={TaskStatus.ASSIGNED}>
+            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.ASSIGNED]}Assigned</div>
           </SelectItem>
           <SelectItem value={TaskStatus.IN_PROGRESS}>
             <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.IN_PROGRESS]}In Progress</div>
           </SelectItem>
           <SelectItem value={TaskStatus.COMPLETED}>
             <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.COMPLETED]}Completed</div>
-          </SelectItem>
-          <SelectItem value={TaskStatus.ASSIGNED}>
-            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.ASSIGNED]}Assigned</div>
           </SelectItem>
           <SelectItem value={TaskStatus.CLOSED}>
             <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.CLOSED]}Closed</div>

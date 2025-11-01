@@ -20,7 +20,6 @@ interface SimpleTimelineProps {
 type ViewType = "week" | "month" | "quarter";
 
 const statusConfig = {
-  [TaskStatus.BACKLOG]: { color: "bg-pink-500" },
   [TaskStatus.ASSIGNED]: { color: "bg-red-500" },
   [TaskStatus.IN_PROGRESS]: { color: "bg-yellow-500" },
   [TaskStatus.COMPLETED]: { color: "bg-blue-500" },

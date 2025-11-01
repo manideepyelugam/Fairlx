@@ -24,7 +24,6 @@ interface EventCardProps {
 }
 
 const statusColorMap: Record<TaskStatus, string> = {
-  [TaskStatus.BACKLOG]: "border-l-pink-400",
   [TaskStatus.ASSIGNED]: "border-l-red-400",
   [TaskStatus.IN_PROGRESS]: "border-l-yellow-400",
   [TaskStatus.COMPLETED]: "border-l-blue-400",

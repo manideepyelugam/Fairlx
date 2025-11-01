@@ -21,7 +21,6 @@ interface TimelineGanttProps {
 type ViewType = "week" | "month" | "quarter";
 
 const statusColorMap: Record<TaskStatus, string> = {
-  [TaskStatus.BACKLOG]: "bg-pink-500",
   [TaskStatus.ASSIGNED]: "bg-red-500",
   [TaskStatus.IN_PROGRESS]: "bg-yellow-500",
   [TaskStatus.COMPLETED]: "bg-blue-500",
@@ -29,7 +28,6 @@ const statusColorMap: Record<TaskStatus, string> = {
 };
 
 const statusBorderMap: Record<TaskStatus, string> = {
-  [TaskStatus.BACKLOG]: "border-pink-200",
   [TaskStatus.ASSIGNED]: "border-red-200",
   [TaskStatus.IN_PROGRESS]: "border-yellow-200",
   [TaskStatus.COMPLETED]: "border-blue-200",

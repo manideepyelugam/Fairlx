@@ -18,7 +18,6 @@ import { useBulkUpdateTasks } from "../api/use-bulk-update-tasks";
 import { useCreateTaskModal } from "../hooks/use-create-task-modal";
 
 const boards: TaskStatus[] = [
-  TaskStatus.BACKLOG,
   TaskStatus.ASSIGNED,
   TaskStatus.IN_PROGRESS,
   TaskStatus.COMPLETED,
@@ -48,7 +47,6 @@ export const DataKanban = ({
 }: DataKanbanProps) => {
   const [tasks, setTasks] = useState<TasksState>(() => {
     const initialTasks: TasksState = {
-      [TaskStatus.BACKLOG]: [],
       [TaskStatus.ASSIGNED]: [],
       [TaskStatus.IN_PROGRESS]: [],
       [TaskStatus.COMPLETED]: [],
@@ -80,7 +78,6 @@ export const DataKanban = ({
 
   useEffect(() => {
     const newTasks: TasksState = {
-      [TaskStatus.BACKLOG]: [],
       [TaskStatus.ASSIGNED]: [],
       [TaskStatus.IN_PROGRESS]: [],
       [TaskStatus.COMPLETED]: [],

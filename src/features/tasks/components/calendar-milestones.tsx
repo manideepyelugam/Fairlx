@@ -18,7 +18,6 @@ interface CalendarMilestonesProps {
 }
 
 const statusConfig = {
-  [TaskStatus.BACKLOG]: { color: "bg-pink-500", textColor: "text-pink-700" },
   [TaskStatus.ASSIGNED]: { color: "bg-red-500", textColor: "text-red-700" },
   [TaskStatus.IN_PROGRESS]: { color: "bg-yellow-500", textColor: "text-yellow-700" },
   [TaskStatus.COMPLETED]: { color: "bg-blue-500", textColor: "text-blue-700" },

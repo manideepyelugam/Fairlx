@@ -21,12 +21,6 @@ interface EnhancedTimelineProps {
 type ViewType = "week" | "month" | "quarter";
 
 const statusConfig = {
-  [TaskStatus.BACKLOG]: { 
-    color: "bg-pink-500", 
-    lightColor: "bg-pink-100", 
-    borderColor: "border-pink-200",
-    textColor: "text-pink-700"
-  },
   [TaskStatus.ASSIGNED]: { 
     color: "bg-red-500", 
     lightColor: "bg-red-100", 

@@ -92,7 +92,6 @@ export function getStatusColor(status: string): string {
     IN_PROGRESS: "#3b82f6",
     COMPLETED: "#f59e0b",
     CLOSED: "#10b981",
-    BACKLOG: "#6b7280",
   };
   return colors[status] || "#6b7280";
 }

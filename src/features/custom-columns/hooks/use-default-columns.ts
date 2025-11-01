@@ -13,7 +13,6 @@ export interface DefaultColumn {
 }
 
 const DEFAULT_COLUMNS_CONFIG: Omit<DefaultColumn, 'isEnabled' | 'position'>[] = [
-  { id: TaskStatus.BACKLOG, name: "Backlog" },
   { id: TaskStatus.ASSIGNED, name: "Assigned" },
   { id: TaskStatus.IN_PROGRESS, name: "In Progress" },
   { id: TaskStatus.COMPLETED, name: "Completed" },
