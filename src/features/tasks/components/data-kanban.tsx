@@ -19,10 +19,10 @@ import { useCreateTaskModal } from "../hooks/use-create-task-modal";
 
 const boards: TaskStatus[] = [
   TaskStatus.BACKLOG,
-  TaskStatus.TODO,
+  TaskStatus.ASSIGNED,
   TaskStatus.IN_PROGRESS,
-  TaskStatus.IN_REVIEW,
-  TaskStatus.DONE,
+  TaskStatus.COMPLETED,
+  TaskStatus.CLOSED,
 ];
 
 type TasksState = {
@@ -49,10 +49,10 @@ export const DataKanban = ({
   const [tasks, setTasks] = useState<TasksState>(() => {
     const initialTasks: TasksState = {
       [TaskStatus.BACKLOG]: [],
-      [TaskStatus.TODO]: [],
+      [TaskStatus.ASSIGNED]: [],
       [TaskStatus.IN_PROGRESS]: [],
-      [TaskStatus.IN_REVIEW]: [],
-      [TaskStatus.DONE]: [],
+      [TaskStatus.COMPLETED]: [],
+      [TaskStatus.CLOSED]: [],
     };
 
     data.forEach((task) => {
@@ -81,10 +81,10 @@ export const DataKanban = ({
   useEffect(() => {
     const newTasks: TasksState = {
       [TaskStatus.BACKLOG]: [],
-      [TaskStatus.TODO]: [],
+      [TaskStatus.ASSIGNED]: [],
       [TaskStatus.IN_PROGRESS]: [],
-      [TaskStatus.IN_REVIEW]: [],
-      [TaskStatus.DONE]: [],
+      [TaskStatus.COMPLETED]: [],
+      [TaskStatus.CLOSED]: [],
     };
 
     data.forEach((task) => {

@@ -138,14 +138,14 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly }: DataFiltersP
           <SelectItem value={TaskStatus.IN_PROGRESS}>
             <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.IN_PROGRESS]}In Progress</div>
           </SelectItem>
-          <SelectItem value={TaskStatus.IN_REVIEW}>
-            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.IN_REVIEW]}In Review</div>
+          <SelectItem value={TaskStatus.COMPLETED}>
+            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.COMPLETED]}Completed</div>
           </SelectItem>
-          <SelectItem value={TaskStatus.TODO}>
-            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.TODO]}Todo</div>
+          <SelectItem value={TaskStatus.ASSIGNED}>
+            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.ASSIGNED]}Assigned</div>
           </SelectItem>
-          <SelectItem value={TaskStatus.DONE}>
-            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.DONE]}Done</div>
+          <SelectItem value={TaskStatus.CLOSED}>
+            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.CLOSED]}Closed</div>
           </SelectItem>
 
           {customColumnOptions && customColumnOptions.length > 0 && (

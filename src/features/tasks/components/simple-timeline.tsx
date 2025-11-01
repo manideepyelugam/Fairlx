@@ -21,10 +21,10 @@ type ViewType = "week" | "month" | "quarter";
 
 const statusConfig = {
   [TaskStatus.BACKLOG]: { color: "bg-pink-500" },
-  [TaskStatus.TODO]: { color: "bg-red-500" },
+  [TaskStatus.ASSIGNED]: { color: "bg-red-500" },
   [TaskStatus.IN_PROGRESS]: { color: "bg-yellow-500" },
-  [TaskStatus.IN_REVIEW]: { color: "bg-blue-500" },
-  [TaskStatus.DONE]: { color: "bg-emerald-500" },
+  [TaskStatus.COMPLETED]: { color: "bg-blue-500" },
+  [TaskStatus.CLOSED]: { color: "bg-emerald-500" },
 };
 
 export const SimpleTimeline = ({ data }: SimpleTimelineProps) => {

@@ -88,10 +88,10 @@ export function createBadge(text: string, color: string): string {
  */
 export function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
-    TODO: "#6b7280",
+    ASSIGNED: "#6b7280",
     IN_PROGRESS: "#3b82f6",
-    IN_REVIEW: "#f59e0b",
-    DONE: "#10b981",
+    COMPLETED: "#f59e0b",
+    CLOSED: "#10b981",
     BACKLOG: "#6b7280",
   };
   return colors[status] || "#6b7280";

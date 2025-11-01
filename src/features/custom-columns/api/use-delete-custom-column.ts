@@ -19,7 +19,7 @@ export const useDeleteCustomColumn = (props?: UseDeleteCustomColumnProps) => {
 
   const mutation = useMutation<ResponseType, Error, RequestType & { moveTasks?: boolean }>({
     mutationFn: async ({ param, moveTasks = true }) => {
-      // First, if moveTasks is true, move all tasks from this column to TODO
+      // First, if moveTasks is true, move all tasks from this column to ASSIGNED
       if (moveTasks) {
         // Get all tasks data from the cache
         const workspaceTasks = queryClient.getQueriesData({ 
@@ -42,11 +42,11 @@ export const useDeleteCustomColumn = (props?: UseDeleteCustomColumnProps) => {
           }
         });
 
-        // Move tasks to TODO
+        // Move tasks to ASSIGNED
         if (tasksToMove.length > 0) {
           const updates = tasksToMove.map(taskId => ({
             $id: taskId,
-            status: TaskStatus.TODO,
+            status: TaskStatus.ASSIGNED,
           }));
 
           try {
