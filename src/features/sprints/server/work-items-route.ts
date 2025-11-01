@@ -255,6 +255,52 @@ const app = new Hono()
       });
     }
   )
+  // Get epics (work items of type EPIC)
+  .get(
+    "/epics",
+    sessionMiddleware,
+    zValidator(
+      "query",
+      z.object({
+        workspaceId: z.string(),
+        projectId: z.string().optional(),
+      })
+    ),
+    async (c) => {
+      const databases = c.get("databases");
+      const user = c.get("user");
+
+      const { workspaceId, projectId } = c.req.valid("query");
+
+      const member = await getMember({
+        databases,
+        workspaceId,
+        userId: user.$id,
+      });
+
+      if (!member) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      const query = [
+        Query.equal("workspaceId", workspaceId),
+        Query.equal("type", WorkItemType.EPIC),
+        Query.orderDesc("$createdAt"),
+      ];
+
+      if (projectId) {
+        query.push(Query.equal("projectId", projectId));
+      }
+
+      const epics = await databases.listDocuments<WorkItem>(
+        DATABASE_ID,
+        WORK_ITEMS_ID,
+        query
+      );
+
+      return c.json({ data: epics });
+    }
+  )
   // Get a single work item
   .get(
     "/:workItemId",
@@ -641,52 +687,6 @@ const app = new Hono()
       );
 
       return c.json({ data: { original: originalWorkItem, created: createdItems } });
-    }
-  )
-  // Get epics (work items of type EPIC)
-  .get(
-    "/epics",
-    sessionMiddleware,
-    zValidator(
-      "query",
-      z.object({
-        workspaceId: z.string(),
-        projectId: z.string().optional(),
-      })
-    ),
-    async (c) => {
-      const databases = c.get("databases");
-      const user = c.get("user");
-
-      const { workspaceId, projectId } = c.req.valid("query");
-
-      const member = await getMember({
-        databases,
-        workspaceId,
-        userId: user.$id,
-      });
-
-      if (!member) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      const query = [
-        Query.equal("workspaceId", workspaceId),
-        Query.equal("type", WorkItemType.EPIC),
-        Query.orderDesc("$createdAt"),
-      ];
-
-      if (projectId) {
-        query.push(Query.equal("projectId", projectId));
-      }
-
-      const epics = await databases.listDocuments<WorkItem>(
-        DATABASE_ID,
-        WORK_ITEMS_ID,
-        query
-      );
-
-      return c.json({ data: epics });
     }
   );
 

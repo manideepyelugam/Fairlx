@@ -6,6 +6,7 @@ export { WorkItemCard } from "./components/work-item-card";
 export { WorkItemOptionsMenu } from "./components/work-item-options-menu";
 export { CreateWorkItemBar } from "./components/create-work-item-bar";
 export { CreateSprintDialog } from "./components/create-sprint-dialog";
+export { AssignAssigneeDialog } from "./components/assign-assignee-dialog";
 export { BacklogView } from "./components/backlog-view";
 
 // API Hooks - Sprints

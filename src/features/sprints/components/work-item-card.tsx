@@ -13,6 +13,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -24,6 +29,7 @@ import { cn } from "@/lib/utils";
 
 import { useUpdateWorkItem } from "../api/use-update-work-item";
 import { WorkItemOptionsMenu } from "./work-item-options-menu";
+import { AssignAssigneeDialog } from "./assign-assignee-dialog";
 import {
   PopulatedWorkItem,
   WorkItemStatus,
@@ -33,6 +39,7 @@ import {
 
 interface WorkItemCardProps {
   workItem: PopulatedWorkItem;
+  workspaceId: string;
   onViewDetails?: () => void;
 }
 
@@ -51,9 +58,11 @@ const priorityColors = {
   [WorkItemPriority.URGENT]: "text-red-500",
 };
 
-export const WorkItemCard = ({ workItem, onViewDetails }: WorkItemCardProps) => {
+export const WorkItemCard = ({ workItem, workspaceId, onViewDetails }: WorkItemCardProps) => {
   const [showChildren, setShowChildren] = useState(false);
   const [editingStoryPoints, setEditingStoryPoints] = useState(false);
+  const [assignAssigneeOpen, setAssignAssigneeOpen] = useState(false);
+  const [assigneePopoverOpen, setAssigneePopoverOpen] = useState(false);
   const { mutate: updateWorkItem } = useUpdateWorkItem();
 
   const handleStatusChange = (status: string) => {
@@ -117,7 +126,7 @@ export const WorkItemCard = ({ workItem, onViewDetails }: WorkItemCardProps) => 
               workItem={workItem}
               onSplit={() => {}}
               onAssignEpic={() => {}}
-              onAssignAssignee={() => {}}
+              onAssignAssignee={() => setAssignAssigneeOpen(true)}
               onEditStoryPoints={() => setEditingStoryPoints(true)}
             />
           </div>
@@ -182,27 +191,71 @@ export const WorkItemCard = ({ workItem, onViewDetails }: WorkItemCardProps) => 
             )}
 
             {/* Assignees */}
-            <div className="flex items-center -space-x-2">
-              {workItem.assignees && workItem.assignees.length > 0 ? (
-                workItem.assignees.slice(0, 3).map((assignee) => (
-                  <Avatar key={assignee.$id} className="size-6 border-2 border-background">
-                    <AvatarImage src={assignee.profileImageUrl || undefined} />
-                    <AvatarFallback className="text-xs">
-                      {assignee.name.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                ))
-              ) : (
-                <Button variant="ghost" size="sm" className="h-6 px-2">
-                  <Users className="size-3" />
-                </Button>
-              )}
-              {workItem.assignees && workItem.assignees.length > 3 && (
-                <div className="flex items-center justify-center size-6 rounded-full bg-muted border-2 border-background text-xs">
-                  +{workItem.assignees.length - 3}
-                </div>
-              )}
-            </div>
+            {workItem.assignees && workItem.assignees.length > 0 ? (
+              <Popover open={assigneePopoverOpen} onOpenChange={setAssigneePopoverOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex items-center -space-x-2 cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2"
+                    onMouseEnter={() => setAssigneePopoverOpen(true)}
+                    onMouseLeave={() => setAssigneePopoverOpen(false)}
+                    onClick={() => setAssignAssigneeOpen(true)}
+                  >
+                    {workItem.assignees.slice(0, 3).map((assignee) => (
+                      <Avatar key={assignee.$id} className="size-6 border-2 border-background">
+                        <AvatarImage src={assignee.profileImageUrl || undefined} />
+                        <AvatarFallback className="text-xs">
+                          {assignee.name.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    ))}
+                    {workItem.assignees.length > 3 && (
+                      <div className="flex items-center justify-center size-6 rounded-full bg-muted border-2 border-background text-xs">
+                        +{workItem.assignees.length - 3}
+                      </div>
+                    )}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="center"
+                  className="w-64 p-3"
+                  onMouseEnter={() => setAssigneePopoverOpen(true)}
+                  onMouseLeave={() => setAssigneePopoverOpen(false)}
+                >
+                  <div className="space-y-2">
+                    {workItem.assignees.map((assignee) => (
+                      <div key={assignee.$id} className="flex items-center gap-2">
+                        <Avatar className="size-8">
+                          <AvatarImage src={assignee.profileImageUrl || undefined} />
+                          <AvatarFallback className="text-sm">
+                            {assignee.name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium leading-none">
+                            {assignee.name}
+                          </span>
+                          {assignee.email && (
+                            <span className="text-xs text-muted-foreground">
+                              {assignee.email}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            ) : (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 px-2"
+                onClick={() => setAssignAssigneeOpen(true)}
+              >
+                <Users className="size-3" />
+              </Button>
+            )}
 
             {/* Children Count */}
             {workItem.childrenCount! > 0 && (
@@ -218,10 +271,18 @@ export const WorkItemCard = ({ workItem, onViewDetails }: WorkItemCardProps) => 
       {showChildren && workItem.children && workItem.children.length > 0 && (
         <div className="ml-6 mt-2 space-y-2 border-l-2 pl-3">
           {workItem.children.map((child) => (
-            <WorkItemCard key={child.$id} workItem={child} onViewDetails={onViewDetails} />
+            <WorkItemCard key={child.$id} workItem={child} workspaceId={workspaceId} onViewDetails={onViewDetails} />
           ))}
         </div>
       )}
+
+      {/* Assign Assignee Dialog */}
+      <AssignAssigneeDialog
+        isOpen={assignAssigneeOpen}
+        onClose={() => setAssignAssigneeOpen(false)}
+        workItem={workItem}
+        workspaceId={workspaceId}
+      />
     </div>
   );
 };

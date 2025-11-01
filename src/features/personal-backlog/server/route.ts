@@ -72,6 +72,9 @@ const app = new Hono()
       const databases = c.get("databases");
       const data = c.req.valid("json");
 
+      // Get admin client for creating with permissions
+      const { databases: adminDatabases } = await createAdminClient();
+
       // Get the highest position
       const items = await databases.listDocuments<BacklogItem>(
         DATABASE_ID,
@@ -86,7 +89,7 @@ const app = new Hono()
 
       const highestPosition = items.documents[0]?.position ?? 0;
 
-      const item = await databases.createDocument<BacklogItem>(
+      const item = await adminDatabases.createDocument<BacklogItem>(
         DATABASE_ID,
         PERSONAL_BACKLOG_ID,
         ID.unique(),
@@ -96,7 +99,12 @@ const app = new Hono()
           position: highestPosition + 1000,
           flagged: data.flagged ?? false,
           labels: data.labels ?? [],
-        }
+        },
+        [
+          `read("user:${user.$id}")`,
+          `update("user:${user.$id}")`,
+          `delete("user:${user.$id}")`,
+        ]
       );
 
       return c.json({ data: item });

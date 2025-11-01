@@ -318,7 +318,7 @@ export const BacklogView = ({ workspaceId, projectId }: BacklogViewProps) => {
                   key={workItem.$id}
                   className="transform transition-all duration-200 hover:scale-[1.01]"
                 >
-                  <WorkItemCard workItem={workItem} />
+                  <WorkItemCard workItem={workItem} workspaceId={workspaceId} />
                 </div>
               ))}
             </div>

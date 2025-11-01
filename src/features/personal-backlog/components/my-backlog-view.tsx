@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { PlusIcon, Loader2, SearchIcon, FlagIcon, ClockIcon, CalendarIcon, Trash2Icon } from "lucide-react";
+import { useState, useCallback, useMemo } from "react";
+import { PlusIcon, Loader2, SearchIcon, FlagIcon, ClockIcon, CalendarIcon, Trash2Icon, MoreHorizontalIcon, CircleDashedIcon, CircleDotDashedIcon, CircleCheckIcon } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 
 import { Button } from "@/components/ui/button";
@@ -46,14 +46,15 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
     "destructive"
   );
 
-  const items = data?.documents ?? [];
-
   // Group items by status
-  const groupedItems = {
-    [BacklogItemStatus.TODO]: items.filter((item) => item.status === BacklogItemStatus.TODO),
-    [BacklogItemStatus.IN_PROGRESS]: items.filter((item) => item.status === BacklogItemStatus.IN_PROGRESS),
-    [BacklogItemStatus.DONE]: items.filter((item) => item.status === BacklogItemStatus.DONE),
-  };
+  const groupedItems = useMemo(() => {
+    const items = data?.documents ?? [];
+    return {
+      [BacklogItemStatus.TODO]: items.filter((item) => item.status === BacklogItemStatus.TODO),
+      [BacklogItemStatus.IN_PROGRESS]: items.filter((item) => item.status === BacklogItemStatus.IN_PROGRESS),
+      [BacklogItemStatus.DONE]: items.filter((item) => item.status === BacklogItemStatus.DONE),
+    };
+  }, [data?.documents]);
 
   const handleCreateItem = () => {
     if (!newItemTitle.trim()) return;
@@ -82,7 +83,7 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
     }
   };
 
-  const handleDragEnd = (result: DropResult) => {
+  const handleDragEnd = useCallback((result: DropResult) => {
     const { destination, source } = result;
 
     if (!destination) return;
@@ -96,6 +97,11 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
 
     const [movedItem] = sourceItems.splice(source.index, 1);
 
+    if (!movedItem) {
+      console.warn("No item found at the source index");
+      return;
+    }
+
     if (sourceStatus === destStatus) {
       sourceItems.splice(destination.index, 0, movedItem);
     } else {
@@ -106,23 +112,23 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
       ? sourceItems.map((item, idx) => ({
           $id: item.$id,
           status: sourceStatus,
-          position: (idx + 1) * 1000,
+          position: Math.min((idx + 1) * 1000, 1_000_000),
         }))
       : [
           ...sourceItems.map((item, idx) => ({
             $id: item.$id,
             status: sourceStatus,
-            position: (idx + 1) * 1000,
+            position: Math.min((idx + 1) * 1000, 1_000_000),
           })),
           ...destItems.map((item, idx) => ({
             $id: item.$id,
             status: destStatus,
-            position: (idx + 1) * 1000,
+            position: Math.min((idx + 1) * 1000, 1_000_000),
           })),
         ];
 
     bulkUpdate({ items: updatesToMake });
-  };
+  }, [groupedItems, bulkUpdate]);
 
   const getPriorityColor = (priority: BacklogItemPriority) => {
     switch (priority) {
@@ -239,98 +245,126 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
           </div>
         ) : (
           <DragDropContext onDragEnd={handleDragEnd}>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1">
-              {Object.entries(groupedItems).map(([status, items]) => (
-                <div key={status} className="flex flex-col">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">
-                      {status === BacklogItemStatus.TODO && "To Do"}
-                      {status === BacklogItemStatus.IN_PROGRESS && "In Progress"}
-                      {status === BacklogItemStatus.DONE && "Done"}
-                      <span className="ml-2 text-xs">({items.length})</span>
-                    </h3>
-                  </div>
-                  <Droppable droppableId={status}>
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className={`flex-1 space-y-2 p-2 rounded-lg border-2 border-dashed transition-colors ${
-                          snapshot.isDraggingOver ? "bg-muted/50 border-primary" : "border-transparent"
-                        }`}
-                      >
-                        {items.map((item, index) => (
-                          <Draggable key={item.$id} draggableId={item.$id} index={index}>
-                            {(provided, snapshot) => (
-                              <Card
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                className={`p-3 cursor-move hover:shadow-md transition-shadow ${
-                                  snapshot.isDragging ? "shadow-lg ring-2 ring-primary" : ""
-                                }`}
-                              >
-                                <div className="space-y-2">
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="flex items-center gap-2 flex-1">
-                                      <span className="text-lg">{getTypeIcon(item.type)}</span>
-                                      <p className="font-medium text-sm line-clamp-2">{item.title}</p>
-                                      {item.flagged && <FlagIcon className="size-3 text-red-500" />}
-                                    </div>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
-                                      onClick={() => handleDeleteItem(item.$id)}
-                                    >
-                                      <Trash2Icon className="size-3" />
-                                    </Button>
-                                  </div>
-                                  {item.description && (
-                                    <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>
-                                  )}
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <Badge variant="outline" className={`text-xs ${getPriorityColor(item.priority)}`}>
-                                      {item.priority}
-                                    </Badge>
-                                    {item.estimatedHours && (
-                                      <Badge variant="outline" className="text-xs">
-                                        <ClockIcon className="size-3 mr-1" />
-                                        {item.estimatedHours}h
-                                      </Badge>
-                                    )}
-                                    {item.dueDate && (
-                                      <Badge variant="outline" className="text-xs">
-                                        <CalendarIcon className="size-3 mr-1" />
-                                        {new Date(item.dueDate).toLocaleDateString()}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  {item.labels && item.labels.length > 0 && (
-                                    <div className="flex gap-1 flex-wrap">
-                                      {item.labels.map((label, idx) => (
-                                        <Badge key={idx} variant="secondary" className="text-xs">
-                                          {label}
-                                        </Badge>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              </Card>
-                            )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
-                        {items.length === 0 && (
-                          <div className="text-center text-sm text-muted-foreground py-8">
-                            No items
-                          </div>
-                        )}
+            <div className="flex overflow-x-auto gap-4 pb-4">
+              {Object.entries(groupedItems).map(([status, items]) => {
+                const statusIcon = 
+                  status === BacklogItemStatus.TODO ? <CircleDashedIcon className="size-[18px] text-pink-400" /> :
+                  status === BacklogItemStatus.IN_PROGRESS ? <CircleDotDashedIcon className="size-[18px] text-yellow-400" /> :
+                  <CircleCheckIcon className="size-[18px] text-emerald-400" />;
+
+                const statusTitle = 
+                  status === BacklogItemStatus.TODO ? "To Do" :
+                  status === BacklogItemStatus.IN_PROGRESS ? "In Progress" :
+                  "Done";
+
+                return (
+                  <div
+                    key={status}
+                    className="flex-1 bg-gray-50 rounded-xl min-w-[280px] max-w-[320px]"
+                  >
+                    {/* Column Header */}
+                    <div className="px-3 py-2 flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-x-2">
+                        {statusIcon}
+                        <h2 className="text-sm font-semibold text-gray-700">{statusTitle}</h2>
+                        <span className="text-xs text-muted-foreground">({items.length})</span>
                       </div>
-                    )}
-                  </Droppable>
-                </div>
-              ))}
+                      <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-gray-100">
+                        <MoreHorizontalIcon className="h-4 w-4 text-gray-500" />
+                      </Button>
+                    </div>
+
+                    <Droppable droppableId={status}>
+                      {(provided) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className="min-h-[500px] px-3 pb-3"
+                        >
+                          {items.map((item, index) => (
+                            <Draggable key={item.$id} draggableId={item.$id} index={index}>
+                              {(provided, snapshot) => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                >
+                                  <Card className={`mb-2 p-3 cursor-grab active:cursor-grabbing bg-white hover:shadow-md transition-shadow ${
+                                    snapshot.isDragging ? "shadow-lg rotate-2 opacity-90" : ""
+                                  }`}>
+                                    <div className="space-y-2">
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div className="flex items-center gap-2 flex-1">
+                                          <span className="text-lg">{getTypeIcon(item.type)}</span>
+                                          <p className="font-medium text-sm line-clamp-2">{item.title}</p>
+                                          {item.flagged && <FlagIcon className="size-3 text-red-500 flex-shrink-0" />}
+                                        </div>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive flex-shrink-0"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteItem(item.$id);
+                                          }}
+                                        >
+                                          <Trash2Icon className="size-3" />
+                                        </Button>
+                                      </div>
+                                      {item.description && (
+                                        <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>
+                                      )}
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <Badge variant="outline" className={`text-xs ${getPriorityColor(item.priority)}`}>
+                                          {item.priority}
+                                        </Badge>
+                                        {item.estimatedHours && (
+                                          <Badge variant="outline" className="text-xs">
+                                            <ClockIcon className="size-3 mr-1" />
+                                            {item.estimatedHours}h
+                                          </Badge>
+                                        )}
+                                        {item.dueDate && (
+                                          <Badge variant="outline" className="text-xs">
+                                            <CalendarIcon className="size-3 mr-1" />
+                                            {new Date(item.dueDate).toLocaleDateString()}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      {item.labels && item.labels.length > 0 && (
+                                        <div className="flex gap-1 flex-wrap">
+                                          {item.labels.map((label, idx) => (
+                                            <Badge key={idx} variant="secondary" className="text-xs">
+                                              {label}
+                                            </Badge>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </Card>
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                          {/* Add Item Button */}
+                          <Button
+                            onClick={() => {
+                              setNewItemTitle("");
+                              // You can add modal open logic here if needed
+                            }}
+                            variant="ghost"
+                            className="w-full justify-start text-gray-500 hover:text-gray-700 hover:bg-gray-100 mt-2"
+                          >
+                            <PlusIcon className="h-4 w-4 mr-2" />
+                            Add Item
+                          </Button>
+                        </div>
+                      )}
+                    </Droppable>
+                  </div>
+                );
+              })}
             </div>
           </DragDropContext>
         )}
