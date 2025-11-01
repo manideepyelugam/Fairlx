@@ -11,6 +11,9 @@ import customColumns from "@/features/custom-columns/api/route";
 import defaultColumnSettings from "@/features/default-column-settings/api/route";
 import attachments from "@/features/attachments/api/route";
 import notifications from "@/features/notifications/server/route";
+import sprints from "@/features/sprints/server/route";
+import workItems from "@/features/sprints/server/work-items-route";
+import personalBacklog from "@/features/personal-backlog/server/route";
 
 const app = new Hono().basePath("/api");
 
@@ -25,7 +28,10 @@ const routes = app
   .route("/custom-columns", customColumns)
   .route("/default-column-settings", defaultColumnSettings)
   .route("/attachments", attachments)
-  .route("/notifications", notifications);
+  .route("/notifications", notifications)
+  .route("/sprints", sprints)
+  .route("/work-items", workItems)
+  .route("/personal-backlog", personalBacklog);
 
 export const GET = handle(app);
 export const POST = handle(app);

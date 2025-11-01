@@ -2,10 +2,10 @@ import { Models } from "node-appwrite";
 
 export enum TaskStatus {
   BACKLOG = "BACKLOG",
-  TODO = "TODO",
+  ASSIGNED = "ASSIGNED",
   IN_PROGRESS = "IN_PROGRESS",
-  IN_REVIEW = "IN_REVIEW",
-  DONE = "DONE",
+  COMPLETED = "COMPLETED",
+  CLOSED = "CLOSED",
 }
 
 export enum TaskPriority {

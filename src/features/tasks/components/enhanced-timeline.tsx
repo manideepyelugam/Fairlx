@@ -27,7 +27,7 @@ const statusConfig = {
     borderColor: "border-pink-200",
     textColor: "text-pink-700"
   },
-  [TaskStatus.TODO]: { 
+  [TaskStatus.ASSIGNED]: { 
     color: "bg-red-500", 
     lightColor: "bg-red-100", 
     borderColor: "border-red-200",
@@ -39,13 +39,13 @@ const statusConfig = {
     borderColor: "border-yellow-200",
     textColor: "text-yellow-700"
   },
-  [TaskStatus.IN_REVIEW]: { 
+  [TaskStatus.COMPLETED]: { 
     color: "bg-blue-500", 
     lightColor: "bg-blue-100", 
     borderColor: "border-blue-200",
     textColor: "text-blue-700"
   },
-  [TaskStatus.DONE]: { 
+  [TaskStatus.CLOSED]: { 
     color: "bg-emerald-500", 
     lightColor: "bg-emerald-100", 
     borderColor: "border-emerald-200",

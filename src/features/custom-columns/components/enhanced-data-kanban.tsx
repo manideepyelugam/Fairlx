@@ -122,10 +122,10 @@ export const EnhancedDataKanban = ({
       newTasks[col.id] = [];
     });
 
-    // Ensure TODO exists as fallback (if it's enabled)
-    const todoColumn = orderedColumns.find(col => col.id === TaskStatus.TODO);
-    if (!newTasks[TaskStatus.TODO] && todoColumn) {
-      newTasks[TaskStatus.TODO] = [];
+    // Ensure ASSIGNED exists as fallback (if it's enabled)
+    const assignedColumn = orderedColumns.find(col => col.id === TaskStatus.ASSIGNED);
+    if (!newTasks[TaskStatus.ASSIGNED] && assignedColumn) {
+      newTasks[TaskStatus.ASSIGNED] = [];
     }
 
     // Process data with safety check
@@ -137,11 +137,11 @@ export const EnhancedDataKanban = ({
         if (newTasks[taskStatus]) {
           newTasks[taskStatus].push(task);
           } else {
-            // Task is in a disabled/non-existent column, move to TODO if available
-            if (newTasks[TaskStatus.TODO]) {
-              newTasks[TaskStatus.TODO].push(task);
+            // Task is in a disabled/non-existent column, move to ASSIGNED if available
+            if (newTasks[TaskStatus.ASSIGNED]) {
+              newTasks[TaskStatus.ASSIGNED].push(task);
             } else {
-              // If TODO is also disabled, move to first available enabled column
+              // If ASSIGNED is also disabled, move to first available enabled column
               const firstEnabledColumn = Object.keys(newTasks)[0];
               if (firstEnabledColumn) {
                 newTasks[firstEnabledColumn].push(task);

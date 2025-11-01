@@ -89,7 +89,7 @@ export const DataCalendar = ({ data }: DataCalendarProps) => {
       assignees: assigneeList,
       status: Object.values(TaskStatus).includes(task.status as TaskStatus) 
         ? task.status as TaskStatus 
-        : TaskStatus.TODO, // Default fallback for custom columns
+        : TaskStatus.ASSIGNED, // Default fallback for custom columns
       id: task.$id,
       isMilestone,
     };

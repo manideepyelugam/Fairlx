@@ -69,9 +69,6 @@ export const WorkspaceIdClient = () => {
     return <PageError message="Failed to load workspace data." />
   }
 
-  const colorPalette = ["#3b82f6", "#10b981", "#eab308", "#ef4444"]
-  const getColor = (index: number) => colorPalette[index % colorPalette.length]
-
   const statusOverviewData = [
     { id: "status-1", name: "Done", value: 48, color: "#10b981" },
     { id: "status-2", name: "In Progress", value: 12, color: "#3b82f6" },
@@ -440,7 +437,7 @@ export const WorkspaceIdClient = () => {
           {/* Recent Activity */}
           <div className="bg-card border border-border rounded-lg p-4 hover:shadow-lg transition-all duration-200">
             <h3 className="text-sm font-semibold text-foreground mb-2">Recent Activity</h3>
-            <p className="text-xs text-muted-foreground mb-3">Stay up to date with what's happening.</p>
+            <p className="text-xs text-muted-foreground mb-3">Stay up to date with what&apos;s happening.</p>
           <div className="space-y-2">
             {(() => {
               const selectedAssigneeNames = filterCategories
@@ -567,7 +564,7 @@ export const WorkspaceIdClient = () => {
           </div>
           <p className="text-xs text-muted-foreground mb-2">See how your epics are progressing.</p>
           <div className="space-y-1.5">
-            {epicProgressData.map((epic, index) => (
+            {epicProgressData.map((epic) => (
               <div key={epic.id} className="hover:bg-muted/50 p-1.5 -mx-1.5 rounded transition-all duration-200">
                 <div className="flex items-center justify-between mb-1">
                   <p className="text-xs font-semibold text-foreground truncate">{epic.name}</p>
@@ -653,7 +650,7 @@ export const WorkspaceIdClient = () => {
               // Match by display name
               return selectedWorkTypes.some((id) => workTypeIdsToNames[id] === w.name)
             })
-            return filtered.map((workType, index) => {
+            return filtered.map((workType) => {
               const IconComponent = workType.icon
               return (
               <div

@@ -370,7 +370,7 @@ const app = new Hono()
       
       if (assigneesChanged) {
         notificationType = "task_assigned"; // New assignees should get "assigned" notification
-      } else if (status === "DONE" && statusChanged) {
+      } else if (status === "CLOSED" && statusChanged) {
         notificationType = "task_completed";
       } else if (statusChanged) {
         notificationType = "task_status_changed";
@@ -591,7 +591,7 @@ const app = new Hono()
         // Determine notification type based on what changed
         let notificationType: "task_completed" | "task_status_changed" | "task_updated";
         
-        if (task.status === "DONE" && statusChanged) {
+        if (task.status === "CLOSED" && statusChanged) {
           notificationType = "task_completed";
         } else if (statusChanged) {
           notificationType = "task_status_changed";
