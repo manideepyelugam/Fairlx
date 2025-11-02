@@ -54,11 +54,11 @@ export const EpicPanel = ({
   const workItemsWithoutEpic = getWorkItemsWithoutEpic();
 
   return (
-    <div className="w-64 border-r bg-background flex flex-col h-full">
+    <div className="w-64 border rounded-md flex flex-col ">
       {/* Header */}
       <div className="p-3 border-b">
         <div className="flex items-center justify-between mb-1.5">
-          <h3 className="font-semibold text-sm flex items-center gap-2">
+          <h3 className="font-medium text-sm flex items-center gap-2">
             <Layers className="size-4 text-purple-600" />
             Epic
           </h3>
@@ -88,7 +88,7 @@ export const EpicPanel = ({
           >
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <div className="w-4 h-4 rounded bg-gray-400 shrink-0" />
-              <span className="text-sm font-medium truncate">
+              <span className="!text-xs font-normal truncate">
                 Issues without epic
               </span>
             </div>
@@ -98,7 +98,7 @@ export const EpicPanel = ({
           </button>
 
           {/* Epic List */}
-          <div className="mt-2 space-y-1">
+          <div className="mt-1 space-y-1">
             {epics.map((epic) => {
               const isExpanded = expandedEpics.has(epic.$id);
               const isSelected = selectedEpicId === epic.$id;
@@ -171,17 +171,22 @@ export const EpicPanel = ({
             })}
           </div>
 
-          {/* Create Epic Button */}
-          <Button
+         
+          
+        </div>
+         {/* Create Epic Button */}
+              <div className=" border-t px-2 ">
+    <Button
             variant="ghost"
-            className="w-full justify-start mt-2 text-muted-foreground hover:text-foreground"
+                                className="w-full text-xs bg-white border border-gray-200 shadow-sm justify-start text-gray-500  mt-2" 
             onClick={onCreateEpic}
           >
             <Plus className="size-4 mr-2" />
             Create epic
           </Button>
-        </div>
+          </div>
       </ScrollArea>
+      
     </div>
   );
 };

@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 
 import { useGetWorkItems } from "../api/use-get-work-items";
 import { useGetEpics } from "../api/use-get-epics";
@@ -30,6 +31,7 @@ import { WorkItemCard } from "./work-item-card";
 import { EpicCard } from "./epic-card";
 import { CreateEpicDialog } from "./create-epic-dialog";
 import { EpicPanel } from "./epic-panel";
+import { FiltersPanel } from "./filters-panel";
 import {
   WorkItemType,
   WorkItemStatus,
@@ -47,14 +49,14 @@ export const BacklogView = ({ workspaceId, projectId }: BacklogViewProps) => {
   const [priorityFilter, setPriorityFilter] = useState<WorkItemPriority | "ALL">("ALL");
   const [statusFilter, setStatusFilter] = useState<WorkItemStatus | "ALL">("ALL");
   const [selectedEpicId, setSelectedEpicId] = useState<string | null>(null); // null = all, "none" = no epic, or epicId
-  const [showFilters, setShowFilters] = useState(false);
   const [createEpicOpen, setCreateEpicOpen] = useState(false);
   const [expandedEpics, setExpandedEpics] = useState<Set<string>>(() => {
     const saved = typeof window !== 'undefined' ? localStorage.getItem(`expandedEpics_${projectId}`) : null;
     return saved ? new Set(JSON.parse(saved)) : new Set(["none"]); // Default expand "none"
   });
-  const [showEpicPanel, setShowEpicPanel] = useState(true);
+  const [showEpicPanel, setShowEpicPanel] = useState(false);
   const [groupByEpic, setGroupByEpic] = useState(false);
+  const [showFiltersPanel, setShowFiltersPanel] = useState(false);
 
   // Persist expanded epics
   useEffect(() => {
@@ -162,13 +164,28 @@ export const BacklogView = ({ workspaceId, projectId }: BacklogViewProps) => {
     });
   };
 
+  const handleEpicSelect = (epicId: string | null) => {
+    setSelectedEpicId(epicId);
+  };
+
   // Get work items by epic
   const getWorkItemsByEpic = (epicId: string) => {
     return workItems.filter((item) => item.epicId === epicId);
   };
 
-  const handleEpicSelect = (epicId: string | null) => {
-    setSelectedEpicId(epicId);
+  // Toggle panels mutually exclusive
+  const toggleEpicPanel = () => {
+    if (!showEpicPanel) {
+      setShowFiltersPanel(false); // Close filters if opening epic
+    }
+    setShowEpicPanel(!showEpicPanel);
+  };
+
+  const toggleFiltersPanel = () => {
+    if (!showFiltersPanel) {
+      setShowEpicPanel(false); // Close epic if opening filters
+    }
+    setShowFiltersPanel(!showFiltersPanel);
   };
 
   return (
@@ -184,34 +201,48 @@ export const BacklogView = ({ workspaceId, projectId }: BacklogViewProps) => {
         />
       )}
 
+      {/* Filters Panel Sidebar */}
+      {showFiltersPanel && (
+        <FiltersPanel
+          typeFilter={typeFilter}
+          priorityFilter={priorityFilter}
+          statusFilter={statusFilter}
+          selectedEpicId={selectedEpicId}
+          epics={epics}
+          onTypeChange={setTypeFilter}
+          onPriorityChange={setPriorityFilter}
+          onStatusChange={setStatusFilter}
+          onEpicChange={setSelectedEpicId}
+          onClearAll={clearFilters}
+        />
+      )}
+
       {/* Main Content */}
-      <div className="flex-1 flex flex-col bg-gradient-to-b from-background to-muted/20 overflow-hidden">
-        {/* Header */}
-        <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="px-6 py-4">
+      <div className="flex-1 flex flex-col   min-h-[83vh]  overflow-hidden">{/* Header */}
+        <div className="   mb-6 ">
+          <div className="px-6 ">
             <div className="flex items-start justify-between mb-4">
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight">Backlog</h1>
-                <p className="text-muted-foreground text-sm mt-1">
-                  Manage unscheduled work items and plan future sprints
-                </p>
-              </div>
+               <div className="mb-4">
+            <h1 className="text-2xl font-semibold tracking-tight">Backlog</h1>
+            <p className="text-muted-foreground text-sm mt-1.5">Manage unscheduled work items and plan future sprints</p>
+          </div>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  size="lg"
-                  onClick={() => setShowEpicPanel(!showEpicPanel)}
+                  size="sm"
+                  onClick={toggleEpicPanel}
+                  className="text-xs font-medium !py-5.5"
                 >
-                  <Layers className="size-4 mr-2" />
+                  <Layers className="!size-3 mr-0" />
                   {showEpicPanel ? "Hide" : "Show"} Epic Panel
                 </Button>
                 <Button
                   variant="primary"
-                  size="lg"
-                  className="shadow-md"
+                  size="sm"
                   onClick={() => {}}
+                  className="text-xs font-medium !py-5.5 tracking-normal bg-primary"
                 >
-                  <Plus className="size-4 mr-2" />
+                  <Plus className="!size-3 mr-0" />
                   Plan Sprint
                 </Button>
               </div>
@@ -225,11 +256,11 @@ export const BacklogView = ({ workspaceId, projectId }: BacklogViewProps) => {
                 placeholder="Search work items..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 bg-background"
+                className="pl-9 text-xs !h-10"
               />
             </div>
 
-            {/* Epic Filter Dropdown - Jira Style */}
+            {/* Epic Filter Dropdown */}
             <Select
               value={selectedEpicId || "all"}
               onValueChange={(value) => {
@@ -242,49 +273,31 @@ export const BacklogView = ({ workspaceId, projectId }: BacklogViewProps) => {
                 }
               }}
             >
-              <SelectTrigger className="w-[200px] bg-background">
-                <div className="flex items-center gap-2">
-                  <Layers className="size-4 text-purple-600" />
-                  <SelectValue>
-                    {selectedEpicId === "none" ? (
-                      "Issues without epic"
-                    ) : selectedEpicId ? (
-                      <span className="truncate">
-                        {epics.find(e => e.$id === selectedEpicId)?.title || "Epic"}
-                      </span>
-                    ) : (
-                      "All Epics"
-                    )}
-                  </SelectValue>
-                </div>
+              <SelectTrigger className="w-[180px] !text-xs ">
+                <SelectValue placeholder="All Epics" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">
-                  <span className="font-medium">All Epics</span>
-                </SelectItem>
-                <SelectItem value="none">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded bg-gray-400" />
-                    <span>Issues without epic</span>
+                <SelectItem className="text-xs" value="all">All Epics</SelectItem>
+                <Separator />
+                <SelectItem className="text-xs" value="none">
+                  <div className="flex items-center gap-x-2">
+                    <Layers className="size-[18px] text-gray-400" />
+                    No Epic
                   </div>
                 </SelectItem>
-                {epics.length > 0 && (
-                  <>
-                    {epics.map((epic) => (
-                      <SelectItem key={epic.$id} value={epic.$id}>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded bg-purple-500" />
-                          <span className="truncate">{epic.title}</span>
-                          <span className="text-xs text-muted-foreground">({epic.key})</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </>
-                )}
-                <SelectItem value="__create_new__">
-                  <div className="flex items-center gap-2 text-primary font-medium">
-                    <Plus className="size-3.5" />
-                    <span>Create epic</span>
+                {epics.length > 0 && epics.map((epic) => (
+                  <SelectItem key={epic.$id} className="text-xs" value={epic.$id}>
+                    <div className="flex items-center gap-x-2">
+                      <Layers className="size-[18px] text-purple-500" />
+                      <span className="truncate">{epic.title}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+                <Separator />
+                <SelectItem className="text-xs" value="__create_new__">
+                  <div className="flex items-center gap-x-2 text-primary">
+                    <Plus className="size-[18px]" />
+                    Create Epic
                   </div>
                 </SelectItem>
               </SelectContent>
@@ -292,153 +305,51 @@ export const BacklogView = ({ workspaceId, projectId }: BacklogViewProps) => {
 
             <Button
               variant="outline"
-              size="default"
-              onClick={() => setShowFilters(!showFilters)}
-              className={showFilters ? "bg-accent" : ""}
+              size="sm"
+              onClick={toggleFiltersPanel}
+              className="text-xs font-normal  !h-10"
             >
-              <SlidersHorizontal className="size-4 mr-2" />
-              Filters
-              {activeFilterCount > 0 && (
-                <Badge variant="secondary" className="ml-2 px-1.5 py-0">
-                  {activeFilterCount}
-                </Badge>
-              )}
+              <SlidersHorizontal className="!size-3 mr-0" />
+              {showFiltersPanel ? "Hide" : "Show"} Filters
             </Button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="default">
-                  <Filter className="size-4 mr-2" />
+                <Button variant="outline" size="sm" className="!text-xs !h-10 !font-normal">
+                  <Filter className="!size-3 !font-normal mr-0" />
                   Quick Filter
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Show items</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuCheckboxItem>
-                  Assigned to me
+                <DropdownMenuCheckboxItem className="text-xs">
+                  <div className="flex items-center gap-x-2">
+                    <Layers className="size-[18px] text-blue-500" />
+                    Assigned to me
+                  </div>
                 </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem>
-                  Flagged
+                <DropdownMenuCheckboxItem className="text-xs">
+                  <div className="flex items-center gap-x-2">
+                    <Layers className="size-[18px] text-yellow-500" />
+                    Flagged
+                  </div>
                 </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem>
-                  Without epic
+                <DropdownMenuCheckboxItem className="text-xs">
+                  <div className="flex items-center gap-x-2">
+                    <Layers className="size-[18px] text-gray-400" />
+                    Without epic
+                  </div>
                 </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem>
-                  High priority
+                <DropdownMenuCheckboxItem className="text-xs">
+                  <div className="flex items-center gap-x-2">
+                    <Layers className="size-[18px] text-red-500" />
+                    High priority
+                  </div>
                 </DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+
           </div>
-
-          {/* Extended Filters */}
-          {showFilters && (
-            <div className="mt-4 p-4 bg-muted/50 rounded-lg border">
-              <div className="grid grid-cols-4 gap-3">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">
-                    Type
-                  </label>
-                  <Select
-                    value={typeFilter}
-                    onValueChange={(value) => setTypeFilter(value as WorkItemType | "ALL")}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL">All Types</SelectItem>
-                      <SelectItem value={WorkItemType.STORY}>Story</SelectItem>
-                      <SelectItem value={WorkItemType.BUG}>Bug</SelectItem>
-                      <SelectItem value={WorkItemType.TASK}>Task</SelectItem>
-                      <SelectItem value={WorkItemType.EPIC}>Epic</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">
-                    Priority
-                  </label>
-                  <Select
-                    value={priorityFilter}
-                    onValueChange={(value) => setPriorityFilter(value as WorkItemPriority | "ALL")}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL">All Priorities</SelectItem>
-                      <SelectItem value={WorkItemPriority.LOW}>Low</SelectItem>
-                      <SelectItem value={WorkItemPriority.MEDIUM}>Medium</SelectItem>
-                      <SelectItem value={WorkItemPriority.HIGH}>High</SelectItem>
-                      <SelectItem value={WorkItemPriority.URGENT}>Urgent</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">
-                    Status
-                  </label>
-                  <Select
-                    value={statusFilter}
-                    onValueChange={(value) => setStatusFilter(value as WorkItemStatus | "ALL")}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL">All Statuses</SelectItem>
-                      <SelectItem value={WorkItemStatus.TODO}>To Do</SelectItem>
-                      <SelectItem value={WorkItemStatus.IN_PROGRESS}>In Progress</SelectItem>
-                      <SelectItem value={WorkItemStatus.IN_REVIEW}>In Review</SelectItem>
-                      <SelectItem value={WorkItemStatus.DONE}>Done</SelectItem>
-                      <SelectItem value={WorkItemStatus.BLOCKED}>Blocked</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">
-                    Epic
-                  </label>
-                  <Select
-                    value={selectedEpicId || "ALL"}
-                    onValueChange={(value) => setSelectedEpicId(value === "ALL" ? null : value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL">All Epics</SelectItem>
-                      <SelectItem value="none">No Epic</SelectItem>
-                      {epics.map((epic) => (
-                        <SelectItem key={epic.$id} value={epic.$id}>
-                          {epic.key}: {epic.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between mt-3 pt-3 border-t">
-                <p className="text-xs text-muted-foreground">
-                  {activeFilterCount} filter{activeFilterCount !== 1 ? "s" : ""} active
-                </p>
-                {activeFilterCount > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearFilters}
-                  >
-                    Clear all
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -446,41 +357,15 @@ export const BacklogView = ({ workspaceId, projectId }: BacklogViewProps) => {
       <div className="flex-1 overflow-auto">
         <div className="px-6 py-4 max-w-6xl mx-auto">
           {/* Stats Bar */}
-          <div className="grid grid-cols-4 gap-3 mb-5">
-            <div className="bg-card border rounded-lg p-3">
-              <p className="text-xs font-medium text-muted-foreground">Total Items</p>
-              <p className="text-xl font-bold mt-0.5">{workItems.length}</p>
-            </div>
-            <div className="bg-card border rounded-lg p-3">
-              <p className="text-xs font-medium text-muted-foreground">Story Points</p>
-              <p className="text-xl font-bold mt-0.5">
-                {workItems.reduce((sum, item) => sum + (item.storyPoints || 0), 0)}
-              </p>
-            </div>
-            <div className="bg-card border rounded-lg p-3">
-              <p className="text-xs font-medium text-muted-foreground">High Priority</p>
-              <p className="text-xl font-bold mt-0.5">
-                {workItems.filter((item) => 
-                  item.priority === WorkItemPriority.HIGH || 
-                  item.priority === WorkItemPriority.URGENT
-                ).length}
-              </p>
-            </div>
-            <div className="bg-card border rounded-lg p-3">
-              <p className="text-xs font-medium text-muted-foreground">Flagged</p>
-              <p className="text-xl font-bold mt-0.5">
-                {workItems.filter((item) => item.flagged).length}
-              </p>
-            </div>
-          </div>
+         
 
           {/* Tabbed View */}
           <Tabs defaultValue="items" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="items" className="text-sm">
+            <TabsList className="mb-3">
+              <TabsTrigger value="items" className="text-xs py-2 px-4">
                 Work Items ({nonEpicWorkItems.length})
               </TabsTrigger>
-              <TabsTrigger value="epics" className="text-sm">
+              <TabsTrigger value="epics" className="text-xs py-2 px-4">
                 <Layers className="size-3.5 mr-1.5" />
                 Epics ({epics.length})
               </TabsTrigger>
@@ -501,72 +386,14 @@ export const BacklogView = ({ workspaceId, projectId }: BacklogViewProps) => {
                     variant="outline"
                     size="sm"
                     onClick={() => setGroupByEpic(!groupByEpic)}
-                    className="shrink-0"
+                    className="shrink-0 text-xs font-normal "
                   >
-                    <Layers className="size-3.5 mr-1.5" />
+                    <Layers className="size-3 mr-0" />
                     {groupByEpic ? "Ungroup" : "Group by Epic"}
                   </Button>
                 </div>
 
-                {/* Active Filters */}
-                {activeFilterCount > 0 && (
-                  <div className="flex items-center gap-2 flex-wrap p-2.5 bg-muted/50 rounded-lg border">
-                    <span className="text-xs font-medium text-muted-foreground">Active filters:</span>
-                    {typeFilter !== "ALL" && (
-                      <Badge variant="secondary" className="gap-1.5 h-6">
-                        Type: {typeFilter}
-                        <X 
-                          className="size-3 cursor-pointer hover:text-destructive" 
-                          onClick={() => setTypeFilter("ALL")} 
-                        />
-                      </Badge>
-                    )}
-                    {priorityFilter !== "ALL" && (
-                      <Badge variant="secondary" className="gap-1.5 h-6">
-                        Priority: {priorityFilter}
-                        <X 
-                          className="size-3 cursor-pointer hover:text-destructive" 
-                          onClick={() => setPriorityFilter("ALL")} 
-                        />
-                      </Badge>
-                    )}
-                    {statusFilter !== "ALL" && (
-                      <Badge variant="secondary" className="gap-1.5 h-6">
-                        Status: {statusFilter.replace("_", " ")}
-                        <X 
-                          className="size-3 cursor-pointer hover:text-destructive" 
-                          onClick={() => setStatusFilter("ALL")} 
-                        />
-                      </Badge>
-                    )}
-                    {selectedEpicId && (
-                      <Badge variant="secondary" className="gap-1.5 h-6">
-                        Epic: {selectedEpicId === "none" ? "No Epic" : epics.find(e => e.$id === selectedEpicId)?.key || "Selected"}
-                        <X 
-                          className="size-3 cursor-pointer hover:text-destructive" 
-                          onClick={() => setSelectedEpicId(null)} 
-                        />
-                      </Badge>
-                    )}
-                    {search && (
-                      <Badge variant="secondary" className="gap-1.5 h-6">
-                        Search: &quot;{search.substring(0, 20)}{search.length > 20 ? "..." : ""}&quot;
-                        <X 
-                          className="size-3 cursor-pointer hover:text-destructive" 
-                          onClick={() => setSearch("")} 
-                        />
-                      </Badge>
-                    )}
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-6 px-2 ml-auto text-xs"
-                      onClick={clearFilters}
-                    >
-                      Clear all
-                    </Button>
-                  </div>
-                )}
+               
               </div>
 
               {/* Work Items List */}
@@ -663,11 +490,10 @@ export const BacklogView = ({ workspaceId, projectId }: BacklogViewProps) => {
                     })}
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-center">
                     {nonEpicWorkItems.map((workItem) => (
                       <div
                         key={workItem.$id}
-                        className="transform transition-all duration-200 hover:scale-[1.01]"
                       >
                         <WorkItemCard 
                           workItem={workItem} 

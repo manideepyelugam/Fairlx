@@ -89,7 +89,7 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails }
   };
 
   return (
-    <div className="group border rounded-lg p-2.5 bg-background hover:shadow-md transition-shadow">
+    <div className=" border rounded-lg p-2.5 bg-background hover:shadow-md transition-shadow">
       <div className="flex items-start gap-2.5">
         {/* Type Indicator */}
         <div
@@ -99,10 +99,10 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails }
           )}
         />
 
-        <div className="flex-1 space-y-1.5">
+        <div className="flex-1 py-2">
           {/* Header Row */}
           <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2 flex-1">
+            <div className="flex items-center gap-2 mb-6 flex-1">
               {workItem.childrenCount! > 0 && (
                 <Button
                   variant="ghost"
@@ -121,7 +121,7 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails }
                 onClick={onViewDetails}
                 className="text-sm font-medium hover:underline text-left"
               >
-                {workItem.key}: {workItem.title}
+                {workItem.key}: <span className="text-sm font-normal ">{workItem.title}</span>
               </button>
               {workItem.flagged && (
                 <Flag className="size-4 fill-red-500 text-red-500" />
