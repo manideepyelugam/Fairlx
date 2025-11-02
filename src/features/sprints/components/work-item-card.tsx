@@ -30,6 +30,8 @@ import { cn } from "@/lib/utils";
 import { useUpdateWorkItem } from "../api/use-update-work-item";
 import { WorkItemOptionsMenu } from "./work-item-options-menu";
 import { AssignAssigneeDialog } from "./assign-assignee-dialog";
+import { AssignEpicDialog } from "./assign-epic-dialog";
+import { SplitWorkItemDialog } from "./split-work-item-dialog";
 import {
   PopulatedWorkItem,
   WorkItemStatus,
@@ -40,6 +42,7 @@ import {
 interface WorkItemCardProps {
   workItem: PopulatedWorkItem;
   workspaceId: string;
+  projectId?: string;
   onViewDetails?: () => void;
 }
 
@@ -58,10 +61,12 @@ const priorityColors = {
   [WorkItemPriority.URGENT]: "text-red-500",
 };
 
-export const WorkItemCard = ({ workItem, workspaceId, onViewDetails }: WorkItemCardProps) => {
+export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails }: WorkItemCardProps) => {
   const [showChildren, setShowChildren] = useState(false);
   const [editingStoryPoints, setEditingStoryPoints] = useState(false);
   const [assignAssigneeOpen, setAssignAssigneeOpen] = useState(false);
+  const [assignEpicOpen, setAssignEpicOpen] = useState(false);
+  const [splitDialogOpen, setSplitDialogOpen] = useState(false);
   const [assigneePopoverOpen, setAssigneePopoverOpen] = useState(false);
   const { mutate: updateWorkItem } = useUpdateWorkItem();
 
@@ -84,8 +89,8 @@ export const WorkItemCard = ({ workItem, workspaceId, onViewDetails }: WorkItemC
   };
 
   return (
-    <div className="group border rounded-lg p-3 bg-background hover:shadow-md transition-shadow">
-      <div className="flex items-start gap-3">
+    <div className="group border rounded-lg p-2.5 bg-background hover:shadow-md transition-shadow">
+      <div className="flex items-start gap-2.5">
         {/* Type Indicator */}
         <div
           className={cn(
@@ -94,7 +99,7 @@ export const WorkItemCard = ({ workItem, workspaceId, onViewDetails }: WorkItemC
           )}
         />
 
-        <div className="flex-1 space-y-2">
+        <div className="flex-1 space-y-1.5">
           {/* Header Row */}
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2 flex-1">
@@ -124,8 +129,8 @@ export const WorkItemCard = ({ workItem, workspaceId, onViewDetails }: WorkItemC
             </div>
             <WorkItemOptionsMenu
               workItem={workItem}
-              onSplit={() => {}}
-              onAssignEpic={() => {}}
+              onSplit={() => setSplitDialogOpen(true)}
+              onAssignEpic={() => setAssignEpicOpen(true)}
               onAssignAssignee={() => setAssignAssigneeOpen(true)}
               onEditStoryPoints={() => setEditingStoryPoints(true)}
             />
@@ -271,7 +276,13 @@ export const WorkItemCard = ({ workItem, workspaceId, onViewDetails }: WorkItemC
       {showChildren && workItem.children && workItem.children.length > 0 && (
         <div className="ml-6 mt-2 space-y-2 border-l-2 pl-3">
           {workItem.children.map((child) => (
-            <WorkItemCard key={child.$id} workItem={child} workspaceId={workspaceId} onViewDetails={onViewDetails} />
+            <WorkItemCard 
+              key={child.$id} 
+              workItem={child} 
+              workspaceId={workspaceId}
+              projectId={projectId}
+              onViewDetails={onViewDetails} 
+            />
           ))}
         </div>
       )}
@@ -282,6 +293,24 @@ export const WorkItemCard = ({ workItem, workspaceId, onViewDetails }: WorkItemC
         onClose={() => setAssignAssigneeOpen(false)}
         workItem={workItem}
         workspaceId={workspaceId}
+      />
+
+      {/* Assign Epic Dialog */}
+      {projectId && (
+        <AssignEpicDialog
+          open={assignEpicOpen}
+          onClose={() => setAssignEpicOpen(false)}
+          workItem={workItem}
+          workspaceId={workspaceId}
+          projectId={projectId}
+        />
+      )}
+
+      {/* Split Work Item Dialog */}
+      <SplitWorkItemDialog
+        workItem={workItem}
+        open={splitDialogOpen}
+        onClose={() => setSplitDialogOpen(false)}
       />
     </div>
   );

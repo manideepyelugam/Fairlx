@@ -7,7 +7,10 @@ export { WorkItemOptionsMenu } from "./components/work-item-options-menu";
 export { CreateWorkItemBar } from "./components/create-work-item-bar";
 export { CreateSprintDialog } from "./components/create-sprint-dialog";
 export { AssignAssigneeDialog } from "./components/assign-assignee-dialog";
+export { AssignEpicDialog } from "./components/assign-epic-dialog";
 export { BacklogView } from "./components/backlog-view";
+export { EpicCard } from "./components/epic-card";
+export { CreateEpicDialog } from "./components/create-epic-dialog";
 
 // API Hooks - Sprints
 export { useGetSprints } from "./api/use-get-sprints";

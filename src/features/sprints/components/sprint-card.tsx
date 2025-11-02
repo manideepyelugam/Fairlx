@@ -121,7 +121,12 @@ export const SprintCard = ({
           {workItems.length > 0 ? (
             <div className="space-y-2">
               {workItems.map((workItem) => (
-                <WorkItemCard key={workItem.$id} workItem={workItem} workspaceId={workspaceId} />
+                <WorkItemCard 
+                  key={workItem.$id} 
+                  workItem={workItem} 
+                  workspaceId={workspaceId}
+                  projectId={projectId}
+                />
               ))}
             </div>
           ) : (
