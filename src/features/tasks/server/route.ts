@@ -303,7 +303,7 @@ const app = new Hono()
     async (c) => {
       const user = c.get("user");
       const databases = c.get("databases");
-      const { name, status, projectId, dueDate, assigneeIds, description, estimatedHours, endDate, priority, labels } =
+      const { name, status, projectId, dueDate, assigneeIds, description, estimatedHours, endDate, priority, labels, flagged } =
         c.req.valid("json");
 
       const { taskId } = c.req.param();
@@ -324,17 +324,19 @@ const app = new Hono()
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      const updateData: Record<string, unknown> = {
-        name,
-        status,
-        projectId,
-        dueDate,
-        description,
-        estimatedHours,
-        endDate,
-        priority,
-        labels,
-      };
+      const updateData: Record<string, unknown> = {};
+      
+      // Only include fields that are provided
+      if (name !== undefined) updateData.name = name;
+      if (status !== undefined) updateData.status = status;
+      if (projectId !== undefined) updateData.projectId = projectId;
+      if (dueDate !== undefined) updateData.dueDate = dueDate;
+      if (description !== undefined) updateData.description = description;
+      if (estimatedHours !== undefined) updateData.estimatedHours = estimatedHours;
+      if (endDate !== undefined) updateData.endDate = endDate;
+      if (priority !== undefined) updateData.priority = priority;
+      if (labels !== undefined) updateData.labels = labels;
+      if (flagged !== undefined) updateData.flagged = flagged;
 
       // Track if assignees changed for notification purposes
       const oldAssigneeIds = existingTask.assigneeIds || (existingTask.assigneeId ? [existingTask.assigneeId] : []);
@@ -348,6 +350,11 @@ const app = new Hono()
       if (assigneeIds && assigneeIds.length > 0) {
         updateData.assigneeIds = assigneeIds;
         updateData.assigneeId = assigneeIds[0]; // Keep backward compatibility
+      }
+
+      // Ensure we have at least some data to update
+      if (Object.keys(updateData).length === 0) {
+        return c.json({ error: "No data provided for update" }, 400);
       }
 
       const task = await databases.updateDocument(

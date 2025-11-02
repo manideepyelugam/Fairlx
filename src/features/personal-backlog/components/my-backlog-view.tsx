@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import { PlusIcon, Loader2, SearchIcon, FlagIcon, ClockIcon, CalendarIcon, Trash2Icon, MoreHorizontalIcon, CircleDashedIcon, CircleDotDashedIcon, CircleCheckIcon } from "lucide-react";
+import { PlusIcon, Loader2, SearchIcon, FlagIcon, ClockIcon, CalendarIcon, Trash2Icon, MoreHorizontalIcon, CircleDashedIcon, CircleDotDashedIcon, CircleCheckIcon, Edit2Icon } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useConfirm } from "@/hooks/use-confirm";
 
@@ -16,7 +14,12 @@ import { useGetBacklogItems } from "../api/use-get-backlog-items";
 import { useCreateBacklogItem } from "../api/use-create-backlog-item";
 import { useDeleteBacklogItem } from "../api/use-delete-backlog-item";
 import { useBulkUpdateBacklogItems } from "../api/use-bulk-update-backlog-items";
-import { BacklogItemType, BacklogItemPriority, BacklogItemStatus } from "../types";
+import { BacklogItemType, BacklogItemPriority, BacklogItemStatus, BacklogItem } from "../types";
+import { CreateBacklogItemDialog } from "./create-backlog-item-dialog";
+import { EditBacklogItemDialog } from "./edit-backlog-item-dialog";
+import { BacklogPriorityBadge } from "./backlog-priority-badge";
+import { BacklogLabelBadge } from "./backlog-label-badge";
+import { BacklogTypeBadge } from "./backlog-type-badge";
 
 interface MyBacklogViewProps {
   workspaceId: string;
@@ -28,6 +31,9 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
   const [statusFilter, setStatusFilter] = useState<BacklogItemStatus | "ALL">("ALL");
   const [priorityFilter, setPriorityFilter] = useState<BacklogItemPriority | "ALL">("ALL");
   const [typeFilter, setTypeFilter] = useState<BacklogItemType | "ALL">("ALL");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createDialogStatus, setCreateDialogStatus] = useState<BacklogItemStatus>(BacklogItemStatus.TODO);
+  const [editingItem, setEditingItem] = useState<BacklogItem | null>(null);
 
   const { data, isLoading } = useGetBacklogItems({
     workspaceId,
@@ -130,32 +136,6 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
     bulkUpdate({ items: updatesToMake });
   }, [groupedItems, bulkUpdate]);
 
-  const getPriorityColor = (priority: BacklogItemPriority) => {
-    switch (priority) {
-      case BacklogItemPriority.URGENT:
-        return "text-red-600 bg-red-50 border-red-200";
-      case BacklogItemPriority.HIGH:
-        return "text-orange-600 bg-orange-50 border-orange-200";
-      case BacklogItemPriority.MEDIUM:
-        return "text-yellow-600 bg-yellow-50 border-yellow-200";
-      case BacklogItemPriority.LOW:
-        return "text-green-600 bg-green-50 border-green-200";
-    }
-  };
-
-  const getTypeIcon = (type: BacklogItemType) => {
-    switch (type) {
-      case BacklogItemType.TASK:
-        return "📋";
-      case BacklogItemType.BUG:
-        return "🐛";
-      case BacklogItemType.IDEA:
-        return "💡";
-      case BacklogItemType.IMPROVEMENT:
-        return "🚀";
-    }
-  };
-
   return (
     <>
       <ConfirmDialog />
@@ -170,7 +150,7 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
           {/* Create New Item */}
           <div className="flex gap-2">
             <Input
-              placeholder="Add a new item..."
+              placeholder="Quick add (or click '+' for details)..."
               value={newItemTitle}
               onChange={(e) => setNewItemTitle(e.target.value)}
               onKeyDown={(e) => {
@@ -181,9 +161,16 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
               className="flex-1"
               disabled={isCreating}
             />
-            <Button onClick={handleCreateItem} disabled={isCreating || !newItemTitle.trim()}>
+            <Button onClick={handleCreateItem} disabled={isCreating || !newItemTitle.trim()} variant="outline">
               {isCreating ? <Loader2 className="size-4 animate-spin" /> : <PlusIcon className="size-4" />}
-              Add Item
+              Quick Add
+            </Button>
+            <Button onClick={() => {
+              setCreateDialogStatus(BacklogItemStatus.TODO);
+              setCreateDialogOpen(true);
+            }}>
+              <PlusIcon className="size-4 mr-2" />
+              New Item
             </Button>
           </div>
 
@@ -289,59 +276,109 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
                                 >
-                                  <Card className={`mb-2 p-3 cursor-grab active:cursor-grabbing bg-white hover:shadow-md transition-shadow ${
-                                    snapshot.isDragging ? "shadow-lg rotate-2 opacity-90" : ""
-                                  }`}>
-                                    <div className="space-y-2">
-                                      <div className="flex items-start justify-between gap-2">
-                                        <div className="flex items-center gap-2 flex-1">
-                                          <span className="text-lg">{getTypeIcon(item.type)}</span>
-                                          <p className="font-medium text-sm line-clamp-2">{item.title}</p>
-                                          {item.flagged && <FlagIcon className="size-3 text-red-500 flex-shrink-0" />}
+                                  <div 
+                                    onClick={() => setEditingItem(item)}
+                                    className={`bg-white mb-2.5 rounded-xl border shadow-sm cursor-pointer hover:shadow-md transition-shadow ${
+                                      snapshot.isDragging ? "shadow-lg rotate-2 opacity-90" : ""
+                                    }`}
+                                  >
+                                    <div className="flex p-4 flex-col items-start justify-between gap-x-2">
+                                      {/* Top Section - Badges and Actions */}
+                                      <div className="flex-1 flex w-full justify-between">
+                                        <div className="flex gap-2 flex-wrap">
+                                          <BacklogPriorityBadge priority={item.priority} />
+                                          <BacklogTypeBadge type={item.type} />
+                                          {item.flagged && (
+                                            <FlagIcon className="size-4 text-red-500 fill-red-500" />
+                                          )}
+                                          {item.labels && item.labels.length > 0 && (
+                                            <>
+                                              {item.labels.slice(0, 2).map((label, index) => (
+                                                <BacklogLabelBadge key={index} label={label} />
+                                              ))}
+                                              {item.labels.length > 2 && (
+                                                <span className="text-[10px] text-muted-foreground self-center">
+                                                  +{item.labels.length - 2}
+                                                </span>
+                                              )}
+                                            </>
+                                          )}
                                         </div>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive flex-shrink-0"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDeleteItem(item.$id);
-                                          }}
-                                        >
-                                          <Trash2Icon className="size-3" />
-                                        </Button>
+
+                                        <div className="flex items-center gap-1">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 w-6 p-0"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setEditingItem(item);
+                                            }}
+                                          >
+                                            <Edit2Icon className="size-[16px] stroke-1 text-neutral-700 hover:opacity-75 transition" />
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 w-6 p-0"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleDeleteItem(item.$id);
+                                            }}
+                                          >
+                                            <Trash2Icon className="size-[16px] stroke-1 text-neutral-700 hover:text-destructive hover:opacity-75 transition" />
+                                          </Button>
+                                        </div>
                                       </div>
+
+                                      {/* Title */}
+                                      <h1 className="text-sm line-clamp-2 mt-4 font-semibold flex-1">
+                                        {item.title}
+                                      </h1>
+
+                                      {/* Description */}
                                       {item.description && (
-                                        <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>
-                                      )}
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        <Badge variant="outline" className={`text-xs ${getPriorityColor(item.priority)}`}>
-                                          {item.priority}
-                                        </Badge>
-                                        {item.estimatedHours && (
-                                          <Badge variant="outline" className="text-xs">
-                                            <ClockIcon className="size-3 mr-1" />
-                                            {item.estimatedHours}h
-                                          </Badge>
-                                        )}
-                                        {item.dueDate && (
-                                          <Badge variant="outline" className="text-xs">
-                                            <CalendarIcon className="size-3 mr-1" />
-                                            {new Date(item.dueDate).toLocaleDateString()}
-                                          </Badge>
-                                        )}
-                                      </div>
-                                      {item.labels && item.labels.length > 0 && (
-                                        <div className="flex gap-1 flex-wrap">
-                                          {item.labels.map((label, idx) => (
-                                            <Badge key={idx} variant="secondary" className="text-xs">
-                                              {label}
-                                            </Badge>
-                                          ))}
-                                        </div>
+                                        <p className="text-xs text-gray-600 mt-1 line-clamp-3">
+                                          {(() => {
+                                            const words = item.description.split(/\s+/);
+                                            const shouldEllipsize = words.length > 5 || words.some((w) => w.length > 20);
+                                            const preview = words
+                                              .slice(0, 5)
+                                              .map((word) => (word.length > 20 ? word.slice(0, 20) + "..." : word))
+                                              .join(" ");
+                                            return preview + (shouldEllipsize ? "....." : "");
+                                          })()}
+                                        </p>
                                       )}
                                     </div>
-                                  </Card>
+
+                                    {/* Bottom Section - Date and Time Info */}
+                                    <div className="flex items-center border-t py-3 px-4 border-gray-200 gap-x-1.5 justify-between">
+                                      <div className="flex items-center gap-2">
+                                        {item.dueDate && (
+                                          <p className="text-xs flex gap-0.5 items-center text-muted-foreground">
+                                            <CalendarIcon className="size-[14px] inline-block mr-1 text-gray-500" />
+                                            {new Date(item.dueDate)
+                                              .toLocaleDateString("en-GB", {
+                                                day: "2-digit",
+                                                month: "short",
+                                                year: "numeric",
+                                              })
+                                              .replace(/ /g, "-")}
+                                          </p>
+                                        )}
+                                      </div>
+
+                                      <div className="flex items-center gap-x-2">
+                                        {item.estimatedHours && (
+                                          <p className="text-xs flex items-center text-muted-foreground">
+                                            <ClockIcon className="size-[14px] mr-1 text-gray-500" />
+                                            {item.estimatedHours}h
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
                               )}
                             </Draggable>
@@ -350,8 +387,8 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
                           {/* Add Item Button */}
                           <Button
                             onClick={() => {
-                              setNewItemTitle("");
-                              // You can add modal open logic here if needed
+                              setCreateDialogStatus(status as BacklogItemStatus);
+                              setCreateDialogOpen(true);
                             }}
                             variant="ghost"
                             className="w-full justify-start text-gray-500 hover:text-gray-700 hover:bg-gray-100 mt-2"
@@ -367,6 +404,22 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
               })}
             </div>
           </DragDropContext>
+        )}
+
+        {/* Dialogs */}
+        <CreateBacklogItemDialog
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+          workspaceId={workspaceId}
+          defaultStatus={createDialogStatus}
+        />
+        
+        {editingItem && (
+          <EditBacklogItemDialog
+            open={!!editingItem}
+            onOpenChange={(open) => !open && setEditingItem(null)}
+            item={editingItem}
+          />
         )}
       </div>
     </>

@@ -1,4 +1,4 @@
-import { CalendarIcon, MoreHorizontalIcon } from "lucide-react";
+import { CalendarIcon, MoreHorizontalIcon, FlagIcon } from "lucide-react";
 
 import { TaskActions } from "./task-actions";
 import { LabelBadge } from "./LabelBadge";
@@ -70,7 +70,7 @@ export const KanbanCard = ({
                  
 
         <div className="flex items-center gap-1">
-          <TaskActions id={task.$id} projectId={task.projectId}>
+          <TaskActions id={task.$id} projectId={task.projectId} flagged={task.flagged}>
             <MoreHorizontalIcon 
               className="size-[18px] stroke-1 shrink-0 text-neutral-700 hover:opacity-75 transition" 
               onClick={(e) => e.stopPropagation()}
@@ -80,7 +80,12 @@ export const KanbanCard = ({
 
         </div>
 
-        <h1 className="text-sm line-clamp-2 mt-4 font-semibold flex-1">{task.name}</h1>
+        <div className="flex items-start gap-2 mt-4">
+          {task.flagged && (
+            <FlagIcon className="size-4 fill-red-500 text-red-500 shrink-0 mt-0.5" />
+          )}
+          <h1 className="text-sm line-clamp-2 font-semibold flex-1">{task.name}</h1>
+        </div>
        <p className="text-xs text-gray-600 mt-1 line-clamp-3">
   {(() => {
     const words = task.description?.split(/\s+/) ?? [];

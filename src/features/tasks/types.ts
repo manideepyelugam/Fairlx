@@ -28,6 +28,7 @@ export type Task = Models.Document & {
   estimatedHours?: number;
   priority?: TaskPriority;
   labels?: string[];
+  flagged?: boolean;
 };
 
 export type TaskAssignee = {

@@ -1,4 +1,4 @@
-import { ExternalLink, PencilIcon, TrashIcon } from "lucide-react";
+import { ExternalLink, PencilIcon, TrashIcon, FlagIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { useConfirm } from "@/hooks/use-confirm";
@@ -12,15 +12,17 @@ import {
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 
 import { useDeleteTask } from "../api/use-delete-task";
+import { useUpdateTask } from "../api/use-update-task";
 import { useEditTaskModal } from "../hooks/use-edit-task-modal";
 
 interface TaskActionsProps {
   id: string;
   projectId: string;
   children: React.ReactNode;
+  flagged?: boolean;
 }
 
-export const TaskActions = ({ id, projectId, children }: TaskActionsProps) => {
+export const TaskActions = ({ id, projectId, children, flagged = false }: TaskActionsProps) => {
   const router = useRouter();
   const workspaceId = useWorkspaceId();
 
@@ -31,13 +33,21 @@ export const TaskActions = ({ id, projectId, children }: TaskActionsProps) => {
     "This action cannot be undone.",
     "destructive"
   );
-  const { mutate, isPending } = useDeleteTask();
+  const { mutate: deleteTask, isPending: isDeletingTask } = useDeleteTask();
+  const { mutate: updateTask, isPending: isUpdatingTask } = useUpdateTask();
 
   const onDelete = async () => {
     const ok = await confirm();
     if (!ok) return;
 
-    mutate({ param: { taskId: id } });
+    deleteTask({ param: { taskId: id } });
+  };
+
+  const onToggleFlag = () => {
+    updateTask({
+      param: { taskId: id },
+      json: { flagged: !flagged },
+    });
   };
 
   const onOpenTask = () => {
@@ -78,8 +88,16 @@ export const TaskActions = ({ id, projectId, children }: TaskActionsProps) => {
             Edit Task
           </DropdownMenuItem>
           <DropdownMenuItem
+            onClick={onToggleFlag}
+            disabled={isUpdatingTask}
+            className="font-medium p-[10px]"
+          >
+            <FlagIcon className={`size-4 mr-2 stroke-2 ${flagged ? 'fill-red-500 text-red-500' : ''}`} />
+            {flagged ? 'Unflag Task' : 'Flag Task'}
+          </DropdownMenuItem>
+          <DropdownMenuItem
             onClick={onDelete}
-            disabled={isPending}
+            disabled={isDeletingTask}
             className="text-amber-700 focus:text-amber-700 font-medium p-[10px]"
           >
             <TrashIcon className="size-4 mr-2 stroke-2" />

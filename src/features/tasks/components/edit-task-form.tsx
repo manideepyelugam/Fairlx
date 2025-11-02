@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 import { updateTaskSchema } from "../schemas";
 import { useUpdateTask } from "../api/use-update-task";
@@ -282,6 +283,28 @@ export const EditTaskForm = ({
                       />
                     </FormControl>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="flagged"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value ?? false}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Flag this task
+                      </FormLabel>
+                      <p className="text-xs text-muted-foreground">
+                        Mark this task as flagged for quick identification
+                      </p>
+                    </div>
                   </FormItem>
                 )}
               />

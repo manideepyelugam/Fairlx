@@ -24,6 +24,7 @@ const baseTaskSchema = z.object({
     .optional(),
   priority: z.nativeEnum(TaskPriority).optional(),
   labels: z.array(z.string()).optional(),
+  flagged: z.boolean().optional(),
 });
 
 export const createTaskSchema = baseTaskSchema.refine(
