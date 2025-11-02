@@ -47,14 +47,14 @@ interface CreateEpicDialogProps {
   workspaceId: string;
   projectId: string;
   open: boolean;
-  onClose: () => void;
+  onCloseAction: () => void;
 }
 
 export const CreateEpicDialog = ({
   workspaceId,
   projectId,
   open,
-  onClose,
+  onCloseAction,
 }: CreateEpicDialogProps) => {
   const { mutate: createWorkItem, isPending } = useCreateWorkItem();
 
@@ -83,14 +83,14 @@ export const CreateEpicDialog = ({
       {
         onSuccess: () => {
           form.reset();
-          onClose();
+          onCloseAction();
         },
       }
     );
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onCloseAction}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -210,7 +210,7 @@ export const CreateEpicDialog = ({
               <Button
                 type="button"
                 variant="outline"
-                onClick={onClose}
+                onClick={onCloseAction}
                 disabled={isPending}
               >
                 Cancel

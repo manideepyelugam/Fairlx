@@ -771,7 +771,7 @@ export const BacklogView = ({ workspaceId, projectId }: BacklogViewProps) => {
           {/* Create Epic Dialog */}
           <CreateEpicDialog
             open={createEpicOpen}
-            onClose={() => setCreateEpicOpen(false)}
+            onCloseAction={() => setCreateEpicOpen(false)}
             workspaceId={workspaceId}
             projectId={projectId}
           />
