@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { PlusIcon, Loader2, SearchIcon, FlagIcon, ClockIcon, CalendarIcon, Trash2Icon, MoreHorizontalIcon, CircleDashedIcon, CircleDotDashedIcon, CircleCheckIcon, Edit2Icon } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 
@@ -20,6 +20,16 @@ import { EditBacklogItemDialog } from "./edit-backlog-item-dialog";
 import { BacklogPriorityBadge } from "./backlog-priority-badge";
 import { BacklogLabelBadge } from "./backlog-label-badge";
 import { BacklogTypeBadge } from "./backlog-type-badge";
+
+const boards: BacklogItemStatus[] = [
+  BacklogItemStatus.TODO,
+  BacklogItemStatus.IN_PROGRESS,
+  BacklogItemStatus.DONE,
+];
+
+type ItemsState = {
+  [key in BacklogItemStatus]: BacklogItem[];
+};
 
 interface MyBacklogViewProps {
   workspaceId: string;
@@ -52,14 +62,37 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
     "destructive"
   );
 
-  // Group items by status
-  const groupedItems = useMemo(() => {
-    const items = data?.documents ?? [];
-    return {
-      [BacklogItemStatus.TODO]: items.filter((item) => item.status === BacklogItemStatus.TODO),
-      [BacklogItemStatus.IN_PROGRESS]: items.filter((item) => item.status === BacklogItemStatus.IN_PROGRESS),
-      [BacklogItemStatus.DONE]: items.filter((item) => item.status === BacklogItemStatus.DONE),
+  // State management similar to main kanban board
+  const [items, setItems] = useState<ItemsState>(() => {
+    const initialItems: ItemsState = {
+      [BacklogItemStatus.TODO]: [],
+      [BacklogItemStatus.IN_PROGRESS]: [],
+      [BacklogItemStatus.DONE]: [],
     };
+
+    return initialItems;
+  });
+
+  // Update items state when data changes
+  useEffect(() => {
+    const newItems: ItemsState = {
+      [BacklogItemStatus.TODO]: [],
+      [BacklogItemStatus.IN_PROGRESS]: [],
+      [BacklogItemStatus.DONE]: [],
+    };
+
+    const itemsList = data?.documents ?? [];
+    itemsList.forEach((item) => {
+      if (item.status in newItems) {
+        newItems[item.status as BacklogItemStatus].push(item);
+      }
+    });
+
+    Object.keys(newItems).forEach((status) => {
+      newItems[status as BacklogItemStatus].sort((a, b) => a.position - b.position);
+    });
+
+    setItems(newItems);
   }, [data?.documents]);
 
   const handleCreateItem = () => {
@@ -89,68 +122,110 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
     }
   };
 
-  const handleDragEnd = useCallback((result: DropResult) => {
-    const { destination, source } = result;
+  const handleDragEnd = useCallback(
+    (result: DropResult) => {
+      if (!result.destination) return;
 
-    if (!destination) return;
-    if (destination.droppableId === source.droppableId && destination.index === source.index) return;
+      const { source, destination } = result;
+      const sourceStatus = source.droppableId as BacklogItemStatus;
+      const destStatus = destination.droppableId as BacklogItemStatus;
 
-    const sourceStatus = source.droppableId as BacklogItemStatus;
-    const destStatus = destination.droppableId as BacklogItemStatus;
+      let updatesPayload: {
+        $id: string;
+        status: BacklogItemStatus;
+        position: number;
+      }[] = [];
 
-    const sourceItems = [...groupedItems[sourceStatus]];
-    const destItems = sourceStatus === destStatus ? sourceItems : [...groupedItems[destStatus]];
+      setItems((prevItems) => {
+        const newItems = { ...prevItems };
 
-    const [movedItem] = sourceItems.splice(source.index, 1);
+        // Safely remove the item from the source column
+        const sourceColumn = [...newItems[sourceStatus]];
+        const [movedItem] = sourceColumn.splice(source.index, 1);
 
-    if (!movedItem) {
-      console.warn("No item found at the source index");
-      return;
-    }
+        // If there's no moved item, return the previous state
+        if (!movedItem) {
+          console.warn("No item found at the source index");
+          return prevItems;
+        }
 
-    if (sourceStatus === destStatus) {
-      sourceItems.splice(destination.index, 0, movedItem);
-    } else {
-      destItems.splice(destination.index, 0, movedItem);
-    }
+        // Create a new item object with potentially updated status
+        const updatedMovedItem =
+          sourceStatus !== destStatus
+            ? { ...movedItem, status: destStatus }
+            : movedItem;
 
-    const updatesToMake = sourceStatus === destStatus
-      ? sourceItems.map((item, idx) => ({
-          $id: item.$id,
-          status: sourceStatus,
-          position: Math.min((idx + 1) * 1000, 1_000_000),
-        }))
-      : [
-          ...sourceItems.map((item, idx) => ({
-            $id: item.$id,
-            status: sourceStatus,
-            position: Math.min((idx + 1) * 1000, 1_000_000),
-          })),
-          ...destItems.map((item, idx) => ({
-            $id: item.$id,
-            status: destStatus,
-            position: Math.min((idx + 1) * 1000, 1_000_000),
-          })),
-        ];
+        // Update the source column
+        newItems[sourceStatus] = sourceColumn;
 
-    bulkUpdate({ items: updatesToMake });
-  }, [groupedItems, bulkUpdate]);
+        // Add the item to the destination column
+        const destColumn = [...newItems[destStatus]];
+        destColumn.splice(destination.index, 0, updatedMovedItem);
+        newItems[destStatus] = destColumn;
+
+        // Prepare minimal update payloads
+        updatesPayload = [];
+
+        // Always update the moved item
+        updatesPayload.push({
+          $id: updatedMovedItem.$id,
+          status: destStatus,
+          position: Math.min((destination.index + 1) * 1000, 1_000_000),
+        });
+
+        // Update positions for affected items in the destination column
+        newItems[destStatus].forEach((item, index) => {
+          if (item && item.$id !== updatedMovedItem.$id) {
+            const newPosition = Math.min((index + 1) * 1000, 1_000_000);
+            if (item.position !== newPosition) {
+              updatesPayload.push({
+                $id: item.$id,
+                status: destStatus,
+                position: newPosition,
+              });
+            }
+          }
+        });
+
+        // If the item moved between columns, update positions in the source column
+        if (sourceStatus !== destStatus) {
+          newItems[sourceStatus].forEach((item, index) => {
+            if (item) {
+              const newPosition = Math.min((index + 1) * 1000, 1_000_000);
+              if (item.position !== newPosition) {
+                updatesPayload.push({
+                  $id: item.$id,
+                  status: sourceStatus,
+                  position: newPosition,
+                });
+              }
+            }
+          });
+        }
+
+        return newItems;
+      });
+
+      bulkUpdate({ items: updatesPayload });
+    },
+    [bulkUpdate]
+  );
 
   return (
     <>
       <ConfirmDialog />
-      <div className="h-full flex flex-col p-6 space-y-6">
+      <div className="h-full flex flex-col px-6 space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">My Backlog</h1>
-            <p className="text-muted-foreground mt-1">Your personal task backlog and ideas</p>
+          <div className="mb-4">
+            <h1 className="text-2xl font-semibold tracking-tight">My Backlog</h1>
+            <p className="text-muted-foreground text-sm mt-1.5">Your personal task backlog and ideas</p>
           </div>
 
           {/* Create New Item */}
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <Input
-              placeholder="Quick add (or click '+' for details)..."
+              placeholder="Quick add a new backlog item..."
               value={newItemTitle}
               onChange={(e) => setNewItemTitle(e.target.value)}
               onKeyDown={(e) => {
@@ -158,66 +233,88 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
                   handleCreateItem();
                 }
               }}
-              className="flex-1"
+              className="flex-1 !h-10 text-xs"
               disabled={isCreating}
             />
-            <Button onClick={handleCreateItem} disabled={isCreating || !newItemTitle.trim()} variant="outline">
-              {isCreating ? <Loader2 className="size-4 animate-spin" /> : <PlusIcon className="size-4" />}
+            <Button onClick={handleCreateItem} disabled={isCreating || !newItemTitle.trim()} className="text-xs font-medium !py-5.5" variant="outline">
+              {isCreating ? <Loader2 className="size-4 animate-spin" /> : <PlusIcon className="!size-3 !font-light" />}
               Quick Add
             </Button>
             <Button onClick={() => {
               setCreateDialogStatus(BacklogItemStatus.TODO);
               setCreateDialogOpen(true);
-            }}>
-              <PlusIcon className="size-4 mr-2" />
+              
+            }} className="text-xs font-medium !py-5.5 tracking-normal bg-primary">
+              <PlusIcon className="!size-3 mr-0" />
               New Item
             </Button>
           </div>
 
           {/* Filters */}
           <div className="flex flex-wrap gap-2">
-            <div className="relative flex-1 min-w-[200px]">
-              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <div className="relative flex-1 flex items-center min-w-[200px]">
+              <SearchIcon className="absolute  left-3.5 top-1/2 -translate-y-1/2 size-3 text-muted-foreground" />
               <Input
                 placeholder="Search items..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+                className="pl-9 text-xs !h-10"
               />
             </div>
+
             <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as BacklogItemStatus | "ALL")}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-[140px] !text-xs !h-10">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">All Status</SelectItem>
-                <SelectItem value={BacklogItemStatus.TODO}>To Do</SelectItem>
-                <SelectItem value={BacklogItemStatus.IN_PROGRESS}>In Progress</SelectItem>
-                <SelectItem value={BacklogItemStatus.DONE}>Done</SelectItem>
+                <SelectItem className="!text-xs " value="ALL">All Status</SelectItem>
+                <Separator />
+                <SelectItem className="text-xs" value={BacklogItemStatus.TODO}>
+                  <div className="flex items-center gap-x-2">
+                    <CircleDashedIcon className="size-[18px] text-pink-400" />
+                    To Do
+                  </div>
+                </SelectItem>
+                <SelectItem className="text-xs" value={BacklogItemStatus.IN_PROGRESS}>
+                  <div className="flex items-center gap-x-2">
+                    <CircleDotDashedIcon className="size-[18px] text-yellow-400" />
+                    In Progress
+                  </div>
+                </SelectItem>
+                <SelectItem className="text-xs" value={BacklogItemStatus.DONE}>
+                  <div className="flex items-center gap-x-2">
+                    <CircleCheckIcon className="size-[18px] text-emerald-400" />
+                    Done
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
+
+
             <Select value={priorityFilter} onValueChange={(value) => setPriorityFilter(value as BacklogItemPriority | "ALL")}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-[140px] !text-xs !h-10">
                 <SelectValue placeholder="Priority" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">All Priority</SelectItem>
-                <SelectItem value={BacklogItemPriority.URGENT}>Urgent</SelectItem>
-                <SelectItem value={BacklogItemPriority.HIGH}>High</SelectItem>
-                <SelectItem value={BacklogItemPriority.MEDIUM}>Medium</SelectItem>
-                <SelectItem value={BacklogItemPriority.LOW}>Low</SelectItem>
+                <SelectItem className="text-xs" value="ALL">All Priority</SelectItem>
+                <Separator />
+                <SelectItem className="text-xs" value={BacklogItemPriority.URGENT}>Urgent</SelectItem>
+                <SelectItem className="text-xs" value={BacklogItemPriority.HIGH}>High</SelectItem>
+                <SelectItem className="text-xs" value={BacklogItemPriority.MEDIUM}>Medium</SelectItem>
+                <SelectItem className="text-xs" value={BacklogItemPriority.LOW}>Low</SelectItem>
               </SelectContent>
             </Select>
             <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as BacklogItemType | "ALL")}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-[140px] !text-xs !h-10">
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">All Types</SelectItem>
-                <SelectItem value={BacklogItemType.TASK}>Task</SelectItem>
-                <SelectItem value={BacklogItemType.BUG}>Bug</SelectItem>
-                <SelectItem value={BacklogItemType.IDEA}>Idea</SelectItem>
-                <SelectItem value={BacklogItemType.IMPROVEMENT}>Improvement</SelectItem>
+                <SelectItem className="text-xs" value="ALL">All Types</SelectItem>
+                <Separator />
+                <SelectItem className="text-xs" value={BacklogItemType.TASK}>Task</SelectItem>
+                <SelectItem className="text-xs" value={BacklogItemType.BUG}>Bug</SelectItem>
+                <SelectItem className="text-xs" value={BacklogItemType.IDEA}>Idea</SelectItem>
+                <SelectItem className="text-xs" value={BacklogItemType.IMPROVEMENT}>Improvement</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -233,7 +330,7 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
         ) : (
           <DragDropContext onDragEnd={handleDragEnd}>
             <div className="flex overflow-x-auto gap-4 pb-4">
-              {Object.entries(groupedItems).map(([status, items]) => {
+              {boards.map((status) => {
                 const statusIcon = 
                   status === BacklogItemStatus.TODO ? <CircleDashedIcon className="size-[18px] text-pink-400" /> :
                   status === BacklogItemStatus.IN_PROGRESS ? <CircleDotDashedIcon className="size-[18px] text-yellow-400" /> :
@@ -247,18 +344,28 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
                 return (
                   <div
                     key={status}
-                    className="flex-1 bg-gray-50 rounded-xl min-w-[280px] max-w-[320px]"
+                    className="flex-1 bg-gray-50 rounded-xl min-w-[280px] border max-w-[320px]"
                   >
                     {/* Column Header */}
-                    <div className="px-3 py-2 flex items-center justify-between mb-2">
+                    <div className="px-3 py-2 flex items-center  justify-between mb-2">
                       <div className="flex items-center gap-x-2">
                         {statusIcon}
                         <h2 className="text-sm font-semibold text-gray-700">{statusTitle}</h2>
-                        <span className="text-xs text-muted-foreground">({items.length})</span>
                       </div>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-gray-100">
-                        <MoreHorizontalIcon className="h-4 w-4 text-gray-500" />
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          onClick={() => {
+                            setCreateDialogStatus(status as BacklogItemStatus);
+                            setCreateDialogOpen(true);
+                          }}
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 hover:bg-gray-100"
+                        >
+                          <PlusIcon className="h-4 w-4 text-gray-500" />
+                        </Button>
+                       
+                      </div>
                     </div>
 
                     <Droppable droppableId={status}>
@@ -268,7 +375,7 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
                           {...provided.droppableProps}
                           className="min-h-[500px] px-3 pb-3"
                         >
-                          {items.map((item, index) => (
+                          {items[status].map((item, index) => (
                             <Draggable key={item.$id} draggableId={item.$id} index={index}>
                               {(provided, snapshot) => (
                                 <div
@@ -283,25 +390,16 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
                                     }`}
                                   >
                                     <div className="flex p-4 flex-col items-start justify-between gap-x-2">
-                                      {/* Top Section - Badges and Actions */}
+                                      {/* Top Section - Priority, Type, Labels and Actions */}
                                       <div className="flex-1 flex w-full justify-between">
                                         <div className="flex gap-2 flex-wrap">
-                                          <BacklogPriorityBadge priority={item.priority} />
-                                          <BacklogTypeBadge type={item.type} />
-                                          {item.flagged && (
-                                            <FlagIcon className="size-4 text-red-500 fill-red-500" />
-                                          )}
+                                          {item.priority && <BacklogPriorityBadge priority={item.priority} />}
                                           {item.labels && item.labels.length > 0 && (
-                                            <>
+                                            <div className="flex flex-wrap gap-1">
                                               {item.labels.slice(0, 2).map((label, index) => (
                                                 <BacklogLabelBadge key={index} label={label} />
                                               ))}
-                                              {item.labels.length > 2 && (
-                                                <span className="text-[10px] text-muted-foreground self-center">
-                                                  +{item.labels.length - 2}
-                                                </span>
-                                              )}
-                                            </>
+                                            </div>
                                           )}
                                         </div>
 
@@ -315,7 +413,7 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
                                               setEditingItem(item);
                                             }}
                                           >
-                                            <Edit2Icon className="size-[16px] stroke-1 text-neutral-700 hover:opacity-75 transition" />
+                                            <Edit2Icon className="size-[18px] stroke-1 text-neutral-700 hover:opacity-75 transition" />
                                           </Button>
                                           <Button
                                             variant="ghost"
@@ -326,19 +424,24 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
                                               handleDeleteItem(item.$id);
                                             }}
                                           >
-                                            <Trash2Icon className="size-[16px] stroke-1 text-neutral-700 hover:text-destructive hover:opacity-75 transition" />
+                                            <Trash2Icon className="size-[18px] stroke-1 text-neutral-700 hover:text-destructive hover:opacity-75 transition" />
                                           </Button>
                                         </div>
                                       </div>
 
-                                      {/* Title */}
-                                      <h1 className="text-sm line-clamp-2 mt-4 font-semibold flex-1">
-                                        {item.title}
-                                      </h1>
+                                      {/* Title Section */}
+                                      <div className="flex items-start gap-2 mt-4 w-full">
+                                        {item.flagged && (
+                                          <FlagIcon className="size-4 fill-red-500 text-red-500 shrink-0 mt-0.5" />
+                                        )}
+                                        <h1 className="text-sm line-clamp-2 font-semibold flex-1">
+                                          {item.title}
+                                        </h1>
+                                      </div>
 
                                       {/* Description */}
                                       {item.description && (
-                                        <p className="text-xs text-gray-600 mt-1 line-clamp-3">
+                                        <p className="text-xs text-gray-600 mt-1 line-clamp-3 w-full">
                                           {(() => {
                                             const words = item.description.split(/\s+/);
                                             const shouldEllipsize = words.length > 5 || words.some((w) => w.length > 20);
@@ -354,27 +457,27 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
 
                                     {/* Bottom Section - Date and Time Info */}
                                     <div className="flex items-center border-t py-3 px-4 border-gray-200 gap-x-1.5 justify-between">
-                                      <div className="flex items-center gap-2">
-                                        {item.dueDate && (
-                                          <p className="text-xs flex gap-0.5 items-center text-muted-foreground">
-                                            <CalendarIcon className="size-[14px] inline-block mr-1 text-gray-500" />
-                                            {new Date(item.dueDate)
+                                      <p className="text-xs flex gap-0.5 items-center text-muted-foreground">
+                                        <CalendarIcon className="size-[14px] inline-block mr-1 text-gray-500" />
+                                        {item.dueDate
+                                          ? new Date(item.dueDate)
                                               .toLocaleDateString("en-GB", {
                                                 day: "2-digit",
                                                 month: "short",
                                                 year: "numeric",
                                               })
-                                              .replace(/ /g, "-")}
-                                          </p>
-                                        )}
-                                      </div>
+                                              .replace(/ /g, "-")
+                                          : "No Date"}
+                                      </p>
 
                                       <div className="flex items-center gap-x-2">
-                                        {item.estimatedHours && (
+                                        {item.estimatedHours ? (
                                           <p className="text-xs flex items-center text-muted-foreground">
                                             <ClockIcon className="size-[14px] mr-1 text-gray-500" />
                                             {item.estimatedHours}h
                                           </p>
+                                        ) : (
+                                          <BacklogTypeBadge type={item.type} />
                                         )}
                                       </div>
                                     </div>
@@ -385,17 +488,18 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
                           ))}
                           {provided.placeholder}
                           {/* Add Item Button */}
-                          <Button
+                       
+
+                           <Button
                             onClick={() => {
                               setCreateDialogStatus(status as BacklogItemStatus);
                               setCreateDialogOpen(true);
-                            }}
-                            variant="ghost"
-                            className="w-full justify-start text-gray-500 hover:text-gray-700 hover:bg-gray-100 mt-2"
-                          >
-                            <PlusIcon className="h-4 w-4 mr-2" />
-                            Add Item
-                          </Button>
+                            }}                                            
+                                 variant="ghost"
+                                className="w-full text-xs bg-white border border-gray-200 shadow-sm justify-start text-gray-500  mt-2" >
+                              <PlusIcon className="h-4 w-4 " />
+                                                 Add Task
+                           </Button>
                         </div>
                       )}
                     </Droppable>
