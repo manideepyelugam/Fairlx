@@ -9,7 +9,6 @@ import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { useGetMembers } from "@/features/members/api/use-get-members";
 
-import { DottedSeparator } from "@/components/dotted-separator";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -20,6 +19,7 @@ import { DataTable } from "./data-table";
 import { SimpleTimeline } from "./simple-timeline";
 // Use full EnhancedDataKanban so custom columns show up
 import { EnhancedDataKanban } from "@/features/custom-columns/components/enhanced-data-kanban";
+import { DataDashboard } from "./data-dashboard";
 
 import { useGetTasks } from "../api/use-get-tasks";
 import { useCreateTaskModal } from "../hooks/use-create-task-modal";
@@ -36,23 +36,23 @@ export const TaskViewSwitcher = ({
   hideProjectFilter,
   showMyTasksOnly = false,
 }: TaskViewSwitcherProps) => {
-  
-  
-    const [{ status, assigneeId, projectId, dueDate, search, priority, labels }] =
+
+
+  const [{ status, assigneeId, projectId, dueDate, search, priority, labels }] =
     useTaskFilters();
-  const [view, setView] = useQueryState("task-view", { defaultValue: "table" });
+  const [view, setView] = useQueryState("task-view", { defaultValue: "dashboard" });
   const { mutate: bulkUpdate } = useBulkUpdateTasks();
 
   const workspaceId = useWorkspaceId();
   const paramProjectId = useProjectId();
-  
+
   // Get current user data
   const { member: currentMember, isAdmin } = useCurrentMember({ workspaceId });
   const { data: members } = useGetMembers({ workspaceId });
-  
+
   // Determine the effective assigneeId - if showMyTasksOnly is true, use current member's ID
   const effectiveAssigneeId = showMyTasksOnly && currentMember ? currentMember.$id : assigneeId;
-  
+
   const { data: tasks, isLoading: isLoadingTasks } = useGetTasks({
     workspaceId,
     projectId: paramProjectId || projectId,
@@ -67,18 +67,18 @@ export const TaskViewSwitcher = ({
   // Client-side filtering for search
   const filteredTasks = useMemo(() => {
     if (!tasks?.documents) return undefined;
-    
+
     let filtered = tasks.documents;
-    
+
     // Apply search filter
     if (search) {
       const searchLower = search.toLowerCase();
-      filtered = filtered.filter(task => 
+      filtered = filtered.filter(task =>
         task.name.toLowerCase().includes(searchLower) ||
         (task.description && task.description.toLowerCase().includes(searchLower))
       );
     }
-    
+
     return {
       ...tasks,
       documents: filtered,
@@ -86,7 +86,7 @@ export const TaskViewSwitcher = ({
     };
   }, [tasks, search]);
 
-  
+
 
   const onKanbanChange = useCallback(
     (tasks: { $id: string; status: TaskStatus | string; position: number }[]) => {
@@ -96,7 +96,7 @@ export const TaskViewSwitcher = ({
   );
 
   const { open } = useCreateTaskModal();
-  
+
 
   return (
     <Tabs
@@ -104,9 +104,12 @@ export const TaskViewSwitcher = ({
       onValueChange={setView}
       className="flex-1 w-full border rounded-lg"
     >
-      <div className="h-full flex flex-col overflow-auto p-4">
-        <div className="flex flex-col gap-y-2 lg:flex-row justify-between items-center">
+      <div className="h-full flex flex-col overflow-auto ">
+        <div className="flex flex-col gap-y-2  px-4 py-6 lg:flex-row justify-between items-center">
           <TabsList className="w-full lg:w-auto">
+            <TabsTrigger className="h-8 w-full text-xs lg:w-auto" value="dashboard">
+              Dashboard
+            </TabsTrigger>
             <TabsTrigger className="h-8 w-full text-xs lg:w-auto" value="table">
               Table
             </TabsTrigger>
@@ -120,37 +123,43 @@ export const TaskViewSwitcher = ({
               Timeline
             </TabsTrigger>
           </TabsList>
-          <Button onClick={open} size="xs" className="w-full !bg-[#1262e8] lg:w-auto">
+          <Button onClick={open} size="xs" className="w-full font-medium px-3 py-2 tracking-tight !bg-[#2663ec] lg:w-auto">
             <PlusIcon className="size-3 " />
             Add Task
           </Button>
         </div>
-        <DottedSeparator className="my-4" />
-        <DataFilters hideProjectFilter={hideProjectFilter} showMyTasksOnly={showMyTasksOnly} />
-        <DottedSeparator className="my-4" />
+
+
+        {view !== "dashboard" && (
+          <DataFilters hideProjectFilter={hideProjectFilter} showMyTasksOnly={showMyTasksOnly} />
+        )}
+
+
         {isLoadingTasks ? (
           <div className="w-full border rounded-lg h-[200px] flex flex-col items-center justify-center">
             <LoaderIcon className="size-5 animate-spin text-muted-foreground" />
           </div>
         ) : (
           <>
-            <TabsContent value="table" className="mt-0">
+            <TabsContent value="dashboard" className="mt-0 p-4">
+              <DataDashboard tasks={filteredTasks?.documents} isLoading={isLoadingTasks} />
+            </TabsContent>
+            <TabsContent value="table" className="mt-0 p-4">
               <DataTable columns={columns} data={filteredTasks?.documents ?? []} />
             </TabsContent>
-            <TabsContent value="kanban" className="mt-0">
+            <TabsContent value="kanban" className="mt-0 p-4">
               <EnhancedDataKanban
                 data={filteredTasks?.documents ?? []}
                 onChange={onKanbanChange}
                 isAdmin={isAdmin}
                 members={members?.documents ?? []}
                 projectId={paramProjectId || projectId || undefined}
-                showMyTasksOnly={showMyTasksOnly}
               />
             </TabsContent>
-            <TabsContent value="calendar" className="mt-0 h-full pb-4">
+            <TabsContent value="calendar" className="mt-0 h-full p-4 pb-4">
               <DataCalendar data={filteredTasks?.documents ?? []} />
             </TabsContent>
-            <TabsContent value="timeline" className="mt-0 h-full pb-4">
+            <TabsContent value="timeline" className="mt-0 h-full p-4 pb-4">
               <SimpleTimeline data={filteredTasks?.documents ?? []} />
             </TabsContent>
           </>

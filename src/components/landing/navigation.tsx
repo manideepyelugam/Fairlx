@@ -17,16 +17,14 @@ export const Navigation = () => {
           <Link href="/" className="flex items-center gap-2 group">
             <div className="relative">
               <Image 
-                src="/logo.png" 
+                src="/Logo.png" 
                 alt="Fairlx" 
-                width={32} 
-                height={32} 
+                width={70} 
+                height={70} 
                 className="transition-transform group-hover:scale-110"
               />
             </div>
-            <span className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
-              Fairlx
-            </span>
+           
           </Link>
 
           {/* Desktop Navigation */}

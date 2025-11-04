@@ -2,6 +2,7 @@ import { CreateProjectModal } from "@/features/projects/components/create-projec
 import { CreateWorkspaceModal } from "@/features/workspaces/components/create-workspace-modal";
 import { CreateTaskModal } from "@/features/tasks/components/create-task-modal";
 import { EditTaskModal } from "@/features/tasks/components/edit-task-modal";
+import { TaskDetailsModalWrapper } from "@/features/tasks/components/task-details-modal-wrapper";
 import { CreateCustomColumnModalWrapper } from "@/features/custom-columns/components/create-custom-column-modal-wrapper";
 import { ManageColumnsModalWrapper } from "@/features/custom-columns/components/manage-columns-modal-wrapper";
 
@@ -19,6 +20,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <CreateProjectModal />
       <CreateTaskModal />
       <EditTaskModal />
+      <TaskDetailsModalWrapper />
       <CreateCustomColumnModalWrapper />
       <ManageColumnsModalWrapper />
       <div className="flex w-full h-screen">

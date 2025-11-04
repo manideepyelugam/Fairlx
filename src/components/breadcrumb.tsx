@@ -25,16 +25,19 @@ export const Breadcrumb = () => {
   const shouldFetchTask = Boolean(itemId && sectionType === "tasks");
 
   // Fetch data based on the current route
-  const { data: workspace } = useGetWorkspace({ 
-    workspaceId: workspaceId || "" 
+  const { data: workspace } = useGetWorkspace({
+    workspaceId,
+    enabled: shouldFetchWorkspace,
   });
   
-  const { data: project } = useGetProject({ 
-    projectId: shouldFetchProject ? itemId : "" 
+  const { data: project } = useGetProject({
+    projectId: shouldFetchProject ? itemId : undefined,
+    enabled: shouldFetchProject,
   });
   
-  const { data: task } = useGetTask({ 
-    taskId: shouldFetchTask ? itemId : "" 
+  const { data: task } = useGetTask({
+    taskId: shouldFetchTask ? itemId : undefined,
+    enabled: shouldFetchTask,
   });
 
   // Don't render if we're not in a workspace route

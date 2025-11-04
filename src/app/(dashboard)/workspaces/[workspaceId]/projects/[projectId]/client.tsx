@@ -1,6 +1,6 @@
 "use client";
 
-import { PencilIcon } from "lucide-react";
+import { PencilIcon, Layers } from "lucide-react";
 import Link from "next/link";
 
 import { PageError } from "@/components/page-error";
@@ -28,6 +28,8 @@ export const ProjectIdClient = () => {
     return <PageError message="Project not found." />;
   }
 
+  console.log("Project Data:", project);
+
   return (
     <div className="flex flex-col gap-y-4">
       
@@ -40,19 +42,36 @@ export const ProjectIdClient = () => {
         </div>
 
 
-        <div>
-       
+        <div className="flex items-center gap-2">
+          <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/backlog`} className="!text-sm">
+            <button 
+              type="button" 
+              className="inline-flex items-center rounded-md border border-input px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <Layers className="size-4 mr-3" />
+              Backlog
+            </button>
+          </Link>
 
-<Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/settings`} className="!text-sm" >
- <button 
-  type="button" 
-  className="inline-flex items-center rounded-md border border-input px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
->
-  
-  <PencilIcon className="size-4 mr-3" />
-  Edit Project
-</button></Link>
+          <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/sprints`} className="!text-sm">
+            <button 
+              type="button" 
+              className="inline-flex items-center rounded-md border border-input px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <Layers className="size-4 mr-3" />
+              Sprint Board
+            </button>
+          </Link>
 
+          <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/settings`} className="!text-sm">
+            <button 
+              type="button" 
+              className="inline-flex items-center rounded-md border border-input px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <PencilIcon className="size-4 mr-3" />
+              Edit Project
+            </button>
+          </Link>
         </div>
 
 

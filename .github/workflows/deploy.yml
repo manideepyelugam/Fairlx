@@ -1,0 +1,148 @@
+name: Deploy to Digital Ocean
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        env:
+          NEXT_PUBLIC_APPWRITE_ENDPOINT: ${{ secrets.NEXT_PUBLIC_APPWRITE_ENDPOINT }}
+          NEXT_PUBLIC_APPWRITE_PROJECT: ${{ secrets.NEXT_PUBLIC_APPWRITE_PROJECT }}
+          NEXT_PUBLIC_APPWRITE_DATABASE_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_DATABASE_ID }}
+          NEXT_PUBLIC_APPWRITE_WORKSPACES_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_WORKSPACES_ID }}
+          NEXT_PUBLIC_APPWRITE_MEMBERS_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_MEMBERS_ID }}
+          NEXT_PUBLIC_APPWRITE_PROJECTS_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_PROJECTS_ID }}
+          NEXT_PUBLIC_APPWRITE_TASKS_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_TASKS_ID }}
+          NEXT_PUBLIC_APPWRITE_TIME_LOGS_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_TIME_LOGS_ID }}
+          NEXT_PUBLIC_APPWRITE_SPRINTS_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_SPRINTS_ID }}
+          NEXT_PUBLIC_APPWRITE_WORK_ITEMS_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_WORK_ITEMS_ID }}
+          NEXT_PUBLIC_APPWRITE_PERSONAL_BACKLOG_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_PERSONAL_BACKLOG_ID }}
+          NEXT_PUBLIC_APPWRITE_CUSTOM_COLUMNS_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_CUSTOM_COLUMNS_ID }}
+          NEXT_PUBLIC_APPWRITE_DEFAULT_COLUMN_SETTINGS_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_DEFAULT_COLUMN_SETTINGS_ID }}
+          NEXT_PUBLIC_APPWRITE_NOTIFICATIONS_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_NOTIFICATIONS_ID }}
+          NEXT_PUBLIC_APPWRITE_IMAGES_BUCKET_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_IMAGES_BUCKET_ID }}
+          NEXT_PUBLIC_APPWRITE_ATTACHMENTS_BUCKET_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_ATTACHMENTS_BUCKET_ID }}
+          NEXT_PUBLIC_APPWRITE_ATTACHMENTS_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_ATTACHMENTS_ID }}
+          NEXT_PUBLIC_APPWRITE_SMTP_PROVIDER_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_SMTP_PROVIDER_ID }}
+          NEXT_PUBLIC_APPWRITE_EMAIL_TOPIC_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_EMAIL_TOPIC_ID }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          NEXT_APPWRITE_KEY: ${{ secrets.NEXT_APPWRITE_KEY }}
+        run: npm run build
+
+      - name: Transfer files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DO_HOST }}
+          username: ${{ secrets.DO_USERNAME }}
+          password: ${{ secrets.DO_PASSWORD }}
+          port: 22
+          source: "."
+          target: "/var/www/scrumpty"
+          rm: true
+
+      - name: Deploy to Digital Ocean
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DO_HOST }}
+          username: ${{ secrets.DO_USERNAME }}
+          password: ${{ secrets.DO_PASSWORD }}
+          port: 22
+          script: |
+            # Ensure PM2 is installed globally
+            if ! command -v pm2 &> /dev/null; then
+              npm install -g pm2
+            fi
+            
+            # Navigate to app directory
+            cd /var/www/scrumpty
+            
+            # Create .env.local file with production environment variables
+            cat > .env.local << EOF
+            NODE_ENV=production
+            NEXT_PUBLIC_APPWRITE_ENDPOINT=${{ secrets.NEXT_PUBLIC_APPWRITE_ENDPOINT }}
+            NEXT_PUBLIC_APPWRITE_PROJECT=${{ secrets.NEXT_PUBLIC_APPWRITE_PROJECT }}
+            NEXT_PUBLIC_APPWRITE_DATABASE_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_DATABASE_ID }}
+            NEXT_PUBLIC_APPWRITE_WORKSPACES_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_WORKSPACES_ID }}
+            NEXT_PUBLIC_APPWRITE_MEMBERS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_MEMBERS_ID }}
+            NEXT_PUBLIC_APPWRITE_PROJECTS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_PROJECTS_ID }}
+            NEXT_PUBLIC_APPWRITE_TASKS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_TASKS_ID }}
+            NEXT_PUBLIC_APPWRITE_TIME_LOGS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_TIME_LOGS_ID }}
+            NEXT_PUBLIC_APPWRITE_SPRINTS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_SPRINTS_ID }}
+            NEXT_PUBLIC_APPWRITE_WORK_ITEMS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_WORK_ITEMS_ID }}
+            NEXT_PUBLIC_APPWRITE_PERSONAL_BACKLOG_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_PERSONAL_BACKLOG_ID }}
+            NEXT_PUBLIC_APPWRITE_CUSTOM_COLUMNS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_CUSTOM_COLUMNS_ID }}
+            NEXT_PUBLIC_APPWRITE_DEFAULT_COLUMN_SETTINGS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_DEFAULT_COLUMN_SETTINGS_ID }}
+            NEXT_PUBLIC_APPWRITE_NOTIFICATIONS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_NOTIFICATIONS_ID }}
+            NEXT_PUBLIC_APPWRITE_IMAGES_BUCKET_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_IMAGES_BUCKET_ID }}
+            NEXT_PUBLIC_APPWRITE_ATTACHMENTS_BUCKET_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_ATTACHMENTS_BUCKET_ID }}
+            NEXT_PUBLIC_APPWRITE_ATTACHMENTS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_ATTACHMENTS_ID }}
+            NEXT_PUBLIC_APPWRITE_SMTP_PROVIDER_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_SMTP_PROVIDER_ID }}
+            NEXT_PUBLIC_APPWRITE_EMAIL_TOPIC_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_EMAIL_TOPIC_ID }}
+            NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
+            NEXT_APPWRITE_KEY=${{ secrets.NEXT_APPWRITE_KEY }}
+            EOF
+            
+            # Ensure proper permissions
+            chmod 600 .env.local
+            
+            # Install dependencies (production only)
+            npm ci --omit=dev
+            
+            # Create PM2 ecosystem config if it doesn't exist
+            cat > ecosystem.config.js << 'EOFPM2'
+            module.exports = {
+              apps: [{
+                name: 'scrumpty',
+                script: 'npm',
+                args: 'start',
+                cwd: '/var/www/scrumpty',
+                env: {
+                  NODE_ENV: 'production',
+                  PORT: 3000
+                }
+              }]
+            };
+            EOFPM2
+            
+            # Restart PM2 process
+            pm2 restart scrumpty || pm2 start ecosystem.config.js --name scrumpty
+            
+            # Wait for the application to start
+            sleep 10
+            
+            # Check if the application is running
+            pm2 list
+            
+            # Test if the application responds
+            curl -f http://localhost:3000 || {
+              echo "Application health check failed"
+              pm2 logs scrumpty --lines 50
+              exit 1
+            }
+            
+            # Save PM2 configuration
+            pm2 save
+            
+            # Setup PM2 to start on boot
+            env PATH=$PATH:/usr/bin pm2 startup systemd -u root --hp /root || true
+            
+            echo "Deployment completed successfully!"

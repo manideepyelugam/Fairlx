@@ -18,11 +18,10 @@ import { useBulkUpdateTasks } from "../api/use-bulk-update-tasks";
 import { useCreateTaskModal } from "../hooks/use-create-task-modal";
 
 const boards: TaskStatus[] = [
-  TaskStatus.BACKLOG,
-  TaskStatus.TODO,
+  TaskStatus.ASSIGNED,
   TaskStatus.IN_PROGRESS,
-  TaskStatus.IN_REVIEW,
-  TaskStatus.DONE,
+  TaskStatus.COMPLETED,
+  TaskStatus.CLOSED,
 ];
 
 type TasksState = {
@@ -48,11 +47,10 @@ export const DataKanban = ({
 }: DataKanbanProps) => {
   const [tasks, setTasks] = useState<TasksState>(() => {
     const initialTasks: TasksState = {
-      [TaskStatus.BACKLOG]: [],
-      [TaskStatus.TODO]: [],
+      [TaskStatus.ASSIGNED]: [],
       [TaskStatus.IN_PROGRESS]: [],
-      [TaskStatus.IN_REVIEW]: [],
-      [TaskStatus.DONE]: [],
+      [TaskStatus.COMPLETED]: [],
+      [TaskStatus.CLOSED]: [],
     };
 
     data.forEach((task) => {
@@ -80,11 +78,10 @@ export const DataKanban = ({
 
   useEffect(() => {
     const newTasks: TasksState = {
-      [TaskStatus.BACKLOG]: [],
-      [TaskStatus.TODO]: [],
+      [TaskStatus.ASSIGNED]: [],
       [TaskStatus.IN_PROGRESS]: [],
-      [TaskStatus.IN_REVIEW]: [],
-      [TaskStatus.DONE]: [],
+      [TaskStatus.COMPLETED]: [],
+      [TaskStatus.CLOSED]: [],
     };
 
     data.forEach((task) => {
@@ -159,7 +156,7 @@ export const DataKanban = ({
 
     const updates = Array.from(selectedTasks).map(taskId => ({
       $id: taskId,
-      assigneeId,
+      assigneeIds: [assigneeId], // Replace all assignees with the selected one
     }));
 
     bulkUpdateTasks({

@@ -10,9 +10,9 @@ const baseTaskSchema = z.object({
   ),
   workspaceId: z.string().trim().min(1, "Required"),
   projectId: z.string().trim().min(1, "Required"),
-  dueDate: z.coerce.date(),
+  dueDate: z.coerce.date().optional(),
   endDate: z.coerce.date().optional(),
-  assigneeIds: z.array(z.string().trim().min(1)).min(1, "At least one assignee is required"),
+  assigneeIds: z.array(z.string().trim().min(1)).optional(),
   description: z.string().nullable().optional(),
   estimatedHours: z
     .union([z.number().min(0), z.string(), z.undefined(), z.null()])
@@ -24,6 +24,7 @@ const baseTaskSchema = z.object({
     .optional(),
   priority: z.nativeEnum(TaskPriority).optional(),
   labels: z.array(z.string()).optional(),
+  flagged: z.boolean().optional(),
 });
 
 export const createTaskSchema = baseTaskSchema.refine(
@@ -39,7 +40,9 @@ export const createTaskSchema = baseTaskSchema.refine(
   }
 );
 
-export const createTaskFormSchema = baseTaskSchema.omit({ workspaceId: true }).refine(
+export const createTaskFormSchema = baseTaskSchema.omit({ workspaceId: true }).extend({
+  assigneeIds: z.array(z.string().trim().min(1)).optional(),
+}).refine(
   (data) => {
     if (data.endDate && data.dueDate) {
       return data.endDate >= data.dueDate;

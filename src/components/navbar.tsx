@@ -1,6 +1,7 @@
 "use client";
 
 import { UserButton } from "@/features/auth/components/user-button";
+import { NotificationBell } from "@/features/notifications";
 
 import { usePathname } from "next/navigation";
 
@@ -44,8 +45,11 @@ export const Navbar = () => {
           <h1 className="text-lg font-semibold">{title}</h1>
         </div>
       </div>
-      <MobileSidebar />
-      <UserButton />
+      <div className="flex items-center gap-2">
+        <MobileSidebar />
+        <NotificationBell />
+        <UserButton />
+      </div>
     </nav>
   );
 };

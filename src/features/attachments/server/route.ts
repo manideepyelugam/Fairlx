@@ -1,7 +1,9 @@
 import { createAdminClient } from "@/lib/appwrite";
-import { DATABASE_ID, ATTACHMENTS_ID, ATTACHMENTS_BUCKET_ID } from "@/config";
+import { DATABASE_ID, ATTACHMENTS_ID, ATTACHMENTS_BUCKET_ID, TASKS_ID } from "@/config";
 import { Attachment } from "../types";
 import { Query, ID } from "node-appwrite";
+import { notifyTaskAssignees, notifyWorkspaceAdmins } from "@/lib/notifications";
+import { Task } from "@/features/tasks/types";
 
 export const getAttachments = async (taskId: string, workspaceId: string): Promise<Attachment[]> => {
   const { databases } = await createAdminClient();
@@ -27,6 +29,7 @@ export const createAttachment = async (data: {
   taskId: string;
   workspaceId: string;
   uploadedBy: string;
+  uploaderName?: string;
 }): Promise<Attachment> => {
   const { databases } = await createAdminClient();
 
@@ -44,10 +47,45 @@ export const createAttachment = async (data: {
       uploadedBy: data.uploadedBy,
       uploadedAt: new Date().toISOString(),
     }
-  );  return attachment as Attachment;
+  );
+
+  // Send notifications (non-blocking)
+  try {
+    const task = await databases.getDocument<Task>(DATABASE_ID, TASKS_ID, data.taskId);
+    const uploaderName = data.uploaderName || "Someone";
+
+    // Notify assignees
+    notifyTaskAssignees({
+      databases,
+      task,
+      triggeredByUserId: data.uploadedBy,
+      triggeredByName: uploaderName,
+      notificationType: "task_attachment_added",
+      workspaceId: data.workspaceId,
+    }).catch(() => {});
+
+    // Notify workspace admins
+    notifyWorkspaceAdmins({
+      databases,
+      task,
+      triggeredByUserId: data.uploadedBy,
+      triggeredByName: uploaderName,
+      notificationType: "task_attachment_added",
+      workspaceId: data.workspaceId,
+    }).catch(() => {});
+  } catch {
+    // Silently fail - notifications are non-critical
+  }
+
+  return attachment as Attachment;
 };
 
-export const deleteAttachment = async (attachmentId: string, workspaceId: string): Promise<void> => {
+export const deleteAttachment = async (
+  attachmentId: string,
+  workspaceId: string,
+  deletedBy?: string,
+  deleterName?: string
+): Promise<void> => {
   const { databases, storage } = await createAdminClient();
 
   // First get the attachment to get the fileId
@@ -62,11 +100,13 @@ export const deleteAttachment = async (attachmentId: string, workspaceId: string
     throw new Error("Unauthorized");
   }
 
+  // Store attachment info for notifications
+  const taskId = attachment.taskId;
+
   // Delete the file from storage
   try {
     await storage.deleteFile(ATTACHMENTS_BUCKET_ID, attachment.fileId);
-  } catch (error) {
-    console.error("Error deleting file from storage:", error);
+  } catch {
     // Continue with database deletion even if file deletion fails
   }
 
@@ -76,4 +116,34 @@ export const deleteAttachment = async (attachmentId: string, workspaceId: string
     ATTACHMENTS_ID,
     attachmentId
   );
+
+  // Send notifications (non-blocking)
+  if (deletedBy && taskId) {
+    try {
+      const task = await databases.getDocument<Task>(DATABASE_ID, TASKS_ID, taskId);
+      const userName = deleterName || "Someone";
+
+      // Notify assignees
+      notifyTaskAssignees({
+        databases,
+        task,
+        triggeredByUserId: deletedBy,
+        triggeredByName: userName,
+        notificationType: "task_attachment_deleted",
+        workspaceId,
+      }).catch(() => {});
+
+      // Notify workspace admins
+      notifyWorkspaceAdmins({
+        databases,
+        task,
+        triggeredByUserId: deletedBy,
+        triggeredByName: userName,
+        notificationType: "task_attachment_deleted",
+        workspaceId,
+      }).catch(() => {});
+    } catch {
+      // Silently fail - notifications are non-critical
+    }
+  }
 };

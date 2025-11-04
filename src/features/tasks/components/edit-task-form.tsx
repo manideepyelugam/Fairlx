@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 import { updateTaskSchema } from "../schemas";
 import { useUpdateTask } from "../api/use-update-task";
@@ -216,12 +217,15 @@ export const EditTaskForm = ({
                     <FormLabel>Estimated Hours (Optional)</FormLabel>
                     <FormControl>
                       <Input
-                        {...field}
                         type="number"
                         step="0.5"
                         min="0"
                         placeholder="Enter estimated hours..."
-                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                        value={field.value ?? ""}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          field.onChange(value === "" ? undefined : parseFloat(value) || undefined);
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -271,14 +275,36 @@ export const EditTaskForm = ({
                     <FormLabel>Description (Optional)</FormLabel>
                     <FormControl>
                       <Textarea
-                        {...field}
-                        value={field.value || ""}
                         placeholder="Enter task description..."
                         className="resize-none"
                         rows={4}
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value)}
                       />
                     </FormControl>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="flagged"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value ?? false}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Flag this task
+                      </FormLabel>
+                      <p className="text-xs text-muted-foreground">
+                        Mark this task as flagged for quick identification
+                      </p>
+                    </div>
                   </FormItem>
                 )}
               />

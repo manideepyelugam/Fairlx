@@ -23,7 +23,6 @@ import { cn, snakeCaseToTitleCase } from "@/lib/utils";
 
 import {
   CircleCheckIcon,
-  CircleDashedIcon,
   CircleDotDashedIcon,
   CircleDotIcon,
   CircleIcon,
@@ -48,17 +47,14 @@ export const allIcons = {
 };
 
 export const statusIconMap: Record<TaskStatus, React.ReactNode> = {
-  [TaskStatus.BACKLOG]: (
-    <CircleDashedIcon className="size-[18px] text-pink-400" />
-  ),
-  [TaskStatus.TODO]: <CircleIcon className="size-[18px] text-red-400" />,
+  [TaskStatus.ASSIGNED]: <CircleIcon className="size-[18px] text-red-400" />,
   [TaskStatus.IN_PROGRESS]: (
     <CircleDotDashedIcon className="size-[18px] text-yellow-400" />
   ),
-  [TaskStatus.IN_REVIEW]: (
+  [TaskStatus.COMPLETED]: (
     <CircleDotIcon className="size-[18px] text-blue-400" />
   ),
-  [TaskStatus.DONE]: (
+  [TaskStatus.CLOSED]: (
     <CircleCheckIcon className="size-[18px] text-emerald-400" />
   ),
 };

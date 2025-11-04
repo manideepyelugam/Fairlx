@@ -1,4 +1,4 @@
-import { FolderIcon, ListChecksIcon, UserIcon, AlertTriangleIcon } from "lucide-react";
+import { FolderIcon, ListChecksIcon, UserIcon, AlertTriangleIcon, Settings2Icon } from "lucide-react";
 
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { useGetProjects } from "@/features/projects/api/use-get-projects";
@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 
 import { useTaskFilters } from "../hooks/use-task-filters";
 import { useGetCustomColumns } from "@/features/custom-columns/api/use-get-custom-columns";
@@ -23,6 +24,7 @@ import { TaskStatus, TaskPriority } from "../types";
 import { PriorityIcon } from "./priority-selector";
 import { LabelFilter } from "./label-management";
 import { TaskSearch } from "./task-search";
+import { useManageColumnsModal } from "@/features/custom-columns/hooks/use-manage-columns-modal";
 
 interface DataFiltersProps {
   hideProjectFilter?: boolean;
@@ -41,6 +43,8 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly }: DataFiltersP
   });
 
   const isLoading = isLoadingProjects || isLoadingMembers;
+
+  const { open: openManageModal } = useManageColumnsModal();
 
   const projectOptions = projects?.documents.map((project) => ({
     value: project.$id,
@@ -107,7 +111,7 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly }: DataFiltersP
   if (isLoading) return null;
 
   return (
-    <div className="flex flex-col lg:flex-row gap-2">
+    <div className="flex flex-col px-4 py-6 border border-b-gray-200 border-t-none border-r-none  border-l-none lg:flex-row gap-2">
       <TaskSearch className="w-full text-xs lg:w-64" />
       
       <Select
@@ -128,20 +132,17 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly }: DataFiltersP
         <SelectContent >
           <SelectItem value="all" className="text-xs">All statuses</SelectItem>
           <SelectSeparator />
-          <SelectItem value={TaskStatus.BACKLOG}>
-            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.BACKLOG]}Backlog</div>
+          <SelectItem value={TaskStatus.ASSIGNED}>
+            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.ASSIGNED]}Assigned</div>
           </SelectItem>
           <SelectItem value={TaskStatus.IN_PROGRESS}>
             <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.IN_PROGRESS]}In Progress</div>
           </SelectItem>
-          <SelectItem value={TaskStatus.IN_REVIEW}>
-            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.IN_REVIEW]}In Review</div>
+          <SelectItem value={TaskStatus.COMPLETED}>
+            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.COMPLETED]}Completed</div>
           </SelectItem>
-          <SelectItem value={TaskStatus.TODO}>
-            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.TODO]}Todo</div>
-          </SelectItem>
-          <SelectItem value={TaskStatus.DONE}>
-            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.DONE]}Done</div>
+          <SelectItem value={TaskStatus.CLOSED}>
+            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.CLOSED]}Closed</div>
           </SelectItem>
 
           {customColumnOptions && customColumnOptions.length > 0 && (
@@ -272,6 +273,16 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly }: DataFiltersP
           
         />
       </div>
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={openManageModal}
+        className="h-8 text-xs lg:ml-auto bg-black text-white hover:bg-gray-800 hover:text-white"
+      >
+        <Settings2Icon className="size-4 mr-2" />
+        Manage Columns
+      </Button>
     </div>
   );
 };

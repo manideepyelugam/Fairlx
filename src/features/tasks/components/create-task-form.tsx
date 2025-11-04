@@ -3,14 +3,12 @@
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { useState } from "react";
 
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
 
-import { cn } from "@/lib/utils";
 import { DatePicker } from "@/components/date-picker";
-import { DottedSeparator } from "@/components/dotted-separator";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form,
@@ -28,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 import { createTaskFormSchema } from "../schemas";
 import { useCreateTask } from "../api/use-create-task";
@@ -36,6 +35,9 @@ import { PrioritySelector } from "./priority-selector";
 import { LabelSelector } from "./label-management";
 import { Textarea } from "@/components/ui/textarea";
 import { AssigneeMultiSelect } from "./assignee-multi-select";
+import { useConfirm } from "@/hooks/use-confirm";
+import { CreateTaskAttachmentUpload } from "@/features/attachments/components/create-task-attachment-upload";
+import { useUploadAttachment } from "@/features/attachments/hooks/use-upload-attachment";
 
 interface CreateTaskFormProps {
   onCancel?: () => void;
@@ -50,6 +52,16 @@ export const CreateTaskForm = ({
 }: CreateTaskFormProps) => {
   const workspaceId = useWorkspaceId();
   const { mutate, isPending } = useCreateTask();
+  const { mutate: uploadAttachment } = useUploadAttachment();
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
+
+  const [ConfirmDialog, confirm] = useConfirm(
+    "Set start date to today?",
+    "You haven't set a start date. Would you like to set it to today and create the task?",
+    "primary",
+    "Yes",
+    "No"
+  );
 
   // Mock available labels - in a real app, this would come from an API
   const availableLabels = [
@@ -60,15 +72,73 @@ export const CreateTaskForm = ({
   const form = useForm<z.infer<typeof createTaskFormSchema>>({
     resolver: zodResolver(createTaskFormSchema),
     defaultValues: {
+      name: "",
+      description: "",
+      assigneeIds: [],
+      labels: [],
+      estimatedHours: undefined,
+      priority: undefined,
+      status: undefined,
+      projectId: "",
+      dueDate: undefined,
+      endDate: undefined,
+      flagged: false,
     },
   });
 
-  const onSubmit = (values: z.infer<typeof createTaskFormSchema>) => {
+  const onSubmit = async (values: z.infer<typeof createTaskFormSchema>) => {
+    // Validate assignees - at least one is required
+    const assigneeIds = values.assigneeIds && values.assigneeIds.length > 0 ? values.assigneeIds : [];
+    
+    if (assigneeIds.length === 0) {
+      form.setError("assigneeIds", { message: "At least one assignee is required" });
+      return;
+    }
+
+    // Validate description - it is required
+    if (!values.description || values.description.trim() === "") {
+      form.setError("description", { message: "Description is required" });
+      return;
+    }
+
+    // If no start date is provided, show confirmation dialog
+    if (!values.dueDate) {
+      const shouldSetToday = await confirm();
+      
+      if (!shouldSetToday) {
+        // User clicked "No", don't create the task
+        return;
+      }
+      
+      // User clicked "Yes", set the start date to today
+      values.dueDate = new Date();
+    }
+
     mutate(
-      { json: { ...values, workspaceId } },
+      { 
+        json: { 
+          ...values, 
+          workspaceId,
+          assigneeIds
+        } 
+      },
       {
-        onSuccess: () => {
+        onSuccess: (data) => {
+          // Upload attachments if any
+          if (attachmentFiles.length > 0 && data?.data) {
+            const taskId = data.data.$id;
+            attachmentFiles.forEach((file) => {
+              const formData = new FormData();
+              formData.append("file", file);
+              formData.append("taskId", taskId);
+              formData.append("workspaceId", workspaceId);
+              
+              uploadAttachment({ form: formData });
+            });
+          }
+          
           form.reset();
+          setAttachmentFiles([]);
           onCancel?.();
         },
       }
@@ -76,14 +146,16 @@ export const CreateTaskForm = ({
   };
 
   return (
-    <Card className="w-full h-full border-none shadow-none">
-      <CardHeader className="flex p-7">
-        <CardTitle className="text-xl font-bold">Create a new task</CardTitle>
+    <>
+      <ConfirmDialog />
+      <Card className="w-full h-full border-none shadow-none">
+        <div className="w-full border  border-b-gray-200">
+<CardHeader className="flex px-7 py-5">
+        <CardTitle className="text-xl font-medium tracking-tight">Create a new task</CardTitle>
       </CardHeader>
-      <div className="px-7">
-        <DottedSeparator />
-      </div>
-      <CardContent className="p-7">
+        </div>
+      
+        <CardContent className="p-7">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
             <div className="flex flex-col gap-y-4">
@@ -204,7 +276,6 @@ export const CreateTaskForm = ({
                     <FormLabel>Estimated Hours (Optional)</FormLabel>
                     <FormControl>
                       <Input
-                        {...field}
                         type="number"
                         step="0.5"
                         min="0"
@@ -212,7 +283,7 @@ export const CreateTaskForm = ({
                         value={field.value ?? ""}
                         onChange={(e) => {
                           const value = e.target.value;
-                          field.onChange(value === "" ? undefined : parseFloat(value));
+                          field.onChange(value === "" ? undefined : parseFloat(value) || undefined);
                         }}
                       />
                     </FormControl>
@@ -260,40 +331,63 @@ export const CreateTaskForm = ({
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Description (Optional)</FormLabel>
+                    <FormLabel>Description</FormLabel>
                     <FormControl>
                       <Textarea
-                        {...field}
-                        value={field.value || ""}
                         placeholder="Enter task description..."
                         className="resize-none"
                         rows={4}
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value)}
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="flagged"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value ?? false}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Flag this task
+                      </FormLabel>
+                      <p className="text-xs text-muted-foreground">
+                        Mark this task as flagged for quick identification
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
+              {/* Attachments Section */}
+              <div className="space-y-2">
+                <FormLabel>Attachments (Optional)</FormLabel>
+                <CreateTaskAttachmentUpload
+                  files={attachmentFiles}
+                  onFilesChange={setAttachmentFiles}
+                />
+              </div>
             </div>
-            <DottedSeparator className="py-7" />
-            <div className="flex items-center justify-between">
-              <Button
-                type="button"
-                size="lg"
-                variant="secondary"
-                onClick={onCancel}
-                disabled={isPending}
-                className={cn(!onCancel && "invisible")}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" size="lg" disabled={isPending}>
-                Create Task
-              </Button>
+            <div className="flex items-center mt-12 mb-3 gap-3">
+             
+
+
+              <button className="bg-blue-600 text-xs tracking-tight text-white py-3 px-5 font-semibold rounded-md" type="submit" disabled={isPending}>Create Task</button>
+              <button onClick={onCancel} disabled={isPending} className="bg-red-500 text-xs tracking-tight text-white py-3 px-5 font-semibold rounded-md">Cancel</button>
+
             </div>
           </form>
         </Form>
       </CardContent>
     </Card>
+    </>
   );
 };

@@ -24,6 +24,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+import { useTaskDetailsModal } from "@/features/tasks/hooks/use-task-details-modal";
+
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
@@ -37,6 +39,7 @@ export function DataTable<TData, TValue>({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   );
+  const { open } = useTaskDetailsModal();
 
   const table = useReactTable({
     data,
@@ -81,7 +84,13 @@ export function DataTable<TData, TValue>({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className="cursor-pointer"
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => {
+                    const taskId = (row.original as { $id?: string })?.$id;
+                    if (taskId) {
+                      open(taskId);
+                    }
+                  }}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>

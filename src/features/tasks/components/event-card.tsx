@@ -1,4 +1,3 @@
-import { useRouter } from "next/navigation";
 import { FlagIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -6,13 +5,13 @@ import { cn } from "@/lib/utils";
 import { Member } from "@/features/members/types";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
 import { Project } from "@/features/projects/types";
-import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 
 import { TaskStatus } from "../types";
 import {
   AssigneeAvatarGroup,
   AssigneeLike,
 } from "./assignee-avatar-group";
+import { useTaskDetailsModal } from "../hooks/use-task-details-modal";
 
 interface EventCardProps {
   title: string;
@@ -25,11 +24,10 @@ interface EventCardProps {
 }
 
 const statusColorMap: Record<TaskStatus, string> = {
-  [TaskStatus.BACKLOG]: "border-l-pink-400",
-  [TaskStatus.TODO]: "border-l-red-400",
+  [TaskStatus.ASSIGNED]: "border-l-red-400",
   [TaskStatus.IN_PROGRESS]: "border-l-yellow-400",
-  [TaskStatus.IN_REVIEW]: "border-l-blue-400",
-  [TaskStatus.DONE]: "border-l-emerald-400",
+  [TaskStatus.COMPLETED]: "border-l-blue-400",
+  [TaskStatus.CLOSED]: "border-l-emerald-400",
 };
 
 export const EventCard = ({
@@ -41,8 +39,7 @@ export const EventCard = ({
   id,
   isMilestone = false,
 }: EventCardProps) => {
-  const workspaceId = useWorkspaceId();
-  const router = useRouter();
+  const { open } = useTaskDetailsModal();
 
   const combinedAssignees: (
     | AssigneeLike
@@ -66,7 +63,7 @@ export const EventCard = ({
 
   const onClick = (e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation();
-    router.push(`/workspaces/${workspaceId}/tasks/${id}`);
+    open(id);
   };
 
   return (

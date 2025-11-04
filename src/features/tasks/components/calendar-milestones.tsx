@@ -18,11 +18,10 @@ interface CalendarMilestonesProps {
 }
 
 const statusConfig = {
-  [TaskStatus.BACKLOG]: { color: "bg-pink-500", textColor: "text-pink-700" },
-  [TaskStatus.TODO]: { color: "bg-red-500", textColor: "text-red-700" },
+  [TaskStatus.ASSIGNED]: { color: "bg-red-500", textColor: "text-red-700" },
   [TaskStatus.IN_PROGRESS]: { color: "bg-yellow-500", textColor: "text-yellow-700" },
-  [TaskStatus.IN_REVIEW]: { color: "bg-blue-500", textColor: "text-blue-700" },
-  [TaskStatus.DONE]: { color: "bg-emerald-500", textColor: "text-emerald-700" },
+  [TaskStatus.COMPLETED]: { color: "bg-blue-500", textColor: "text-blue-700" },
+  [TaskStatus.CLOSED]: { color: "bg-emerald-500", textColor: "text-emerald-700" },
 };
 
 export const CalendarMilestones = ({ data }: CalendarMilestonesProps) => {

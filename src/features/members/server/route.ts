@@ -35,19 +35,25 @@ const app = new Hono()
         Query.equal("workspaceId", workspaceId),
       ]);
 
-      const populatedMembers = await Promise.all(
+      const populatedMembers = (await Promise.all(
         members.documents.map(async (member) => {
-          const user = await users.get(member.userId);
-          const prefs = user.prefs as { profileImageUrl?: string | null } | undefined;
+          try {
+            const user = await users.get(member.userId);
+            const prefs = user.prefs as { profileImageUrl?: string | null } | undefined;
 
-          return {
-            ...member,
-            name: user.name || user.email,
-            email: user.email,
-            profileImageUrl: prefs?.profileImageUrl ?? null,
-          };
+            return {
+              ...member,
+              name: user.name || user.email,
+              email: user.email,
+              profileImageUrl: prefs?.profileImageUrl ?? null,
+            };
+          } catch {
+            // User not found - skip this member (likely deleted user)
+            console.warn(`Skipping member ${member.$id}: User ${member.userId} not found`);
+            return null;
+          }
         })
-      );
+      )).filter((member): member is NonNullable<typeof member> => member !== null);
 
       return c.json({ data: { ...members, documents: populatedMembers } });
     }

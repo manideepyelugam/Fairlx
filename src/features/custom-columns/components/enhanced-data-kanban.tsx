@@ -7,7 +7,7 @@ import {
   Draggable,
   type DropResult,
 } from "@hello-pangea/dnd";
-import { Settings2Icon, PlusIcon } from "lucide-react";
+import { PlusIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/hooks/use-confirm";
@@ -23,7 +23,6 @@ import { useBulkUpdateTasks } from "@/features/tasks/api/use-bulk-update-tasks";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 
 import { useGetCustomColumns } from "../api/use-get-custom-columns";
-import { useManageColumnsModal } from "../hooks/use-manage-columns-modal";
 import { useDefaultColumns } from "../hooks/use-default-columns";
 import { CustomColumnHeader } from "./custom-column-header";
 import { CustomColumn } from "../types";
@@ -51,7 +50,6 @@ interface EnhancedDataKanbanProps {
   isAdmin?: boolean;
   members?: Array<{ $id: string; name: string }>;
   projectId?: string; // Add optional projectId prop
-  showMyTasksOnly?: boolean; // New prop to show column management for all users
 }
 
 export const EnhancedDataKanban = ({ 
@@ -59,8 +57,7 @@ export const EnhancedDataKanban = ({
   onChange, 
   isAdmin = false,
   members = [],
-  projectId,
-  showMyTasksOnly = false
+  projectId
 }: EnhancedDataKanbanProps) => {
   const workspaceId = useWorkspaceId();
   
@@ -71,7 +68,6 @@ export const EnhancedDataKanban = ({
   });
   
 
-  const { open: openManageModal } = useManageColumnsModal();
   const { open: openCreateTask } = useCreateTaskModal();
   const { getEnabledColumns } = useDefaultColumns(workspaceId, projectId);
   const { mutate: updateColumnOrder } = useUpdateColumnOrder();
@@ -126,10 +122,10 @@ export const EnhancedDataKanban = ({
       newTasks[col.id] = [];
     });
 
-    // Ensure TODO exists as fallback (if it's enabled)
-    const todoColumn = orderedColumns.find(col => col.id === TaskStatus.TODO);
-    if (!newTasks[TaskStatus.TODO] && todoColumn) {
-      newTasks[TaskStatus.TODO] = [];
+    // Ensure ASSIGNED exists as fallback (if it's enabled)
+    const assignedColumn = orderedColumns.find(col => col.id === TaskStatus.ASSIGNED);
+    if (!newTasks[TaskStatus.ASSIGNED] && assignedColumn) {
+      newTasks[TaskStatus.ASSIGNED] = [];
     }
 
     // Process data with safety check
@@ -141,11 +137,11 @@ export const EnhancedDataKanban = ({
         if (newTasks[taskStatus]) {
           newTasks[taskStatus].push(task);
           } else {
-            // Task is in a disabled/non-existent column, move to TODO if available
-            if (newTasks[TaskStatus.TODO]) {
-              newTasks[TaskStatus.TODO].push(task);
+            // Task is in a disabled/non-existent column, move to ASSIGNED if available
+            if (newTasks[TaskStatus.ASSIGNED]) {
+              newTasks[TaskStatus.ASSIGNED].push(task);
             } else {
-              // If TODO is also disabled, move to first available enabled column
+              // If ASSIGNED is also disabled, move to first available enabled column
               const firstEnabledColumn = Object.keys(newTasks)[0];
               if (firstEnabledColumn) {
                 newTasks[firstEnabledColumn].push(task);
@@ -374,24 +370,14 @@ export const EnhancedDataKanban = ({
       <>
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center gap-2">
-            {(isAdmin || showMyTasksOnly) && (
-              <>
-                <Button
-                  variant={selectionMode ? "secondary" : "outline"}
-                  size="sm"
-                  onClick={toggleSelectionMode}
-                >
-                  {selectionMode ? "Exit Selection" : "Select Tasks"}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={openManageModal}
-                >
-                  <Settings2Icon className="size-4 !text-xs mr-2" />
-                  Manage Columns
-                </Button>
-              </>
+            {isAdmin && (
+              <Button
+                variant={selectionMode ? "secondary" : "outline"}
+                size="sm"
+                onClick={toggleSelectionMode}
+              >
+                {selectionMode ? "Exit Selection" : "Select Tasks"}
+              </Button>
             )}
             {selectionMode && selectedTasks.size > 0 && (
               <span className="text-sm text-gray-600">
