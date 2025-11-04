@@ -9,96 +9,142 @@ import {
   ListTodo,
   AlertCircle,
   Zap,
-  Bug,
-  CheckSquare,
   TrendingUp,
   Users,
   Layers,
+  Flag, 
 } from "lucide-react";
-import { TaskStatus, TaskPriority } from "../types";
+import { TaskStatus, TaskPriority, Task } from "../types";
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { formatDistanceToNow } from "date-fns";
-
-// Mock data for the dashboard
-const mockData = {
-  members: [
-    { id: "member-1", name: "John Doe", avatar: "JD", role: "Lead Developer", tasks: 12 },
-    { id: "member-2", name: "Sarah Smith", avatar: "SS", role: "UI Designer", tasks: 8 },
-    { id: "member-3", name: "Mike Johnson", avatar: "MJ", role: "Backend Dev", tasks: 15 },
-    { id: "member-4", name: "Emma Wilson", avatar: "EW", role: "Product Manager", tasks: 6 },
-  ],
-  statusOverview: [
-    { id: "status-1", name: "Done", value: 48, color: "#2663ec" },
-    { id: "status-2", name: "In Progress", value: 12, color: "#3b82f6" },
-    { id: "status-3", name: "To Do", value: 24, color: "#93c5fd" },
-  ],
-  epicProgress: [
-    { id: "epic-1", name: "Auth System", progress: 85 },
-    { id: "epic-2", name: "Dashboard", progress: 60 },
-    { id: "epic-3", name: "API Integration", progress: 45 },
-    { id: "epic-4", name: "Mobile App", progress: 30 },
-    { id: "epic-5", name: "Payment System", progress: 72 },
-  ],
-  teamWorkload: [
-    { id: "workload-1", name: "John Doe", tasksCompleted: 24, tasksTotal: 28 },
-    { id: "workload-2", name: "Sarah Smith", tasksCompleted: 18, tasksTotal: 22 },
-    { id: "workload-3", name: "Mike Johnson", tasksCompleted: 32, tasksTotal: 35 },
-    { id: "workload-4", name: "Emma Wilson", tasksCompleted: 15, tasksTotal: 20 },
-  ],
-  typesOfWork: [
-    { id: "type-1", name: "Subtask", count: 36, total: 100, icon: CheckSquare },
-    { id: "type-2", name: "Epic", count: 27, total: 100, icon: Zap },
-    { id: "type-3", name: "Feature", count: 27, total: 100, icon: Bug },
-  ],
-  dueAlerts: [
-    { id: "due-1", title: "API Documentation", dueDate: new Date(2025, 10, 5) },
-    { id: "due-2", title: "User Testing", dueDate: new Date(2025, 10, 7) },
-    { id: "due-3", title: "Security Review", dueDate: new Date(2025, 10, 10) },
-  ],
-  recentActivity: [
-    {
-      id: "activity-1",
-      type: "task",
-      action: "completed",
-      title: "Update user authentication",
-      user: "John Doe",
-      timestamp: new Date(2025, 10, 3, 14, 30)
-    },
-    {
-      id: "activity-2",
-      type: "epic",
-      action: "created",
-      title: "Mobile App Development",
-      user: "Sarah Smith",
-      timestamp: new Date(2025, 10, 3, 13, 15)
-    },
-    {
-      id: "activity-3",
-      type: "task",
-      action: "updated",
-      title: "Fix navigation bug",
-      user: "Mike Johnson",
-      timestamp: new Date(2025, 10, 3, 12, 45)
-    }
-  ]
-};
+import { useMemo } from "react";
+import { useGetMembers } from "@/features/members/api/use-get-members";
+import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 
 interface DataDashboardProps {
-  tasks?: any[];
+  tasks?: Task[];
   isLoading?: boolean;
 }
 
-export const DataDashboard = ({ tasks, isLoading }: DataDashboardProps) => {
-  // We'll use mock data for now, but in real implementation we'll calculate these from tasks
+export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
+  const workspaceId = useWorkspaceId();
+  const { data: membersData } = useGetMembers({ workspaceId });
+  
+  // Memoize members to prevent dependency issues in other useMemo hooks
+  const members = useMemo(() => membersData?.documents ?? [], [membersData?.documents]);
 
-  // Calculate analytics totals
-  const analytics = {
-    totalTasks: mockData.teamWorkload.reduce((acc, member) => acc + member.tasksTotal, 0),
-    completedTasks: mockData.teamWorkload.reduce((acc, member) => acc + member.tasksCompleted, 0),
-    inProgressTasks: mockData.statusOverview.find(s => s.name === "In Progress")?.value || 0,
-    blockedTasks: 5, // This would come from real data
-    overdueTasks: 3, // This would come from real data
-  };
+  // Calculate analytics from real tasks data
+  const analytics = useMemo(() => {
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter(t => t.status === TaskStatus.COMPLETED || t.status === TaskStatus.CLOSED).length;
+    const inProgressTasks = tasks.filter(t => t.status === TaskStatus.IN_PROGRESS).length;
+    const flaggedTasks = tasks.filter(t => t.flagged === true).length;
+    const now = new Date();
+    const overdueTasks = tasks.filter(t => {
+      if (!t.dueDate) return false;
+      const dueDate = new Date(t.dueDate);
+      return dueDate < now && t.status !== TaskStatus.COMPLETED && t.status !== TaskStatus.CLOSED;
+    }).length;
+
+    return {
+      totalTasks,
+      completedTasks,
+      inProgressTasks,
+      flaggedTasks,
+      overdueTasks,
+    };
+  }, [tasks]);
+
+  // Calculate status overview from real data
+  const statusOverview = useMemo(() => {
+    const assigned = tasks.filter(t => t.status === TaskStatus.ASSIGNED).length;
+    const inProgress = tasks.filter(t => t.status === TaskStatus.IN_PROGRESS).length;
+    const completed = tasks.filter(t => t.status === TaskStatus.COMPLETED).length;
+    const closed = tasks.filter(t => t.status === TaskStatus.CLOSED).length;
+
+    return [
+      { id: "status-1", name: "Completed", value: completed + closed, color: "#22c55e" },
+      { id: "status-2", name: "In Progress", value: inProgress, color: "#2663ec" },
+      { id: "status-3", name: "Assigned", value: assigned, color: "#93c5fd" },
+    ];
+  }, [tasks]);
+
+  // Calculate workload distribution from real data
+  const workloadDistribution = useMemo(() => {
+    const memberWorkload = members.map(member => {
+      const memberTasks = tasks.filter(t => 
+        t.assigneeId === member.$id || t.assigneeIds?.includes(member.$id)
+      );
+      const completedTasks = memberTasks.filter(t => 
+        t.status === TaskStatus.COMPLETED || t.status === TaskStatus.CLOSED
+      ).length;
+
+      return {
+        id: member.$id,
+        name: member.name,
+        avatar: member.name.substring(0, 2).toUpperCase(),
+        tasks: memberTasks.length,
+        completedTasks,
+      };
+    }).filter(m => m.tasks > 0).slice(0, 4); // Top 4 members
+
+    return memberWorkload;
+  }, [tasks, members]);
+
+  // Calculate recent activity from real data
+  const recentActivity = useMemo(() => {
+    return tasks
+      .sort((a, b) => new Date(b.$updatedAt || b.$createdAt).getTime() - new Date(a.$updatedAt || a.$createdAt).getTime())
+      .slice(0, 6)
+      .map(task => {
+        const member = members.find(m => m.$id === task.assigneeId);
+        return {
+          id: task.$id,
+          type: "task",
+          action: task.status === TaskStatus.COMPLETED ? "completed" : "updated",
+          title: task.name,
+          user: member?.name || "Unknown",
+          timestamp: new Date(task.$updatedAt || task.$createdAt),
+        };
+      });
+  }, [tasks, members]);
+
+  // Calculate due alerts from real data
+  const dueAlerts = useMemo(() => {
+    const now = new Date();
+    const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    return tasks
+      .filter(t => {
+        if (!t.dueDate || t.status === TaskStatus.COMPLETED || t.status === TaskStatus.CLOSED) return false;
+        const dueDate = new Date(t.dueDate);
+        return dueDate >= now && dueDate <= nextWeek;
+      })
+      .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+      .slice(0, 6)
+      .map(t => ({
+        id: t.$id,
+        title: t.name,
+        dueDate: new Date(t.dueDate),
+      }));
+  }, [tasks]);
+
+  // Calculate recent tasks
+  const recentTasks = useMemo(() => {
+    return tasks
+      .slice(0, 5)
+      .map(task => {
+        const member = members.find(m => m.$id === task.assigneeId);
+        return {
+          id: task.$id,
+          title: task.name,
+          status: task.status === TaskStatus.COMPLETED || task.status === TaskStatus.CLOSED ? "Done" :
+                  task.status === TaskStatus.IN_PROGRESS ? "In Progress" : "To Do",
+          assignee: member?.name?.split(' ').map(n => n[0]).join('') + '.' || "N/A",
+          priority: task.priority || "Medium",
+        };
+      });
+  }, [tasks, members]);
 
   return (
     <div className="space-y-3 p-1">
@@ -157,11 +203,11 @@ export const DataDashboard = ({ tasks, isLoading }: DataDashboardProps) => {
         <Card className="p-3">
           <div className="flex items-start justify-between">
             <div className="space-y-0.5">
-              <p className="text-xs text-muted-foreground">Blocked</p>
-              <p className="text-xl font-semibold">{analytics.blockedTasks}</p>
+              <p className="text-xs text-muted-foreground">Flagged</p>
+              <p className="text-xl font-semibold">{analytics.flaggedTasks}</p>
             </div>
             <div className="p-2 bg-red-50 rounded">
-              <AlertCircle className="h-4 w-4 text-red-500" />
+              <Flag className="h-4 w-4 text-red-500" />
             </div>
           </div>
           <div className="mt-2">
@@ -196,32 +242,40 @@ export const DataDashboard = ({ tasks, isLoading }: DataDashboardProps) => {
             <h3 className="text-xs font-medium text-muted-foreground">Status Overview</h3>
             <BarChart className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
-          <div className="h-[160px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <RechartsPieChart>
-                <Pie
-                  data={mockData.statusOverview}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={65}
-                >
-                  {mockData.statusOverview.map((entry) => (
-                    <Cell key={entry.id} fill={entry.color} />
-                  ))}
-                </Pie>
-              </RechartsPieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            {mockData.statusOverview.map((status) => (
-              <div key={status.id} className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: status.color }} />
-                <span className="text-[11px] text-muted-foreground">{status.name}</span>
+          {statusOverview.some(s => s.value > 0) ? (
+            <>
+              <div className="h-[160px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsPieChart>
+                    <Pie
+                      data={statusOverview.filter(s => s.value > 0)}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={65}
+                    >
+                      {statusOverview.filter(s => s.value > 0).map((entry) => (
+                        <Cell key={entry.id} fill={entry.color} />
+                      ))}
+                    </Pie>
+                  </RechartsPieChart>
+                </ResponsiveContainer>
               </div>
-            ))}
-          </div>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {statusOverview.map((status) => (
+                  <div key={status.id} className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: status.color }} />
+                    <span className="text-[11px] text-muted-foreground">{status.name}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="h-[160px] flex items-center justify-center text-sm text-muted-foreground">
+              No tasks yet
+            </div>
+          )}
         </Card>
 
         <Card className="p-4 lg:col-span-2">
@@ -230,24 +284,30 @@ export const DataDashboard = ({ tasks, isLoading }: DataDashboardProps) => {
             <Clock className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {mockData.recentActivity.map((activity) => (
-              <div
-                key={activity.id}
-                className="flex items-center justify-between p-2 bg-secondary/10 rounded-md"
-              >
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-xs font-medium">{activity.title}</span>
-                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                    <span>{activity.user}</span>
-                    <span>•</span>
-                    <span>{activity.action}</span>
+            {recentActivity.length > 0 ? (
+              recentActivity.map((activity) => (
+                <div
+                  key={activity.id}
+                  className="flex items-center justify-between p-2 bg-secondary/10 rounded-md"
+                >
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-xs font-medium">{activity.title}</span>
+                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                      <span>{activity.user}</span>
+                      <span>•</span>
+                      <span>{activity.action}</span>
+                    </div>
                   </div>
+                  <span className="text-[11px] text-muted-foreground whitespace-nowrap ml-2">
+                    {formatDistanceToNow(activity.timestamp, { addSuffix: true })}
+                  </span>
                 </div>
-                <span className="text-[11px] text-muted-foreground whitespace-nowrap ml-2">
-                  {formatDistanceToNow(activity.timestamp, { addSuffix: true })}
-                </span>
+              ))
+            ) : (
+              <div className="col-span-2 text-sm text-center text-muted-foreground py-4">
+                No recent activity
               </div>
-            ))}
+            )}
           </div>
 
           <div className="mt-3 pt-3 border-t">
@@ -256,20 +316,26 @@ export const DataDashboard = ({ tasks, isLoading }: DataDashboardProps) => {
               <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {mockData.dueAlerts.map((alert) => (
-                <div
-                  key={alert.id}
-                  className="flex items-center justify-between p-2 bg-secondary/10 rounded-md"
-                >
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-3.5 w-3.5 text-[#2663ec]" />
-                    <span className="text-xs font-medium">{alert.title}</span>
+              {dueAlerts.length > 0 ? (
+                dueAlerts.map((alert) => (
+                  <div
+                    key={alert.id}
+                    className="flex items-center justify-between p-2 bg-secondary/10 rounded-md"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-3.5 w-3.5 text-[#2663ec]" />
+                      <span className="text-xs font-medium">{alert.title}</span>
+                    </div>
+                    <span className="text-[11px] text-muted-foreground whitespace-nowrap ml-2">
+                      Due {formatDistanceToNow(alert.dueDate, { addSuffix: true })}
+                    </span>
                   </div>
-                  <span className="text-[11px] text-muted-foreground whitespace-nowrap ml-2">
-                    Due {formatDistanceToNow(alert.dueDate, { addSuffix: true })}
-                  </span>
+                ))
+              ) : (
+                <div className="col-span-2 text-sm text-center text-muted-foreground py-2">
+                  No upcoming due dates
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </Card>
@@ -283,25 +349,31 @@ export const DataDashboard = ({ tasks, isLoading }: DataDashboardProps) => {
             <Users className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
           <div className="space-y-3">
-            {mockData.members.map((member) => {
-              const workloadPercentage = (member.tasks / analytics.totalTasks) * 100;
-              return (
-                <div key={member.id} className="space-y-1.5">
-                  <div className="flex items-start gap-2">
-                    <div className="w-6 h-6 rounded-full bg-[#2663ec]/10 text-[#2663ec] flex items-center justify-center text-[11px] font-medium shrink-0">
-                      {member.avatar}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-medium truncate">{member.name}</p>
-                        <span className="text-[11px] text-muted-foreground">{Math.round(workloadPercentage)}%</span>
+            {workloadDistribution.length > 0 ? (
+              workloadDistribution.map((member) => {
+                const workloadPercentage = analytics.totalTasks > 0 ? (member.tasks / analytics.totalTasks) * 100 : 0;
+                return (
+                  <div key={member.id} className="space-y-1.5">
+                    <div className="flex items-start gap-2">
+                      <div className="w-6 h-6 rounded-full bg-[#2663ec]/10 text-[#2663ec] flex items-center justify-center text-[11px] font-medium shrink-0">
+                        {member.avatar}
                       </div>
-                      <Progress value={workloadPercentage} className="h-1.5 mt-1.5 bg-blue-100 [&>div]:bg-[#2663ec]" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-medium truncate">{member.name}</p>
+                          <span className="text-[11px] text-muted-foreground">{member.tasks} tasks</span>
+                        </div>
+                        <Progress value={workloadPercentage} className="h-1.5 mt-1.5 bg-blue-100 [&>div]:bg-[#2663ec]" />
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            ) : (
+              <div className="text-sm text-center text-muted-foreground py-4">
+                No assigned tasks yet
+              </div>
+            )}
           </div>
         </Card>
 
@@ -311,98 +383,86 @@ export const DataDashboard = ({ tasks, isLoading }: DataDashboardProps) => {
             <Clock className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
           <div className="space-y-2">
-            {[
-              { id: 1, title: "Update API documentation", status: "In Progress", assignee: "John D.", priority: "High" },
-              { id: 2, title: "Fix navigation bug", status: "Done", assignee: "Sarah S.", priority: "Medium" },
-              { id: 3, title: "Implement auth flow", status: "In Progress", assignee: "Mike J.", priority: "High" },
-              { id: 4, title: "Design review meeting", status: "To Do", assignee: "Emma W.", priority: "Low" },
-              { id: 5, title: "Mobile app testing", status: "Done", assignee: "John D.", priority: "Medium" }
-            ].map((task) => (
-              <div key={task.id} className="flex items-center justify-between p-2 bg-secondary/10 rounded-md">
-                <div className="flex items-start gap-2 min-w-0">
-                  <div className={`w-1.5 h-1.5 mt-1.5 rounded-full ${task.status === "Done" ? "bg-green-500" :
+            {recentTasks.length > 0 ? (
+              recentTasks.map((task) => (
+                <div key={task.id} className="flex items-center justify-between p-2 bg-secondary/10 rounded-md">
+                  <div className="flex items-start gap-2 min-w-0">
+                    <div className={`w-1.5 h-1.5 mt-1.5 rounded-full ${
+                      task.status === "Done" ? "bg-green-500" :
                       task.status === "In Progress" ? "bg-[#2663ec]" : "bg-gray-400"
                     }`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium truncate">{task.title}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[11px] text-muted-foreground">{task.assignee}</span>
-                      <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${task.priority === "High" ? "bg-red-100 text-red-700" :
-                          task.priority === "Medium" ? "bg-amber-100 text-amber-700" :
-                            "bg-green-100 text-green-700"
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate">{task.title}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[11px] text-muted-foreground">{task.assignee}</span>
+                        <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${
+                          task.priority === "HIGH" || task.priority === "URGENT" ? "bg-red-100 text-red-700" :
+                          task.priority === "MEDIUM" ? "bg-amber-100 text-amber-700" :
+                          "bg-green-100 text-green-700"
                         }`}>
-                        {task.priority}
-                      </span>
+                          {task.priority}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
+              ))
+            ) : (
+              <div className="text-sm text-center text-muted-foreground py-4">
+                No tasks yet
               </div>
-            ))}
+            )}
           </div>
         </Card>
       </div>
 
-      {/* Bottom row - Epic Progress and Types of Work */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <Card className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-medium text-muted-foreground">Epic Progress</h3>
-            <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
-          </div>
-          <div className="space-y-3">
-            {mockData.epicProgress.map((epic) => (
-              <div key={epic.id} className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-medium">{epic.name}</span>
-                  <span className="text-muted-foreground">{epic.progress}%</span>
-                </div>
-                <Progress value={epic.progress} className="h-1.5 bg-blue-100 [&>div]:bg-[#2663ec]" />
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-medium text-muted-foreground">Types of Work</h3>
-            <Layers className="h-3.5 w-3.5 text-muted-foreground" />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {mockData.typesOfWork.map((type) => (
-              <div key={type.id} className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <type.icon className="h-3.5 w-3.5 text-[#2663ec]" />
-                    <span className="text-xs">{type.name}</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">{type.count}%</span>
-                </div>
-                <Progress value={type.count} className="h-1.5 bg-blue-100 [&>div]:bg-[#2663ec]" />
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      {/* Bottom row - Types of Work */}
+      {/* Bottom row - Priority Distribution */}
       <Card className="p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xs font-medium text-muted-foreground">Types of Work</h3>
+          <h3 className="text-xs font-medium text-muted-foreground">Priority Distribution</h3>
           <Layers className="h-3.5 w-3.5 text-muted-foreground" />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {mockData.typesOfWork.map((type) => (
-            <div key={type.id} className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <type.icon className="h-3.5 w-3.5 text-[#2663ec]" />
-                  <span className="text-xs">{type.name}</span>
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          {[
+            { 
+              priority: TaskPriority.URGENT, 
+              count: tasks.filter(t => t.priority === TaskPriority.URGENT).length,
+              color: "bg-red-500",
+              icon: AlertCircle
+            },
+            { 
+              priority: TaskPriority.HIGH, 
+              count: tasks.filter(t => t.priority === TaskPriority.HIGH).length,
+              color: "bg-orange-500",
+              icon: TrendingUp
+            },
+            { 
+              priority: TaskPriority.MEDIUM, 
+              count: tasks.filter(t => t.priority === TaskPriority.MEDIUM).length,
+              color: "bg-amber-500",
+              icon: Zap
+            },
+            { 
+              priority: TaskPriority.LOW, 
+              count: tasks.filter(t => t.priority === TaskPriority.LOW).length,
+              color: "bg-green-500",
+              icon: CheckCircle2
+            },
+          ].map((item) => {
+            const percentage = analytics.totalTasks > 0 ? (item.count / analytics.totalTasks) * 100 : 0;
+            return (
+              <div key={item.priority} className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <item.icon className={`h-3.5 w-3.5 text-[#2663ec]`} />
+                    <span className="text-xs">{item.priority}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">{item.count}</span>
                 </div>
-                <span className="text-xs text-muted-foreground">{type.count}%</span>
+                <Progress value={percentage} className={`h-1.5 bg-blue-100 [&>div]:${item.color}`} />
               </div>
-              <Progress value={type.count} className="h-1.5 bg-blue-100 [&>div]:bg-[#2663ec]" />
-            </div>
-          ))}
+            );
+          })}
         </div>
       </Card>
     </div>

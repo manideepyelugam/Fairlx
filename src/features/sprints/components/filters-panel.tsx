@@ -4,7 +4,6 @@ import { SlidersHorizontal, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -14,12 +13,18 @@ import {
 } from "@/components/ui/select";
 import { WorkItemType, WorkItemStatus, WorkItemPriority } from "../types";
 
+interface Epic {
+  $id: string;
+  key: string;
+  title: string;
+}
+
 interface FiltersPanelProps {
   typeFilter: WorkItemType | "ALL";
   priorityFilter: WorkItemPriority | "ALL";
   statusFilter: WorkItemStatus | "ALL";
   selectedEpicId: string | null;
-  epics: any[];
+  epics: Epic[];
   onTypeChange: (value: WorkItemType | "ALL") => void;
   onPriorityChange: (value: WorkItemPriority | "ALL") => void;
   onStatusChange: (value: WorkItemStatus | "ALL") => void;

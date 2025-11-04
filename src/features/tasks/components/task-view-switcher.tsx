@@ -130,7 +130,9 @@ export const TaskViewSwitcher = ({
         </div>
 
 
-        <DataFilters hideProjectFilter={hideProjectFilter} showMyTasksOnly={showMyTasksOnly} />
+        {view !== "dashboard" && (
+          <DataFilters hideProjectFilter={hideProjectFilter} showMyTasksOnly={showMyTasksOnly} />
+        )}
 
 
         {isLoadingTasks ? (
