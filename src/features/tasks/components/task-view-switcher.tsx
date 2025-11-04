@@ -19,6 +19,7 @@ import { DataTable } from "./data-table";
 import { SimpleTimeline } from "./simple-timeline";
 // Use full EnhancedDataKanban so custom columns show up
 import { EnhancedDataKanban } from "@/features/custom-columns/components/enhanced-data-kanban";
+import { DataDashboard } from "./data-dashboard";
 
 import { useGetTasks } from "../api/use-get-tasks";
 import { useCreateTaskModal } from "../hooks/use-create-task-modal";
@@ -35,23 +36,23 @@ export const TaskViewSwitcher = ({
   hideProjectFilter,
   showMyTasksOnly = false,
 }: TaskViewSwitcherProps) => {
-  
-  
-    const [{ status, assigneeId, projectId, dueDate, search, priority, labels }] =
+
+
+  const [{ status, assigneeId, projectId, dueDate, search, priority, labels }] =
     useTaskFilters();
-  const [view, setView] = useQueryState("task-view", { defaultValue: "table" });
+  const [view, setView] = useQueryState("task-view", { defaultValue: "dashboard" });
   const { mutate: bulkUpdate } = useBulkUpdateTasks();
 
   const workspaceId = useWorkspaceId();
   const paramProjectId = useProjectId();
-  
+
   // Get current user data
   const { member: currentMember, isAdmin } = useCurrentMember({ workspaceId });
   const { data: members } = useGetMembers({ workspaceId });
-  
+
   // Determine the effective assigneeId - if showMyTasksOnly is true, use current member's ID
   const effectiveAssigneeId = showMyTasksOnly && currentMember ? currentMember.$id : assigneeId;
-  
+
   const { data: tasks, isLoading: isLoadingTasks } = useGetTasks({
     workspaceId,
     projectId: paramProjectId || projectId,
@@ -66,18 +67,18 @@ export const TaskViewSwitcher = ({
   // Client-side filtering for search
   const filteredTasks = useMemo(() => {
     if (!tasks?.documents) return undefined;
-    
+
     let filtered = tasks.documents;
-    
+
     // Apply search filter
     if (search) {
       const searchLower = search.toLowerCase();
-      filtered = filtered.filter(task => 
+      filtered = filtered.filter(task =>
         task.name.toLowerCase().includes(searchLower) ||
         (task.description && task.description.toLowerCase().includes(searchLower))
       );
     }
-    
+
     return {
       ...tasks,
       documents: filtered,
@@ -85,7 +86,7 @@ export const TaskViewSwitcher = ({
     };
   }, [tasks, search]);
 
-  
+
 
   const onKanbanChange = useCallback(
     (tasks: { $id: string; status: TaskStatus | string; position: number }[]) => {
@@ -95,7 +96,7 @@ export const TaskViewSwitcher = ({
   );
 
   const { open } = useCreateTaskModal();
-  
+
 
   return (
     <Tabs
@@ -106,6 +107,9 @@ export const TaskViewSwitcher = ({
       <div className="h-full flex flex-col overflow-auto ">
         <div className="flex flex-col gap-y-2  px-4 py-6 lg:flex-row justify-between items-center">
           <TabsList className="w-full lg:w-auto">
+            <TabsTrigger className="h-8 w-full text-xs lg:w-auto" value="dashboard">
+              Dashboard
+            </TabsTrigger>
             <TabsTrigger className="h-8 w-full text-xs lg:w-auto" value="table">
               Table
             </TabsTrigger>
@@ -135,6 +139,9 @@ export const TaskViewSwitcher = ({
           </div>
         ) : (
           <>
+            <TabsContent value="dashboard" className="mt-0 p-4">
+              <DataDashboard tasks={filteredTasks?.documents} isLoading={isLoadingTasks} />
+            </TabsContent>
             <TabsContent value="table" className="mt-0 p-4">
               <DataTable columns={columns} data={filteredTasks?.documents ?? []} />
             </TabsContent>
