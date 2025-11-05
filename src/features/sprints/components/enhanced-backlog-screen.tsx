@@ -11,13 +11,9 @@ import {
   Plus,
   Calendar,
   MoreHorizontal,
-  User,
   Search,
   Filter,
   GripVertical,
-  Circle,
-  CheckCircle,
-  AlertCircle,
   Edit2,
   Trash2
 } from "lucide-react";
@@ -25,7 +21,6 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select,
@@ -67,7 +62,7 @@ import { useDeleteSprint } from "../api/use-delete-sprint";
 import { useGetEpics } from "../api/use-get-epics";
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { SprintStatus, WorkItemStatus, WorkItemPriority, WorkItemType } from "../types";
-import type { PopulatedSprint, PopulatedWorkItem } from "../types";
+import type { PopulatedWorkItem } from "../types";
 
 interface EnhancedBacklogScreenProps {
   workspaceId: string;

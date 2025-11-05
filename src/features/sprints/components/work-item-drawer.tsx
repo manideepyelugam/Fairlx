@@ -9,7 +9,6 @@ import {
   User,
   Link2,
   MessageSquare,
-  CheckSquare,
   Plus,
   Trash2,
   Copy,
