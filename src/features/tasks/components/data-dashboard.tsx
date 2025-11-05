@@ -8,14 +8,12 @@ import {
   Clock,
   ListTodo,
   AlertCircle,
-  Zap,
-  TrendingUp,
   Users,
   Layers,
   Flag, 
 } from "lucide-react";
 import { TaskStatus, TaskPriority, Task } from "../types";
-import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from "recharts";
 import { formatDistanceToNow } from "date-fns";
 import { useMemo } from "react";
 import { useGetMembers } from "@/features/members/api/use-get-members";
@@ -416,55 +414,103 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
         </Card>
       </div>
 
-      {/* Bottom row - Priority Distribution */}
-      <Card className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xs font-medium text-muted-foreground">Priority Distribution</h3>
-          <Layers className="h-3.5 w-3.5 text-muted-foreground" />
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-          {[
-            { 
-              priority: TaskPriority.URGENT, 
-              count: tasks.filter(t => t.priority === TaskPriority.URGENT).length,
-              color: "bg-red-500",
-              icon: AlertCircle
-            },
-            { 
-              priority: TaskPriority.HIGH, 
-              count: tasks.filter(t => t.priority === TaskPriority.HIGH).length,
-              color: "bg-orange-500",
-              icon: TrendingUp
-            },
-            { 
-              priority: TaskPriority.MEDIUM, 
-              count: tasks.filter(t => t.priority === TaskPriority.MEDIUM).length,
-              color: "bg-amber-500",
-              icon: Zap
-            },
-            { 
-              priority: TaskPriority.LOW, 
-              count: tasks.filter(t => t.priority === TaskPriority.LOW).length,
-              color: "bg-green-500",
-              icon: CheckCircle2
-            },
-          ].map((item) => {
-            const percentage = analytics.totalTasks > 0 ? (item.count / analytics.totalTasks) * 100 : 0;
-            return (
-              <div key={item.priority} className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <item.icon className={`h-3.5 w-3.5 text-[#2663ec]`} />
-                    <span className="text-xs">{item.priority}</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">{item.count}</span>
+      {/* Bottom row - Priority Distribution & Members */}
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+        {/* Priority Distribution Chart */}
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-medium text-muted-foreground">Priority Distribution</h3>
+            <Layers className="h-3.5 w-3.5 text-muted-foreground" />
+          </div>
+          <div className="h-[200px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <RechartsBarChart
+                data={[
+                  { 
+                    name: "URGENT", 
+                    count: tasks.filter(t => t.priority === TaskPriority.URGENT).length,
+                    fill: "#ef4444"
+                  },
+                  { 
+                    name: "HIGH", 
+                    count: tasks.filter(t => t.priority === TaskPriority.HIGH).length,
+                    fill: "#f97316"
+                  },
+                  { 
+                    name: "MEDIUM", 
+                    count: tasks.filter(t => t.priority === TaskPriority.MEDIUM).length,
+                    fill: "#f59e0b"
+                  },
+                  { 
+                    name: "LOW", 
+                    count: tasks.filter(t => t.priority === TaskPriority.LOW).length,
+                    fill: "#22c55e"
+                  },
+                ]}
+                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis 
+                  dataKey="name" 
+                  tick={{ fontSize: 11 }}
+                  stroke="#888"
+                />
+                <YAxis 
+                  tick={{ fontSize: 11 }}
+                  stroke="#888"
+                  allowDecimals={false}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'white', 
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '6px',
+                    fontSize: '12px'
+                  }}
+                  cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
+                />
+                <Bar 
+                  dataKey="count" 
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={60}
+                />
+              </RechartsBarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        {/* Members Count Card */}
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-medium text-muted-foreground">Team Members</h3>
+            <Users className="h-3.5 w-3.5 text-muted-foreground" />
+          </div>
+          <div className="flex flex-col items-center justify-center h-[200px]">
+            <div className="text-5xl font-bold text-[#2663ec] mb-2">
+              {members.length}
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              {members.length === 1 ? "Member" : "Members"} in workspace
+            </p>
+            <div className="flex flex-wrap gap-2 justify-center max-w-[200px]">
+              {members.slice(0, 8).map((member) => (
+                <div
+                  key={member.$id}
+                  className="w-8 h-8 rounded-full bg-[#2663ec] text-white flex items-center justify-center text-xs font-medium"
+                  title={member.name}
+                >
+                  {member.name.substring(0, 2).toUpperCase()}
                 </div>
-                <Progress value={percentage} className={`h-1.5 bg-blue-100 [&>div]:${item.color}`} />
-              </div>
-            );
-          })}
-        </div>
-      </Card>
+              ))}
+              {members.length > 8 && (
+                <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-xs font-medium">
+                  +{members.length - 8}
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+      </div>
     </div>
   );
 };
