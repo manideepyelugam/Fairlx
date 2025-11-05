@@ -6,13 +6,14 @@ export default async function BacklogDemoPage({
   params,
   searchParams,
 }: {
-  params: { workspaceId: string };
-  searchParams: { projectId?: string };
+  params: Promise<{ workspaceId: string }>;
+  searchParams: Promise<{ projectId?: string }>;
 }) {
   const user = await getCurrent();
   if (!user) redirect("/sign-in");
 
-  const projectId = searchParams.projectId;
+  const { workspaceId } = await params;
+  const { projectId } = await searchParams;
 
   if (!projectId) {
     return (
@@ -23,12 +24,12 @@ export default async function BacklogDemoPage({
             Append <code>?projectId=YOUR_PROJECT_ID</code> to the URL.
           </p>
           <p className="text-sm text-muted-foreground mt-1">
-            Example: <code>/workspaces/{params.workspaceId}/backlog-demo?projectId=proj_123</code>
+            Example: <code>/workspaces/{workspaceId}/backlog-demo?projectId=proj_123</code>
           </p>
         </div>
       </div>
     );
   }
 
-  return <EnhancedBacklogScreen workspaceId={params.workspaceId} projectId={projectId} />;
+  return <EnhancedBacklogScreen workspaceId={workspaceId} projectId={projectId} />;
 }
