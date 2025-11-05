@@ -192,7 +192,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     if (!selectedItem) return;
     
     // Extract only the updatable fields and convert types as needed
-    const jsonUpdates: Record<string, any> = {};
+    const jsonUpdates: Record<string, string | number | boolean | string[] | Date | null | undefined> = {};
     
     if (updates.title !== undefined) jsonUpdates.title = updates.title;
     if (updates.type !== undefined) jsonUpdates.type = updates.type;
@@ -570,7 +570,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                         {/* Epic Dropdown */}
                                         <Select
                                           value={item.epicId || "none"}
-                                          onValueChange={(value) => handleUpdateEpic(item.$id, value, new MouseEvent('click') as any)}
+                                          onValueChange={(value) => handleUpdateEpic(item.$id, value, {} as React.MouseEvent)}
                                         >
                                           <SelectTrigger
                                             className="w-[100px] h-7 text-xs flex-shrink-0"
@@ -609,7 +609,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                         {/* Priority Dropdown */}
                                         <Select
                                           value={item.priority || WorkItemPriority.MEDIUM}
-                                          onValueChange={(value: WorkItemPriority) => handleUpdatePriority(item.$id, value, new MouseEvent('click') as any)}
+                                          onValueChange={(value: WorkItemPriority) => handleUpdatePriority(item.$id, value, {} as React.MouseEvent)}
                                         >
                                           <SelectTrigger
                                             className="w-[90px] h-7 text-xs flex-shrink-0"
@@ -628,7 +628,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                         {/* Story Points Dropdown */}
                                         <Select
                                           value={item.storyPoints?.toString() || "none"}
-                                          onValueChange={(value) => handleUpdateStoryPoints(item.$id, value === "none" ? undefined : parseInt(value), new MouseEvent('click') as any)}
+                                          onValueChange={(value) => handleUpdateStoryPoints(item.$id, value === "none" ? undefined : parseInt(value), {} as React.MouseEvent)}
                                         >
                                           <SelectTrigger
                                             className="w-[70px] h-7 text-xs flex-shrink-0"
@@ -651,7 +651,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                         {/* Assignee Dropdown */}
                                         <Select
                                           value={item.assignees?.[0]?.$id || "unassigned"}
-                                          onValueChange={(value) => handleUpdateAssignee(item.$id, value, new MouseEvent('click') as any)}
+                                          onValueChange={(value) => handleUpdateAssignee(item.$id, value, {} as React.MouseEvent)}
                                         >
                                           <SelectTrigger
                                             className="w-[120px] h-7 text-xs flex-shrink-0"
@@ -845,7 +845,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                   {/* Epic Dropdown */}
                                   <Select
                                     value={item.epicId || "none"}
-                                    onValueChange={(value) => handleUpdateEpic(item.$id, value, new MouseEvent('click') as any)}
+                                    onValueChange={(value) => handleUpdateEpic(item.$id, value, {} as React.MouseEvent)}
                                   >
                                     <SelectTrigger
                                       className="w-[100px] h-7 text-xs flex-shrink-0"
@@ -884,7 +884,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                   {/* Priority Dropdown */}
                                   <Select
                                     value={item.priority || WorkItemPriority.MEDIUM}
-                                    onValueChange={(value: WorkItemPriority) => handleUpdatePriority(item.$id, value, new MouseEvent('click') as any)}
+                                    onValueChange={(value: WorkItemPriority) => handleUpdatePriority(item.$id, value, {} as React.MouseEvent)}
                                   >
                                     <SelectTrigger
                                       className="w-[90px] h-7 text-xs flex-shrink-0"
@@ -903,7 +903,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                   {/* Story Points Dropdown */}
                                   <Select
                                     value={item.storyPoints?.toString() || "none"}
-                                    onValueChange={(value) => handleUpdateStoryPoints(item.$id, value === "none" ? undefined : parseInt(value), new MouseEvent('click') as any)}
+                                    onValueChange={(value) => handleUpdateStoryPoints(item.$id, value === "none" ? undefined : parseInt(value), {} as React.MouseEvent)}
                                   >
                                     <SelectTrigger
                                       className="w-[70px] h-7 text-xs flex-shrink-0"
@@ -926,7 +926,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                   {/* Assignee Dropdown */}
                                   <Select
                                     value={item.assignees?.[0]?.$id || "unassigned"}
-                                    onValueChange={(value) => handleUpdateAssignee(item.$id, value, new MouseEvent('click') as any)}
+                                    onValueChange={(value) => handleUpdateAssignee(item.$id, value, {} as React.MouseEvent)}
                                   >
                                     <SelectTrigger
                                       className="w-[120px] h-7 text-xs flex-shrink-0"
