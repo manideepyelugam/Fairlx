@@ -48,7 +48,7 @@ jobs:
           NEXT_PUBLIC_APPWRITE_EMAIL_TOPIC_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_EMAIL_TOPIC_ID }}
           NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
           NEXT_APPWRITE_KEY: ${{ secrets.NEXT_APPWRITE_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_PERSONAL_TOKEN: ${{ secrets.GH_PERSONAL_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: npm run build
 
@@ -105,7 +105,7 @@ jobs:
             NEXT_PUBLIC_APPWRITE_EMAIL_TOPIC_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_EMAIL_TOPIC_ID }}
             NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
             NEXT_APPWRITE_KEY=${{ secrets.NEXT_APPWRITE_KEY }}
-            GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+            GH_PERSONAL_TOKEN=${{ secrets.GH_PERSONAL_TOKEN }}
             GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
             EOF
             
