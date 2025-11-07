@@ -46,7 +46,7 @@ export class GitHubAPI {
   private token: string;
 
   constructor(token?: string) {
-    this.token = token || process.env.GITHUB_TOKEN || "";
+    this.token = token || process.env.GH_PERSONAL_TOKEN || "";
   }
 
   private getHeaders() {

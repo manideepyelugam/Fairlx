@@ -2,7 +2,7 @@
 // Do NOT import this file from client code; it reads server-side environment variables.
 
 export const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
-export const GITHUB_TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || "";
+export const GITHUB_TOKEN = process.env.GH_PERSONAL_TOKEN || process.env.GH_TOKEN || "";
 
 if (!GEMINI_API_KEY) {
   console.warn("Warning: GEMINI_API_KEY is not configured. Gemini features will fail until it is set.");
