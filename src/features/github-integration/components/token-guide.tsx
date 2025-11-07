@@ -89,7 +89,7 @@ export const TokenGuide = () => {
                 <div className="space-y-1">
                   <p className="text-sm font-medium">Generate New Token</p>
                   <p className="text-xs text-muted-foreground">
-                    Click on "Generate new token" → Select "Generate new token (classic)"
+                    Click on &quot;Generate new token&quot; → Select &quot;Generate new token (classic)&quot;
                   </p>
                 </div>
               </div>
@@ -105,7 +105,7 @@ export const TokenGuide = () => {
                   <p className="text-sm font-medium">Configure Token</p>
                   <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc">
                     <li>
-                      <strong>Note:</strong> Give it a descriptive name (e.g., "Fairlx Integration")
+                      <strong>Note:</strong> Give it a descriptive name (e.g., &quot;Fairlx Integration&quot;)
                     </li>
                     <li>
                       <strong>Expiration:</strong> Choose your preferred expiration (e.g., 90 days)
@@ -139,7 +139,7 @@ export const TokenGuide = () => {
                     <Alert className="mt-2">
                       <AlertCircle className="h-3 w-3" />
                       <AlertDescription className="text-xs">
-                        Despite the name, selecting "repo" only grants us <strong>read access</strong> to your code. 
+                        Despite the name, selecting &quot;repo&quot; only grants us <strong>read access</strong> to your code. 
                         We cannot modify, delete, or write to your repositories.
                       </AlertDescription>
                     </Alert>
@@ -157,12 +157,12 @@ export const TokenGuide = () => {
                 <div className="space-y-1">
                   <p className="text-sm font-medium">Generate & Copy Token</p>
                   <p className="text-xs text-muted-foreground">
-                    Click "Generate token" at the bottom, then copy the token immediately
+                    Click &quot;Generate token&quot; at the bottom, then copy the token immediately
                   </p>
                   <Alert className="mt-2 border-amber-200 bg-amber-50 dark:bg-amber-950/20">
                     <AlertCircle className="h-3 w-3 text-amber-600" />
                     <AlertDescription className="text-xs text-amber-800 dark:text-amber-200">
-                      <strong>Important:</strong> Save your token now! You won't be able to see it again.
+                      <strong>Important:</strong> Save your token now! You won&apos;t be able to see it again.
                     </AlertDescription>
                   </Alert>
                 </div>
@@ -178,7 +178,7 @@ export const TokenGuide = () => {
                 <div className="space-y-1">
                   <p className="text-sm font-medium">Paste Token Here</p>
                   <p className="text-xs text-muted-foreground">
-                    Return to this form and paste your token in the "GitHub Token" field
+                    Return to this form and paste your token in the &quot;GitHub Token&quot; field
                   </p>
                 </div>
               </div>
@@ -211,7 +211,7 @@ export const TokenGuide = () => {
           <div className="bg-red-50 dark:bg-red-950/20 rounded-lg p-4 space-y-3 border border-red-200">
             <h4 className="font-semibold text-sm flex items-center gap-2 text-red-700 dark:text-red-300">
               <Lock className="h-4 w-4" />
-              What We DON'T Access
+              What We DON&apos;T Access
             </h4>
             <ul className="text-xs text-red-600 dark:text-red-400 space-y-1.5 ml-4">
               <li className="flex items-start gap-2">

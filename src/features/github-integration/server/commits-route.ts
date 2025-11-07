@@ -48,7 +48,7 @@ const app = new Hono()
       "json",
       z.object({
         projectId: z.string(),
-        limit: z.number().min(1).max(100).optional().default(20),
+        limit: z.number().min(1).max(500).optional().default(100),
       })
     ),
     async (c) => {

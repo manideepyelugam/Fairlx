@@ -445,49 +445,94 @@ Generate the complete technical documentation now:`;
 
   async answerQuestion(
     question: string,
-    codebaseContext: { files: Array<{ path: string; content: string; summary?: string }>; documentation?: string }
+    codebaseContext: { 
+      files: Array<{ path: string; content: string; summary?: string }>; 
+      documentation?: string;
+      commits?: Array<{
+        hash: string;
+        message: string;
+        author: string;
+        date: string;
+        url: string;
+      }>;
+    }
   ): Promise<string> {
     const fileContext = codebaseContext.files
       .slice(0, 10)
       .map((f) => `File: ${f.path}\n${f.summary || f.content.slice(0, 1000)}\n---`)
       .join("\n");
 
+    // Build commit history context if available
+    let commitContext = "";
+    if (codebaseContext.commits && codebaseContext.commits.length > 0) {
+      const commits = codebaseContext.commits;
+      
+      // Sort commits by date (oldest first) to identify initial commit
+      const sortedCommits = [...commits].sort((a, b) => 
+        new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+      
+      const initialCommit = sortedCommits[0];
+      const recentCommits = sortedCommits.slice(-10).reverse(); // Last 10 commits, newest first
+      
+      commitContext = `
+## Commit History (${commits.length} total commits analyzed)
+
+### Initial Commit
+- **Author:** ${initialCommit.author}
+- **Date:** ${new Date(initialCommit.date).toLocaleDateString()}
+- **Hash:** ${initialCommit.hash.slice(0, 7)}
+- **Message:** ${initialCommit.message}
+- **URL:** ${initialCommit.url}
+
+### Recent Commits (Last 10)
+${recentCommits.map((c, i) => `
+${i + 1}. **${c.author}** - ${new Date(c.date).toLocaleDateString()}
+   - Message: ${c.message}
+   - Hash: ${c.hash.slice(0, 7)}
+`).join('')}
+
+### All Contributors
+${[...new Set(commits.map(c => c.author))].join(', ')}
+
+### Commit Timeline
+- First commit: ${new Date(initialCommit.date).toLocaleDateString()}
+- Latest commit: ${new Date(sortedCommits[sortedCommits.length - 1].date).toLocaleDateString()}
+- Total commits: ${commits.length}
+`;
+    }
+
     const prompt = `You are an expert code analyst. Answer the following question about this codebase in a well-organized, structured format.
 
 Question: ${question}
 
-Codebase Context:
+${commitContext ? `## Git Commit History\n${commitContext}\n---\n` : ''}
+
+## Codebase Context:
 ${fileContext}
 
 ${codebaseContext.documentation ? `\nExisting Documentation:\n${codebaseContext.documentation.slice(0, 2000)}` : ""}
 
 Provide a comprehensive answer following this structure:
 
-1. **Overview**: Brief high-level explanation of the answer
+1. **Direct Answer**: Start with a clear, direct answer to the question${commitContext ? ' (use the commit history data provided above if the question is about commits, authors, or project history)' : ''}
 
-2. **File Locations**: List all relevant files and their purposes:
+2. **Details**: Provide specific details:
+   ${commitContext ? '- If asking about commits: Cite specific commit hashes, dates, and author names' : ''}
+   - If asking about code: Reference file paths with backticks
+   - Include relevant data from the context provided
+
+3. **File Locations** (if applicable): List relevant files:
    - \`path/to/file.ts\` - What this file does
-   - Use backticks for file paths
 
-3. **Key Components/Functions**: Identify the main components involved:
-   - Component/Function name and its role
-   - Which file it's located in
-
-4. **Code Examples**: Show relevant code snippets with proper syntax highlighting:
+4. **Code Examples** (if applicable): Show relevant code snippets:
    \`\`\`typescript
    // Actual code from the codebase
    \`\`\`
 
-5. **How It Works**: Step-by-step breakdown:
-   - Step 1: What happens first
-   - Step 2: Next action
-   - Include line numbers or function names when relevant
+5. **Additional Context**: Any other relevant information
 
-6. **Related Files**: Other files that interact with this functionality
-
-7. **Best Practices**: If applicable, mention any patterns or practices used
-
-Format your response in clean Markdown with proper headings, code blocks, and bullet points. Be specific about file paths and function names.`;
+Format your response in clean Markdown with proper headings, code blocks, and bullet points. Be specific and factual, citing the data provided in the context.`;
 
     const payload = this.buildGenerationPayload(prompt, { maxTokens: 1500 });
     return this.callGemini(payload);

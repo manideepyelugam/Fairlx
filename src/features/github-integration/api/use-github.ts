@@ -28,11 +28,12 @@ export const useLinkRepository = () => {
 
       return await response.json();
     },
-    onSuccess: ({ data }) => {
+    onSuccess: async ({ data }) => {
       toast.success("Repository linked successfully");
       
-      // Clear localStorage cache for commits
+      // Clear localStorage cache for commits only (new repo = fresh commits)
       localStorage.removeItem(`commits_${data.projectId}`);
+      localStorage.removeItem(`commits_count_${data.projectId}`);
       
       // Invalidate all related queries
       queryClient.invalidateQueries({
@@ -44,6 +45,73 @@ export const useLinkRepository = () => {
       queryClient.invalidateQueries({
         queryKey: GITHUB_INTEGRATION_QUERY_KEYS.commits(data.projectId),
       });
+      
+      // Automatically fetch commits after linking repository
+      toast.loading("Fetching commits...", { id: "fetch-commits" });
+      
+      try {
+        const commitsResponse = await client.api.github.commits.fetch["$post"]({
+          json: { projectId: data.projectId, limit: 500 },
+        });
+
+        if (commitsResponse.ok) {
+          const commitsData = await commitsResponse.json();
+          if (commitsData.data?.summaries) {
+            // Optimize storage: only save essential fields to avoid quota exceeded error
+            try {
+              const optimizedCommits = commitsData.data.summaries.map((commit: { hash: string; message: string; author: string; authorAvatar: string | null; date: string; url: string; aiSummary?: string | null; filesChanged?: number; additions?: number; deletions?: number }) => ({
+                hash: commit.hash,
+                message: commit.message,
+                author: commit.author,
+                authorAvatar: commit.authorAvatar,
+                date: commit.date,
+                url: commit.url,
+                aiSummary: commit.aiSummary,
+                filesChanged: commit.filesChanged,
+                additions: commit.additions,
+                deletions: commit.deletions,
+                // Omit 'files' array which can be very large
+              }));
+              
+              localStorage.setItem(
+                `commits_${data.projectId}`,
+                JSON.stringify(optimizedCommits)
+              );
+              
+              console.log(`[Cache] Saved ${optimizedCommits.length} commits to localStorage (optimized)`);
+            } catch (error) {
+              console.error('[Cache] Failed to save commits to localStorage:', error);
+              // If still too large, save only count
+              try {
+                localStorage.setItem(`commits_count_${data.projectId}`, String(commitsData.data.summaries.length));
+                console.log(`[Cache] Saved commits count only: ${commitsData.data.summaries.length}`);
+              } catch (e) {
+                console.error('[Cache] Failed to save commits count:', e);
+              }
+            }
+            
+            // Dispatch custom event to notify CommitHistory component
+            window.dispatchEvent(new Event('commitsUpdated'));
+            
+            // Invalidate commits query to refetch
+            queryClient.invalidateQueries({
+              queryKey: GITHUB_INTEGRATION_QUERY_KEYS.commits(data.projectId),
+            });
+            
+            toast.success(`Fetched ${commitsData.data.summaries.length} commits successfully`, { 
+              id: "fetch-commits" 
+            });
+          }
+        } else {
+          const errorData = await commitsResponse.json() as { error?: string };
+          throw new Error(errorData.error || "Failed to fetch commits");
+        }
+      } catch (error) {
+        console.error("Failed to fetch commits:", error);
+        toast.error("Repository connected but failed to fetch commits. You can fetch them manually.", { 
+          id: "fetch-commits" 
+        });
+      }
     },
     onError: (error) => {
       toast.error(error.message || "Failed to link repository");
@@ -93,9 +161,9 @@ export const useDisconnectRepository = () => {
     onSuccess: (_, variables) => {
       toast.success("Repository disconnected");
       
-      // Clear localStorage cache for this project
+      // Clear localStorage cache for commits only (repo details in DB)
       localStorage.removeItem(`commits_${variables.projectId}`);
-      localStorage.removeItem(`commits_repo_${variables.projectId}`);
+      localStorage.removeItem(`commits_count_${variables.projectId}`);
       
       // Invalidate all related queries
       queryClient.invalidateQueries({
@@ -187,17 +255,24 @@ type FetchCommitsResponse = InferResponseType<
 export const useFetchCommits = () => {
   return useMutation<FetchCommitsResponse, Error, FetchCommitsRequest>({
     mutationFn: async ({ json }) => {
+      toast.loading('Fetching commits...', { id: "manual-fetch-commits" });
+      
       const response = await client.api.github.commits.fetch["$post"]({ json });
 
       if (!response.ok) {
+        toast.dismiss("manual-fetch-commits");
         const errorData = await response.json() as { error?: string };
         throw new Error(errorData.error || "Failed to fetch commits");
       }
 
       return await response.json();
     },
+    onSuccess: (response) => {
+      const count = response.data?.summaries?.length || 0;
+      toast.success(`Successfully fetched ${count} commits`, { id: "manual-fetch-commits" });
+    },
     onError: (error) => {
-      toast.error(error.message || "Failed to fetch commits");
+      toast.error(error.message || "Failed to fetch commits", { id: "manual-fetch-commits" });
     },
   });
 };

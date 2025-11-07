@@ -54,7 +54,7 @@ function isDirectoryStructure(text: string): boolean {
  */
 function formatDirectoryStructure(text: string): string {
   // First normalize the tree characters
-  let formatted = normalizeDirectoryTree(text);
+  const formatted = normalizeDirectoryTree(text);
   
   // Split into lines and process each
   const lines = formatted.split('\n');

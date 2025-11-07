@@ -293,47 +293,93 @@ export class GitHubAPI {
   }
 
   /**
-   * Get recent commits with file details (optimized for single batch request)
+   * Get recent commits with file details (optimized for batch requests with pagination)
+   * Fetches detailed information for ALL commits
    */
   async getCommits(
     owner: string,
     repo: string,
     branch: string = "main",
-    limit: number = 15
+    limit: number = 500
   ): Promise<GitHubCommit[]> {
-    const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/commits?sha=${branch}&per_page=${limit}`;
+    const perPage = 100; // GitHub API max per page
+    const allCommits: GitHubCommit[] = [];
+    let page = 1;
     
-    const response = await fetch(url, { headers: this.getHeaders() });
+    try {
+      while (allCommits.length < limit) {
+        const remaining = limit - allCommits.length;
+        const pageSize = Math.min(remaining, perPage);
+        
+        // Fetch commits with basic info (1 API call per page)
+        const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/commits?sha=${branch}&per_page=${pageSize}&page=${page}`;
+        
+        const response = await fetch(url, { headers: this.getHeaders() });
 
-    if (!response.ok) {
-      if (response.status === 404 && branch === "main") {
-        return this.getCommits(owner, repo, "master", limit);
-      }
-      throw new Error(`Failed to fetch commits: ${response.statusText}`);
-    }
-
-    const commits = await response.json();
-    
-    // Fetch all commit details in parallel (single batch)
-    const detailedCommits = await Promise.all(
-      commits.map(async (commit: GitHubCommit) => {
-        try {
-          const detailUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}/commits/${commit.sha}`;
-          const detailResponse = await fetch(detailUrl, { headers: this.getHeaders() });
-          
-          if (!detailResponse.ok) {
-            return commit; // Return basic commit if details fail
+        if (!response.ok) {
+          if (response.status === 404 && branch === "main" && page === 1) {
+            return this.getCommits(owner, repo, "master", limit);
           }
-          
-          return await detailResponse.json();
-        } catch (error) {
-          console.warn(`Failed to fetch details for commit ${commit.sha}:`, error);
-          return commit;
+          throw new Error(`Failed to fetch commits: ${response.statusText}`);
         }
-      })
-    );
 
-    return detailedCommits;
+        const commits = await response.json();
+        
+        // If no more commits, break
+        if (!commits || commits.length === 0) {
+          break;
+        }
+        
+        // Fetch detailed info for ALL commits with file changes
+        const batchSize = 10;
+        const detailedCommits: GitHubCommit[] = [];
+        
+        for (let i = 0; i < commits.length; i += batchSize) {
+          const batch = commits.slice(i, i + batchSize);
+          const batchResults = await Promise.all(
+            batch.map(async (commit: GitHubCommit) => {
+              try {
+                const detailUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}/commits/${commit.sha}`;
+                const detailResponse = await fetch(detailUrl, { headers: this.getHeaders() });
+                
+                if (!detailResponse.ok) {
+                  return commit; // Return basic commit if details fail
+                }
+                
+                return await detailResponse.json();
+              } catch (error) {
+                console.warn(`Failed to fetch details for commit ${commit.sha}:`, error);
+                return commit;
+              }
+            })
+          );
+          detailedCommits.push(...batchResults);
+          
+          // Small delay between batches to avoid rate limiting
+          if (i + batchSize < commits.length) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        }
+        
+        // Add all detailed commits
+        allCommits.push(...detailedCommits);
+        
+        // If we got fewer commits than requested, we've reached the end
+        if (commits.length < pageSize) {
+          break;
+        }
+        
+        page++;
+        
+        // Small delay between pages to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      return allCommits.slice(0, limit);
+    } catch (error) {
+      console.error("Error fetching commits with pagination:", error);
+      throw error;
+    }
   }
 
   /**

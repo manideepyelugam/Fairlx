@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Github, BookOpen, MessageSquare, GitCommit, Loader2, ExternalLink, Settings, FileText } from "lucide-react";
 
 import { PageLoader } from "@/components/page-loader";
@@ -37,18 +37,55 @@ export const GitHubIntegrationClient = () => {
   const { data: repository, isLoading } = useGetRepository(projectId);
   const [commitsCount, setCommitsCount] = useState(0);
 
-  // Load commits count from localStorage
-  useEffect(() => {
+  // Function to load commits count from localStorage
+  const loadCommitsCount = useCallback(() => {
     const cached = localStorage.getItem(`commits_${projectId}`);
     if (cached) {
       try {
         const commits = JSON.parse(cached);
         setCommitsCount(commits.length);
+        console.log(`[CommitsCount] Updated to ${commits.length}`);
       } catch (error) {
         console.error("Failed to parse cached commits:", error);
+        // Try to load count-only fallback
+        const countOnly = localStorage.getItem(`commits_count_${projectId}`);
+        if (countOnly) {
+          setCommitsCount(parseInt(countOnly, 10));
+          console.log(`[CommitsCount] Loaded from count fallback: ${countOnly}`);
+        } else {
+          setCommitsCount(0);
+        }
+      }
+    } else {
+      // Try to load count-only fallback
+      const countOnly = localStorage.getItem(`commits_count_${projectId}`);
+      if (countOnly) {
+        setCommitsCount(parseInt(countOnly, 10));
+        console.log(`[CommitsCount] Loaded from count fallback: ${countOnly}`);
+      } else {
+        setCommitsCount(0);
       }
     }
   }, [projectId]);
+
+  // Load commits count from localStorage on mount and when project changes
+  useEffect(() => {
+    loadCommitsCount();
+  }, [loadCommitsCount]);
+
+  // Listen for commits updates
+  useEffect(() => {
+    const handleCommitsUpdate = () => {
+      console.log(`[CommitsCount] Commits updated event received`);
+      loadCommitsCount();
+    };
+
+    window.addEventListener('commitsUpdated', handleCommitsUpdate);
+
+    return () => {
+      window.removeEventListener('commitsUpdated', handleCommitsUpdate);
+    };
+  }, [loadCommitsCount]);
 
   if (isLoading) {
     return <PageLoader />;
@@ -57,38 +94,157 @@ export const GitHubIntegrationClient = () => {
   // No repository connected - show connection UI
   if (!repository) {
     return (
-      <div className="flex flex-col gap-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              GitHub Integration
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Connect your GitHub repository to unlock AI-powered code insights
-            </p>
+      <div className="flex flex-col gap-y-6 max-w-7xl mx-auto">
+        {/* Header Section */}
+        <div className="text-center space-y-3 pt-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-green-500/10 mb-4">
+            <Github className="h-8 w-8 text-primary" />
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-gray-900 to-gray-600 dark:from-gray-100 dark:to-gray-400 bg-clip-text text-transparent">
+            GitHub Integration
+          </h1>
+          <p className="text-base text-muted-foreground max-w-2xl mx-auto">
+            Connect your GitHub repository to unlock AI-powered code insights
+          </p>
+        </div>
+
+        {/* Main Connection Flow - n8n Style - Horizontal */}
+        <div className="relative py-8">
+          {/* Horizontal Connection Lines */}
+          <div className="hidden lg:block">
+            {/* Line from GitHub to Connect */}
+            <div className="absolute top-1/2 left-[20%] w-[13%] h-0.5 bg-gradient-to-r from-blue-500/50 to-purple-500/50 -translate-y-1/2" />
+            {/* Line from Connect to AI Processing */}
+            <div className="absolute top-1/2 left-[47%] w-[13%] h-0.5 bg-gradient-to-r from-purple-500/50 to-purple-500/50 -translate-y-1/2" />
+            {/* Line from AI Processing to Insights */}
+            <div className="absolute top-1/2 left-[73%] w-[13%] h-0.5 bg-gradient-to-r from-purple-500/50 to-green-500/50 -translate-y-1/2" />
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8 items-center">
+            {/* Step 1: GitHub Source */}
+            <div className="relative flex justify-center lg:justify-end">
+              <div className="group relative w-full max-w-sm">
+                <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-blue-400 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-300" />
+                <Card className="relative border-2 border-blue-500/20 hover:border-blue-500/40 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center">
+                        <Github className="h-6 w-6 text-blue-500" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg">GitHub</CardTitle>
+                        <p className="text-xs text-muted-foreground">Source</p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xs text-muted-foreground">
+                      Connect your repository to start
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            {/* Connect Button Node */}
+            <div className="relative flex justify-center">
+              <div className="relative z-20">
+                <Card className="border-dashed border-2 border-primary/50 bg-gradient-to-br from-background to-primary/5 shadow-xl hover:shadow-2xl hover:border-primary transition-all duration-300">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base text-center">Connect</CardTitle>
+                    <CardDescription className="text-xs text-center">
+                      Link repository
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <ConnectRepository projectId={projectId} />
+                  </CardContent>
+                </Card>
+                {/* Connection node indicator */}
+                <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-8 h-8 bg-background border-2 border-primary rounded-full flex items-center justify-center shadow-lg">
+                  <div className="w-4 h-4 bg-primary rounded-full animate-pulse" />
+                </div>
+              </div>
+            </div>
+
+            {/* Step 2: AI Processing */}
+            <div className="relative flex justify-center">
+              <div className="group relative w-full max-w-sm">
+                <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-purple-400 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-300" />
+                <Card className="relative border-2 border-purple-500/20 hover:border-purple-500/40 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 via-purple-500/20 to-purple-500/0 animate-shimmer" />
+                        <BookOpen className="h-6 w-6 text-purple-500 relative z-10" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg">AI Process</CardTitle>
+                        <p className="text-xs text-muted-foreground">Transform</p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                        <span>Code Analysis</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                        <span>Documentation</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            {/* Step 3: Insights Output */}
+            <div className="relative flex justify-center lg:justify-start">
+              <div className="group relative w-full max-w-sm">
+                <div className="absolute -inset-1 bg-gradient-to-r from-green-600 to-green-400 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-300" />
+                <Card className="relative border-2 border-green-500/20 hover:border-green-500/40 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center">
+                        <MessageSquare className="h-6 w-6 text-green-500" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg">Insights</CardTitle>
+                        <p className="text-xs text-muted-foreground">Output</p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                        <span>Documentation</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                        <span>Q&A</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </div>
         </div>
 
-        <Card className="border-dashed">
-          <CardHeader className="text-center pb-4">
-            <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-              <Github className="h-6 w-6 text-primary" />
-            </div>
-            <CardTitle>Connect GitHub Repository</CardTitle>
-            <CardDescription>
-              Link a GitHub repository to generate documentation, analyze code, and get AI-powered insights
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ConnectRepository projectId={projectId} />
-          </CardContent>
-        </Card>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-          <Card>
+        {/* Features Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+          <Card className="group relative overflow-hidden border-2 hover:border-blue-500/50 transition-all duration-300">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <CardHeader>
-              <BookOpen className="h-8 w-8 text-blue-500 mb-2" />
-              <CardTitle className="text-lg">Auto Documentation</CardTitle>
+              <div className="relative">
+                <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                  <BookOpen className="h-6 w-6 text-blue-500" />
+                </div>
+                <CardTitle className="text-lg">Auto Documentation</CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
@@ -97,10 +253,15 @@ export const GitHubIntegrationClient = () => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="group relative overflow-hidden border-2 hover:border-green-500/50 transition-all duration-300">
+            <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <CardHeader>
-              <MessageSquare className="h-8 w-8 text-green-500 mb-2" />
-              <CardTitle className="text-lg">Ask Questions</CardTitle>
+              <div className="relative">
+                <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                  <MessageSquare className="h-6 w-6 text-green-500" />
+                </div>
+                <CardTitle className="text-lg">Ask Questions</CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
@@ -109,10 +270,15 @@ export const GitHubIntegrationClient = () => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="group relative overflow-hidden border-2 hover:border-purple-500/50 transition-all duration-300">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <CardHeader>
-              <GitCommit className="h-8 w-8 text-purple-500 mb-2" />
-              <CardTitle className="text-lg">Commit Insights</CardTitle>
+              <div className="relative">
+                <div className="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                  <GitCommit className="h-6 w-6 text-purple-500" />
+                </div>
+                <CardTitle className="text-lg">Commit Insights</CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">

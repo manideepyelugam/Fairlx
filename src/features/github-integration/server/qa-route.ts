@@ -80,8 +80,10 @@ const app = new Hono()
           (d) => (d as unknown as Documentation).projectId === projectId
         ) as unknown as Documentation | undefined;
 
-        // 5. Fetch some files for context (limit for performance)
-        const githubAPI = new GitHubAPI();
+        // 5. Initialize GitHub API with token for authenticated requests
+        const githubAPI = new GitHubAPI(repository.accessToken);
+
+        // 6. Fetch some files for context (limit for performance)
         const files = await githubAPI.getAllFiles(
           repository.owner,
           repository.repositoryName,
@@ -99,7 +101,45 @@ const app = new Hono()
           );
         }
 
-        // 6. Generate answer using Gemini (real-time)
+        // 7. Fetch commit history for questions about commits, authors, or history
+        // Keywords that suggest the question is about commits/history
+        const historyKeywords = ['commit', 'author', 'contributor', 'history', 'when', 'who', 'initial', 'first', 'last', 'recent'];
+        const needsCommitHistory = historyKeywords.some(keyword => 
+          question.toLowerCase().includes(keyword)
+        );
+
+        let commits: Array<{
+          hash: string;
+          message: string;
+          author: string;
+          date: string;
+          url: string;
+        }> = [];
+
+        if (needsCommitHistory) {
+          try {
+            // Fetch commits (limit to 100 for performance)
+            const rawCommits = await githubAPI.getCommits(
+              repository.owner,
+              repository.repositoryName,
+              repository.branch,
+              100
+            );
+            
+            commits = rawCommits.map((c: { sha: string; commit: { message: string; author: { name: string; date: string } }; html_url: string }) => ({
+              hash: c.sha,
+              message: c.commit.message,
+              author: c.commit.author.name,
+              date: c.commit.author.date,
+              url: c.html_url,
+            }));
+          } catch (error) {
+            console.error("Error fetching commits for Q&A:", error);
+            // Continue without commits if fetch fails
+          }
+        }
+
+        // 8. Generate answer using Gemini (real-time)
         const geminiAPI = new GeminiAPI();
         
         if (!geminiAPI.isConfigured()) {
@@ -111,13 +151,26 @@ const app = new Hono()
           );
         }
 
-        const answer = await geminiAPI.answerQuestion(question, {
+        const codebaseContext: {
+          files: Array<{ path: string; content: string; summary?: string }>;
+          documentation?: string;
+          commits?: Array<{
+            hash: string;
+            message: string;
+            author: string;
+            date: string;
+            url: string;
+          }>;
+        } = {
           files: files.map((f) => ({
             path: f.path,
             content: f.content.slice(0, 10000), // Limit content size
           })),
           documentation: documentation?.content,
-        });
+          commits,
+        };
+
+        const answer = await geminiAPI.answerQuestion(question, codebaseContext);
 
         return c.json({
           data: {

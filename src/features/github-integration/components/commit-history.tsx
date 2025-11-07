@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import { GitCommit, Loader2, RefreshCw, ChevronDown, ChevronRight, FileCode, FileText, FilePlus, FileMinus, FileEdit } from "lucide-react";
 
@@ -61,6 +61,12 @@ const CommitCard = ({ commit }: { commit: CommitData }) => {
       .toUpperCase()
       .slice(0, 2);
   };
+
+  // Safety check for required fields
+  if (!commit.hash || !commit.message || !commit.author || !commit.date) {
+    console.warn('Invalid commit data:', commit);
+    return null;
+  }
 
   return (
     <div className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
@@ -188,59 +194,104 @@ export const CommitHistory = ({ projectId }: CommitHistoryProps) => {
   const [commits, setCommits] = useState<CommitData[]>([]);
   const [isLoadingCache, setIsLoadingCache] = useState(true);
 
-  // Load commits from localStorage on mount and validate against current repo
-  useEffect(() => {
+  // Function to load commits from localStorage
+  const loadCommitsFromCache = useCallback(() => {
     const cached = localStorage.getItem(`commits_${projectId}`);
-    const cachedRepoInfo = localStorage.getItem(`commits_repo_${projectId}`);
     
-    if (cached && cachedRepoInfo && repository) {
+    if (cached) {
       try {
         const parsedCommits = JSON.parse(cached);
-        const parsedRepoInfo = JSON.parse(cachedRepoInfo);
+        // Filter out invalid commits
+        const validCommits = parsedCommits.filter((c: { hash?: string; message?: string; author?: string; date?: string }) => 
+          c.hash && c.message && c.author && c.date
+        );
         
-        // Check if repository URL or branch has changed
-        const repoChanged = parsedRepoInfo.githubUrl !== repository.githubUrl || 
-                           parsedRepoInfo.branch !== repository.branch;
-        
-        if (repoChanged) {
-          // Clear cache if repository changed
-          console.log(`[Cache] Repository changed, clearing old commits cache`);
-          localStorage.removeItem(`commits_${projectId}`);
-          localStorage.removeItem(`commits_repo_${projectId}`);
-          setCommits([]);
-        } else {
-          setCommits(parsedCommits);
-          console.log(`[Cache] Loaded ${parsedCommits.length} commits from localStorage`);
+        if (validCommits.length !== parsedCommits.length) {
+          console.warn(`[Cache] Filtered out ${parsedCommits.length - validCommits.length} invalid commits`);
+          // Re-save only valid commits
+          localStorage.setItem(`commits_${projectId}`, JSON.stringify(validCommits));
         }
+        
+        setCommits(validCommits);
+        console.log(`[Cache] Loaded ${validCommits.length} commits from localStorage`);
       } catch (error) {
         console.error("Failed to parse cached commits:", error);
         localStorage.removeItem(`commits_${projectId}`);
-        localStorage.removeItem(`commits_repo_${projectId}`);
+        localStorage.removeItem(`commits_count_${projectId}`);
       }
     }
+  }, [projectId]);
+
+  // Load commits from localStorage on mount and when repository changes
+  useEffect(() => {
+    loadCommitsFromCache();
     setIsLoadingCache(false);
-  }, [projectId, repository]);
+  }, [projectId, repository, loadCommitsFromCache]);
+
+  // Listen for storage events (when commits are updated in another part of the app)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === `commits_${projectId}` && e.newValue) {
+        console.log(`[Cache] Storage event detected, reloading commits`);
+        loadCommitsFromCache();
+      }
+    };
+
+    // Listen for custom event when commits are updated
+    const handleCommitsUpdate = () => {
+      console.log(`[Cache] Commits update event detected, reloading commits`);
+      loadCommitsFromCache();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('commitsUpdated', handleCommitsUpdate);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('commitsUpdated', handleCommitsUpdate);
+    };
+  }, [projectId, repository, loadCommitsFromCache]);
 
   const handleFetch = () => {
     console.log(`[GitHub API] User clicked Refetch - fetching commits...`);
     fetchCommits(
       {
-        json: { projectId, limit: 20 },
+        json: { projectId, limit: 500 },
       },
       {
         onSuccess: (response) => {
           if (response.data?.summaries) {
             const newCommits = response.data.summaries;
             setCommits(newCommits);
-            // Save to localStorage with repository info
-            localStorage.setItem(`commits_${projectId}`, JSON.stringify(newCommits));
-            if (repository) {
-              localStorage.setItem(`commits_repo_${projectId}`, JSON.stringify({
-                githubUrl: repository.githubUrl,
-                branch: repository.branch,
+            
+            // Optimize storage: only save essential fields to avoid quota exceeded error
+            try {
+              const optimizedCommits = newCommits.map(commit => ({
+                hash: commit.hash,
+                message: commit.message,
+                author: commit.author,
+                authorAvatar: commit.authorAvatar,
+                date: commit.date,
+                url: commit.url,
+                aiSummary: commit.aiSummary,
+                filesChanged: commit.filesChanged,
+                additions: commit.additions,
+                deletions: commit.deletions,
+                // Omit 'files' array which can be very large
               }));
+              
+              localStorage.setItem(`commits_${projectId}`, JSON.stringify(optimizedCommits));
+              console.log(`[Cache] Saved ${optimizedCommits.length} commits to localStorage (optimized)`);
+            } catch (error) {
+              console.error('[Cache] Failed to save commits to localStorage:', error);
+              // If still too large, save only count
+              try {
+                localStorage.setItem(`commits_count_${projectId}`, String(newCommits.length));
+                console.log(`[Cache] Saved commits count only: ${newCommits.length}`);
+              } catch (e) {
+                console.error('[Cache] Failed to save commits count:', e);
+              }
             }
-            console.log(`[Cache] Saved ${newCommits.length} commits to localStorage`);
           }
         },
       }
@@ -310,9 +361,11 @@ export const CommitHistory = ({ projectId }: CommitHistoryProps) => {
         ) : (
           <ScrollArea className="h-[600px]">
             <div className="space-y-3">
-              {commits.map((commit: CommitData) => (
-                <CommitCard key={commit.hash} commit={commit} />
-              ))}
+              {commits
+                .filter((commit: CommitData) => commit.hash && commit.message && commit.author && commit.date)
+                .map((commit: CommitData) => (
+                  <CommitCard key={commit.hash} commit={commit} />
+                ))}
             </div>
           </ScrollArea>
         )}
