@@ -16,6 +16,10 @@ export const ATTACHMENTS_BUCKET_ID =
   process.env.NEXT_PUBLIC_APPWRITE_ATTACHMENTS_BUCKET_ID!
 export const ATTACHMENTS_ID = process.env.NEXT_PUBLIC_APPWRITE_ATTACHMENTS_ID!
 
+// GitHub Integration Collections
+export const GITHUB_REPOS_ID = process.env.NEXT_PUBLIC_APPWRITE_GITHUB_REPOS_ID!;
+export const CODE_DOCS_ID = process.env.NEXT_PUBLIC_APPWRITE_CODE_DOCS_ID!;
+
 // Email/Messaging Configuration
 export const SMTP_PROVIDER_ID = process.env.NEXT_PUBLIC_APPWRITE_SMTP_PROVIDER_ID!;
 export const EMAIL_TOPIC_ID = process.env.NEXT_PUBLIC_APPWRITE_EMAIL_TOPIC_ID!;
