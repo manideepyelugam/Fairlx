@@ -183,11 +183,14 @@ const app = new Hono()
         uploadedImageUrl = image;
       }
 
+      const updateData = { name, imageUrl: uploadedImageUrl };
+      (updateData as Record<string, unknown>).lastModifiedBy = user.$id;
+
       const workspace = await databases.updateDocument(
         DATABASE_ID,
         WORKSPACES_ID,
         workspaceId,
-        { name, imageUrl: uploadedImageUrl }
+        updateData
       );
 
       return c.json({ data: workspace });
@@ -314,6 +317,7 @@ const app = new Hono()
       workspaceId,
       {
         inviteCode: generateInviteCode(6),
+        lastModifiedBy: user.$id,
       }
     );
 

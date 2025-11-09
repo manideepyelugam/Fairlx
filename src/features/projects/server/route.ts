@@ -173,11 +173,14 @@ const app = new Hono()
         uploadedImageUrl = image;
       }
 
+      const updateData = { name, imageUrl: uploadedImageUrl };
+      (updateData as Record<string, unknown>).lastModifiedBy = user.$id;
+
       const project = await databases.updateDocument(
         DATABASE_ID,
         PROJECTS_ID,
         projectId,
-        { name, imageUrl: uploadedImageUrl }
+        updateData
       );
 
       return c.json({ data: project });

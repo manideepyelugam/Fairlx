@@ -490,14 +490,17 @@ const app = new Hono()
 
       const updates = c.req.valid("json");
 
+      const updateData = {
+        ...updates,
+        dueDate: updates.dueDate?.toISOString(),
+      };
+      (updateData as Record<string, unknown>).lastModifiedBy = user.$id;
+
       const updatedWorkItem = await databases.updateDocument<WorkItem>(
         DATABASE_ID,
         WORK_ITEMS_ID,
         workItemId,
-        {
-          ...updates,
-          dueDate: updates.dueDate?.toISOString(),
-        }
+        updateData
       );
 
       return c.json({ data: updatedWorkItem });
@@ -578,6 +581,7 @@ const app = new Hono()
         workItemIds.map((id) =>
           databases.updateDocument(DATABASE_ID, WORK_ITEMS_ID, id, {
             sprintId,
+            lastModifiedBy: user.$id,
           })
         )
       );
@@ -616,6 +620,7 @@ const app = new Hono()
       if (sprintId !== undefined) {
         updateData.sprintId = sprintId;
       }
+      (updateData as Record<string, unknown>).lastModifiedBy = user.$id;
 
       const updatedWorkItem = await databases.updateDocument<WorkItem>(
         DATABASE_ID,

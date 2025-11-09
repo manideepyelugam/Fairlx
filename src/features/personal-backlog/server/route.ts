@@ -131,11 +131,14 @@ const app = new Hono()
         return c.json({ error: "Unauthorized" }, 401);
       }
 
+      const updateData = { ...data };
+      (updateData as Record<string, unknown>).lastModifiedBy = user.$id;
+
       const item = await databases.updateDocument<BacklogItem>(
         DATABASE_ID,
         PERSONAL_BACKLOG_ID,
         itemId,
-        data
+        updateData
       );
 
       return c.json({ data: item });

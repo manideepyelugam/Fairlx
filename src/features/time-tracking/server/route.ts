@@ -245,6 +245,7 @@ const app = new Hono()
       if (description !== undefined) updateData.description = description;
       if (startTime !== undefined) updateData.startTime = startTime;
       if (endTime !== undefined) updateData.endTime = endTime;
+      (updateData as Record<string, unknown>).lastModifiedBy = user.$id;
 
       const timeLog = await databases.updateDocument(
         DATABASE_ID,

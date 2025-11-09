@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { SettingsIcon, UsersIcon, ClockIcon, Layers } from "lucide-react";
+import { SettingsIcon, UsersIcon, ClockIcon, Layers, Activity } from "lucide-react";
 import Link from "next/link";
 import {
   GoCheckCircle,
@@ -38,6 +38,12 @@ const routes = [
     href: "/time-tracking",
     icon: ClockIcon,
     activeIcon: ClockIcon,
+  },
+  {
+    label: "Audit Log",
+    href: "/audit-logs",
+    icon: Activity,
+    activeIcon: Activity,
   },
   {
     label: "Settings",
