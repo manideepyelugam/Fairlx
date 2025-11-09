@@ -18,6 +18,9 @@ import { formatDistanceToNow } from "date-fns";
 import { useMemo } from "react";
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
+import { useProjectId } from "@/features/projects/hooks/use-project-id";
+import { ProjectActivityLogWidget } from "@/features/audit-logs/components/project-activity-log-widget";
+import { ProjectMembersWidget } from "@/features/members/components/project-members-widget";
 
 interface DataDashboardProps {
   tasks?: Task[];
@@ -26,6 +29,7 @@ interface DataDashboardProps {
 
 export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
   const workspaceId = useWorkspaceId();
+  const projectId = useProjectId();
   const { data: membersData } = useGetMembers({ workspaceId });
   
   // Memoize members to prevent dependency issues in other useMemo hooks
@@ -87,24 +91,6 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
     }).filter(m => m.tasks > 0).slice(0, 4); // Top 4 members
 
     return memberWorkload;
-  }, [tasks, members]);
-
-  // Calculate recent activity from real data
-  const recentActivity = useMemo(() => {
-    return tasks
-      .sort((a, b) => new Date(b.$updatedAt || b.$createdAt).getTime() - new Date(a.$updatedAt || a.$createdAt).getTime())
-      .slice(0, 6)
-      .map(task => {
-        const member = members.find(m => m.$id === task.assigneeId);
-        return {
-          id: task.$id,
-          type: "task",
-          action: task.status === TaskStatus.COMPLETED ? "completed" : "updated",
-          title: task.name,
-          user: member?.name || "Unknown",
-          timestamp: new Date(task.$updatedAt || task.$createdAt),
-        };
-      });
   }, [tasks, members]);
 
   // Calculate due alerts from real data
@@ -276,39 +262,15 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
           )}
         </Card>
 
-        <Card className="p-4 lg:col-span-2">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-medium text-muted-foreground">Recent Activity</h3>
-            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {recentActivity.length > 0 ? (
-              recentActivity.map((activity) => (
-                <div
-                  key={activity.id}
-                  className="flex items-center justify-between p-2 bg-secondary/10 rounded-md"
-                >
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-xs font-medium">{activity.title}</span>
-                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                      <span>{activity.user}</span>
-                      <span>•</span>
-                      <span>{activity.action}</span>
-                    </div>
-                  </div>
-                  <span className="text-[11px] text-muted-foreground whitespace-nowrap ml-2">
-                    {formatDistanceToNow(activity.timestamp, { addSuffix: true })}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <div className="col-span-2 text-sm text-center text-muted-foreground py-4">
-                No recent activity
-              </div>
-            )}
-          </div>
+        {/* Replace Recent Activity with Audit Log Widget */}
+        <div className="lg:col-span-2">
+          <ProjectActivityLogWidget 
+            workspaceId={workspaceId} 
+            projectId={projectId}
+            limit={6}
+          />
 
-          <div className="mt-3 pt-3 border-t">
+          <Card className="p-4 mt-3">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xs font-medium text-muted-foreground">Due Alerts</h3>
               <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
@@ -335,8 +297,8 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
                 </div>
               )}
             </div>
-          </div>
-        </Card>
+          </Card>
+        </div>
       </div>
 
       {/* Middle row - Workload Distribution and Tasks */}
@@ -479,37 +441,12 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
           </div>
         </Card>
 
-        {/* Members Count Card */}
-        <Card className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-medium text-muted-foreground">Team Members</h3>
-            <Users className="h-3.5 w-3.5 text-muted-foreground" />
-          </div>
-          <div className="flex flex-col items-center justify-center h-[200px]">
-            <div className="text-5xl font-bold text-[#2663ec] mb-2">
-              {members.length}
-            </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              {members.length === 1 ? "Member" : "Members"} in workspace
-            </p>
-            <div className="flex flex-wrap gap-2 justify-center max-w-[200px]">
-              {members.slice(0, 8).map((member) => (
-                <div
-                  key={member.$id}
-                  className="w-8 h-8 rounded-full bg-[#2663ec] text-white flex items-center justify-center text-xs font-medium"
-                  title={member.name}
-                >
-                  {member.name.substring(0, 2).toUpperCase()}
-                </div>
-              ))}
-              {members.length > 8 && (
-                <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-xs font-medium">
-                  +{members.length - 8}
-                </div>
-              )}
-            </div>
-          </div>
-        </Card>
+        {/* Replace Team Members with Enhanced Widget */}
+        <ProjectMembersWidget 
+          workspaceId={workspaceId} 
+          projectId={projectId}
+          limit={12}
+        />
       </div>
     </div>
   );

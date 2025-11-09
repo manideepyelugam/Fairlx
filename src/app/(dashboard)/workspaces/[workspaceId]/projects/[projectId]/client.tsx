@@ -87,6 +87,7 @@ export const ProjectIdClient = () => {
 
       </div>
       {/* {analytics && <Analytics data={analytics} />} */}
+
       <TaskViewSwitcher hideProjectFilter={true} />
     </div>
   );
