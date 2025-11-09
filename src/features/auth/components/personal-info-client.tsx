@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {  Loader2, Mail, User,  } from "lucide-react";
+import { Camera, Loader2, Mail, User, Calendar } from "lucide-react";
 import { useUpdateProfile } from "../api/use-update-profile";
 import { useUploadProfileImage } from "../api/use-upload-profile-image";
+import { ChangePasswordModal } from "./change-password-modal";
 import { Models } from "node-appwrite";
 import { toast } from "sonner";
 
@@ -19,11 +20,10 @@ interface ProfileClientProps {
 export const ProfileClient = ({ initialData }: ProfileClientProps) => {
   const [name, setName] = useState(initialData.name || "");
   const [isEditing, setIsEditing] = useState(false);
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(
     initialData.prefs?.profileImageUrl ?? null
   );
-
-  console.log("[Profile Client] Initial Data:", initialData);
 
   const { mutate: updateProfile, isPending: isUpdating } = useUpdateProfile();
   const { mutate: uploadImage, isPending: isUploading } = useUploadProfileImage();
@@ -61,26 +61,37 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    console.log("[Profile Client] File selected:", {
+      name: file.name,
+      size: file.size,
+      type: file.type
+    });
+
     // Validate file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
+      console.error("[Profile Client] File too large:", file.size);
       toast.error("File size should be less than 2MB");
       return;
     }
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
+      console.error("[Profile Client] Invalid file type:", file.type);
       toast.error("Please upload an image file");
       return;
     }
 
+    console.log("[Profile Client] Starting upload...");
     uploadImage(
       { file },
       {
         onSuccess: (data) => {
+          console.log("[Profile Client] Upload successful:", data);
           toast.success("Profile picture updated successfully");
           setProfileImageUrl(data.data.url);
         },
-        onError: () => {
+        onError: (error) => {
+          console.error("[Profile Client] Upload failed:", error);
           toast.error("Failed to upload profile picture");
         },
       }
@@ -98,14 +109,20 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
   return (
     <div className="h-full w-full p-6">
       <div className="max-w-4xl mx-auto space-y-6">
-      
-
-        <div className="w-full p-5 rounded-xl border flex items-center justify-between">
-              <div className="flex items-start gap-5">
+       
 
 
-                    <div>
-                                 <Avatar className="size-24 border-2 border-neutral-300">
+        {/* Profile Picture Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Profile Picture</CardTitle>
+            <CardDescription>
+              Upload a profile picture to personalize your account
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-center gap-6">
+            <div className="relative">
+              <Avatar className="size-24 border-2 border-neutral-300">
                 {profileImageUrl && (
                   <AvatarImage src={profileImageUrl} alt={initialData.name} />
                 )}
@@ -113,38 +130,41 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
                   {avatarFallback}
                 </AvatarFallback>
               </Avatar>
-                    </div>
-
-
-
-                    <div className="flex flex-col ">
-                           <h1 className="text-[22px] font-semibold">{initialData.name}</h1>
-                           <p className="text-[13px]">Team Manager</p>
-                          <p className="text-[13px]">{initialData.email}</p>
-
-                    </div>
-              </div>
-
-              <div>
-                <input
-                  id="profile-image-upload"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleImageUpload}
-                  disabled={isUploading}
-                />
-                <label htmlFor="profile-image-upload">
-                  <span className="text-xs border px-4 py-2 rounded-md cursor-pointer inline-block">Edit Image</span>
-                </label>
-              </div>
-        </div>
+              <label
+                htmlFor="profile-image-upload"
+                className="absolute bottom-0 right-0 p-1.5 bg-primary rounded-full cursor-pointer hover:bg-primary/90 transition"
+              >
+                {isUploading ? (
+                  <Loader2 className="size-4 text-white animate-spin" />
+                ) : (
+                  <Camera className="size-4 text-white" />
+                )}
+              </label>
+              <input
+                id="profile-image-upload"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageUpload}
+                disabled={isUploading}
+              />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm text-muted-foreground">
+                Click the camera icon to upload a new profile picture. Maximum file size is 2MB.
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Supported formats: JPG, PNG, GIF
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Personal Information Section */}
-        <Card >
-          <CardHeader className="mb-3">
-            <CardTitle className=" !text-[18px]">Personal Information</CardTitle>
-            <CardDescription className="!text-xs font-normal">
+        <Card>
+          <CardHeader>
+            <CardTitle>Personal Information</CardTitle>
+            <CardDescription>
               Update your personal details
             </CardDescription>
           </CardHeader>
@@ -163,7 +183,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
               />
             </div>
 
-            <div className="space-y-2 !mb-5">
+            <div className="space-y-2">
               <Label htmlFor="email" className="flex items-center gap-2">
                 <Mail className="size-4" />
                 Email Address
@@ -180,11 +200,12 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
             </div>
 
             {isEditing ? (
-              <div className="flex gap-2 pt-2 mt-3">
+              <div className="flex gap-2 pt-2">
                 <Button
                   onClick={handleSave}
                   disabled={isUpdating}
-className="text-xs font-medium px-6 rounded-sm py-3" size={"xs"}                >
+                  className="w-24"
+                >
                   {isUpdating ? (
                     <Loader2 className="size-4 animate-spin" />
                   ) : (
@@ -194,21 +215,21 @@ className="text-xs font-medium px-6 rounded-sm py-3" size={"xs"}                
                 <Button
                   variant="outline"
                   onClick={handleCancel}
-                  disabled={isUpdating} className="text-xs font-medium px-6 rounded-sm py-3" size={"xs"}
+                  disabled={isUpdating}
                 >
                   Cancel
                 </Button>
               </div>
             ) : (
-              <Button size={"xs"} className="text-xs font-medium px-6 rounded-sm py-3" onClick={() => setIsEditing(true)} >
+              <Button onClick={() => setIsEditing(true)} className="w-24">
                 Edit
               </Button>
             )}
           </CardContent>
         </Card>
 
-        {/* Account Information Section */}
-        {/* <Card>
+        {/* Account Information Section
+        <Card>
           <CardHeader>
             <CardTitle>Account Information</CardTitle>
             <CardDescription>
@@ -261,10 +282,9 @@ className="text-xs font-medium px-6 rounded-sm py-3" size={"xs"}                
               </div>
             </div>
           </CardContent>
-        </Card> */}
+        </Card>
 
-        {/* Security Section */}
-        {/* <Card>
+        <Card>
           <CardHeader>
             <CardTitle>Security</CardTitle>
             <CardDescription>
@@ -308,7 +328,7 @@ className="text-xs font-medium px-6 rounded-sm py-3" size={"xs"}                
         </Card> */}
 
         {/* Preferences Section */}
-        {/* <Card>
+        <Card>
           <CardHeader>
             <CardTitle>Preferences</CardTitle>
             <CardDescription>
@@ -325,13 +345,13 @@ className="text-xs font-medium px-6 rounded-sm py-3" size={"xs"}                
               />
             </div>
           </CardContent>
-        </Card> */}
+        </Card>
       </div>
 
-      {/* <ChangePasswordModal
+      <ChangePasswordModal
         open={isChangePasswordModalOpen}
         onOpenChange={setIsChangePasswordModalOpen}
-      /> */}
+      />
     </div>
   );
 };

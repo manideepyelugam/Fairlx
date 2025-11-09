@@ -1,3 +1,5 @@
+'use client';
+import { usePathname } from "next/navigation";
 import { CreateProjectModal } from "@/features/projects/components/create-project-modal";
 import { CreateWorkspaceModal } from "@/features/workspaces/components/create-workspace-modal";
 import { CreateTaskModal } from "@/features/tasks/components/create-task-modal";
@@ -8,12 +10,16 @@ import { ManageColumnsModalWrapper } from "@/features/custom-columns/components/
 
 import { Navbar } from "@/components/navbar";
 import { Sidebar } from "@/components/sidebar";
+import { ProfileSidebar } from "@/components/ProfileSidebar";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
+  const pathname = usePathname();
+  const isProfilePage = pathname === "/profile" || pathname.startsWith("/profile/");
+
   return (
     <div className="min-h-screen">
       <CreateWorkspaceModal />
@@ -23,15 +29,18 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <TaskDetailsModalWrapper />
       <CreateCustomColumnModalWrapper />
       <ManageColumnsModalWrapper />
+
       <div className="flex w-full h-screen">
         <div className="fixed left-0 top-0 hidden lg:block lg:w-[264px] h-full overflow-y-auto">
-          <Sidebar />
+          {isProfilePage ? <ProfileSidebar /> : <Sidebar />}
         </div>
         <div className="lg:pl-[264px] w-full h-full flex flex-col">
           <Navbar />
           <div className="flex-1 overflow-y-scroll">
             <div className="mx-auto max-w-screen-2xl">
-              <main className="py-8 px-6 flex flex-col overflow-y-scroll">{children}</main>
+              <main className="py-8 px-6 flex flex-col overflow-y-scroll">
+                {children}
+              </main>
             </div>
           </div>
         </div>
