@@ -41,8 +41,6 @@ export default function TimelinePage() {
     setZoomLevel,
     selectedItemId,
     setSelectedItemId,
-    selectedItems,
-    toggleItemSelection,
     expandedItems,
     toggleExpanded,
     collapseAll,

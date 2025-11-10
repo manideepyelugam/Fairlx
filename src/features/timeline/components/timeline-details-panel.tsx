@@ -35,7 +35,8 @@ export function TimelineDetailsPanel({
 
   if (!item) return null;
 
-  const statusStyle = STATUS_COLORS[item.status];
+  // Provide a fallback status color in case status is undefined or invalid
+  const statusStyle = STATUS_COLORS[item.status] || STATUS_COLORS.TODO;
 
   const handleFieldUpdate = (field: string, value: string | number | Date | undefined) => {
     onUpdate(item.id, { [field]: value });
@@ -325,7 +326,7 @@ export function TimelineDetailsPanel({
                 </label>
                 <div className="space-y-2">
                   {item.children.map((subtask) => {
-                    const subtaskStatusStyle = STATUS_COLORS[subtask.status];
+                    const subtaskStatusStyle = STATUS_COLORS[subtask.status] || STATUS_COLORS.TODO;
                     return (
                       <div
                         key={subtask.id}

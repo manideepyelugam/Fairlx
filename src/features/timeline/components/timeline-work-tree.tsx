@@ -236,7 +236,8 @@ function WorkItemRow({
   onItemClick,
   onToggleExpanded,
 }: WorkItemRowProps) {
-  const statusStyle = STATUS_COLORS[item.status];
+  // Provide a fallback status color in case status is undefined or invalid
+  const statusStyle = STATUS_COLORS[item.status] || STATUS_COLORS.TODO;
 
   // Calculate left padding based on level (Jira style indentation)
   const paddingLeft = level === 2 ? "pl-8" : level === 3 ? "pl-12" : "pl-4";
