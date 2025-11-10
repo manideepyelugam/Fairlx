@@ -379,7 +379,8 @@ function TaskBar({
   onClick,
   onMouseDown,
 }: TaskBarProps) {
-  const statusStyle = STATUS_COLORS[item.status];
+  // Provide a fallback status color in case status is undefined or invalid
+  const statusStyle = STATUS_COLORS[item.status] || STATUS_COLORS.TODO;
   const isInProgress = item.status === "IN_PROGRESS";
 
   return (

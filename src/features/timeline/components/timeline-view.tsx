@@ -44,8 +44,6 @@ export function TimelineView({ workspaceId, projectId }: TimelineViewProps) {
     setZoomLevel,
     selectedItemId,
     setSelectedItemId,
-    selectedItems,
-    toggleItemSelection,
     expandedItems,
     toggleExpanded,
     collapseAll,
