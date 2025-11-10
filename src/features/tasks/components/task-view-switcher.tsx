@@ -16,10 +16,10 @@ import { columns } from "./columns";
 import { DataCalendar } from "./data-calendar";
 import { DataFilters } from "./data-filters";
 import { DataTable } from "./data-table";
-import { SimpleTimeline } from "./simple-timeline";
 // Use full EnhancedDataKanban so custom columns show up
 import { EnhancedDataKanban } from "@/features/custom-columns/components/enhanced-data-kanban";
 import { DataDashboard } from "./data-dashboard";
+import { TimelineView } from "@/features/timeline/components/timeline-view";
 
 import { useGetTasks } from "../api/use-get-tasks";
 import { useCreateTaskModal } from "../hooks/use-create-task-modal";
@@ -130,7 +130,7 @@ export const TaskViewSwitcher = ({
         </div>
 
 
-        {view !== "dashboard" && (
+        {view !== "dashboard" && view !== "timeline" && (
           <DataFilters hideProjectFilter={hideProjectFilter} showMyTasksOnly={showMyTasksOnly} />
         )}
 
@@ -159,8 +159,11 @@ export const TaskViewSwitcher = ({
             <TabsContent value="calendar" className="mt-0 h-full p-4 pb-4">
               <DataCalendar data={filteredTasks?.documents ?? []} />
             </TabsContent>
-            <TabsContent value="timeline" className="mt-0 h-full p-4 pb-4">
-              <SimpleTimeline data={filteredTasks?.documents ?? []} />
+            <TabsContent value="timeline" className="mt-0 h-full">
+              <TimelineView 
+                workspaceId={workspaceId} 
+                projectId={paramProjectId || projectId || undefined}
+              />
             </TabsContent>
           </>
         )}

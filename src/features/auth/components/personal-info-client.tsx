@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, Loader2, Mail, User, Calendar } from "lucide-react";
+import { Camera, Loader2, Mail, User } from "lucide-react";
 import { useUpdateProfile } from "../api/use-update-profile";
 import { useUploadProfileImage } from "../api/use-upload-profile-image";
 import { ChangePasswordModal } from "./change-password-modal";
@@ -96,14 +96,6 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
         },
       }
     );
-  };
-
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
   };
 
   return (
