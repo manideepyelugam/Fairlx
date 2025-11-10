@@ -59,6 +59,7 @@ import { useUpdateSprint } from "../api/use-update-sprint";
 import { useUpdateWorkItem } from "../api/use-update-work-item";
 import { useCreateWorkItem } from "../api/use-create-work-item";
 import { useDeleteSprint } from "../api/use-delete-sprint";
+import { useDeleteWorkItem } from "../api/use-delete-work-item";
 import { useGetEpics } from "../api/use-get-epics";
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { SprintStatus, WorkItemStatus, WorkItemPriority, WorkItemType } from "../types";
@@ -92,6 +93,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   const { mutate: updateWorkItem } = useUpdateWorkItem();
   const { mutate: createWorkItem } = useCreateWorkItem();
   const { mutate: deleteSprint } = useDeleteSprint();
+  const { mutate: deleteWorkItem } = useDeleteWorkItem();
 
   // Organize data
   const sprints = useMemo(() => {
@@ -257,6 +259,14 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   const handleDeleteSprint = (sprintId: string) => {
     if (confirm("Are you sure you want to delete this sprint? Work items will be moved to backlog.")) {
       deleteSprint({ param: { sprintId } });
+    }
+  };
+
+  const handleDeleteWorkItem = (workItemId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm("Are you sure you want to delete this work item? This action cannot be undone.")) {
+      deleteWorkItem({ param: { workItemId } });
+      toast.success("Work item deleted");
     }
   };
 
@@ -963,6 +973,29 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                       ))}
                                     </SelectContent>
                                   </Select>
+
+                                  {/* Actions Dropdown */}
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 flex-shrink-0"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <MoreHorizontal className="size-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem
+                                        onClick={(e) => handleDeleteWorkItem(item.$id, e)}
+                                        className="text-red-600"
+                                      >
+                                        <Trash2 className="size-3 mr-2" />
+                                        Delete work item
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                 </div>
                               </div>
                             )}

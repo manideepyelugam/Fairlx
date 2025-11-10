@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { SettingsIcon, UsersIcon, ClockIcon, Layers, Activity } from "lucide-react";
+import { SettingsIcon, UsersIcon, ClockIcon, Layers, Activity, Calendar } from "lucide-react";
 import Link from "next/link";
 import {
   GoCheckCircle,
@@ -32,6 +32,12 @@ const routes = [
     href: "/my-backlog",
     icon: Layers,
     activeIcon: Layers,
+  },
+  {
+    label: "Timeline",
+    href: "/timeline",
+    icon: Calendar,
+    activeIcon: Calendar,
   },
   {
     label: "Time Tracking",
