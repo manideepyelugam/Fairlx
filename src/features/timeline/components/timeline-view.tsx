@@ -1,28 +1,11 @@
 "use client";
 
-import React, { useMemo, useRef, useCallback } from "react";
-import { useTimelineState } from "@/features/timeline/hooks/use-timeline-store";
-import { useGetTimelineData } from "@/features/timeline/api/use-get-timeline-data";
-import { useUpdateTimelineItem } from "@/features/timeline/api/use-update-timeline-item";
-import { TimelineHeader } from "./timeline-header";
-import { TimelineWorkTree } from "./timeline-work-tree";
-import { TimelineGrid } from "./timeline-grid";
-import { TimelineDetailsPanel } from "./timeline-details-panel";
-import {
-  groupItemsBySprintAndEpic,
-  filterTimelineItems,
-  flattenTimelineItems,
-  calculateTimelineRange,
-  extractLabels,
-  workItemToTimelineItem,
-  dateToPixel,
-} from "../utils";
-import {
-  TimelineGridConfig,
-  TimelineItem,
-  ZOOM_CONFIGS,
-} from "../types";
-import { WorkItemType } from "@/features/sprints/types";
+import React, { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { client } from "@/lib/rpc";
+import { TimelineClient } from "./timeline-client";
+import { processTimelineData } from "../server/process-timeline-data";
+import { TimelineZoomLevel } from "../types";
 import { PageLoader } from "@/components/page-loader";
 import { PageError } from "@/components/page-error";
 
@@ -31,211 +14,110 @@ interface TimelineViewProps {
   projectId?: string;
 }
 
+/**
+ * Client-side Timeline view wrapper for use in task-view-switcher
+ * Fetches timeline data on the client and renders the TimelineClient component
+ */
 export function TimelineView({ workspaceId, projectId }: TimelineViewProps) {
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  // State management
-  const timelineState = useTimelineState();
-  const {
-    filters,
-    setFilters,
-    resetFilters,
-    zoomLevel,
-    setZoomLevel,
-    selectedItemId,
-    setSelectedItemId,
-    expandedItems,
-    toggleExpanded,
-    collapseAll,
-    setExpanded,
-  } = timelineState;
-
-  // Fetch data - filter by project if provided
-  const { data, isLoading, error } = useGetTimelineData({ 
-    workspaceId,
-    projectId 
-  });
-  const { mutate: updateItem } = useUpdateTimelineItem();
-
-  // Auto-expand all sprints and unscheduled items on initial load
-  React.useEffect(() => {
-    const sprints = data?.sprints?.documents || [];
-    const workItems = data?.workItems?.documents || [];
-    
-    if (sprints.length >= 0 && workItems.length >= 0 && expandedItems.size === 0) {
-      const sprintIds = sprints.map((s) => (s as { $id: string }).$id);
-      const noEpicGroups = ['unscheduled', 'no-epic-unscheduled', ...sprintIds.map((id: string) => `no-epic-${id}`)];
-      setExpanded([...sprintIds, ...noEpicGroups]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data?.sprints, data?.workItems]);
-
-  // Convert work items to timeline items
-  const allTimelineItems = useMemo(() => {
-    const workItems = data?.workItems?.documents || [];
-    if (workItems.length === 0) return [];
-    return workItems.map((item) =>
-      workItemToTimelineItem(item as never, 0, expandedItems)
-    );
-  }, [data?.workItems, expandedItems]);
-
-  // Group by sprints and epics
-  const sprintGroups = useMemo(() => {
-    const sprints = data?.sprints?.documents || [];
-    const workItems = data?.workItems?.documents || [];
-    
-    if (sprints.length === 0 && workItems.length === 0) return [];
-    
-    const groups = groupItemsBySprintAndEpic(
-      sprints as never,
-      workItems as never,
-      expandedItems
-    );
-    
-    return groups;
-  }, [data?.sprints, data?.workItems, expandedItems]);
-
-  // Filter items
-  const filteredItems = useMemo(() => {
-    return filterTimelineItems(allTimelineItems, filters);
-  }, [allTimelineItems, filters]);
-
-  // Flatten for grid rendering
-  const flatItems = useMemo(() => {
-    return flattenTimelineItems(sprintGroups);
-  }, [sprintGroups]);
-
-  // Get epics for filter dropdown
-  const epics = useMemo(() => {
-    return allTimelineItems.filter((item: TimelineItem) => item.type === WorkItemType.EPIC);
-  }, [allTimelineItems]);
-
-  // Get all labels
-  const labels = useMemo(() => {
-    return extractLabels(allTimelineItems);
-  }, [allTimelineItems]);
-
-  // Calculate timeline range and grid config
-  const gridConfig: TimelineGridConfig = useMemo(() => {
-    const range = calculateTimelineRange(filteredItems, zoomLevel);
-    const config = ZOOM_CONFIGS[zoomLevel];
-
-    return {
-      dayWidth: config.dayWidth,
-      rowHeight: 48,
-      headerHeight: 60,
-      minDate: range.startDate,
-      maxDate: range.endDate,
-    };
-  }, [filteredItems, zoomLevel]);
-
-  // Get selected item details
-  const selectedItem = useMemo(() => {
-    if (!selectedItemId) return null;
-    return allTimelineItems.find((item: TimelineItem) => item.id === selectedItemId) || null;
-  }, [selectedItemId, allTimelineItems]);
-
-  // Check if all items are expanded
-  const allExpanded = useMemo(() => {
-    const allExpandableIds = [
-      ...(data?.sprints?.documents || []).map((s) => (s as { $id: string }).$id),
-      ...allTimelineItems.map((i: TimelineItem) => i.id),
-    ];
-    return allExpandableIds.every(id => expandedItems.has(id));
-  }, [data, allTimelineItems, expandedItems]);
-
-  // Handlers
-  const handleToggleExpandAll = useCallback(() => {
-    if (allExpanded) {
-      collapseAll();
-    } else {
-      const allIds = [
-        ...(data?.sprints?.documents || []).map((s) => (s as { $id: string }).$id),
-        ...allTimelineItems.map((i: TimelineItem) => i.id),
-      ];
-      setExpanded(allIds);
-    }
-  }, [allExpanded, data, allTimelineItems, setExpanded, collapseAll]);
-
-  const handleCenterToday = useCallback(() => {
-    if (scrollContainerRef.current) {
-      const todayX = dateToPixel(new Date(), gridConfig);
-      scrollContainerRef.current.scrollLeft =
-        todayX - scrollContainerRef.current.clientWidth / 2;
-    }
-  }, [gridConfig]);
-
-  const handleItemUpdate = useCallback(
-    (itemId: string, updates: Record<string, unknown>) => {
-      updateItem({ 
-        param: { workItemId: itemId },
-        json: updates 
+  // Fetch sprints - use enabled to control when query runs
+  const { data: sprintsData, isLoading: isLoadingSprints, error: sprintsError } = useQuery({
+    queryKey: ["sprints", workspaceId, projectId],
+    queryFn: async () => {
+      const response = await client.api.sprints.$get({
+        query: {
+          workspaceId,
+          projectId: projectId!,
+        },
       });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch sprints");
+      }
+
+      const result = await response.json();
+      return result.data;
     },
-    [updateItem]
-  );
+    enabled: !!projectId,
+  });
 
-  // Loading and error states
-  if (isLoading) {
-    return <PageLoader />;
-  }
+  // Fetch work items - include children for timeline visualization
+  const { data: workItemsData, isLoading: isLoadingWorkItems, error: workItemsError } = useQuery({
+    queryKey: ["work-items", workspaceId, projectId, "timeline"],
+    queryFn: async () => {
+      const response = await client.api["work-items"].$get({
+        query: {
+          workspaceId,
+          projectId: projectId!,
+          includeChildren: "true",
+        },
+      });
 
-  if (error) {
-    return <PageError message="Failed to load timeline data" />;
-  }
+      if (!response.ok) {
+        throw new Error("Failed to fetch work items");
+      }
 
-  return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <TimelineHeader
-        filters={filters}
-        onFiltersChange={setFilters}
-        onResetFilters={resetFilters}
-        zoomLevel={zoomLevel}
-        onZoomChange={setZoomLevel}
-        onToggleExpandAll={handleToggleExpandAll}
-        allExpanded={allExpanded}
-        onCenterToday={handleCenterToday}
-        epics={epics}
-        labels={labels}
-        allItems={flatItems}
-      />
+      const result = await response.json();
+      return result.data;
+    },
+    enabled: !!projectId,
+  });
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Work Tree Sidebar */}
-        <TimelineWorkTree
-          sprintGroups={sprintGroups}
-          selectedItemId={selectedItemId}
-          onItemClick={setSelectedItemId}
-          onToggleExpanded={toggleExpanded}
-        />
+  // Process the data once both are loaded
+  const processedData = useMemo(() => {
+    if (!sprintsData || !workItemsData) return null;
 
-        {/* Timeline Grid */}
-        <div
-          ref={scrollContainerRef}
-          className="flex-1 overflow-auto bg-muted/10"
-        >
-          <TimelineGrid
-            items={flatItems}
-            gridConfig={gridConfig}
-            zoomLevel={zoomLevel}
-            selectedItemId={selectedItemId}
-            onItemClick={setSelectedItemId}
-            onItemUpdate={handleItemUpdate}
-            scrollContainerRef={scrollContainerRef}
-          />
-        </div>
+    const timelineData = {
+      sprints: sprintsData,
+      workItems: workItemsData,
+    };
 
-        {/* Details Panel */}
-        {selectedItem && (
-          <TimelineDetailsPanel
-            item={selectedItem}
-            onClose={() => setSelectedItemId(null)}
-            onUpdate={handleItemUpdate}
-          />
-        )}
+    return processTimelineData(timelineData, TimelineZoomLevel.WEEKS);
+  }, [sprintsData, workItemsData]);
+
+  // If no projectId is provided, show a message
+  if (!projectId) {
+    return (
+      <div className="h-full w-full flex items-center justify-center">
+        <PageError message="Please select a project to view the timeline" />
       </div>
+    );
+  }
+
+  // Loading state
+  if (isLoadingSprints || isLoadingWorkItems) {
+    return (
+      <div className="h-full w-full flex items-center justify-center">
+        <PageLoader />
+      </div>
+    );
+  }
+
+  // Error state
+  if (sprintsError || workItemsError) {
+    return (
+      <div className="h-full w-full flex items-center justify-center">
+        <PageError message="Failed to load timeline data" />
+      </div>
+    );
+  }
+
+  // No data state
+  if (!processedData || !sprintsData || !workItemsData) {
+    return (
+      <div className="h-full w-full flex items-center justify-center">
+        <PageError message="No timeline data available" />
+      </div>
+    );
+  }
+
+  // Render the timeline
+  return (
+    <div className="h-[calc(100vh-200px)]">
+      <TimelineClient
+        initialData={processedData}
+        sprints={sprintsData.documents}
+        workItems={workItemsData.documents}
+      />
     </div>
   );
 }

@@ -1,35 +1,52 @@
 "use client";
 
-import React, { useMemo, useRef, useCallback } from "react";
+import React, { useMemo, useRef, useCallback, useTransition } from "react";
 import { useTimelineState } from "@/features/timeline/hooks/use-timeline-store";
-import { useGetTimelineData } from "@/features/timeline/api/use-get-timeline-data";
 import { useUpdateTimelineItem } from "@/features/timeline/api/use-update-timeline-item";
 import { TimelineHeader } from "@/features/timeline/components/timeline-header";
 import { TimelineWorkTree } from "@/features/timeline/components/timeline-work-tree";
 import { TimelineGrid } from "@/features/timeline/components/timeline-grid";
 import { TimelineDetailsPanel } from "@/features/timeline/components/timeline-details-panel";
 import {
-  groupItemsBySprintAndEpic,
   filterTimelineItems,
   flattenTimelineItems,
   calculateTimelineRange,
-  extractLabels,
-  workItemToTimelineItem,
   dateToPixel,
+  groupItemsBySprintAndEpic,
 } from "@/features/timeline/utils";
 import {
   TimelineGridConfig,
   TimelineItem,
   ZOOM_CONFIGS,
+  TimelineSprintGroup,
 } from "@/features/timeline/types";
-import { WorkItemType } from "@/features/sprints/types";
-import { PageLoader } from "@/components/page-loader";
-import { PageError } from "@/components/page-error";
-import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
+import { PopulatedWorkItem, PopulatedSprint } from "@/features/sprints/types";
 
-export default function TimelinePage() {
-  const workspaceId = useWorkspaceId();
+interface TimelineClientProps {
+  initialData: {
+    allTimelineItems: TimelineItem[];
+    sprintGroups: TimelineSprintGroup[];
+    flatItems: TimelineItem[];
+    gridConfig: TimelineGridConfig;
+    epics: TimelineItem[];
+    labels: string[];
+    expandedItems: string[];
+  };
+  sprints: PopulatedSprint[];
+  workItems: PopulatedWorkItem[];
+}
+
+/**
+ * Client-side interactive timeline component
+ * Handles user interactions while working with server-provided data
+ */
+export function TimelineClient({
+  initialData,
+  sprints,
+  workItems,
+}: TimelineClientProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isPending, startTransition] = useTransition();
 
   // State management
   const timelineState = useTimelineState();
@@ -47,69 +64,41 @@ export default function TimelinePage() {
     setExpanded,
   } = timelineState;
 
-  // Fetch data
-  const { data, isLoading, error } = useGetTimelineData({ workspaceId });
   const { mutate: updateItem } = useUpdateTimelineItem();
 
-  // Auto-expand all sprints and unscheduled items on initial load
+  // Initialize expanded items from server data
   React.useEffect(() => {
-    const sprints = data?.sprints?.documents || [];
-    const workItems = data?.workItems?.documents || [];
-    
-    if (sprints.length >= 0 && workItems.length >= 0 && expandedItems.size === 0) {
-      const sprintIds = sprints.map((s) => (s as { $id: string }).$id);
-      const noEpicGroups = ['unscheduled', 'no-epic-unscheduled', ...sprintIds.map((id: string) => `no-epic-${id}`)];
-      setExpanded([...sprintIds, ...noEpicGroups]);
+    if (expandedItems.size === 0 && initialData.expandedItems.length > 0) {
+      setExpanded(initialData.expandedItems);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data?.sprints, data?.workItems]);
+  }, [initialData.expandedItems]);
 
-  // Convert work items to timeline items
-  const allTimelineItems = useMemo(() => {
-    const workItems = data?.workItems?.documents || [];
-    if (workItems.length === 0) return [];
-    return workItems.map((item) =>
-      workItemToTimelineItem(item as never, 0, expandedItems)
-    );
-  }, [data?.workItems, expandedItems]);
-
-  // Group by sprints and epics
+  // Recompute groups when expansion changes (lightweight client-side operation)
   const sprintGroups = useMemo(() => {
-    const sprints = data?.sprints?.documents || [];
-    const workItems = data?.workItems?.documents || [];
-    
-    if (sprints.length === 0 && workItems.length === 0) return [];
-    
-    const groups = groupItemsBySprintAndEpic(
-      sprints as never,
-      workItems as never,
-      expandedItems
-    );
-    
-    return groups;
-  }, [data?.sprints, data?.workItems, expandedItems]);
+    return groupItemsBySprintAndEpic(sprints, workItems, expandedItems);
+  }, [sprints, workItems, expandedItems]);
 
-  // Filter items
+  // Filter items based on current filters
   const filteredItems = useMemo(() => {
-    return filterTimelineItems(allTimelineItems, filters);
-  }, [allTimelineItems, filters]);
+    return filterTimelineItems(initialData.allTimelineItems, filters);
+  }, [initialData.allTimelineItems, filters]);
 
-  // Flatten for grid rendering
+  // Flatten for grid rendering and remove duplicates by id to keep React keys stable
   const flatItems = useMemo(() => {
-    return flattenTimelineItems(sprintGroups);
+    const flattened = flattenTimelineItems(sprintGroups);
+    const unique = new Map<string, TimelineItem>();
+
+    flattened.forEach((item) => {
+      if (!unique.has(item.id)) {
+        unique.set(item.id, item);
+      }
+    });
+
+    return Array.from(unique.values());
   }, [sprintGroups]);
 
-  // Get epics for filter dropdown
-  const epics = useMemo(() => {
-    return allTimelineItems.filter((item: TimelineItem) => item.type === WorkItemType.EPIC);
-  }, [allTimelineItems]);
-
-  // Get all labels
-  const labels = useMemo(() => {
-    return extractLabels(allTimelineItems);
-  }, [allTimelineItems]);
-
-  // Calculate timeline range and grid config
+  // Recalculate grid config when zoom changes
   const gridConfig: TimelineGridConfig = useMemo(() => {
     const range = calculateTimelineRange(filteredItems, zoomLevel);
     const config = ZOOM_CONFIGS[zoomLevel];
@@ -126,30 +115,42 @@ export default function TimelinePage() {
   // Get selected item details
   const selectedItem = useMemo(() => {
     if (!selectedItemId) return null;
-    return allTimelineItems.find((item: TimelineItem) => item.id === selectedItemId) || null;
-  }, [selectedItemId, allTimelineItems]);
+    return (
+      initialData.allTimelineItems.find(
+        (item: TimelineItem) => item.id === selectedItemId
+      ) || null
+    );
+  }, [selectedItemId, initialData.allTimelineItems]);
 
   // Check if all items are expanded
   const allExpanded = useMemo(() => {
     const allExpandableIds = [
-      ...(data?.sprints?.documents || []).map((s) => (s as { $id: string }).$id),
-      ...allTimelineItems.map((i: TimelineItem) => i.id),
+      ...sprints.map((s) => s.$id),
+      ...initialData.allTimelineItems.map((i: TimelineItem) => i.id),
     ];
-    return allExpandableIds.every(id => expandedItems.has(id));
-  }, [data, allTimelineItems, expandedItems]);
+    return allExpandableIds.every((id) => expandedItems.has(id));
+  }, [sprints, initialData.allTimelineItems, expandedItems]);
 
   // Handlers
   const handleToggleExpandAll = useCallback(() => {
-    if (allExpanded) {
-      collapseAll();
-    } else {
-      const allIds = [
-        ...(data?.sprints?.documents || []).map((s) => (s as { $id: string }).$id),
-        ...allTimelineItems.map((i: TimelineItem) => i.id),
-      ];
-      setExpanded(allIds);
-    }
-  }, [allExpanded, data, allTimelineItems, setExpanded, collapseAll]);
+    startTransition(() => {
+      if (allExpanded) {
+        collapseAll();
+      } else {
+        const allIds = [
+          ...sprints.map((s) => s.$id),
+          ...initialData.allTimelineItems.map((i: TimelineItem) => i.id),
+        ];
+        setExpanded(allIds);
+      }
+    });
+  }, [
+    allExpanded,
+    sprints,
+    initialData.allTimelineItems,
+    setExpanded,
+    collapseAll,
+  ]);
 
   const handleCenterToday = useCallback(() => {
     if (scrollContainerRef.current) {
@@ -161,22 +162,13 @@ export default function TimelinePage() {
 
   const handleItemUpdate = useCallback(
     (itemId: string, updates: Record<string, unknown>) => {
-      updateItem({ 
+      updateItem({
         param: { workItemId: itemId },
-        json: updates 
+        json: updates,
       });
     },
     [updateItem]
   );
-
-  // Loading and error states
-  if (isLoading) {
-    return <PageLoader />;
-  }
-
-  if (error) {
-    return <PageError message="Failed to load timeline data" />;
-  }
 
   return (
     <div className="h-screen flex flex-col">
@@ -190,8 +182,8 @@ export default function TimelinePage() {
         onToggleExpandAll={handleToggleExpandAll}
         allExpanded={allExpanded}
         onCenterToday={handleCenterToday}
-        epics={epics}
-        labels={labels}
+        epics={initialData.epics}
+        labels={initialData.labels}
         allItems={flatItems}
       />
 
@@ -230,6 +222,13 @@ export default function TimelinePage() {
           />
         )}
       </div>
+
+      {/* Loading overlay */}
+      {isPending && (
+        <div className="absolute inset-0 bg-background/50 flex items-center justify-center pointer-events-none">
+          <div className="text-sm text-muted-foreground">Updating...</div>
+        </div>
+      )}
     </div>
   );
 }

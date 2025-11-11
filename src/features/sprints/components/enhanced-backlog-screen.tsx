@@ -64,6 +64,8 @@ import { useGetEpics } from "../api/use-get-epics";
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { SprintStatus, WorkItemStatus, WorkItemPriority, WorkItemType } from "../types";
 import type { PopulatedWorkItem } from "../types";
+import { UpdateSprintDatesDialog } from "./update-sprint-dates-dialog";
+import { SubtasksList } from "@/features/subtasks/components";
 
 interface EnhancedBacklogScreenProps {
   workspaceId: string;
@@ -82,6 +84,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   const [editingSprintName, setEditingSprintName] = useState("");
   const [editingWorkItemId, setEditingWorkItemId] = useState<string | null>(null);
   const [editingWorkItemTitle, setEditingWorkItemTitle] = useState("");
+  const [dateDialogSprintId, setDateDialogSprintId] = useState<string | null>(null);
 
   // API Hooks
   const { data: sprintsData } = useGetSprints({ workspaceId, projectId });
@@ -435,7 +438,10 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                 {format(new Date(sprint.startDate), "d MMM")} – {format(new Date(sprint.endDate), "d MMM")}
                               </span>
                             ) : (
-                              <button className="text-xs text-blue-600 hover:underline flex items-center gap-1">
+                              <button 
+                                className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                                onClick={() => setDateDialogSprintId(sprint.$id)}
+                              >
                                 <Calendar className="w-3 h-3" />
                                 Add dates
                               </button>
@@ -1189,9 +1195,10 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                   </TabsContent>
 
                   <TabsContent value="subtasks" className="mt-4">
-                    <div className="text-sm text-muted-foreground">
-                      Subtasks feature coming soon...
-                    </div>
+                    <SubtasksList 
+                      workItemId={selectedItem.$id} 
+                      workspaceId={workspaceId} 
+                    />
                   </TabsContent>
 
                   <TabsContent value="comments" className="mt-4">
@@ -1210,6 +1217,15 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
             )}
           </SheetContent>
         </Sheet>
+
+        {/* Update Sprint Dates Dialog */}
+        {dateDialogSprintId && (
+          <UpdateSprintDatesDialog
+            sprint={sprints.find(s => s.$id === dateDialogSprintId)!}
+            open={!!dateDialogSprintId}
+            onOpenChange={(open) => !open && setDateDialogSprintId(null)}
+          />
+        )}
       </div>
     </DragDropContext>
   );

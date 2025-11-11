@@ -30,15 +30,37 @@ export function calculateProgress(item: PopulatedWorkItem): number {
 export function workItemToTimelineItem(
   item: PopulatedWorkItem,
   level: number = 0,
-  expandedItems: Set<string> = new Set()
+  expandedItems: Set<string> = new Set(),
+  sprint?: { startDate?: string; endDate?: string } | null
 ): TimelineItem {
   const progress = calculateProgress(item);
   const isExpanded = expandedItems.has(item.$id);
 
-  // For tasks: dueDate is the start date, endDate is the end date
-  // For work items: dueDate is the due date
-  const startDate = item.startDate || item.dueDate;
-  const endDate = item.endDate || item.dueDate;
+  // Work items only have dueDate in Appwrite, not startDate/endDate
+  // For timeline display, use sprint dates or create synthetic dates
+  let startDate: string | undefined;
+  let dueDate: string | undefined;
+
+  if (item.dueDate) {
+    // Work item has a specific due date
+    const due = parseISO(item.dueDate);
+    // Calculate start date as 7 days before due date (or use estimated hours if available)
+    const estimatedDays = item.estimatedHours ? Math.max(1, Math.ceil(item.estimatedHours / 8)) : 7;
+    const start = addDays(due, -estimatedDays);
+    startDate = format(start, "yyyy-MM-dd");
+    dueDate = item.dueDate;
+  } else if (sprint?.startDate && sprint?.endDate) {
+    // No due date but item is in a sprint - use sprint dates
+    startDate = sprint.startDate;
+    dueDate = sprint.endDate;
+  } else {
+    // No due date and no sprint - use current date + 7 days as default
+    const now = new Date();
+    const defaultDue = addDays(now, 7);
+    const defaultStart = now;
+    startDate = format(defaultStart, "yyyy-MM-dd");
+    dueDate = format(defaultDue, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+  }
 
   return {
     id: item.$id,
@@ -49,8 +71,8 @@ export function workItemToTimelineItem(
     priority: item.priority,
     assigneeIds: item.assigneeIds,
     assignees: item.assignees,
-    startDate: startDate ? format(parseISO(startDate), "yyyy-MM-dd") : undefined,
-    dueDate: endDate,
+    startDate,
+    dueDate,
     estimatedHours: item.estimatedHours,
     labels: item.labels,
     description: item.description,
@@ -58,7 +80,7 @@ export function workItemToTimelineItem(
     sprintId: item.sprintId,
     epicId: item.epicId,
     parentId: item.parentId,
-    children: isExpanded && item.children ? item.children.map((child) => workItemToTimelineItem(child, level + 1, expandedItems)) : undefined,
+    children: isExpanded && item.children ? item.children.map((child) => workItemToTimelineItem(child, level + 1, expandedItems, sprint)) : undefined,
     childrenCount: item.childrenCount || 0,
     isExpanded,
     level,
@@ -140,28 +162,72 @@ export function groupItemsBySprintAndEpic(
 
   // Then add regular sprint groups
   const sprintGroups = sprints.map((sprint) => {
-    // Get all epics in this sprint
-    const epicsInSprint = itemsWithSprint.filter(
+    // Get all epics that are physically in this sprint
+    const epicsInThisSprint = itemsWithSprint.filter(
       (item) => item.sprintId === sprint.$id && item.type === WorkItemType.EPIC
     );
 
-    const epicGroups: TimelineEpicGroup[] = epicsInSprint.map((epic) => {
-      const epicTasks = itemsWithSprint.filter((item) => item.epicId === epic.$id);
-      
-      return {
-        epic: workItemToTimelineItem(epic, 1, expandedItems),
-        tasks: epicTasks.map((task) => workItemToTimelineItem(task, 2, expandedItems)),
-        isExpanded: expandedItems.has(epic.$id),
-      };
-    });
-
-    // Get all non-epic items in this sprint without an epic
-    const tasksInSprint = itemsWithSprint.filter(
-      (item) => item.sprintId === sprint.$id && item.type !== WorkItemType.EPIC && !item.epicId
+    // Get all tasks in this sprint (non-epic work items)
+    const tasksInThisSprint = itemsWithSprint.filter(
+      (item) => item.sprintId === sprint.$id && item.type !== WorkItemType.EPIC
     );
 
-    // Add standalone tasks in sprint to a "No Epic" group
-    if (tasksInSprint.length > 0) {
+    // Group tasks by their epicId
+    const tasksByEpicId = new Map<string | undefined, PopulatedWorkItem[]>();
+    
+    tasksInThisSprint.forEach((task) => {
+      const epicId = task.epicId || undefined;
+      if (!tasksByEpicId.has(epicId)) {
+        tasksByEpicId.set(epicId, []);
+      }
+      tasksByEpicId.get(epicId)!.push(task);
+    });
+
+    const epicGroups: TimelineEpicGroup[] = [];
+    const processedEpicIds = new Set<string>();
+
+    // First, process epics that have tasks in this sprint
+    tasksByEpicId.forEach((tasks, epicId) => {
+      if (!epicId) {
+        // Tasks with no epic - we'll handle these later
+        return;
+      }
+
+      processedEpicIds.add(epicId);
+
+      // First try to find the epic in this sprint
+      let epicItem = epicsInThisSprint.find((item) => item.$id === epicId);
+
+      // If epic is not in this sprint, try to find it in all workItems
+      if (!epicItem) {
+        epicItem = workItems.find(
+          (item) => item.$id === epicId && item.type === WorkItemType.EPIC
+        );
+      }
+
+      if (epicItem) {
+        epicGroups.push({
+          epic: workItemToTimelineItem(epicItem, 1, expandedItems, sprint),
+          tasks: tasks.map((task) => workItemToTimelineItem(task, 2, expandedItems, sprint)),
+          isExpanded: expandedItems.has(epicId),
+        });
+      }
+    });
+
+    // Then, add epics that are in this sprint but have no tasks (standalone epics)
+    epicsInThisSprint.forEach((epic) => {
+      if (!processedEpicIds.has(epic.$id)) {
+        epicGroups.push({
+          epic: workItemToTimelineItem(epic, 1, expandedItems, sprint),
+          tasks: [],
+          isExpanded: expandedItems.has(epic.$id),
+        });
+      }
+    });
+
+    // Finally, add tasks with no epic to "No Epic" group
+    const tasksWithoutEpic = tasksByEpicId.get(undefined);
+    if (tasksWithoutEpic && tasksWithoutEpic.length > 0) {
       epicGroups.push({
         epic: {
           id: `no-epic-${sprint.$id}`,
@@ -175,7 +241,7 @@ export function groupItemsBySprintAndEpic(
           level: 1,
           isExpanded: expandedItems.has(`no-epic-${sprint.$id}`),
         } as TimelineItem,
-        tasks: tasksInSprint.map((task) => workItemToTimelineItem(task, 2, expandedItems)),
+        tasks: tasksWithoutEpic.map((task) => workItemToTimelineItem(task, 2, expandedItems, sprint)),
         isExpanded: expandedItems.has(`no-epic-${sprint.$id}`),
       });
     }

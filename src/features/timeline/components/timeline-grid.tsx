@@ -5,6 +5,8 @@ import {
   TimelineZoomLevel,
   ZOOM_CONFIGS,
   STATUS_COLORS,
+  TYPE_COLORS,
+  PRIORITY_COLORS,
   DragState,
 } from "../types";
 import {
@@ -379,21 +381,28 @@ function TaskBar({
   onClick,
   onMouseDown,
 }: TaskBarProps) {
-  // Provide a fallback status color in case status is undefined or invalid
+  // Use TYPE_COLORS for more professional look based on work item type
+  const typeStyle = TYPE_COLORS[item.type] || TYPE_COLORS.TASK;
+  const priorityStyle = PRIORITY_COLORS[item.priority] || PRIORITY_COLORS.MEDIUM;
   const statusStyle = STATUS_COLORS[item.status] || STATUS_COLORS.TODO;
+  
+  // Use different visual treatment based on status
+  const isDone = item.status === "DONE";
   const isInProgress = item.status === "IN_PROGRESS";
+  const isBlocked = item.status === "BLOCKED";
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <div
           className={cn(
-            "absolute rounded-sm cursor-pointer transition-all group shadow-sm",
-            statusStyle.bg,
-            "border-l-4",
-            statusStyle.border,
-            isSelected && "ring-2 ring-blue-500 ring-offset-1",
-            "hover:shadow-md hover:brightness-95"
+            "absolute rounded cursor-pointer transition-all group border-l-[3px]",
+            typeStyle.bg,
+            typeStyle.border,
+            isSelected && "ring-2 ring-blue-500 ring-offset-1 z-10",
+            isDone && "opacity-70",
+            isBlocked && "border-l-rose-500 border-dashed",
+            "hover:shadow-lg hover:z-20 hover:scale-[1.02]"
           )}
           style={{
             left: x,
@@ -405,28 +414,63 @@ function TaskBar({
           onMouseDown={(e) => onMouseDown(e, item, "move")}
         >
           {/* Progress fill for in-progress items */}
-          {isInProgress && (
+          {isInProgress && item.progress > 0 && (
             <div
-              className="absolute inset-0 bg-violet-400/30 rounded-l-sm transition-all"
+              className={cn("absolute inset-0 rounded-l transition-all", typeStyle.accent, "opacity-20")}
               style={{ width: `${item.progress}%` }}
             />
           )}
 
-          {/* Content - Jira style with key displayed */}
-          <div className="absolute inset-0 flex items-center px-2 text-xs font-medium truncate">
-            <span className="truncate font-mono">{item.key}</span>
+          {/* Priority indicator dot */}
+          <div
+            className={cn(
+              "absolute top-1 right-1 w-1.5 h-1.5 rounded-full",
+              priorityStyle.dot,
+              item.priority === "URGENT" && "animate-pulse"
+            )}
+          />
+
+          {/* Content - Professional style with key and title */}
+          <div className="absolute inset-0 flex items-center px-2.5 gap-1.5">
+            <span className={cn("text-[11px] font-semibold tracking-tight truncate", typeStyle.text)}>
+              {item.key}
+            </span>
+            {width > 80 && (
+              <span className="text-[10px] text-white/80 truncate flex-1">
+                {item.title}
+              </span>
+            )}
           </div>
 
-          {/* Resize handles - subtle like Jira */}
+          {/* Done checkmark overlay */}
+          {isDone && (
+            <div className="absolute inset-0 flex items-center justify-center bg-emerald-500/10 rounded">
+              <svg
+                className="w-4 h-4 text-emerald-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+          )}
+
+          {/* Resize handles - subtle and professional */}
           <div
-            className="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize opacity-0 group-hover:opacity-100 hover:bg-gray-900/20 transition-opacity"
+            className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize opacity-0 group-hover:opacity-100 hover:bg-gray-900/20 transition-opacity rounded-l"
             onMouseDown={(e) => {
               e.stopPropagation();
               onMouseDown(e, item, "resize-start");
             }}
           />
           <div
-            className="absolute right-0 top-0 bottom-0 w-1 cursor-ew-resize opacity-0 group-hover:opacity-100 hover:bg-gray-900/20 transition-opacity"
+            className="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize opacity-0 group-hover:opacity-100 hover:bg-gray-900/20 transition-opacity rounded-r"
             onMouseDown={(e) => {
               e.stopPropagation();
               onMouseDown(e, item, "resize-end");
@@ -434,18 +478,49 @@ function TaskBar({
           />
         </div>
       </TooltipTrigger>
-      <TooltipContent>
-        <div className="space-y-1">
-          <div className="font-semibold">{item.key}: {item.title}</div>
-          <div className="text-xs text-muted-foreground">
+      <TooltipContent side="top" className="max-w-sm">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2">
+            <span className={cn("text-xs font-mono font-semibold", typeStyle.text)}>{item.key}</span>
+            <span className="text-xs text-muted-foreground">{item.type}</span>
+          </div>
+          <div className="font-medium text-sm">{item.title}</div>
+          <div className="text-xs text-muted-foreground flex items-center gap-1">
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
             {item.startDate && format(new Date(item.startDate), "MMM d")} - {item.dueDate && format(new Date(item.dueDate), "MMM d, yyyy")}
           </div>
           {item.assignees && item.assignees.length > 0 && (
-            <div className="text-xs">
-              Assigned to: {item.assignees.map((a) => a.name).join(", ")}
+            <div className="text-xs flex items-center gap-1">
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              {item.assignees.map((a) => a.name).join(", ")}
             </div>
           )}
-          <div className="text-xs">Progress: {item.progress}%</div>
+          <div className="flex items-center gap-3 text-xs">
+            <span className={cn("px-1.5 py-0.5 rounded", statusStyle.bg, statusStyle.text)}>
+              {item.status.replace(/_/g, " ")}
+            </span>
+            <span className={cn("px-1.5 py-0.5 rounded", priorityStyle.bg, priorityStyle.text)}>
+              {item.priority}
+            </span>
+          </div>
+          {isInProgress && (
+            <div className="text-xs">
+              <div className="flex items-center justify-between mb-1">
+                <span>Progress</span>
+                <span className="font-medium">{item.progress}%</span>
+              </div>
+              <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className={cn("h-full transition-all", typeStyle.accent)}
+                  style={{ width: `${item.progress}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </TooltipContent>
     </Tooltip>

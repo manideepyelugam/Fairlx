@@ -13,6 +13,7 @@ import {
 import { usePathname } from "next/navigation";
 
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
+import { useProjectId } from "@/features/projects/hooks/use-project-id";
 
 const routes = [
   {
@@ -67,14 +68,18 @@ const routes = [
 
 export const Navigation = () => {
   const workspaceId = useWorkspaceId();
+  const projectId = useProjectId();
   const pathname = usePathname();
 
   return (
     <div className="p-3 border-b-[1.5px] border-neutral-200 flex-shrink-0">
       <ul className="flex flex-col ">
         {routes.map((item) => {
-          const fullHref = `/workspaces/${workspaceId}${item.href}`;
-          const isActive = pathname === fullHref;
+          // For timeline, pass workspaceId and projectId (if available) as search params for SSR
+          const fullHref = item.href === "/timeline" 
+            ? `/workspaces/${workspaceId}${item.href}?workspaceId=${workspaceId}${projectId ? `&projectId=${projectId}` : ""}`
+            : `/workspaces/${workspaceId}${item.href}`;
+          const isActive = pathname === `/workspaces/${workspaceId}${item.href}`;
           const Icon = isActive ? item.activeIcon : item.icon;
 
           return (

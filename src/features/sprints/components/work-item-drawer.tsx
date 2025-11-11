@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import {
-  X,
   MoreHorizontal,
   Calendar,
   Tag as TagIcon,
@@ -45,11 +44,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { PopulatedWorkItem, WorkItemStatus } from "../types";
+import { SubtasksList } from "@/features/subtasks/components";
 
 interface WorkItemDrawerProps {
   workItem: PopulatedWorkItem | null;
   open: boolean;
-  onClose: () => void;
+  onCloseAction: () => void;
   onUpdate?: (workItemId: string, updates: Partial<PopulatedWorkItem>) => void;
   onDelete?: (workItemId: string) => void;
 }
@@ -57,7 +57,7 @@ interface WorkItemDrawerProps {
 export const WorkItemDrawer = ({
   workItem,
   open,
-  onClose,
+  onCloseAction,
   onUpdate,
   onDelete,
 }: WorkItemDrawerProps) => {
@@ -65,8 +65,6 @@ export const WorkItemDrawer = ({
   const [description, setDescription] = useState(workItem?.description || "");
   const [status, setStatus] = useState(workItem?.status || WorkItemStatus.TODO);
   const [storyPoints, setStoryPoints] = useState(workItem?.storyPoints?.toString() || "");
-  const [subtasks, setSubtasks] = useState<Array<{ id: string; title: string; completed: boolean }>>([]);
-  const [newSubtask, setNewSubtask] = useState("");
   const [comments, setComments] = useState<Array<{ id: string; author: string; text: string; date: string }>>([]);
   const [newComment, setNewComment] = useState("");
 
@@ -81,36 +79,14 @@ export const WorkItemDrawer = ({
         storyPoints: storyPoints ? parseInt(storyPoints) : undefined,
       });
     }
-    onClose();
+    onCloseAction();
   };
 
   const handleDelete = () => {
     if (onDelete && confirm("Are you sure you want to delete this work item?")) {
       onDelete(workItem.$id);
-      onClose();
+      onCloseAction();
     }
-  };
-
-  const handleAddSubtask = () => {
-    if (newSubtask.trim()) {
-      setSubtasks([
-        ...subtasks,
-        {
-          id: `subtask-${Date.now()}`,
-          title: newSubtask,
-          completed: false,
-        },
-      ]);
-      setNewSubtask("");
-    }
-  };
-
-  const handleToggleSubtask = (id: string) => {
-    setSubtasks(
-      subtasks.map((st) =>
-        st.id === id ? { ...st, completed: !st.completed } : st
-      )
-    );
   };
 
   const handleAddComment = () => {
@@ -128,11 +104,8 @@ export const WorkItemDrawer = ({
     }
   };
 
-  const completedSubtasks = subtasks.filter((st) => st.completed).length;
-  const subtaskProgress = subtasks.length > 0 ? (completedSubtasks / subtasks.length) * 100 : 0;
-
   return (
-    <Sheet open={open} onOpenChange={onClose}>
+    <Sheet open={open} onOpenChange={onCloseAction}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
         {/* Header */}
         <SheetHeader className="space-y-4">
@@ -200,14 +173,7 @@ export const WorkItemDrawer = ({
           <TabsList className="w-full justify-start">
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="description">Description</TabsTrigger>
-            <TabsTrigger value="subtasks">
-              Subtasks
-              {subtasks.length > 0 && (
-                <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">
-                  {completedSubtasks}/{subtasks.length}
-                </Badge>
-              )}
-            </TabsTrigger>
+            <TabsTrigger value="subtasks">Subtasks</TabsTrigger>
             <TabsTrigger value="links">Links</TabsTrigger>
             <TabsTrigger value="comments">
               Comments
@@ -349,63 +315,10 @@ export const WorkItemDrawer = ({
 
           {/* Subtasks Tab */}
           <TabsContent value="subtasks" className="space-y-4 mt-6">
-            {subtasks.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    {completedSubtasks} of {subtasks.length} completed
-                  </span>
-                  <span className="text-muted-foreground">{Math.round(subtaskProgress)}%</span>
-                </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary transition-all"
-                    style={{ width: `${subtaskProgress}%` }}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              {subtasks.map((subtask) => (
-                <div key={subtask.id} className="flex items-center gap-2 p-2 rounded hover:bg-muted/50">
-                  <input
-                    type="checkbox"
-                    checked={subtask.completed}
-                    onChange={() => handleToggleSubtask(subtask.id)}
-                    className="size-4 rounded"
-                  />
-                  <span
-                    className={`text-sm flex-1 ${
-                      subtask.completed ? "line-through text-muted-foreground" : ""
-                    }`}
-                  >
-                    {subtask.title}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0"
-                    onClick={() => setSubtasks(subtasks.filter((st) => st.id !== subtask.id))}
-                  >
-                    <X className="size-3" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex gap-2">
-              <Input
-                value={newSubtask}
-                onChange={(e) => setNewSubtask(e.target.value)}
-                placeholder="Add a subtask..."
-                className="h-9 text-sm"
-                onKeyDown={(e) => e.key === "Enter" && handleAddSubtask()}
-              />
-              <Button onClick={handleAddSubtask} size="sm" className="h-9">
-                <Plus className="size-4" />
-              </Button>
-            </div>
+            <SubtasksList 
+              workItemId={workItem.$id} 
+              workspaceId={workItem.workspaceId} 
+            />
           </TabsContent>
 
           {/* Links Tab */}
@@ -465,7 +378,7 @@ export const WorkItemDrawer = ({
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 pt-6 border-t mt-6">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onCloseAction}>
             Cancel
           </Button>
           <Button onClick={handleSave}>Save changes</Button>

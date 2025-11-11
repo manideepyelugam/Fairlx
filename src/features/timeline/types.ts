@@ -104,9 +104,52 @@ export const ZOOM_CONFIGS: Record<TimelineZoomLevel, { dayWidth: number; label: 
 };
 
 export const STATUS_COLORS: Record<WorkItemStatus, { bg: string; text: string; border: string }> = {
-  [WorkItemStatus.TODO]: { bg: "bg-gray-100", text: "text-gray-800", border: "border-l-gray-400" },
-  [WorkItemStatus.IN_PROGRESS]: { bg: "bg-blue-100", text: "text-blue-800", border: "border-l-blue-500" },
-  [WorkItemStatus.IN_REVIEW]: { bg: "bg-purple-100", text: "text-purple-800", border: "border-l-purple-500" },
-  [WorkItemStatus.DONE]: { bg: "bg-green-100", text: "text-green-800", border: "border-l-green-500" },
-  [WorkItemStatus.BLOCKED]: { bg: "bg-red-100", text: "text-red-800", border: "border-l-red-500" },
+  [WorkItemStatus.TODO]: { bg: "bg-slate-50", text: "text-slate-700", border: "border-l-slate-400" },
+  [WorkItemStatus.IN_PROGRESS]: { bg: "bg-blue-50", text: "text-blue-700", border: "border-l-blue-500" },
+  [WorkItemStatus.IN_REVIEW]: { bg: "bg-purple-50", text: "text-purple-700", border: "border-l-purple-500" },
+  [WorkItemStatus.DONE]: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-l-emerald-500" },
+  [WorkItemStatus.BLOCKED]: { bg: "bg-rose-50", text: "text-rose-700", border: "border-l-rose-500" },
 };
+
+// Professional colors for different work item types
+export const TYPE_COLORS: Record<WorkItemType, { bg: string; text: string; border: string; accent: string }> = {
+  [WorkItemType.EPIC]: {
+    bg: "bg-gradient-to-r from-violet-600/95 via-violet-500/85 to-violet-400/80",
+    text: "text-white",
+    border: "border border-white/10 border-l-white/60",
+    accent: "bg-white/40",
+  },
+  [WorkItemType.STORY]: {
+    bg: "bg-gradient-to-r from-emerald-600/95 via-emerald-500/85 to-emerald-400/80",
+    text: "text-white",
+    border: "border border-white/10 border-l-white/60",
+    accent: "bg-white/40",
+  },
+  [WorkItemType.TASK]: {
+    bg: "bg-gradient-to-r from-blue-600/95 via-blue-500/85 to-blue-400/80",
+    text: "text-white",
+    border: "border border-white/10 border-l-white/60",
+    accent: "bg-white/35",
+  },
+  [WorkItemType.BUG]: {
+    bg: "bg-gradient-to-r from-rose-600/95 via-rose-500/85 to-rose-400/80",
+    text: "text-white",
+    border: "border border-white/10 border-l-white/60",
+    accent: "bg-white/35",
+  },
+  [WorkItemType.SUBTASK]: {
+    bg: "bg-gradient-to-r from-sky-600/95 via-sky-500/85 to-sky-400/80",
+    text: "text-white",
+    border: "border border-white/10 border-l-white/60",
+    accent: "bg-white/35",
+  },
+};
+
+// Priority colors for visual indicators
+export const PRIORITY_COLORS: Record<WorkItemPriority, { bg: string; text: string; dot: string }> = {
+  [WorkItemPriority.LOW]: { bg: "bg-gray-100", text: "text-gray-600", dot: "bg-gray-400" },
+  [WorkItemPriority.MEDIUM]: { bg: "bg-blue-100", text: "text-blue-600", dot: "bg-blue-500" },
+  [WorkItemPriority.HIGH]: { bg: "bg-orange-100", text: "text-orange-600", dot: "bg-orange-500" },
+  [WorkItemPriority.URGENT]: { bg: "bg-red-100", text: "text-red-600", dot: "bg-red-500" },
+};
+
