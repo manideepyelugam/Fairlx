@@ -42,15 +42,38 @@ async function generateWorkItemKey(
     .substring(0, 4)
     .toUpperCase() || "PROJ";
 
-  // Get the count of work items in this project
-  const workItems = await databases.listDocuments(
+  // Get all work items for this project to find the highest key number
+  const workItems = await databases.listDocuments<WorkItem>(
     DATABASE_ID,
     WORK_ITEMS_ID,
-    [Query.equal("projectId", projectId), Query.limit(1)]
+    [
+      Query.equal("projectId", projectId),
+      Query.orderDesc("$createdAt"),
+      Query.limit(100), // Get more items to find the highest number
+    ]
   );
 
-  const count = workItems.total + 1;
-  return `${prefix}-${count}`;
+  // Extract key numbers and find the highest one
+  let highestNumber = 0;
+  const keyPattern = new RegExp(`^${prefix}-(\\d+)$`);
+  
+  for (const item of workItems.documents) {
+    const match = item.key.match(keyPattern);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (num > highestNumber) {
+        highestNumber = num;
+      }
+    }
+  }
+
+  // If no items found, also check the total count as a fallback
+  if (highestNumber === 0) {
+    highestNumber = workItems.total;
+  }
+
+  const nextNumber = highestNumber + 1;
+  return `${prefix}-${nextNumber}`;
 }
 
 const app = new Hono()
@@ -422,9 +445,6 @@ const app = new Hono()
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      // Generate unique key
-      const key = await generateWorkItemKey(databases, data.projectId);
-
       // Get the highest position
       const queryFilters = [
         Query.equal("projectId", data.projectId),
@@ -447,17 +467,51 @@ const app = new Hono()
       const highestPosition =
         workItems.documents.length > 0 ? workItems.documents[0].position : 0;
 
-      const workItem = await databases.createDocument<WorkItem>(
-        DATABASE_ID,
-        WORK_ITEMS_ID,
-        ID.unique(),
-        {
-          ...data,
-          key,
-          position: highestPosition + 1000,
-          dueDate: data.dueDate?.toISOString(),
+      // Retry logic for work item creation in case of key conflicts
+      let workItem: WorkItem | null = null;
+      let attempts = 0;
+      const maxAttempts = 3;
+
+      while (!workItem && attempts < maxAttempts) {
+        attempts++;
+        
+        try {
+          // Generate unique key
+          const key = await generateWorkItemKey(databases, data.projectId);
+          
+          workItem = await databases.createDocument<WorkItem>(
+            DATABASE_ID,
+            WORK_ITEMS_ID,
+            ID.unique(),
+            {
+              ...data,
+              key,
+              position: highestPosition + 1000,
+              dueDate: data.dueDate?.toISOString(),
+            }
+          );
+        } catch (error: unknown) {
+          // If it's a conflict error (duplicate key) and we haven't exceeded max attempts, retry
+          const isConflictError = 
+            error && 
+            typeof error === 'object' && 
+            (('code' in error && error.code === 409) || 
+             ('type' in error && (error as { type?: string }).type === 'document_already_exists'));
+          
+          if (isConflictError && attempts < maxAttempts) {
+            // Wait a bit before retrying to reduce collision chance
+            await new Promise(resolve => setTimeout(resolve, 100 * attempts));
+            continue;
+          }
+          // If it's a different error or we've exceeded max attempts, throw
+          console.error('Failed to create work item:', error);
+          throw error;
         }
-      );
+      }
+
+      if (!workItem) {
+        return c.json({ error: "Failed to create work item after multiple attempts" }, 500);
+      }
 
       return c.json({ data: workItem });
     }
@@ -490,14 +544,17 @@ const app = new Hono()
 
       const updates = c.req.valid("json");
 
+      const updateData = {
+        ...updates,
+        dueDate: updates.dueDate?.toISOString(),
+      };
+      (updateData as Record<string, unknown>).lastModifiedBy = user.$id;
+
       const updatedWorkItem = await databases.updateDocument<WorkItem>(
         DATABASE_ID,
         WORK_ITEMS_ID,
         workItemId,
-        {
-          ...updates,
-          dueDate: updates.dueDate?.toISOString(),
-        }
+        updateData
       );
 
       return c.json({ data: updatedWorkItem });
@@ -578,6 +635,7 @@ const app = new Hono()
         workItemIds.map((id) =>
           databases.updateDocument(DATABASE_ID, WORK_ITEMS_ID, id, {
             sprintId,
+            lastModifiedBy: user.$id,
           })
         )
       );
@@ -616,6 +674,7 @@ const app = new Hono()
       if (sprintId !== undefined) {
         updateData.sprintId = sprintId;
       }
+      (updateData as Record<string, unknown>).lastModifiedBy = user.$id;
 
       const updatedWorkItem = await databases.updateDocument<WorkItem>(
         DATABASE_ID,

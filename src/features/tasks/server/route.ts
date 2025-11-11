@@ -357,6 +357,9 @@ const app = new Hono()
         return c.json({ error: "No data provided for update" }, 400);
       }
 
+      // Add lastModifiedBy to track who made the update (for audit logs)
+      (updateData as Record<string, unknown>).lastModifiedBy = user.$id;
+
       const task = await databases.updateDocument(
         DATABASE_ID,
         TASKS_ID,
@@ -583,6 +586,9 @@ const app = new Hono()
             updateData.assigneeId = assigneeId;
             updateData.assigneeIds = [assigneeId]; // Convert single to array
           }
+          
+          // Add lastModifiedBy to track who made the update (for audit logs)
+          (updateData as Record<string, unknown>).lastModifiedBy = user.$id;
           
           const updatedTask = await databases.updateDocument<Task>(DATABASE_ID, TASKS_ID, $id, updateData);
           

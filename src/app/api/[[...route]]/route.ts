@@ -15,6 +15,8 @@ import sprints from "@/features/sprints/server/route";
 import workItems from "@/features/sprints/server/work-items-route";
 import personalBacklog from "@/features/personal-backlog/server/route";
 import githubIntegration from "@/features/github-integration/server/index";
+import auditLogs from "@/features/audit-logs/api/route";
+import subtasks from "@/features/subtasks/server/route";
 
 const app = new Hono().basePath("/api");
 
@@ -33,7 +35,9 @@ const routes = app
   .route("/sprints", sprints)
   .route("/work-items", workItems)
   .route("/personal-backlog", personalBacklog)
-  .route("/github", githubIntegration);
+  .route("/github", githubIntegration)
+  .route("/audit-logs", auditLogs)
+  .route("/subtasks", subtasks);
 
 export const GET = handle(app);
 export const POST = handle(app);

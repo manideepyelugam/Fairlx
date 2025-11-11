@@ -309,15 +309,18 @@ const app = new Hono()
 
       const updates = c.req.valid("json");
 
+      const updateData = {
+        ...updates,
+        startDate: updates.startDate?.toISOString(),
+        endDate: updates.endDate?.toISOString(),
+      };
+      (updateData as Record<string, unknown>).lastModifiedBy = user.$id;
+
       const updatedSprint = await databases.updateDocument<Sprint>(
         DATABASE_ID,
         SPRINTS_ID,
         sprintId,
-        {
-          ...updates,
-          startDate: updates.startDate?.toISOString(),
-          endDate: updates.endDate?.toISOString(),
-        }
+        updateData
       );
 
       return c.json({ data: updatedSprint });
@@ -361,7 +364,7 @@ const app = new Hono()
             DATABASE_ID,
             WORK_ITEMS_ID,
             workItem.$id,
-            { sprintId: null }
+            { sprintId: null, lastModifiedBy: user.$id }
           )
         )
       );
@@ -402,7 +405,7 @@ const app = new Hono()
         DATABASE_ID,
         SPRINTS_ID,
         sprintId,
-        { position: newPosition }
+        { position: newPosition, lastModifiedBy: user.$id }
       );
 
       return c.json({ data: updatedSprint });

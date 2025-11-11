@@ -56,7 +56,7 @@ export type WorkItem = Models.Document & {
   description?: string | null;
   flagged: boolean;
   position: number;
-  dueDate?: string;
+  dueDate?: string; // Due date for timeline (this is what exists in Appwrite)
   estimatedHours?: number;
   labels?: string[];
 };

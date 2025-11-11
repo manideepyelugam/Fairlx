@@ -59,10 +59,13 @@ import { useUpdateSprint } from "../api/use-update-sprint";
 import { useUpdateWorkItem } from "../api/use-update-work-item";
 import { useCreateWorkItem } from "../api/use-create-work-item";
 import { useDeleteSprint } from "../api/use-delete-sprint";
+import { useDeleteWorkItem } from "../api/use-delete-work-item";
 import { useGetEpics } from "../api/use-get-epics";
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { SprintStatus, WorkItemStatus, WorkItemPriority, WorkItemType } from "../types";
 import type { PopulatedWorkItem } from "../types";
+import { UpdateSprintDatesDialog } from "./update-sprint-dates-dialog";
+import { SubtasksList } from "@/features/subtasks/components";
 
 interface EnhancedBacklogScreenProps {
   workspaceId: string;
@@ -81,6 +84,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   const [editingSprintName, setEditingSprintName] = useState("");
   const [editingWorkItemId, setEditingWorkItemId] = useState<string | null>(null);
   const [editingWorkItemTitle, setEditingWorkItemTitle] = useState("");
+  const [dateDialogSprintId, setDateDialogSprintId] = useState<string | null>(null);
 
   // API Hooks
   const { data: sprintsData } = useGetSprints({ workspaceId, projectId });
@@ -92,6 +96,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   const { mutate: updateWorkItem } = useUpdateWorkItem();
   const { mutate: createWorkItem } = useCreateWorkItem();
   const { mutate: deleteSprint } = useDeleteSprint();
+  const { mutate: deleteWorkItem } = useDeleteWorkItem();
 
   // Organize data
   const sprints = useMemo(() => {
@@ -260,6 +265,14 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     }
   };
 
+  const handleDeleteWorkItem = (workItemId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm("Are you sure you want to delete this work item? This action cannot be undone.")) {
+      deleteWorkItem({ param: { workItemId } });
+      toast.success("Work item deleted");
+    }
+  };
+
   const handleStartEditWorkItem = (workItem: PopulatedWorkItem, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingWorkItemId(workItem.$id);
@@ -425,7 +438,10 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                 {format(new Date(sprint.startDate), "d MMM")} – {format(new Date(sprint.endDate), "d MMM")}
                               </span>
                             ) : (
-                              <button className="text-xs text-blue-600 hover:underline flex items-center gap-1">
+                              <button 
+                                className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                                onClick={() => setDateDialogSprintId(sprint.$id)}
+                              >
                                 <Calendar className="w-3 h-3" />
                                 Add dates
                               </button>
@@ -963,6 +979,29 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                       ))}
                                     </SelectContent>
                                   </Select>
+
+                                  {/* Actions Dropdown */}
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 flex-shrink-0"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <MoreHorizontal className="size-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem
+                                        onClick={(e) => handleDeleteWorkItem(item.$id, e)}
+                                        className="text-red-600"
+                                      >
+                                        <Trash2 className="size-3 mr-2" />
+                                        Delete work item
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                 </div>
                               </div>
                             )}
@@ -1156,9 +1195,10 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                   </TabsContent>
 
                   <TabsContent value="subtasks" className="mt-4">
-                    <div className="text-sm text-muted-foreground">
-                      Subtasks feature coming soon...
-                    </div>
+                    <SubtasksList 
+                      workItemId={selectedItem.$id} 
+                      workspaceId={workspaceId} 
+                    />
                   </TabsContent>
 
                   <TabsContent value="comments" className="mt-4">
@@ -1177,6 +1217,15 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
             )}
           </SheetContent>
         </Sheet>
+
+        {/* Update Sprint Dates Dialog */}
+        {dateDialogSprintId && (
+          <UpdateSprintDatesDialog
+            sprint={sprints.find(s => s.$id === dateDialogSprintId)!}
+            open={!!dateDialogSprintId}
+            onOpenChange={(open) => !open && setDateDialogSprintId(null)}
+          />
+        )}
       </div>
     </DragDropContext>
   );
