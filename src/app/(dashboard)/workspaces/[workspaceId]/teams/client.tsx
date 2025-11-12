@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, MoreVertical, Pencil, Trash2, Users2, ArrowRight, Shield, Search, Filter, Grid3x3, List, Users, Layers } from "lucide-react";
+import { Plus, MoreVertical, Pencil, Trash2, Users2, ArrowRight, Shield, Search, Filter, Grid3x3, List, Users, Layers, Crown } from "lucide-react";
 import Link from "next/link";
 import { useState, useMemo } from "react";
 
@@ -34,8 +34,9 @@ import { useTeamId } from "@/features/teams/hooks/use-team-id";
 import { CreateTeamModal } from "@/features/teams/components/create-team-modal";
 import { EditTeamModal } from "@/features/teams/components/edit-team-modal";
 import { useConfirm } from "@/hooks/use-confirm";
-import { TeamVisibility } from "@/features/teams/types";
+import { TeamVisibility, TeamMemberRole } from "@/features/teams/types";
 import { cn } from "@/lib/utils";
+import { useGetTeamMembers } from "@/features/teams/api/use-get-team-members";
 
 const getVisibilityColor = (visibility: TeamVisibility) => {
   switch (visibility) {
@@ -132,80 +133,80 @@ export const TeamsClient = () => {
   };
 
   return (
-    <div className="w-full h-full flex flex-col p-6">
+    <div className="w-full h-full flex flex-col p-4">
       <DeleteDialog />
       <CreateTeamModal />
       <EditTeamModal />
       
-      {/* Header with Stats */}
-      <div className="space-y-6 mb-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      {/* Compact Header */}
+      <div className="space-y-4 mb-4">
+        <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Teams</h1>
-            <p className="text-muted-foreground mt-1.5 text-sm">
+            <h1 className="text-2xl font-bold tracking-tight">Teams</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
               Manage your workspace teams and collaborate effectively
             </p>
           </div>
-          <Button onClick={openCreate} size="default" className="gap-2">
-            <Plus className="size-4" />
+          <Button onClick={openCreate} size="sm" className="gap-1.5 h-9">
+            <Plus className="size-3.5" />
             Create Team
           </Button>
         </div>
 
-        {/* Statistics Cards */}
+        {/* Compact Statistics Cards */}
         {!isLoading && teams && teams.documents.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Total Teams</p>
-                    <p className="text-2xl font-bold mt-1">{stats.total}</p>
+              <CardContent className="p-3">
+                <div className="flex items-center gap-3">
+                  <div className="size-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <Users2 className="size-4 text-muted-foreground" />
                   </div>
-                  <div className="size-10 rounded-full bg-muted flex items-center justify-center">
-                    <Users2 className="size-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Total Teams</p>
+                    <p className="text-xl font-bold">{stats.total}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">All Members</p>
-                    <p className="text-2xl font-bold mt-1">{stats.all}</p>
+              <CardContent className="p-3">
+                <div className="flex items-center gap-3">
+                  <div className="size-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
+                    <Users className="size-4 text-emerald-600" />
                   </div>
-                  <div className="size-10 rounded-full bg-muted flex items-center justify-center">
-                    <Users className="size-5 text-emerald-600" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">All Members</p>
+                    <p className="text-xl font-bold">{stats.all}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Program Only</p>
-                    <p className="text-2xl font-bold mt-1">{stats.program}</p>
+              <CardContent className="p-3">
+                <div className="flex items-center gap-3">
+                  <div className="size-8 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+                    <Layers className="size-4 text-blue-600" />
                   </div>
-                  <div className="size-10 rounded-full bg-muted flex items-center justify-center">
-                    <Layers className="size-5 text-blue-600" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Program Only</p>
+                    <p className="text-xl font-bold">{stats.program}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Team Only</p>
-                    <p className="text-2xl font-bold mt-1">{stats.teamOnly}</p>
+              <CardContent className="p-3">
+                <div className="flex items-center gap-3">
+                  <div className="size-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
+                    <Shield className="size-4 text-amber-600" />
                   </div>
-                  <div className="size-10 rounded-full bg-muted flex items-center justify-center">
-                    <Shield className="size-5 text-amber-600" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Team Only</p>
+                    <p className="text-xl font-bold">{stats.teamOnly}</p>
                   </div>
                 </div>
               </CardContent>
@@ -213,22 +214,22 @@ export const TeamsClient = () => {
           </div>
         )}
 
-        {/* Search and Filters */}
+        {/* Compact Search and Filters */}
         {!isLoading && teams && teams.documents.length > 0 && (
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col sm:flex-row gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
               <Input
                 placeholder="Search teams..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+                className="pl-8 h-9 text-sm"
               />
             </div>
             <Select value={visibilityFilter} onValueChange={setVisibilityFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <Filter className="size-4 mr-2" />
-                <SelectValue placeholder="Filter by visibility" />
+              <SelectTrigger className="w-full sm:w-[160px] h-9 text-sm">
+                <Filter className="size-3.5 mr-1.5" />
+                <SelectValue placeholder="All Visibility" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Visibility</SelectItem>
@@ -238,13 +239,13 @@ export const TeamsClient = () => {
               </SelectContent>
             </Select>
             <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "grid" | "list")} className="w-full sm:w-auto">
-              <TabsList>
-                <TabsTrigger value="grid" className="gap-2">
-                  <Grid3x3 className="size-4" />
+              <TabsList className="h-9">
+                <TabsTrigger value="grid" className="gap-1.5 h-7 text-xs">
+                  <Grid3x3 className="size-3.5" />
                   Grid
                 </TabsTrigger>
-                <TabsTrigger value="list" className="gap-2">
-                  <List className="size-4" />
+                <TabsTrigger value="list" className="gap-1.5 h-7 text-xs">
+                  <List className="size-3.5" />
                   List
                 </TabsTrigger>
               </TabsList>
@@ -307,7 +308,7 @@ export const TeamsClient = () => {
         </Card>
       ) : (
         <div className={cn(
-          "grid gap-4",
+          "grid gap-3",
           viewMode === "grid" ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "grid-cols-1"
         )}>
           {filteredTeams.map((team) => {
@@ -318,24 +319,24 @@ export const TeamsClient = () => {
                 key={team.$id} 
                 className="group hover:shadow-md transition-all duration-200 overflow-hidden border-border/40 hover:border-border"
               >
-                <CardHeader className="pb-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3 flex-1 min-w-0">
-                      <Avatar className="size-12 rounded-lg border">
+                <CardHeader className="pb-3 px-4 pt-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                      <Avatar className="size-10 rounded-lg border shrink-0">
                         {team.imageUrl ? (
                           <AvatarImage src={team.imageUrl} alt={team.name} />
                         ) : (
-                          <AvatarFallback className="rounded-lg bg-gradient-to-br from-blue-600 to-violet-600 text-white font-semibold">
+                          <AvatarFallback className="rounded-lg bg-gradient-to-br from-blue-600 to-violet-600 text-white text-sm font-semibold">
                             {team.name.substring(0, 2).toUpperCase()}
                           </AvatarFallback>
                         )}
                       </Avatar>
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <h3 className="font-semibold text-base truncate">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-sm truncate mb-1">
                           {team.name}
                         </h3>
-                        <Badge className={cn("text-xs font-normal", getVisibilityColor(team.visibility))}>
-                          <VisibilityIcon className="size-3 mr-1" />
+                        <Badge className={cn("text-[10px] font-normal h-5", getVisibilityColor(team.visibility))}>
+                          <VisibilityIcon className="size-2.5 mr-1" />
                           {getVisibilityLabel(team.visibility)}
                         </Badge>
                       </div>
@@ -345,24 +346,24 @@ export const TeamsClient = () => {
                         <Button 
                           variant="ghost" 
                           size="icon"
-                          className="size-8 opacity-0 group-hover:opacity-100 transition-opacity -mt-1 -mr-2"
+                          className="size-7 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                         >
-                          <MoreVertical className="size-4" />
+                          <MoreVertical className="size-3.5" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuLabel className="text-xs">Actions</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleEdit(team.$id)}>
-                          <Pencil className="size-4 mr-2" />
+                        <DropdownMenuItem onClick={() => handleEdit(team.$id)} className="text-xs">
+                          <Pencil className="size-3.5 mr-2" />
                           Edit Team
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={() => handleDelete(team.$id)}
-                          className="text-destructive focus:text-destructive"
+                          className="text-destructive focus:text-destructive text-xs"
                         >
-                          <Trash2 className="size-4 mr-2" />
+                          <Trash2 className="size-3.5 mr-2" />
                           Delete Team
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -370,22 +371,25 @@ export const TeamsClient = () => {
                   </div>
                 </CardHeader>
                 
-                <CardContent className="pb-4">
-                  <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">
+                <CardContent className="pb-3 px-4 space-y-2">
+                  <p className="text-xs text-muted-foreground line-clamp-2 min-h-[2rem]">
                     {team.description || "No description provided"}
                   </p>
+                  
+                  {/* Member Avatars */}
+                  <TeamMemberAvatars teamId={team.$id} memberCount={team.statistics?.memberCount || 0} />
                 </CardContent>
 
-                <CardFooter className="pt-4 border-t bg-muted/5">
+                <CardFooter className="pt-3 px-4 pb-3 border-t bg-muted/5">
                   <Link 
                     href={`/workspaces/${workspaceId}/teams/${team.$id}`}
                     className="flex items-center justify-between w-full group/link"
                   >
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Shield className="size-4" />
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Shield className="size-3.5" />
                       <span>View team space</span>
                     </div>
-                    <ArrowRight className="size-4 text-muted-foreground group-hover/link:translate-x-1 transition-transform" />
+                    <ArrowRight className="size-3.5 text-muted-foreground group-hover/link:translate-x-1 transition-transform" />
                   </Link>
                 </CardFooter>
               </Card>
@@ -459,6 +463,88 @@ export const TeamsClient = () => {
             );
           })}
         </div>
+      )}
+    </div>
+  );
+};
+
+// Component to show team member avatars
+interface TeamMemberAvatarsProps {
+  teamId: string;
+  memberCount: number;
+}
+
+const TeamMemberAvatars = ({ teamId, memberCount }: TeamMemberAvatarsProps) => {
+  const { data: teamMembersData, isLoading } = useGetTeamMembers({ teamId });
+  const members = teamMembersData?.documents || [];
+  
+  // Sort members: team lead first, then others
+  const sortedMembers = [...members].sort((a, b) => {
+    if (a.role === TeamMemberRole.LEAD) return -1;
+    if (b.role === TeamMemberRole.LEAD) return 1;
+    return 0;
+  });
+  
+  const displayMembers = sortedMembers.slice(0, 3);
+  const actualCount = members.length || memberCount;
+  const remainingCount = actualCount - displayMembers.length;
+  
+  // Show loading or no members state
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2">
+        <div className="flex -space-x-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="size-7 rounded-full bg-muted animate-pulse border-2 border-background" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+  
+  if (members.length === 0) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <Users className="size-3.5" />
+        <span>No members yet</span>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex -space-x-2">
+        {displayMembers.map((member, index) => (
+          <div key={member.$id} className="relative">
+            <Avatar className="size-7 border-2 border-background ring-1 ring-border/50">
+              {member.user?.profileImageUrl ? (
+                <AvatarImage src={member.user.profileImageUrl} alt={member.user?.name || 'Member'} />
+              ) : (
+                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white text-[10px] font-semibold">
+                  {member.user?.name
+                    ?.split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .toUpperCase() || "?"}
+                </AvatarFallback>
+              )}
+            </Avatar>
+            {member.role === TeamMemberRole.LEAD && index === 0 && (
+              <div className="absolute -top-0.5 -right-0.5 bg-amber-500 rounded-full p-0.5">
+                <Crown className="size-2 text-white" />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      {remainingCount > 0 ? (
+        <span className="text-xs text-muted-foreground font-medium">
+          +{remainingCount} more
+        </span>
+      ) : displayMembers.length > 0 && (
+        <span className="text-xs text-muted-foreground">
+          {actualCount} {actualCount === 1 ? 'member' : 'members'}
+        </span>
       )}
     </div>
   );
