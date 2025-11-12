@@ -1,6 +1,6 @@
 "use client";
 
-import { Users, Settings, Activity, LayoutDashboard, Shield, Plus, UserPlus, MoreVertical, Crown, Trash2 } from "lucide-react";
+import { Users, Settings, Shield, UserPlus, MoreVertical, Crown, Trash2, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -17,72 +17,84 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
-import { useTeamId } from "@/features/teams/hooks/use-team-id";
+import { useGetTeam } from "@/features/teams/api/use-get-team";
+import { useGetTeamMembers } from "@/features/teams/api/use-get-team-members";
+import { useRemoveTeamMember } from "@/features/teams/api/use-remove-team-member";
+import { useUpdateTeamMember } from "@/features/teams/api/use-update-team-member";
 import { DottedSeparator } from "@/components/dotted-separator";
+import { PageLoader } from "@/components/page-loader";
+import { PageError } from "@/components/page-error";
+import { useConfirm } from "@/hooks/use-confirm";
+import { TeamMemberRole, TeamVisibility } from "@/features/teams/types";
 
-export const TeamIdClient = () => {
+const getVisibilityLabel = (visibility: TeamVisibility) => {
+  switch (visibility) {
+    case TeamVisibility.ALL:
+      return "All Members";
+    case TeamVisibility.PROGRAM_ONLY:
+      return "Program Only";
+    case TeamVisibility.TEAM_ONLY:
+      return "Team Only";
+    default:
+      return visibility;
+  }
+};
+
+interface TeamIdClientProps {
+  teamId: string;
+}
+
+export const TeamIdClient = ({ teamId }: TeamIdClientProps) => {
   const router = useRouter();
   const workspaceId = useWorkspaceId();
-  const [teamId] = useTeamId();
 
-  // Temporary mock data - will be replaced with real API calls
-  const team = {
-    name: "Engineering Team",
-    description: "Core engineering team working on platform development",
-    visibility: "WORKSPACE",
-    imageUrl: null,
-  };
+  const { data: team, isLoading: isLoadingTeam } = useGetTeam({ teamId });
+  const { data: teamMembersData, isLoading: isLoadingMembers } = useGetTeamMembers({ teamId });
+  const { mutate: removeTeamMember } = useRemoveTeamMember();
+  const { mutate: updateTeamMember } = useUpdateTeamMember();
 
-  const members = [
-    {
-      id: "1",
-      name: "John Doe",
-      email: "john@example.com",
-      role: "TEAM_LEAD",
-      avatar: null,
-      joinedAt: "2024-01-15",
-    },
-    {
-      id: "2",
-      name: "Jane Smith",
-      email: "jane@example.com",
-      role: "MEMBER",
-      avatar: null,
-      joinedAt: "2024-01-20",
-    },
-    {
-      id: "3",
-      name: "Mike Johnson",
-      email: "mike@example.com",
-      role: "MEMBER",
-      avatar: null,
-      joinedAt: "2024-02-01",
-    },
-  ];
+  const [ConfirmDialog, confirm] = useConfirm(
+    "Remove Member",
+    "Are you sure you want to remove this member from the team?",
+    "destructive"
+  );
 
-  const stats = {
-    totalMembers: 3,
-    activeTasks: 12,
-    completedTasks: 45,
-  };
+  const isLoading = isLoadingTeam || isLoadingMembers;
+  const members = teamMembersData?.documents || [];
 
   const handleAddMember = () => {
     // TODO: Open add member modal
     console.log("Add member");
   };
 
-  const handleRemoveMember = (memberId: string) => {
-    // TODO: Implement remove member
-    console.log("Remove member:", memberId);
+  const handleRemoveMember = async (memberId: string) => {
+    const ok = await confirm();
+    if (!ok) return;
+
+    removeTeamMember({
+      param: { teamId, memberId },
+    });
   };
 
-  const handleChangeRole = (memberId: string, newRole: string) => {
-    // TODO: Implement change role
-    console.log("Change role:", memberId, newRole);
+  const handleChangeRole = (memberId: string, newRole: TeamMemberRole) => {
+    updateTeamMember({
+      param: { teamId, memberId },
+      json: { role: newRole },
+    });
   };
+
+  if (isLoading) {
+    return <PageLoader />;
+  }
+
+  if (!team) {
+    return <PageError message="Team not found" />;
+  }
 
   return (
     <div className="flex flex-col gap-y-4">
+      <ConfirmDialog />
+      
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-4">
@@ -97,21 +109,20 @@ export const TeamIdClient = () => {
           </Avatar>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">{team.name}</h1>
-            <p className="text-muted-foreground mt-1">{team.description}</p>
+            <p className="text-muted-foreground mt-1">{team.description || "No description provided"}</p>
             <div className="flex items-center gap-2 mt-2">
               <Badge variant="secondary" className="font-normal">
-                {team.visibility}
+                {getVisibilityLabel(team.visibility)}
               </Badge>
               <Badge variant="outline" className="font-normal">
-                {stats.totalMembers} Members
+                {team.statistics?.memberCount || 0} Members
               </Badge>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Settings className="size-4 mr-2" />
-            Settings
+          <Button variant="outline" size="sm" onClick={() => router.push(`/workspaces/${workspaceId}/teams`)}>
+            Back to Teams
           </Button>
         </div>
       </div>
@@ -127,97 +138,47 @@ export const TeamIdClient = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{stats.totalMembers}</div>
+            <div className="text-3xl font-bold">{team.statistics?.memberCount || 0}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Active Tasks
+              Team Lead
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{stats.activeTasks}</div>
+            <div className="text-lg font-medium">
+              {team.teamLead ? team.teamLead.name : "Not assigned"}
+            </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Completed Tasks
+              Visibility
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{stats.completedTasks}</div>
+            <div className="text-lg font-medium">
+              {getVisibilityLabel(team.visibility)}
+            </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-4">
-          <TabsTrigger value="overview" className="gap-2">
-            <LayoutDashboard className="size-4" />
-            Overview
-          </TabsTrigger>
+      <Tabs defaultValue="members" className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="members" className="gap-2">
             <Users className="size-4" />
             Members
-          </TabsTrigger>
-          <TabsTrigger value="activity" className="gap-2">
-            <Activity className="size-4" />
-            Activity
           </TabsTrigger>
           <TabsTrigger value="settings" className="gap-2">
             <Settings className="size-4" />
             Settings
           </TabsTrigger>
         </TabsList>
-
-        {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-4 mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Team Overview</CardTitle>
-              <CardDescription>
-                Summary of team activities and current status
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <h3 className="font-semibold mb-2">Recent Activity</h3>
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3 text-sm">
-                    <div className="size-2 rounded-full bg-blue-500 mt-2" />
-                    <div>
-                      <p className="font-medium">Task completed</p>
-                      <p className="text-muted-foreground text-xs">
-                        John Doe completed "Implement authentication" • 2 hours ago
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3 text-sm">
-                    <div className="size-2 rounded-full bg-green-500 mt-2" />
-                    <div>
-                      <p className="font-medium">New member joined</p>
-                      <p className="text-muted-foreground text-xs">
-                        Mike Johnson joined the team • 5 hours ago
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3 text-sm">
-                    <div className="size-2 rounded-full bg-purple-500 mt-2" />
-                    <div>
-                      <p className="font-medium">Task assigned</p>
-                      <p className="text-muted-foreground text-xs">
-                        Jane Smith was assigned "Update documentation" • 1 day ago
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         {/* Members Tab */}
         <TabsContent value="members" className="space-y-4 mt-6">
@@ -237,90 +198,89 @@ export const TeamIdClient = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {members.map((member, index) => (
-                  <div key={member.id}>
-                    {index > 0 && <DottedSeparator className="my-4" />}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="size-10">
-                          {member.avatar ? (
-                            <AvatarImage src={member.avatar} alt={member.name} />
-                          ) : (
-                            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white font-semibold">
-                              {member.name
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("")
-                                .toUpperCase()}
-                            </AvatarFallback>
-                          )}
-                        </Avatar>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">{member.name}</p>
-                            {member.role === "TEAM_LEAD" && (
-                              <Badge variant="default" className="gap-1 text-xs">
-                                <Crown className="size-3" />
-                                Team Lead
-                              </Badge>
+              {members.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Users className="size-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No members yet</h3>
+                  <p className="text-muted-foreground text-sm mb-6 max-w-sm">
+                    Add members to this team to start collaborating
+                  </p>
+                  <Button onClick={handleAddMember} className="gap-2">
+                    <UserPlus className="size-4" />
+                    Add First Member
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {members.map((member, index) => (
+                    <div key={member.$id}>
+                      {index > 0 && <DottedSeparator className="my-4" />}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="size-10">
+                            {member.user?.profileImageUrl ? (
+                              <AvatarImage src={member.user.profileImageUrl} alt={member.user.name} />
+                            ) : (
+                              <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white font-semibold">
+                                {member.user?.name
+                                  ?.split(" ")
+                                  .map((n) => n[0])
+                                  .join("")
+                                  .toUpperCase() || "?"}
+                              </AvatarFallback>
                             )}
+                          </Avatar>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">{member.user?.name || "Unknown"}</p>
+                              {member.role === TeamMemberRole.LEAD && (
+                                <Badge variant="default" className="gap-1 text-xs">
+                                  <Crown className="size-3" />
+                                  Team Lead
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {member.user?.email || "No email"}
+                            </p>
                           </div>
-                          <p className="text-sm text-muted-foreground">
-                            {member.email}
-                          </p>
                         </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="size-8">
+                              <MoreVertical className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => handleChangeRole(member.memberId, TeamMemberRole.LEAD)}
+                              disabled={member.role === TeamMemberRole.LEAD}
+                            >
+                              <Shield className="size-4 mr-2" />
+                              Make Team Lead
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleChangeRole(member.memberId, TeamMemberRole.MEMBER)}
+                              disabled={member.role === TeamMemberRole.MEMBER}
+                            >
+                              <Users className="size-4 mr-2" />
+                              Make Member
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleRemoveMember(member.memberId)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="size-4 mr-2" />
+                              Remove from Team
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="size-8">
-                            <MoreVertical className="size-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => handleChangeRole(member.id, "TEAM_LEAD")}
-                          >
-                            <Shield className="size-4 mr-2" />
-                            Make Team Lead
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleChangeRole(member.id, "MEMBER")}
-                          >
-                            <Users className="size-4 mr-2" />
-                            Make Member
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => handleRemoveMember(member.id)}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="size-4 mr-2" />
-                            Remove from Team
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Activity Tab */}
-        <TabsContent value="activity" className="space-y-4 mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Activity Log</CardTitle>
-              <CardDescription>
-                Recent activities and changes in the team
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Activity log coming soon...
-              </p>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -335,9 +295,15 @@ export const TeamIdClient = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Settings coming soon...
-              </p>
+              <div className="flex items-start gap-3 p-4 border rounded-lg bg-muted/50">
+                <AlertCircle className="size-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium">Settings coming soon</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Team settings and configuration options will be available in a future update.
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

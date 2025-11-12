@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, MoreVertical, Pencil, Trash2, FolderKanban, Calendar, ArrowRight, Users, Target, TrendingUp, Clock, Search, Filter, Grid3x3, List } from "lucide-react";
+import { Plus, MoreVertical, Pencil, Trash2, FolderKanban, Calendar, ArrowRight, Search, Filter, Grid3x3, List, TrendingUp, Target, Clock } from "lucide-react";
 import Link from "next/link";
 import { useState, useMemo } from "react";
 
@@ -40,17 +40,17 @@ import { cn } from "@/lib/utils";
 const getStatusColor = (status: ProgramStatus) => {
   switch (status) {
     case ProgramStatus.ACTIVE:
-      return "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20";
     case ProgramStatus.PLANNING:
-      return "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20";
+      return "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20";
     case ProgramStatus.ON_HOLD:
-      return "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+      return "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20";
     case ProgramStatus.COMPLETED:
-      return "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20";
+      return "bg-slate-500/10 text-slate-700 dark:text-slate-400 border-slate-500/20";
     case ProgramStatus.CANCELLED:
-      return "bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20";
+      return "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20";
     default:
-      return "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20";
+      return "bg-slate-500/10 text-slate-700 dark:text-slate-400 border-slate-500/20";
   }
 };
 
@@ -139,7 +139,7 @@ export const ProgramsClient = () => {
   };
 
   return (
-    <div className="w-full h-full flex flex-col">
+    <div className="w-full h-full flex flex-col p-6">
       <DeleteDialog />
       <CreateProgramModal />
       <EditProgramModal />
@@ -148,14 +148,12 @@ export const ProgramsClient = () => {
       <div className="space-y-6 mb-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              Programs
-            </h1>
+            <h1 className="text-3xl font-bold tracking-tight">Programs</h1>
             <p className="text-muted-foreground mt-1.5 text-sm">
               Strategic initiatives that drive your organization forward
             </p>
           </div>
-          <Button onClick={openCreate} size="default" className="gap-2 !bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+          <Button onClick={openCreate} size="default" className="gap-2">
             <Plus className="size-4" />
             Create Program
           </Button>
@@ -164,57 +162,57 @@ export const ProgramsClient = () => {
         {/* Statistics Cards */}
         {!isLoading && programs && programs.documents.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="border-l-4 border-l-purple-500 bg-gradient-to-br from-purple-50/50 to-transparent dark:from-purple-950/20">
+            <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Total Programs</p>
                     <p className="text-2xl font-bold mt-1">{stats.total}</p>
                   </div>
-                  <div className="size-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                    <FolderKanban className="size-5 text-purple-600 dark:text-purple-400" />
+                  <div className="size-10 rounded-full bg-muted flex items-center justify-center">
+                    <FolderKanban className="size-5 text-muted-foreground" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-emerald-500 bg-gradient-to-br from-emerald-50/50 to-transparent dark:from-emerald-950/20">
+            <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Active</p>
                     <p className="text-2xl font-bold mt-1">{stats.active}</p>
                   </div>
-                  <div className="size-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                    <TrendingUp className="size-5 text-emerald-600 dark:text-emerald-400" />
+                  <div className="size-10 rounded-full bg-muted flex items-center justify-center">
+                    <TrendingUp className="size-5 text-emerald-600" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-950/20">
+            <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Planning</p>
                     <p className="text-2xl font-bold mt-1">{stats.planning}</p>
                   </div>
-                  <div className="size-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                    <Target className="size-5 text-blue-600 dark:text-blue-400" />
+                  <div className="size-10 rounded-full bg-muted flex items-center justify-center">
+                    <Target className="size-5 text-blue-600" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-slate-500 bg-gradient-to-br from-slate-50/50 to-transparent dark:from-slate-950/20">
+            <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Completed</p>
                     <p className="text-2xl font-bold mt-1">{stats.completed}</p>
                   </div>
-                  <div className="size-10 rounded-full bg-slate-100 dark:bg-slate-900/30 flex items-center justify-center">
-                    <Target className="size-5 text-slate-600 dark:text-slate-400" />
+                  <div className="size-10 rounded-full bg-muted flex items-center justify-center">
+                    <Target className="size-5 text-slate-600" />
                   </div>
                 </div>
               </CardContent>
@@ -265,7 +263,6 @@ export const ProgramsClient = () => {
       </div>
 
       {/* Content */}
-      {/* Content */}
       {isLoading ? (
         <div className={cn(
           "grid gap-4",
@@ -275,7 +272,7 @@ export const ProgramsClient = () => {
             <Card key={i} className="animate-pulse">
               <CardHeader className="space-y-3">
                 <div className="flex items-start gap-3">
-                  <div className="size-14 rounded-xl bg-muted" />
+                  <div className="size-12 rounded-lg bg-muted" />
                   <div className="flex-1 space-y-2">
                     <div className="h-5 bg-muted rounded w-3/4" />
                     <div className="h-4 bg-muted rounded w-1/2" />
@@ -292,16 +289,16 @@ export const ProgramsClient = () => {
           ))}
         </div>
       ) : filteredPrograms.length === 0 && programs?.documents.length === 0 ? (
-        <Card className="border-dashed border-2">
+        <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <div className="size-20 rounded-2xl bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-950 dark:to-pink-950 flex items-center justify-center mb-4">
-              <FolderKanban className="size-10 text-purple-600 dark:text-purple-400" />
+            <div className="size-16 rounded-full bg-muted flex items-center justify-center mb-4">
+              <FolderKanban className="size-8 text-muted-foreground" />
             </div>
             <h3 className="text-xl font-semibold mb-2">No programs yet</h3>
-            <p className="text-muted-foreground text-center max-w-md mb-6 text-sm">
-              Create your first program to organize strategic initiatives and drive your workspace forward with coordinated efforts
+            <p className="text-muted-foreground text-center max-w-sm mb-6">
+              Create your first program to organize strategic initiatives across your workspace
             </p>
-            <Button onClick={openCreate} className="gap-2 !bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+            <Button onClick={openCreate} className="gap-2">
               <Plus className="size-4" />
               Create Your First Program
             </Button>
@@ -328,30 +325,25 @@ export const ProgramsClient = () => {
             return viewMode === "grid" ? (
               <Card 
                 key={program.$id} 
-                className="group hover:shadow-lg transition-all duration-300 overflow-hidden border-border/40 hover:border-border hover:scale-[1.02]"
+                className="group hover:shadow-md transition-all duration-200 overflow-hidden border-border/40 hover:border-border"
               >
                 <CardHeader className="pb-4">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3 flex-1 min-w-0">
-                      <div className="relative">
-                        <Avatar className="size-14 rounded-xl border-2 border-background shadow-md">
-                          {program.imageUrl ? (
-                            <AvatarImage src={program.imageUrl} alt={program.name} />
-                          ) : (
-                            <AvatarFallback className="rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 text-white font-bold text-lg">
-                              {program.name.substring(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          )}
-                        </Avatar>
-                        <div className="absolute -bottom-1 -right-1 size-6 rounded-full bg-background border-2 border-background flex items-center justify-center">
-                          <FolderKanban className="size-3 text-purple-600" />
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0 space-y-1.5">
+                      <Avatar className="size-12 rounded-lg border">
+                        {program.imageUrl ? (
+                          <AvatarImage src={program.imageUrl} alt={program.name} />
+                        ) : (
+                          <AvatarFallback className="rounded-lg bg-gradient-to-br from-purple-600 to-pink-600 text-white font-semibold">
+                            {program.name.substring(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      <div className="flex-1 min-w-0 space-y-1">
                         <h3 className="font-semibold text-base truncate">
                           {program.name}
                         </h3>
-                        <Badge className={cn("text-xs font-medium border", getStatusColor(program.status))}>
+                        <Badge className={cn("text-xs font-normal", getStatusColor(program.status))}>
                           <StatusIcon className="size-3 mr-1" />
                           {getStatusLabel(program.status)}
                         </Badge>
@@ -362,12 +354,12 @@ export const ProgramsClient = () => {
                         <Button 
                           variant="ghost" 
                           size="icon"
-                          className="size-8 opacity-0 group-hover:opacity-100 transition-opacity -mt-1 -mr-2 hover:bg-muted"
+                          className="size-8 opacity-0 group-hover:opacity-100 transition-opacity -mt-1 -mr-2"
                         >
                           <MoreVertical className="size-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => handleEdit(program.$id)}>
@@ -377,7 +369,7 @@ export const ProgramsClient = () => {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={() => handleDelete(program.$id)}
-                          className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                          className="text-destructive focus:text-destructive"
                         >
                           <Trash2 className="size-4 mr-2" />
                           Delete Program
@@ -387,40 +379,37 @@ export const ProgramsClient = () => {
                   </div>
                 </CardHeader>
                 
-                <CardContent className="pb-4 space-y-4">
+                <CardContent className="pb-4">
                   <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">
                     {program.description || "No description provided"}
                   </p>
-                  
                   {(program.startDate || program.endDate) && (
-                    <div className="pt-3 border-t space-y-2">
+                    <div className="mt-4 pt-4 border-t space-y-2">
                       {program.startDate && (
-                        <div className="flex items-center gap-2 text-xs">
-                          <Calendar className="size-3.5 text-muted-foreground" />
-                          <span className="font-medium text-muted-foreground">Start:</span>
-                          <span className="text-foreground">{formatDate(program.startDate)}</span>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Calendar className="size-3.5" />
+                          <span className="font-medium">Start:</span>
+                          <span>{formatDate(program.startDate)}</span>
                         </div>
                       )}
                       {program.endDate && (
-                        <div className="flex items-center gap-2 text-xs">
-                          <Calendar className="size-3.5 text-muted-foreground" />
-                          <span className="font-medium text-muted-foreground">End:</span>
-                          <span className="text-foreground">{formatDate(program.endDate)}</span>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Calendar className="size-3.5" />
+                          <span className="font-medium">End:</span>
+                          <span>{formatDate(program.endDate)}</span>
                         </div>
                       )}
                     </div>
                   )}
                 </CardContent>
 
-                <CardFooter className="pt-4 border-t bg-gradient-to-br from-muted/30 to-transparent">
+                <CardFooter className="pt-4 border-t bg-muted/5">
                   <Link 
                     href={`/workspaces/${workspaceId}/programs/${program.$id}`}
                     className="flex items-center justify-between w-full group/link"
                   >
-                    <span className="text-sm font-medium text-muted-foreground group-hover/link:text-foreground transition-colors">
-                      View Details
-                    </span>
-                    <ArrowRight className="size-4 text-muted-foreground group-hover/link:text-foreground group-hover/link:translate-x-1 transition-all" />
+                    <span className="text-sm text-muted-foreground">View program details</span>
+                    <ArrowRight className="size-4 text-muted-foreground group-hover/link:translate-x-1 transition-transform" />
                   </Link>
                 </CardFooter>
               </Card>
@@ -432,17 +421,15 @@ export const ProgramsClient = () => {
               >
                 <CardContent className="p-6">
                   <div className="flex items-center gap-4">
-                    <div className="relative flex-shrink-0">
-                      <Avatar className="size-16 rounded-xl border-2 border-background shadow-md">
-                        {program.imageUrl ? (
-                          <AvatarImage src={program.imageUrl} alt={program.name} />
-                        ) : (
-                          <AvatarFallback className="rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 text-white font-bold text-xl">
-                            {program.name.substring(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        )}
-                      </Avatar>
-                    </div>
+                    <Avatar className="size-16 rounded-lg border flex-shrink-0">
+                      {program.imageUrl ? (
+                        <AvatarImage src={program.imageUrl} alt={program.name} />
+                      ) : (
+                        <AvatarFallback className="rounded-lg bg-gradient-to-br from-purple-600 to-pink-600 text-white font-bold text-xl">
+                          {program.name.substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
                     
                     <div className="flex-1 min-w-0 space-y-2">
                       <div className="flex items-start justify-between gap-4">
@@ -452,7 +439,7 @@ export const ProgramsClient = () => {
                             {program.description || "No description provided"}
                           </p>
                         </div>
-                        <Badge className={cn("text-xs font-medium border shrink-0", getStatusColor(program.status))}>
+                        <Badge className={cn("text-xs font-normal shrink-0", getStatusColor(program.status))}>
                           <StatusIcon className="size-3 mr-1" />
                           {getStatusLabel(program.status)}
                         </Badge>
@@ -490,7 +477,7 @@ export const ProgramsClient = () => {
                             <MoreVertical className="size-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => handleEdit(program.$id)}>
@@ -500,7 +487,7 @@ export const ProgramsClient = () => {
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={() => handleDelete(program.$id)}
-                            className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                            className="text-destructive focus:text-destructive"
                           >
                             <Trash2 className="size-4 mr-2" />
                             Delete Program

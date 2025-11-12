@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, MoreVertical, Pencil, Trash2, Users2, ArrowRight, Shield, Search, Filter, Grid3x3, List, Users, Target, Layers } from "lucide-react";
+import { Plus, MoreVertical, Pencil, Trash2, Users2, ArrowRight, Shield, Search, Filter, Grid3x3, List, Users, Layers } from "lucide-react";
 import Link from "next/link";
 import { useState, useMemo } from "react";
 
@@ -40,13 +40,13 @@ import { cn } from "@/lib/utils";
 const getVisibilityColor = (visibility: TeamVisibility) => {
   switch (visibility) {
     case TeamVisibility.ALL:
-      return "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20";
     case TeamVisibility.PROGRAM_ONLY:
-      return "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20";
+      return "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20";
     case TeamVisibility.TEAM_ONLY:
-      return "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+      return "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20";
     default:
-      return "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20";
+      return "bg-slate-500/10 text-slate-700 dark:text-slate-400 border-slate-500/20";
   }
 };
 
@@ -132,7 +132,7 @@ export const TeamsClient = () => {
   };
 
   return (
-    <div className="w-full h-full flex flex-col">
+    <div className="w-full h-full flex flex-col p-6">
       <DeleteDialog />
       <CreateTeamModal />
       <EditTeamModal />
@@ -141,14 +141,12 @@ export const TeamsClient = () => {
       <div className="space-y-6 mb-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent">
-              Teams
-            </h1>
+            <h1 className="text-3xl font-bold tracking-tight">Teams</h1>
             <p className="text-muted-foreground mt-1.5 text-sm">
               Manage your workspace teams and collaborate effectively
             </p>
           </div>
-          <Button onClick={openCreate} size="default" className="gap-2 !bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700">
+          <Button onClick={openCreate} size="default" className="gap-2">
             <Plus className="size-4" />
             Create Team
           </Button>
@@ -157,57 +155,57 @@ export const TeamsClient = () => {
         {/* Statistics Cards */}
         {!isLoading && teams && teams.documents.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-950/20">
+            <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Total Teams</p>
                     <p className="text-2xl font-bold mt-1">{stats.total}</p>
                   </div>
-                  <div className="size-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                    <Users2 className="size-5 text-blue-600 dark:text-blue-400" />
+                  <div className="size-10 rounded-full bg-muted flex items-center justify-center">
+                    <Users2 className="size-5 text-muted-foreground" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-emerald-500 bg-gradient-to-br from-emerald-50/50 to-transparent dark:from-emerald-950/20">
+            <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">All Members</p>
                     <p className="text-2xl font-bold mt-1">{stats.all}</p>
                   </div>
-                  <div className="size-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                    <Users className="size-5 text-emerald-600 dark:text-emerald-400" />
+                  <div className="size-10 rounded-full bg-muted flex items-center justify-center">
+                    <Users className="size-5 text-emerald-600" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-950/20">
+            <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Program Only</p>
                     <p className="text-2xl font-bold mt-1">{stats.program}</p>
                   </div>
-                  <div className="size-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                    <Layers className="size-5 text-blue-600 dark:text-blue-400" />
+                  <div className="size-10 rounded-full bg-muted flex items-center justify-center">
+                    <Layers className="size-5 text-blue-600" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-amber-500 bg-gradient-to-br from-amber-50/50 to-transparent dark:from-amber-950/20">
+            <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Team Only</p>
                     <p className="text-2xl font-bold mt-1">{stats.teamOnly}</p>
                   </div>
-                  <div className="size-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                    <Shield className="size-5 text-amber-600 dark:text-amber-400" />
+                  <div className="size-10 rounded-full bg-muted flex items-center justify-center">
+                    <Shield className="size-5 text-amber-600" />
                   </div>
                 </div>
               </CardContent>
@@ -256,7 +254,6 @@ export const TeamsClient = () => {
       </div>
 
       {/* Content */}
-      {/* Content */}
       {isLoading ? (
         <div className={cn(
           "grid gap-4",
@@ -266,7 +263,7 @@ export const TeamsClient = () => {
             <Card key={i} className="animate-pulse">
               <CardHeader className="space-y-3">
                 <div className="flex items-start gap-3">
-                  <div className="size-14 rounded-xl bg-muted" />
+                  <div className="size-12 rounded-lg bg-muted" />
                   <div className="flex-1 space-y-2">
                     <div className="h-5 bg-muted rounded w-3/4" />
                     <div className="h-4 bg-muted rounded w-1/2" />
@@ -283,16 +280,16 @@ export const TeamsClient = () => {
           ))}
         </div>
       ) : filteredTeams.length === 0 && teams?.documents.length === 0 ? (
-        <Card className="border-dashed border-2">
+        <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <div className="size-20 rounded-2xl bg-gradient-to-br from-blue-100 to-violet-100 dark:from-blue-950 dark:to-violet-950 flex items-center justify-center mb-4">
-              <Users2 className="size-10 text-blue-600 dark:text-blue-400" />
+            <div className="size-16 rounded-full bg-muted flex items-center justify-center mb-4">
+              <Users2 className="size-8 text-muted-foreground" />
             </div>
             <h3 className="text-xl font-semibold mb-2">No teams yet</h3>
-            <p className="text-muted-foreground text-center max-w-md mb-6 text-sm">
-              Create your first team to start organizing your workspace and collaborating with members effectively
+            <p className="text-muted-foreground text-center max-w-sm mb-6">
+              Create your first team to start organizing your workspace and collaborating with members
             </p>
-            <Button onClick={openCreate} className="gap-2 !bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700">
+            <Button onClick={openCreate} className="gap-2">
               <Plus className="size-4" />
               Create Your First Team
             </Button>
@@ -319,30 +316,25 @@ export const TeamsClient = () => {
             return viewMode === "grid" ? (
               <Card 
                 key={team.$id} 
-                className="group hover:shadow-lg transition-all duration-300 overflow-hidden border-border/40 hover:border-border hover:scale-[1.02]"
+                className="group hover:shadow-md transition-all duration-200 overflow-hidden border-border/40 hover:border-border"
               >
                 <CardHeader className="pb-4">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3 flex-1 min-w-0">
-                      <div className="relative">
-                        <Avatar className="size-14 rounded-xl border-2 border-background shadow-md">
-                          {team.imageUrl ? (
-                            <AvatarImage src={team.imageUrl} alt={team.name} />
-                          ) : (
-                            <AvatarFallback className="rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 text-white font-bold text-lg">
-                              {team.name.substring(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          )}
-                        </Avatar>
-                        <div className="absolute -bottom-1 -right-1 size-6 rounded-full bg-background border-2 border-background flex items-center justify-center">
-                          <Users2 className="size-3 text-blue-600" />
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0 space-y-1.5">
+                      <Avatar className="size-12 rounded-lg border">
+                        {team.imageUrl ? (
+                          <AvatarImage src={team.imageUrl} alt={team.name} />
+                        ) : (
+                          <AvatarFallback className="rounded-lg bg-gradient-to-br from-blue-600 to-violet-600 text-white font-semibold">
+                            {team.name.substring(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      <div className="flex-1 min-w-0 space-y-1">
                         <h3 className="font-semibold text-base truncate">
                           {team.name}
                         </h3>
-                        <Badge className={cn("text-xs font-medium border", getVisibilityColor(team.visibility))}>
+                        <Badge className={cn("text-xs font-normal", getVisibilityColor(team.visibility))}>
                           <VisibilityIcon className="size-3 mr-1" />
                           {getVisibilityLabel(team.visibility)}
                         </Badge>
@@ -353,12 +345,12 @@ export const TeamsClient = () => {
                         <Button 
                           variant="ghost" 
                           size="icon"
-                          className="size-8 opacity-0 group-hover:opacity-100 transition-opacity -mt-1 -mr-2 hover:bg-muted"
+                          className="size-8 opacity-0 group-hover:opacity-100 transition-opacity -mt-1 -mr-2"
                         >
                           <MoreVertical className="size-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => handleEdit(team.$id)}>
@@ -368,7 +360,7 @@ export const TeamsClient = () => {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={() => handleDelete(team.$id)}
-                          className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                          className="text-destructive focus:text-destructive"
                         >
                           <Trash2 className="size-4 mr-2" />
                           Delete Team
@@ -384,16 +376,16 @@ export const TeamsClient = () => {
                   </p>
                 </CardContent>
 
-                <CardFooter className="pt-4 border-t bg-gradient-to-br from-muted/30 to-transparent">
+                <CardFooter className="pt-4 border-t bg-muted/5">
                   <Link 
                     href={`/workspaces/${workspaceId}/teams/${team.$id}`}
                     className="flex items-center justify-between w-full group/link"
                   >
-                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground group-hover/link:text-foreground transition-colors">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Shield className="size-4" />
-                      <span>View Team Space</span>
+                      <span>View team space</span>
                     </div>
-                    <ArrowRight className="size-4 text-muted-foreground group-hover/link:text-foreground group-hover/link:translate-x-1 transition-all" />
+                    <ArrowRight className="size-4 text-muted-foreground group-hover/link:translate-x-1 transition-transform" />
                   </Link>
                 </CardFooter>
               </Card>
@@ -405,17 +397,15 @@ export const TeamsClient = () => {
               >
                 <CardContent className="p-6">
                   <div className="flex items-center gap-4">
-                    <div className="relative flex-shrink-0">
-                      <Avatar className="size-16 rounded-xl border-2 border-background shadow-md">
-                        {team.imageUrl ? (
-                          <AvatarImage src={team.imageUrl} alt={team.name} />
-                        ) : (
-                          <AvatarFallback className="rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 text-white font-bold text-xl">
-                            {team.name.substring(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        )}
-                      </Avatar>
-                    </div>
+                    <Avatar className="size-16 rounded-lg border flex-shrink-0">
+                      {team.imageUrl ? (
+                        <AvatarImage src={team.imageUrl} alt={team.name} />
+                      ) : (
+                        <AvatarFallback className="rounded-lg bg-gradient-to-br from-blue-600 to-violet-600 text-white font-bold text-xl">
+                          {team.name.substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
                     
                     <div className="flex-1 min-w-0 space-y-2">
                       <div className="flex items-start justify-between gap-4">
@@ -425,7 +415,7 @@ export const TeamsClient = () => {
                             {team.description || "No description provided"}
                           </p>
                         </div>
-                        <Badge className={cn("text-xs font-medium border shrink-0", getVisibilityColor(team.visibility))}>
+                        <Badge className={cn("text-xs font-normal shrink-0", getVisibilityColor(team.visibility))}>
                           <VisibilityIcon className="size-3 mr-1" />
                           {getVisibilityLabel(team.visibility)}
                         </Badge>
@@ -445,7 +435,7 @@ export const TeamsClient = () => {
                             <MoreVertical className="size-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => handleEdit(team.$id)}>
@@ -455,7 +445,7 @@ export const TeamsClient = () => {
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={() => handleDelete(team.$id)}
-                            className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                            className="text-destructive focus:text-destructive"
                           >
                             <Trash2 className="size-4 mr-2" />
                             Delete Team

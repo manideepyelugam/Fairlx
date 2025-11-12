@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { client } from "@/lib/rpc";
 
 interface UseGetTeamMembersProps {
-  teamId: string;
+  teamId: string | null;
 }
 
 export const useGetTeamMembers = ({ teamId }: UseGetTeamMembersProps) => {
