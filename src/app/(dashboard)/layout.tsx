@@ -7,6 +7,10 @@ import { EditTaskModal } from "@/features/tasks/components/edit-task-modal";
 import { TaskDetailsModalWrapper } from "@/features/tasks/components/task-details-modal-wrapper";
 import { CreateCustomColumnModalWrapper } from "@/features/custom-columns/components/create-custom-column-modal-wrapper";
 import { ManageColumnsModalWrapper } from "@/features/custom-columns/components/manage-columns-modal-wrapper";
+import { CreateTeamModal } from "@/features/teams/components/create-team-modal";
+import { EditTeamModal } from "@/features/teams/components/edit-team-modal";
+import { CreateProgramModal } from "@/features/programs/components/create-program-modal";
+import { EditProgramModal } from "@/features/programs/components/edit-program-modal";
 
 import { Navbar } from "@/components/navbar";
 import { Sidebar } from "@/components/sidebar";
@@ -29,6 +33,10 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <TaskDetailsModalWrapper />
       <CreateCustomColumnModalWrapper />
       <ManageColumnsModalWrapper />
+      <CreateTeamModal />
+      <EditTeamModal />
+      <CreateProgramModal />
+      <EditProgramModal />
 
       <div className="flex w-full h-screen">
         <div className="fixed left-0 top-0 hidden lg:block lg:w-[264px] h-full overflow-y-auto">
