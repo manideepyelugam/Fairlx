@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, MoreVertical, Pencil, Trash2, FolderKanban, Calendar, ArrowRight, Users, Target, TrendingUp, Clock, Search, Filter, Grid3x3, List } from "lucide-react";
+import { Plus, MoreVertical, Pencil, Trash2, FolderKanban, Calendar, ArrowRight, Target, TrendingUp, Clock, Search, Filter, Grid3x3, List } from "lucide-react";
 import Link from "next/link";
 import { useState, useMemo } from "react";
 
@@ -313,7 +313,7 @@ export const ProgramsClient = () => {
             <Search className="size-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No programs found</h3>
             <p className="text-muted-foreground text-center max-w-sm text-sm">
-              Try adjusting your search or filters to find what you're looking for
+              Try adjusting your search or filters to find what you&apos;re looking for
             </p>
           </CardContent>
         </Card>

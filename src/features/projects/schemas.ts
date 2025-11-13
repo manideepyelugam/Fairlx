@@ -20,3 +20,17 @@ export const updateProjectSchema = z.object({
     ])
     .optional(),
 });
+
+export const assignProjectToTeamSchema = z.object({
+  projectId: z.string(),
+  teamId: z.string(),
+});
+
+export const unassignProjectFromTeamSchema = z.object({
+  projectId: z.string(),
+  teamId: z.string(),
+});
+
+export const getTeamProjectsSchema = z.object({
+  teamId: z.string(),
+});

@@ -3,6 +3,7 @@ import {
   TeamVisibility,
   TeamMemberRole,
   TeamMemberAvailability,
+  TeamPermission,
 } from "./types";
 
 // Team Schemas
@@ -72,6 +73,7 @@ export const addTeamMemberSchema = z.object({
 
 export const updateTeamMemberSchema = z.object({
   role: z.nativeEnum(TeamMemberRole).optional(),
+  customRoleId: z.string().optional().or(z.literal("")),
   availability: z.nativeEnum(TeamMemberAvailability).optional(),
   isActive: z.boolean().optional(),
 });
@@ -94,6 +96,48 @@ export const getMemberTeamsSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+// Custom Role Schemas
+export const createCustomRoleSchema = z.object({
+  teamId: z.string().min(1, "Team ID is required"),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Role name is required")
+    .max(50, "Role name must be less than 50 characters"),
+  description: z
+    .string()
+    .max(200, "Description must be less than 200 characters")
+    .optional(),
+  color: z.string().optional(),
+  permissions: z.array(z.nativeEnum(TeamPermission)).min(1, "At least one permission is required"),
+  isDefault: z.boolean().optional(),
+});
+
+export const updateCustomRoleSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Role name is required")
+    .max(50, "Role name must be less than 50 characters")
+    .optional(),
+  description: z
+    .string()
+    .max(200, "Description must be less than 200 characters")
+    .optional(),
+  color: z.string().optional(),
+  permissions: z.array(z.nativeEnum(TeamPermission)).optional(),
+  isDefault: z.boolean().optional(),
+});
+
+export const getCustomRolesSchema = z.object({
+  teamId: z.string().min(1, "Team ID is required"),
+});
+
+export const deleteCustomRoleSchema = z.object({
+  teamId: z.string().min(1, "Team ID is required"),
+  roleId: z.string().min(1, "Role ID is required"),
+});
+
 // Export all schemas as a single object for easy import
 export const teamSchemas = {
   createTeam: createTeamSchema,
@@ -106,4 +150,8 @@ export const teamSchemas = {
   removeTeamMember: removeTeamMemberSchema,
   getTeamMembers: getTeamMembersSchema,
   getMemberTeams: getMemberTeamsSchema,
+  createCustomRole: createCustomRoleSchema,
+  updateCustomRole: updateCustomRoleSchema,
+  getCustomRoles: getCustomRolesSchema,
+  deleteCustomRole: deleteCustomRoleSchema,
 };

@@ -6,7 +6,6 @@ import { z } from "zod";
 import Image from "next/image";
 import { ImageIcon, FolderKanban } from "lucide-react";
 import { useRef } from "react";
-import { useRouter } from "next/navigation";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -41,7 +40,6 @@ interface EditProgramFormProps {
 }
 
 export const EditProgramForm = ({ onCancel, initialValues }: EditProgramFormProps) => {
-  const router = useRouter();
   const workspaceId = useWorkspaceId();
   const { mutate: updateProgram, isPending } = useUpdateProgram();
 

@@ -1,8 +1,8 @@
 "use client";
 
-import { Plus, MoreVertical, Pencil, Trash2, Users2, ArrowRight, Shield, Search, Filter, Grid3x3, List, Users, Layers, Crown } from "lucide-react";
+import { Plus, MoreVertical, Pencil, Trash2, Users2, ArrowRight, Shield, Search, Filter, Grid3x3, List, Users, Layers, Crown, Info } from "lucide-react";
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
@@ -37,6 +37,13 @@ import { useConfirm } from "@/hooks/use-confirm";
 import { TeamVisibility, TeamMemberRole } from "@/features/teams/types";
 import { cn } from "@/lib/utils";
 import { useGetTeamMembers } from "@/features/teams/api/use-get-team-members";
+import { FirstTeamInfoDialog } from "@/features/teams/components/first-team-info-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const getVisibilityColor = (visibility: TeamVisibility) => {
   switch (visibility) {
@@ -88,6 +95,27 @@ export const TeamsClient = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [visibilityFilter, setVisibilityFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [showFirstTeamInfo, setShowFirstTeamInfo] = useState(false);
+  const [previousTeamCount, setPreviousTeamCount] = useState<number | null>(null);
+
+  // Show first team info dialog when user creates their first team
+  useEffect(() => {
+    if (teams?.documents) {
+      const currentCount = teams.documents.length;
+      
+      // Check if we just went from 0 to 1 team (first team created)
+      if (previousTeamCount === 0 && currentCount === 1) {
+        const hasSeenFirstTeamInfo = localStorage.getItem('hasSeenFirstTeamInfo');
+        if (!hasSeenFirstTeamInfo) {
+          setShowFirstTeamInfo(true);
+          localStorage.setItem('hasSeenFirstTeamInfo', 'true');
+        }
+      }
+      
+      setPreviousTeamCount(currentCount);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teams?.documents?.length, previousTeamCount]);
 
   const [DeleteDialog, confirmDelete] = useConfirm(
     "Delete Team",
@@ -137,12 +165,36 @@ export const TeamsClient = () => {
       <DeleteDialog />
       <CreateTeamModal />
       <EditTeamModal />
+      <FirstTeamInfoDialog 
+        open={showFirstTeamInfo} 
+        onOpenChange={setShowFirstTeamInfo} 
+      />
       
       {/* Compact Header */}
       <div className="space-y-4 mb-4">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Teams</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight">Teams</h1>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button 
+                      className="size-5 rounded-full bg-muted hover:bg-muted/80 flex items-center justify-center transition-colors"
+                      onClick={() => setShowFirstTeamInfo(true)}
+                    >
+                      <Info className="size-3 text-muted-foreground" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="max-w-xs">
+                    <p className="text-xs">
+                      <strong>Team-based Project Assignment:</strong> Workspace admins can assign projects to specific teams. 
+                      Teams will only see their assigned projects. Click to learn more.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               Manage your workspace teams and collaborate effectively
             </p>
@@ -302,7 +354,7 @@ export const TeamsClient = () => {
             <Search className="size-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No teams found</h3>
             <p className="text-muted-foreground text-center max-w-sm text-sm">
-              Try adjusting your search or filters to find what you're looking for
+              Try adjusting your search or filters to find what you&apos;re looking for
             </p>
           </CardContent>
         </Card>

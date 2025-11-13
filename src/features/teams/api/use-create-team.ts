@@ -26,7 +26,7 @@ export const useCreateTeam = () => {
 
   const mutation = useMutation<CreateTeamResponse, Error, CreateTeamRequest>({
     mutationFn: async ({ json }) => {
-      const response = await client.api.teams.$post({ json } as any);
+      const response = await client.api.teams.$post({ json });
 
       if (!response.ok) {
         throw new Error("Failed to create team.");

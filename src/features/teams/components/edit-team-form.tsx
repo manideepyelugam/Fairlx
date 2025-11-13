@@ -6,7 +6,6 @@ import { z } from "zod";
 import Image from "next/image";
 import { ImageIcon, Users2 } from "lucide-react";
 import { useRef } from "react";
-import { useRouter } from "next/navigation";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -42,7 +41,6 @@ interface EditTeamFormProps {
 }
 
 export const EditTeamForm = ({ onCancel, initialValues }: EditTeamFormProps) => {
-  const router = useRouter();
   const workspaceId = useWorkspaceId();
   const { mutate: updateTeam, isPending } = useUpdateTeam();
 

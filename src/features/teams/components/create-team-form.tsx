@@ -2,11 +2,10 @@
 
 import { z } from "zod";
 import Image from "next/image";
-import { ImageIcon, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import { useRef } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useRouter } from "next/navigation";
 
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useGetMembers } from "@/features/members/api/use-get-members";
@@ -45,7 +44,6 @@ interface CreateTeamFormProps {
 
 export const CreateTeamForm = ({ onCancel }: CreateTeamFormProps) => {
   const workspaceId = useWorkspaceId();
-  const router = useRouter();
   const { mutate, isPending } = useCreateTeam();
 
   const { data: members } = useGetMembers({ workspaceId });

@@ -27,7 +27,7 @@ export const useCreateProgram = () => {
 
   const mutation = useMutation<CreateProgramResponse, Error, CreateProgramRequest>({
     mutationFn: async ({ json }) => {
-      const response = await client.api.programs.$post({ json } as any);
+      const response = await client.api.programs.$post({ json });
 
       if (!response.ok) {
         throw new Error("Failed to create program.");
