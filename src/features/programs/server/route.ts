@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { Hono } from "hono";
 import { ID, Query } from "node-appwrite";
 import { zValidator } from "@hono/zod-validator";
@@ -126,7 +125,7 @@ const app = new Hono()
       };
 
       return c.json({ data: populatedProgram });
-    } catch (error) {
+    } catch {
       return c.json({ error: "Program not found" }, 404);
     }
   })
@@ -256,7 +255,7 @@ const app = new Hono()
         );
 
         return c.json({ data: updatedProgram });
-      } catch (error) {
+      } catch {
         return c.json({ error: "Program not found" }, 404);
       }
     }
@@ -309,7 +308,7 @@ const app = new Hono()
       await databases.deleteDocument(DATABASE_ID, PROGRAMS_ID, programId);
 
       return c.json({ data: { $id: programId } });
-    } catch (error) {
+    } catch {
       return c.json({ error: "Program not found" }, 404);
     }
   })
@@ -346,7 +345,7 @@ const app = new Hono()
       ]);
 
       return c.json({ data: teams });
-    } catch (error) {
+    } catch {
       return c.json({ error: "Program not found" }, 404);
     }
   });

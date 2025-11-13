@@ -29,7 +29,7 @@ export const useAddTeamMember = () => {
       const response = await client.api.teams[":teamId"].members.$post({
         param,
         json,
-      } as any);
+      });
 
       if (!response.ok) {
         throw new Error("Failed to add team member.");

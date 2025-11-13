@@ -1,11 +1,10 @@
-import { z } from "zod";
 import { Hono } from "hono";
 import { ID, Query } from "node-appwrite";
 import { zValidator } from "@hono/zod-validator";
 
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
-import { DATABASE_ID, TEAMS_ID, TEAM_MEMBERS_ID, MEMBERS_ID } from "@/config";
+import { DATABASE_ID, TEAMS_ID, TEAM_MEMBERS_ID, MEMBERS_ID, PROJECTS_ID } from "@/config";
 
 import { getMember } from "@/features/members/utils";
 import { MemberRole } from "@/features/members/types";
@@ -17,6 +16,7 @@ import {
   TeamMemberAvailability,
 } from "../types";
 import { teamSchemas } from "../schemas";
+import { Project } from "@/features/projects/types";
 
 const app = new Hono()
   // GET /api/teams - List all teams with filters
@@ -129,7 +129,7 @@ const app = new Hono()
       };
 
       return c.json({ data: populatedTeam });
-    } catch (error) {
+    } catch {
       return c.json({ error: "Team not found" }, 404);
     }
   })
@@ -264,7 +264,7 @@ const app = new Hono()
         );
 
         return c.json({ data: updatedTeam });
-      } catch (error) {
+      } catch {
         return c.json({ error: "Team not found" }, 404);
       }
     }
@@ -312,7 +312,7 @@ const app = new Hono()
       await databases.deleteDocument(DATABASE_ID, TEAMS_ID, teamId);
 
       return c.json({ data: { $id: teamId } });
-    } catch (error) {
+    } catch {
       return c.json({ error: "Team not found" }, 404);
     }
   })
@@ -389,7 +389,7 @@ const app = new Hono()
           documents: validMembers,
         },
       });
-    } catch (error) {
+    } catch {
       return c.json({ error: "Team not found" }, 404);
     }
   })
@@ -483,7 +483,7 @@ const app = new Hono()
         );
 
         return c.json({ data: teamMember }, 201);
-      } catch (error) {
+      } catch {
         return c.json({ error: "Failed to add team member" }, 400);
       }
     }
@@ -559,7 +559,7 @@ const app = new Hono()
         );
 
         return c.json({ data: updatedTeamMember });
-      } catch (error) {
+      } catch {
         return c.json({ error: "Failed to update team member" }, 400);
       }
     }
@@ -631,9 +631,307 @@ const app = new Hono()
       );
 
       return c.json({ data: { $id: teamMember.$id } });
-    } catch (error) {
+    } catch {
       return c.json({ error: "Failed to remove team member" }, 400);
     }
-  });
+  })
+
+  // GET /api/teams/:teamId/custom-roles - Get all custom roles for a team
+  .get(
+    "/:teamId/custom-roles",
+    sessionMiddleware,
+    async (c) => {
+      const databases = c.get("databases");
+      const user = c.get("user");
+      const { teamId } = c.req.param();
+
+      try {
+        // Verify team exists and get workspace
+        const team = await databases.getDocument<Team>(
+          DATABASE_ID,
+          TEAMS_ID,
+          teamId
+        );
+
+        // Verify user is member of workspace
+        const member = await getMember({
+          databases,
+          workspaceId: team.workspaceId,
+          userId: user.$id,
+        });
+
+        if (!member) {
+          return c.json({ error: "Unauthorized" }, 401);
+        }
+
+        // For now, return empty array - will be implemented when CUSTOM_ROLES_ID is added to config
+        // const customRoles = await databases.listDocuments(
+        //   DATABASE_ID,
+        //   CUSTOM_ROLES_ID,
+        //   [Query.equal("teamId", teamId)]
+        // );
+        
+        return c.json({ data: { documents: [], total: 0 } });
+      } catch {
+        return c.json({ error: "Failed to fetch custom roles" }, 400);
+      }
+    }
+  )
+
+  // POST /api/teams/:teamId/custom-roles - Create a custom role
+  .post(
+    "/:teamId/custom-roles",
+    sessionMiddleware,
+    zValidator("json", teamSchemas.createCustomRole),
+    async (c) => {
+      const databases = c.get("databases");
+      const user = c.get("user");
+      const { teamId } = c.req.param();
+      const data = c.req.valid("json");
+
+      try {
+        // Verify team exists and get workspace
+        const team = await databases.getDocument<Team>(
+          DATABASE_ID,
+          TEAMS_ID,
+          teamId
+        );
+
+        // Verify user is team lead or workspace admin
+        const member = await getMember({
+          databases,
+          workspaceId: team.workspaceId,
+          userId: user.$id,
+        });
+
+        if (!member || member.role !== MemberRole.ADMIN) {
+          // Also check if user is team lead
+          const teamMembers = await databases.listDocuments<TeamMember>(
+            DATABASE_ID,
+            TEAM_MEMBERS_ID,
+            [
+              Query.equal("teamId", teamId),
+              Query.equal("memberId", member?.$id || ""),
+              Query.equal("isActive", true),
+            ]
+          );
+
+          const isTeamLead = teamMembers.documents.some(
+            (tm) => tm.role === TeamMemberRole.LEAD
+          );
+
+          if (!isTeamLead) {
+            return c.json({ error: "Unauthorized - Only team leads and admins can create roles" }, 401);
+          }
+        }
+
+        // For now, return mock response - will be implemented when CUSTOM_ROLES_ID is added to config
+        // const customRole = await databases.createDocument(
+        //   DATABASE_ID,
+        //   CUSTOM_ROLES_ID,
+        //   ID.unique(),
+        //   {
+        //     ...data,
+        //     createdBy: user.$id,
+        //     lastModifiedBy: user.$id,
+        //   }
+        // );
+
+        return c.json({ 
+          data: { 
+            $id: ID.unique(),
+            ...data,
+            createdBy: user.$id,
+            $createdAt: new Date().toISOString(),
+            $updatedAt: new Date().toISOString(),
+          } 
+        });
+      } catch {
+        return c.json({ error: "Failed to create custom role" }, 400);
+      }
+    }
+  )
+
+  // PATCH /api/teams/:teamId/custom-roles/:roleId - Update a custom role
+  .patch(
+    "/:teamId/custom-roles/:roleId",
+    sessionMiddleware,
+    zValidator("json", teamSchemas.updateCustomRole),
+    async (c) => {
+      const databases = c.get("databases");
+      const user = c.get("user");
+      const { teamId, roleId } = c.req.param();
+      const updates = c.req.valid("json");
+
+      try {
+        // Verify team exists and get workspace
+        const team = await databases.getDocument<Team>(
+          DATABASE_ID,
+          TEAMS_ID,
+          teamId
+        );
+
+        // Verify user is team lead or workspace admin
+        const member = await getMember({
+          databases,
+          workspaceId: team.workspaceId,
+          userId: user.$id,
+        });
+
+        if (!member || member.role !== MemberRole.ADMIN) {
+          const teamMembers = await databases.listDocuments<TeamMember>(
+            DATABASE_ID,
+            TEAM_MEMBERS_ID,
+            [
+              Query.equal("teamId", teamId),
+              Query.equal("memberId", member?.$id || ""),
+              Query.equal("isActive", true),
+            ]
+          );
+
+          const isTeamLead = teamMembers.documents.some(
+            (tm) => tm.role === TeamMemberRole.LEAD
+          );
+
+          if (!isTeamLead) {
+            return c.json({ error: "Unauthorized" }, 401);
+          }
+        }
+
+        // For now, return mock response
+        return c.json({ 
+          data: { 
+            $id: roleId,
+            teamId,
+            ...updates,
+            lastModifiedBy: user.$id,
+            $updatedAt: new Date().toISOString(),
+          } 
+        });
+      } catch {
+        return c.json({ error: "Failed to update custom role" }, 400);
+      }
+    }
+  )
+
+  // DELETE /api/teams/:teamId/custom-roles/:roleId - Delete a custom role
+  .delete(
+    "/:teamId/custom-roles/:roleId",
+    sessionMiddleware,
+    async (c) => {
+      const databases = c.get("databases");
+      const user = c.get("user");
+      const { teamId, roleId } = c.req.param();
+
+      try {
+        // Verify team exists and get workspace
+        const team = await databases.getDocument<Team>(
+          DATABASE_ID,
+          TEAMS_ID,
+          teamId
+        );
+
+        // Verify user is team lead or workspace admin
+        const member = await getMember({
+          databases,
+          workspaceId: team.workspaceId,
+          userId: user.$id,
+        });
+
+        if (!member || member.role !== MemberRole.ADMIN) {
+          const teamMembers = await databases.listDocuments<TeamMember>(
+            DATABASE_ID,
+            TEAM_MEMBERS_ID,
+            [
+              Query.equal("teamId", teamId),
+              Query.equal("memberId", member?.$id || ""),
+              Query.equal("isActive", true),
+            ]
+          );
+
+          const isTeamLead = teamMembers.documents.some(
+            (tm) => tm.role === TeamMemberRole.LEAD
+          );
+
+          if (!isTeamLead) {
+            return c.json({ error: "Unauthorized" }, 401);
+          }
+        }
+
+        // Check if any members are using this role
+        const membersWithRole = await databases.listDocuments<TeamMember>(
+          DATABASE_ID,
+          TEAM_MEMBERS_ID,
+          [
+            Query.equal("teamId", teamId),
+            Query.equal("customRoleId", roleId),
+            Query.equal("isActive", true),
+          ]
+        );
+
+        if (membersWithRole.total > 0) {
+          return c.json({ 
+            error: `Cannot delete role - ${membersWithRole.total} member(s) are using this role. Please reassign them first.` 
+          }, 400);
+        }
+
+        // For now, return success - will be implemented when CUSTOM_ROLES_ID is added
+        return c.json({ data: { $id: roleId } });
+      } catch {
+        return c.json({ error: "Failed to delete custom role" }, 400);
+      }
+    }
+  )
+  // GET /api/teams/:teamId/projects - Get projects assigned to a team
+  .get(
+    "/:teamId/projects",
+    sessionMiddleware,
+    async (c) => {
+      const databases = c.get("databases");
+      const user = c.get("user");
+      const { teamId } = c.req.param();
+
+      // Get the team to verify access
+      const team = await databases.getDocument<Team>(
+        DATABASE_ID,
+        TEAMS_ID,
+        teamId
+      );
+
+      if (!team) {
+        return c.json({ error: "Team not found" }, 404);
+      }
+
+      // Verify user is a member of the workspace
+      const member = await getMember({
+        databases,
+        workspaceId: team.workspaceId,
+        userId: user.$id,
+      });
+
+      if (!member) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      // Get all projects in the workspace
+      const allProjects = await databases.listDocuments<Project>(
+        DATABASE_ID,
+        PROJECTS_ID,
+        [Query.equal("workspaceId", team.workspaceId)]
+      );
+
+      // Filter projects that are assigned to this team or have no team assignment
+      const teamProjects = allProjects.documents.filter((project) => {
+        // If no teams assigned, project is visible to all
+        if (!project.assignedTeamIds || project.assignedTeamIds.length === 0) {
+          return true;
+        }
+        // Otherwise, check if this team is in the assigned list
+        return project.assignedTeamIds.includes(teamId);
+      });
+
+      return c.json({ data: { documents: teamProjects, total: teamProjects.length } });
+    }
+  );
 
 export default app;

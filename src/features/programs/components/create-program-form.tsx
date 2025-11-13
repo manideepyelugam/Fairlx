@@ -6,7 +6,6 @@ import { FolderKanban } from "lucide-react";
 import { useRef } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useRouter } from "next/navigation";
 
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useGetMembers } from "@/features/members/api/use-get-members";
@@ -44,7 +43,6 @@ interface CreateProgramFormProps {
 
 export const CreateProgramForm = ({ onCancel }: CreateProgramFormProps) => {
   const workspaceId = useWorkspaceId();
-  const router = useRouter();
   const { mutate, isPending } = useCreateProgram();
 
   const { data: members } = useGetMembers({ workspaceId });

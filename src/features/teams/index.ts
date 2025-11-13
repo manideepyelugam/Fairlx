@@ -28,3 +28,4 @@ export * from "./components/create-team-form";
 export * from "./components/create-team-modal";
 export * from "./components/edit-team-form";
 export * from "./components/edit-team-modal";
+export * from "./components/add-member-modal";

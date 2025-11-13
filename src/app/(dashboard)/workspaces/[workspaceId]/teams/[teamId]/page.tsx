@@ -4,16 +4,18 @@ import { getCurrent } from "@/features/auth/queries";
 import { TeamIdClient } from "./client";
 
 interface TeamIdPageProps {
-  params: {
+  params: Promise<{
     teamId: string;
-  };
+  }>;
 }
 
 const TeamIdPage = async ({ params }: TeamIdPageProps) => {
   const user = await getCurrent();
   if (!user) redirect("/sign-in");
 
-  return <TeamIdClient teamId={params.teamId} />;
+  const { teamId } = await params;
+
+  return <TeamIdClient teamId={teamId} />;
 };
 
 export default TeamIdPage;

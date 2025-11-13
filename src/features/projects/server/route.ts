@@ -7,11 +7,13 @@ import { z } from "zod";
 import { getMember } from "@/features/members/utils";
 import { TaskStatus } from "@/features/tasks/types";
 
-import { DATABASE_ID, IMAGES_BUCKET_ID, PROJECTS_ID, TASKS_ID, TIME_LOGS_ID } from "@/config";
+import { DATABASE_ID, IMAGES_BUCKET_ID, PROJECTS_ID, TASKS_ID, TIME_LOGS_ID, TEAM_MEMBERS_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 
 import { createProjectSchema, updateProjectSchema } from "../schemas";
 import { Project } from "../types";
+import { MemberRole } from "@/features/members/types";
+import { TeamMember } from "@/features/teams/types";
 
 const app = new Hono()
   .post(
@@ -92,13 +94,46 @@ const app = new Hono()
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      const projects = await databases.listDocuments<Project>(
+      const allProjects = await databases.listDocuments<Project>(
         DATABASE_ID,
         PROJECTS_ID,
         [Query.equal("workspaceId", workspaceId), Query.orderDesc("$createdAt")]
       );
 
-      return c.json({ data: projects });
+      // If user is admin, return all projects
+      if (member.role === MemberRole.ADMIN) {
+        return c.json({ data: allProjects });
+      }
+
+      // Get user's team memberships
+      const userTeamMemberships = await databases.listDocuments<TeamMember>(
+        DATABASE_ID,
+        TEAM_MEMBERS_ID,
+        [Query.equal("memberId", member.$id), Query.equal("isActive", true)]
+      );
+
+      const userTeamIds = userTeamMemberships.documents.map(
+        (membership) => membership.teamId
+      );
+
+      // Filter projects based on team assignments
+      const filteredProjects = allProjects.documents.filter((project) => {
+        // If no teams assigned, project is visible to all
+        if (!project.assignedTeamIds || project.assignedTeamIds.length === 0) {
+          return true;
+        }
+        // Check if user is in any of the assigned teams
+        return project.assignedTeamIds.some((teamId) =>
+          userTeamIds.includes(teamId)
+        );
+      });
+
+      return c.json({
+        data: {
+          documents: filteredProjects,
+          total: filteredProjects.length,
+        },
+      });
     }
   )
   .get("/:projectId", sessionMiddleware, async (c) => {
@@ -419,6 +454,100 @@ const app = new Hono()
         overdueTaskDifference,
       },
     });
-  });
+  })
+  .post(
+    "/:projectId/teams/:teamId",
+    sessionMiddleware,
+    async (c) => {
+      const user = c.get("user");
+      const databases = c.get("databases");
+      const { projectId, teamId } = c.req.param();
+
+      // Get the project
+      const project = await databases.getDocument<Project>(
+        DATABASE_ID,
+        PROJECTS_ID,
+        projectId
+      );
+
+      if (!project) {
+        return c.json({ error: "Project not found" }, 404);
+      }
+
+      // Check if user is workspace admin
+      const member = await getMember({
+        databases,
+        workspaceId: project.workspaceId,
+        userId: user.$id,
+      });
+
+      if (!member || member.role !== MemberRole.ADMIN) {
+        return c.json({ error: "Only workspace admins can assign projects to teams" }, 403);
+      }
+
+      // Add team to assignedTeamIds array
+      const currentTeamIds = project.assignedTeamIds || [];
+      if (!currentTeamIds.includes(teamId)) {
+        currentTeamIds.push(teamId);
+      }
+
+      const updatedProject = await databases.updateDocument(
+        DATABASE_ID,
+        PROJECTS_ID,
+        projectId,
+        {
+          assignedTeamIds: currentTeamIds,
+        }
+      );
+
+      return c.json({ data: updatedProject });
+    }
+  )
+  .delete(
+    "/:projectId/teams/:teamId",
+    sessionMiddleware,
+    async (c) => {
+      const user = c.get("user");
+      const databases = c.get("databases");
+      const { projectId, teamId } = c.req.param();
+
+      // Get the project
+      const project = await databases.getDocument<Project>(
+        DATABASE_ID,
+        PROJECTS_ID,
+        projectId
+      );
+
+      if (!project) {
+        return c.json({ error: "Project not found" }, 404);
+      }
+
+      // Check if user is workspace admin
+      const member = await getMember({
+        databases,
+        workspaceId: project.workspaceId,
+        userId: user.$id,
+      });
+
+      if (!member || member.role !== MemberRole.ADMIN) {
+        return c.json({ error: "Only workspace admins can unassign projects from teams" }, 403);
+      }
+
+      // Remove team from assignedTeamIds array
+      const currentTeamIds = project.assignedTeamIds || [];
+      const updatedTeamIds = currentTeamIds.filter((id) => id !== teamId);
+
+      const updatedProject = await databases.updateDocument(
+        DATABASE_ID,
+        PROJECTS_ID,
+        projectId,
+        {
+          assignedTeamIds: updatedTeamIds,
+        }
+      );
+
+      return c.json({ data: updatedProject });
+    }
+  );
 
 export default app;
