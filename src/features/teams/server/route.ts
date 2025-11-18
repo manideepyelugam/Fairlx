@@ -4,7 +4,7 @@ import { zValidator } from "@hono/zod-validator";
 
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
-import { DATABASE_ID, TEAMS_ID, TEAM_MEMBERS_ID, MEMBERS_ID, PROJECTS_ID } from "@/config";
+import { DATABASE_ID, TEAMS_ID, TEAM_MEMBERS_ID, MEMBERS_ID, PROJECTS_ID, CUSTOM_ROLES_ID } from "@/config";
 
 import { getMember } from "@/features/members/utils";
 import { MemberRole } from "@/features/members/types";
@@ -169,23 +169,62 @@ const app = new Hono()
         return c.json({ error: "Team name already exists in this workspace" }, 409);
       }
 
+      // Prepare document data
+      const documentData = {
+        name: data.name,
+        description: data.description && data.description.trim() !== "" ? data.description : undefined,
+        workspaceId: data.workspaceId,
+        programId: data.programId || undefined,
+        teamLeadId: data.teamLeadId || undefined,
+        imageUrl: data.imageUrl && data.imageUrl.trim() !== "" ? data.imageUrl : undefined,
+        visibility: data.visibility || TeamVisibility.ALL,
+        createdBy: user.$id,
+        lastModifiedBy: undefined,
+      };
+
       // Create the team
       const team = await databases.createDocument<Team>(
         DATABASE_ID,
         TEAMS_ID,
         ID.unique(),
-        {
-          name: data.name,
-          description: data.description || null,
-          workspaceId: data.workspaceId,
-          programId: data.programId || null,
-          teamLeadId: data.teamLeadId || null,
-          imageUrl: data.imageUrl || null,
-          visibility: data.visibility || TeamVisibility.ALL,
-          createdBy: user.$id,
-          lastModifiedBy: null,
-        }
+        documentData
       );
+
+      // If teamLeadId is provided, automatically add them as a team member with LEAD role
+      if (data.teamLeadId) {
+        try {
+          // Get the member document for this user in the workspace
+          const leadMember = await databases.listDocuments(
+            DATABASE_ID,
+            MEMBERS_ID,
+            [
+              Query.equal("workspaceId", data.workspaceId),
+              Query.equal("userId", data.teamLeadId),
+            ]
+          );
+
+          if (leadMember.documents.length > 0) {
+            await databases.createDocument<TeamMember>(
+              DATABASE_ID,
+              TEAM_MEMBERS_ID,
+              ID.unique(),
+              {
+                teamId: team.$id,
+                memberId: leadMember.documents[0].$id,
+                role: TeamMemberRole.LEAD,
+                availability: TeamMemberAvailability.FULL_TIME,
+                joinedAt: new Date().toISOString(),
+                leftAt: undefined,
+                isActive: true,
+                lastModifiedBy: user.$id,
+              }
+            );
+          }
+        } catch (error) {
+          // If adding team lead fails, still return the created team
+          console.error("Error adding team lead as member:", error);
+        }
+      }
 
       return c.json({ data: team }, 201);
     }
@@ -253,14 +292,23 @@ const app = new Hono()
         }
 
         // Update the team
+        const updateData: any = {
+          ...updates,
+          lastModifiedBy: user.$id,
+        };
+        
+        // Handle empty imageUrl
+        if ("imageUrl" in updates) {
+          updateData.imageUrl = updates.imageUrl && updates.imageUrl.trim() !== "" 
+            ? updates.imageUrl 
+            : undefined;
+        }
+        
         const updatedTeam = await databases.updateDocument<Team>(
           DATABASE_ID,
           TEAMS_ID,
           teamId,
-          {
-            ...updates,
-            lastModifiedBy: user.$id,
-          }
+          updateData
         );
 
         return c.json({ data: updatedTeam });
@@ -664,14 +712,14 @@ const app = new Hono()
           return c.json({ error: "Unauthorized" }, 401);
         }
 
-        // For now, return empty array - will be implemented when CUSTOM_ROLES_ID is added to config
-        // const customRoles = await databases.listDocuments(
-        //   DATABASE_ID,
-        //   CUSTOM_ROLES_ID,
-        //   [Query.equal("teamId", teamId)]
-        // );
+        // Fetch custom roles from the database
+        const customRoles = await databases.listDocuments(
+          DATABASE_ID,
+          CUSTOM_ROLES_ID,
+          [Query.equal("teamId", teamId)]
+        );
         
-        return c.json({ data: { documents: [], total: 0 } });
+        return c.json({ data: customRoles });
       } catch {
         return c.json({ error: "Failed to fetch custom roles" }, 400);
       }
@@ -725,29 +773,25 @@ const app = new Hono()
           }
         }
 
-        // For now, return mock response - will be implemented when CUSTOM_ROLES_ID is added to config
-        // const customRole = await databases.createDocument(
-        //   DATABASE_ID,
-        //   CUSTOM_ROLES_ID,
-        //   ID.unique(),
-        //   {
-        //     ...data,
-        //     createdBy: user.$id,
-        //     lastModifiedBy: user.$id,
-        //   }
-        // );
-
-        return c.json({ 
-          data: { 
-            $id: ID.unique(),
+        // Create the custom role in the database
+        const customRole = await databases.createDocument(
+          DATABASE_ID,
+          CUSTOM_ROLES_ID,
+          ID.unique(),
+          {
             ...data,
             createdBy: user.$id,
-            $createdAt: new Date().toISOString(),
-            $updatedAt: new Date().toISOString(),
-          } 
-        });
-      } catch {
-        return c.json({ error: "Failed to create custom role" }, 400);
+            lastModifiedBy: user.$id,
+          }
+        );
+
+        return c.json({ data: customRole });
+      } catch (error) {
+        console.error("Error creating custom role:", error);
+        return c.json({ 
+          error: "Failed to create custom role",
+          details: error instanceof Error ? error.message : String(error)
+        }, 400);
       }
     }
   )
@@ -798,16 +842,18 @@ const app = new Hono()
           }
         }
 
-        // For now, return mock response
-        return c.json({ 
-          data: { 
-            $id: roleId,
-            teamId,
+        // Update the custom role in the database
+        const updatedRole = await databases.updateDocument(
+          DATABASE_ID,
+          CUSTOM_ROLES_ID,
+          roleId,
+          {
             ...updates,
             lastModifiedBy: user.$id,
-            $updatedAt: new Date().toISOString(),
-          } 
-        });
+          }
+        );
+
+        return c.json({ data: updatedRole });
       } catch {
         return c.json({ error: "Failed to update custom role" }, 400);
       }
@@ -875,7 +921,13 @@ const app = new Hono()
           }, 400);
         }
 
-        // For now, return success - will be implemented when CUSTOM_ROLES_ID is added
+        // Delete the custom role from the database
+        await databases.deleteDocument(
+          DATABASE_ID,
+          CUSTOM_ROLES_ID,
+          roleId
+        );
+
         return c.json({ data: { $id: roleId } });
       } catch {
         return c.json({ error: "Failed to delete custom role" }, 400);

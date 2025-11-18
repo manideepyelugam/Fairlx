@@ -20,7 +20,7 @@ export const createTeamSchema = z.object({
   workspaceId: z.string().min(1, "Workspace ID is required"),
   programId: z.string().optional(),
   teamLeadId: z.string().optional(),
-  imageUrl: z.string().url("Invalid image URL").optional().or(z.literal("")),
+  imageUrl: z.union([z.string().url("Invalid image URL"), z.literal("")]).optional(),
   visibility: z
     .nativeEnum(TeamVisibility)
     .default(TeamVisibility.ALL)
@@ -40,7 +40,7 @@ export const updateTeamSchema = z.object({
     .optional(),
   programId: z.string().optional().or(z.literal("")),
   teamLeadId: z.string().optional().or(z.literal("")),
-  imageUrl: z.string().url("Invalid image URL").optional().or(z.literal("")),
+  imageUrl: z.union([z.string().url("Invalid image URL"), z.literal("")]).optional(),
   visibility: z.nativeEnum(TeamVisibility).optional(),
 });
 
