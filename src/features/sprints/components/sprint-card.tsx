@@ -22,12 +22,6 @@ interface SprintCardProps {
   projectId: string;
 }
 
-const statusColors = {
-  [SprintStatus.PLANNED]: "bg-gray-400 text-gray-700",
-  [SprintStatus.ACTIVE]: "bg-blue-100 text-blue-700",
-  [SprintStatus.COMPLETED]: "bg-green-100 text-green-700",
-};
-
 const statusBadgeStyles = {
   [SprintStatus.PLANNED]: "bg-gray-100 text-gray-600",
   [SprintStatus.ACTIVE]: "bg-blue-50 text-blue-600",

@@ -292,7 +292,7 @@ const app = new Hono()
         }
 
         // Update the team
-        const updateData: any = {
+        const updateData: Partial<Team> & { lastModifiedBy: string } = {
           ...updates,
           lastModifiedBy: user.$id,
         };
@@ -972,14 +972,12 @@ const app = new Hono()
         [Query.equal("workspaceId", team.workspaceId)]
       );
 
-      // Filter projects that are assigned to this team or have no team assignment
+      // Filter projects that are EXPLICITLY assigned to this team
+      // Note: Projects with no team assignment are visible to all workspace members
+      // but should not appear in the "Assigned Projects" section
       const teamProjects = allProjects.documents.filter((project) => {
-        // If no teams assigned, project is visible to all
-        if (!project.assignedTeamIds || project.assignedTeamIds.length === 0) {
-          return true;
-        }
-        // Otherwise, check if this team is in the assigned list
-        return project.assignedTeamIds.includes(teamId);
+        // Only return projects that have this team explicitly in their assignedTeamIds
+        return project.assignedTeamIds && project.assignedTeamIds.includes(teamId);
       });
 
       return c.json({ data: { documents: teamProjects, total: teamProjects.length } });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Users, Settings, Shield, UserPlus, MoreVertical, Crown, Trash2, ArrowLeft, Eye, Info } from "lucide-react";
+import { Users, Settings, Shield, UserPlus, MoreVertical, Crown, Trash2, ArrowLeft, Eye, Info, Briefcase, Plus, FolderKanban } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,11 @@ import {
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useGetTeam } from "@/features/teams/api/use-get-team";
 import { useGetTeamMembers } from "@/features/teams/api/use-get-team-members";
+import { useGetTeamProjects } from "@/features/teams/api/use-get-team-projects";
+import { useGetProjects } from "@/features/projects/api/use-get-projects";
+import { useAssignProjectToTeam } from "@/features/projects/api/use-assign-project-to-team";
+import { useUnassignProjectFromTeam } from "@/features/projects/api/use-unassign-project-from-team";
+import { ProjectAvatar } from "@/features/projects/components/project-avatar";
 import { useRemoveTeamMember } from "@/features/teams/api/use-remove-team-member";
 import { useUpdateTeamMember } from "@/features/teams/api/use-update-team-member";
 import { useGetCustomRoles } from "@/features/teams/api/use-get-custom-roles";
@@ -41,7 +46,6 @@ import { TeamMemberRole, TeamVisibility, PERMISSION_CATEGORIES, CustomRole, DEFA
 import { AddMemberModal } from "@/features/teams/components/add-member-modal";
 import { TeamSettingsModal } from "@/features/teams/components/team-settings-modal";
 import { getRoleDisplay } from "@/features/teams/hooks/use-team-permissions";
-import { TeamProjectsAssignment } from "@/features/teams/components/team-projects-assignment";
 
 const getVisibilityLabel = (visibility: TeamVisibility) => {
   switch (visibility) {
@@ -65,18 +69,23 @@ export const TeamIdClient = ({ teamId }: TeamIdClientProps) => {
   const workspaceId = useWorkspaceId();
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAssignProjectOpen, setIsAssignProjectOpen] = useState(false);
   const [selectedRoleForView, setSelectedRoleForView] = useState<{ type: 'builtin' | 'custom', role: TeamMemberRole | CustomRole } | null>(null);
 
   const { data: team, isLoading: isLoadingTeam } = useGetTeam({ teamId });
   const { data: teamMembersData, isLoading: isLoadingMembers } = useGetTeamMembers({ teamId });
   const { data: customRolesData } = useGetCustomRoles({ teamId });
+  const { data: teamProjectsData, isLoading: isLoadingProjects } = useGetTeamProjects({ teamId });
+  const { data: allProjectsData } = useGetProjects({ workspaceId });
+  const { mutate: assignProject } = useAssignProjectToTeam();
+  const { mutate: unassignProject } = useUnassignProjectFromTeam();
   const { mutate: removeTeamMember } = useRemoveTeamMember();
   const { mutate: updateTeamMember } = useUpdateTeamMember();
   const { mutate: createCustomRole } = useCreateCustomRole();
   const { mutate: updateCustomRole } = useUpdateCustomRole();
   const { mutate: deleteCustomRole } = useDeleteCustomRole();
 
-  const customRoles = customRolesData?.data?.documents || [];
+  const customRoles = (customRolesData?.data?.documents || []) as CustomRole[];
 
   const [ConfirmDialog, confirm] = useConfirm(
     "Remove Member",
@@ -150,7 +159,7 @@ export const TeamIdClient = ({ teamId }: TeamIdClientProps) => {
       />
       
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Button 
             variant="ghost" 
@@ -161,42 +170,143 @@ export const TeamIdClient = ({ teamId }: TeamIdClientProps) => {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex items-center gap-2.5">
-            <Avatar className="size-10 rounded-lg">
+            <Avatar className="size-12 rounded-lg border-2 border-border">
               {team.imageUrl ? (
                 <AvatarImage src={team.imageUrl} alt={team.name} />
               ) : (
-                <AvatarFallback className="rounded-lg bg-gradient-to-br from-blue-600 to-violet-600 text-white text-base font-semibold">
+                <AvatarFallback className="rounded-lg bg-gradient-to-br from-blue-600 to-violet-600 text-white text-lg font-semibold">
                   {team.name.substring(0, 2).toUpperCase()}
                 </AvatarFallback>
               )}
             </Avatar>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold leading-none">{team.name}</h1>
-                <Separator orientation="vertical" className="h-4" />
-                <div className="flex items-center gap-1">
-                  <Eye className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">{getVisibilityLabel(team.visibility)}</span>
-                </div>
+                <h1 className="text-2xl font-bold leading-none">{team.name}</h1>
+                <Badge variant="outline" className="gap-1 text-xs">
+                  <Eye className="h-3 w-3" />
+                  {getVisibilityLabel(team.visibility)}
+                </Badge>
               </div>
               {team.description && (
-                <p className="text-xs text-muted-foreground mt-1">{team.description}</p>
+                <p className="text-sm text-muted-foreground mt-1">{team.description}</p>
               )}
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-xs text-muted-foreground mt-1">
                 {team.statistics?.memberCount || 0} {team.statistics?.memberCount === 1 ? 'member' : 'members'}
               </p>
             </div>
           </div>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm"
-          className="gap-1.5"
-          onClick={() => setIsSettingsOpen(true)}
-        >
-          <Settings className="h-4 w-4" />
-          Settings
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setIsAssignProjectOpen(true)}
+          >
+            <Briefcase className="h-4 w-4" />
+            Assign Project
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setIsSettingsOpen(true)}
+          >
+            <Settings className="h-4 w-4" />
+            Settings
+          </Button>
+        </div>
+      </div>
+
+      {/* Assigned Projects Section */}
+      <div className="mb-5">
+        <div className="flex items-center justify-between mb-2.5">
+          <div className="flex items-center gap-2">
+            <Briefcase className="size-4 text-muted-foreground" />
+            <h2 className="text-base font-semibold">Assigned Projects</h2>
+          </div>
+        </div>
+
+        {isLoadingProjects ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            {[1, 2].map((i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-3">
+                  <div className="flex items-start gap-2.5">
+                    <div className="size-10 rounded-lg bg-muted" />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-3.5 bg-muted rounded w-3/4" />
+                      <div className="h-3 bg-muted rounded w-full" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          (() => {
+            const assignedProjects = teamProjectsData?.documents || [];
+            
+            return assignedProjects.length === 0 ? (
+              <Card className="border-dashed">
+                <CardContent className="flex flex-col items-center justify-center py-8">
+                  <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                    <FolderKanban className="size-6 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-base font-semibold mb-1.5">No Projects Assigned</h3>
+                  <p className="text-muted-foreground text-center max-w-sm mb-3 text-sm">
+                    Assign projects to this team so members can collaborate
+                  </p>
+                  <Button onClick={() => setIsAssignProjectOpen(true)} size="sm" className="gap-1.5">
+                    <Plus className="size-3.5" />
+                    Assign Project
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                {assignedProjects.map((project) => (
+                  <Card 
+                    key={project.$id}
+                    className="group hover:shadow-md transition-all duration-200 cursor-pointer border-border/50 hover:border-border"
+                    onClick={() => router.push(`/workspaces/${workspaceId}/projects/${project.$id}`)}
+                  >
+                    <CardContent className="p-3">
+                      <div className="flex items-start gap-2.5">
+                        <ProjectAvatar
+                          name={project.name}
+                          image={project.imageUrl}
+                          className="size-10 rounded-lg shrink-0"
+                          fallbackClassName="text-sm"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-sm truncate mb-0.5 group-hover:text-primary transition-colors">
+                            {project.name}
+                          </h3>
+                          <p className="text-xs text-muted-foreground line-clamp-1">
+                            {project.description || "No description"}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            unassignProject({
+                              param: { projectId: project.$id, teamId },
+                            });
+                          }}
+                        >
+                          <Trash2 className="size-3 text-destructive" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            );
+          })()
+        )}
       </div>
 
       {/* Members Section */}
@@ -263,7 +373,7 @@ export const TeamIdClient = ({ teamId }: TeamIdClientProps) => {
                               ) : member.role === TeamMemberRole.CUSTOM && member.customRoleId ? (
                                 (() => {
                                   const roleDisplay = getRoleDisplay(member.role, member.customRoleId, customRoles);
-                                  const customRole = customRoles.find((r: CustomRole) => r.$id === member.customRoleId);
+                                  const customRole = customRoles.find((r) => r.$id === member.customRoleId);
                                   return (
                                     <Badge 
                                       variant="outline" 
@@ -410,10 +520,86 @@ export const TeamIdClient = ({ teamId }: TeamIdClientProps) => {
         </Card>
       </div>
 
-      {/* Projects Assignment Section */}
-      <div className="flex-1 flex flex-col mt-6">
-        <TeamProjectsAssignment team={team} workspaceId={workspaceId} />
-      </div>
+      {/* Assign Project Modal */}
+      <Dialog open={isAssignProjectOpen} onOpenChange={setIsAssignProjectOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Briefcase className="size-5" />
+              Assign Project to Team
+            </DialogTitle>
+            <DialogDescription>
+              Select a project to assign to {team.name}. Team members will be able to view and collaborate on assigned projects.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {(() => {
+              const allProjects = allProjectsData?.documents || [];
+              const assignedProjects = teamProjectsData?.documents || [];
+              const assignedProjectIds = assignedProjects.map((p) => p.$id);
+              const availableProjects = allProjects.filter(
+                (project) => !assignedProjectIds.includes(project.$id)
+              );
+
+              if (availableProjects.length === 0) {
+                return (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                      <FolderKanban className="size-6 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      All workspace projects are already assigned to this team.
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                  {availableProjects.map((project) => (
+                    <Card 
+                      key={project.$id}
+                      className="group cursor-pointer hover:bg-muted/50 transition-colors border-border/50 hover:border-border"
+                      onClick={() => {
+                        assignProject(
+                          {
+                            param: { projectId: project.$id, teamId },
+                          },
+                          {
+                            onSuccess: () => {
+                              setIsAssignProjectOpen(false);
+                            },
+                          }
+                        );
+                      }}
+                    >
+                      <CardContent className="p-3">
+                        <div className="flex items-center gap-3">
+                          <ProjectAvatar
+                            name={project.name}
+                            image={project.imageUrl}
+                            className="size-10 rounded-lg shrink-0"
+                            fallbackClassName="text-sm"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
+                              {project.name}
+                            </h4>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {project.description || "No description"}
+                            </p>
+                          </div>
+                          <Plus className="size-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Role Permissions Dialog */}
       <Dialog open={!!selectedRoleForView} onOpenChange={() => setSelectedRoleForView(null)}>
