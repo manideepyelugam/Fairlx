@@ -17,6 +17,8 @@ import personalBacklog from "@/features/personal-backlog/server/route";
 import githubIntegration from "@/features/github-integration/server/index";
 import auditLogs from "@/features/audit-logs/api/route";
 import subtasks from "@/features/subtasks/server/route";
+import teams from "@/features/teams/server/route";
+import programs from "@/features/programs/server/route";
 
 const app = new Hono().basePath("/api");
 
@@ -37,7 +39,9 @@ const routes = app
   .route("/personal-backlog", personalBacklog)
   .route("/github", githubIntegration)
   .route("/audit-logs", auditLogs)
-  .route("/subtasks", subtasks);
+  .route("/subtasks", subtasks)
+  .route("/teams", teams)
+  .route("/programs", programs);
 
 export const GET = handle(app);
 export const POST = handle(app);

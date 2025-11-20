@@ -19,7 +19,9 @@ export type Task = Models.Document & {
   status: TaskStatus | string; // Allow custom column IDs as status
   workspaceId: string;
   assigneeId: string; // Keep for backward compatibility
-  assigneeIds?: string[]; // New field for multiple assignees
+  assigneeIds?: string[]; // Multiple individual assignees
+  assignedTeamId?: string; // Single team assignment
+  assignedTeamIds?: string[]; // Multiple team assignments
   projectId: string;
   position: number;
   dueDate: string;
@@ -38,8 +40,17 @@ export type TaskAssignee = {
   profileImageUrl?: string | null;
 };
 
+export type TaskTeam = {
+  $id: string;
+  name: string;
+  imageUrl?: string;
+  memberCount?: number;
+};
+
 export type PopulatedTask = Task & {
   assignee?: TaskAssignee;
-  assignees?: TaskAssignee[]; // New field for multiple assignees
+  assignees?: TaskAssignee[]; // Individual assignees
+  assignedTeam?: TaskTeam; // Single assigned team
+  assignedTeams?: TaskTeam[]; // Multiple assigned teams
   project?: { $id: string; name: string; imageUrl: string };
 };

@@ -20,6 +20,7 @@ import { DataTable } from "./data-table";
 import { EnhancedDataKanban } from "@/features/custom-columns/components/enhanced-data-kanban";
 import { DataDashboard } from "./data-dashboard";
 import { TimelineView } from "@/features/timeline/components/timeline-view";
+import { MyBacklogView } from "@/features/personal-backlog/components/my-backlog-view";
 
 import { useGetTasks } from "../api/use-get-tasks";
 import { useCreateTaskModal } from "../hooks/use-create-task-modal";
@@ -122,6 +123,11 @@ export const TaskViewSwitcher = ({
             <TabsTrigger className="h-8 w-full text-xs lg:w-auto" value="timeline">
               Timeline
             </TabsTrigger>
+            {showMyTasksOnly && (
+              <TabsTrigger className="h-8 w-full text-xs lg:w-auto" value="backlog">
+                My Backlog
+              </TabsTrigger>
+            )}
           </TabsList>
           <Button onClick={open} size="xs" className="w-full font-medium px-3 py-2 tracking-tight !bg-[#2663ec] lg:w-auto">
             <PlusIcon className="size-3 " />
@@ -130,7 +136,7 @@ export const TaskViewSwitcher = ({
         </div>
 
 
-        {view !== "dashboard" && view !== "timeline" && (
+        {view !== "dashboard" && view !== "timeline" && view !== "backlog" && (
           <DataFilters hideProjectFilter={hideProjectFilter} showMyTasksOnly={showMyTasksOnly} />
         )}
 
@@ -165,6 +171,11 @@ export const TaskViewSwitcher = ({
                 projectId={paramProjectId || projectId || undefined}
               />
             </TabsContent>
+            {showMyTasksOnly && (
+              <TabsContent value="backlog" className="mt-0 h-full">
+                <MyBacklogView workspaceId={workspaceId} />
+              </TabsContent>
+            )}
           </>
         )}
       </div>
