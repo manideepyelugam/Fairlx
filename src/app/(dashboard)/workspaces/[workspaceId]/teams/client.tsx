@@ -1,7 +1,6 @@
 "use client";
 
-import { Plus, MoreVertical, Pencil, Trash2, Users2, ArrowRight, Shield, Search, Filter, Grid3x3, List, Users, Layers, Crown, Info } from "lucide-react";
-import Link from "next/link";
+import { Plus, MoreVertical, Pencil, Trash2, Users2, Shield, Search, Filter, Grid3x3, List, Users, Layers, Crown, Info } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -26,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
+import { useRouter } from "next/navigation";
 import { useGetTeams } from "@/features/teams/api/use-get-teams";
 import { useDeleteTeam } from "@/features/teams/api/use-delete-team";
 import { useCreateTeamModal } from "@/features/teams/hooks/use-create-team-modal";
@@ -37,6 +37,7 @@ import { useConfirm } from "@/hooks/use-confirm";
 import { TeamVisibility, TeamMemberRole } from "@/features/teams/types";
 import { cn } from "@/lib/utils";
 import { useGetTeamMembers } from "@/features/teams/api/use-get-team-members";
+import { useGetTeamProjects } from "@/features/teams/api/use-get-team-projects";
 import { FirstTeamInfoDialog } from "@/features/teams/components/first-team-info-dialog";
 import {
   Tooltip,
@@ -86,6 +87,7 @@ const getVisibilityIcon = (visibility: TeamVisibility) => {
 
 export const TeamsClient = () => {
   const workspaceId = useWorkspaceId();
+  const router = useRouter();
   const { data: teams, isLoading } = useGetTeams({ workspaceId });
   const { open: openCreate } = useCreateTeamModal();
   const { open: openEdit } = useEditTeamModal();
@@ -98,13 +100,17 @@ export const TeamsClient = () => {
   const [showFirstTeamInfo, setShowFirstTeamInfo] = useState(false);
   const [previousTeamCount, setPreviousTeamCount] = useState<number | null>(null);
 
-  // Show first team info dialog when user creates their first team
+  // Show first team info dialog when user creates their first team OR when there are no teams
   useEffect(() => {
     if (teams?.documents) {
       const currentCount = teams.documents.length;
       
+      // Show modal if there are no teams
+      if (currentCount === 0) {
+        setShowFirstTeamInfo(true);
+      }
       // Check if we just went from 0 to 1 team (first team created)
-      if (previousTeamCount === 0 && currentCount === 1) {
+      else if (previousTeamCount === 0 && currentCount === 1) {
         const hasSeenFirstTeamInfo = localStorage.getItem('hasSeenFirstTeamInfo');
         if (!hasSeenFirstTeamInfo) {
           setShowFirstTeamInfo(true);
@@ -369,7 +375,16 @@ export const TeamsClient = () => {
             return viewMode === "grid" ? (
               <Card 
                 key={team.$id} 
-                className="group hover:shadow-md transition-all duration-200 overflow-hidden border-border/40 hover:border-border"
+                role="link"
+                tabIndex={0}
+                onClick={() => router.push(`/workspaces/${workspaceId}/teams/${team.$id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    router.push(`/workspaces/${workspaceId}/teams/${team.$id}`);
+                  }
+                }}
+                className="group hover:shadow-md transition-all duration-200 overflow-hidden border-border/40 hover:border-border cursor-pointer"
               >
                 <CardHeader className="pb-3 px-4 pt-4">
                   <div className="flex items-start justify-between gap-2">
@@ -398,7 +413,8 @@ export const TeamsClient = () => {
                         <Button 
                           variant="ghost" 
                           size="icon"
-                          className="size-7 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                          className="size-7 shrink-0"
+                          onClick={(e) => e.stopPropagation()}
                         >
                           <MoreVertical className="size-3.5" />
                         </Button>
@@ -423,33 +439,33 @@ export const TeamsClient = () => {
                   </div>
                 </CardHeader>
                 
-                <CardContent className="pb-3 px-4 space-y-2">
+                <CardContent className="pb-3 px-4">
                   <p className="text-xs text-muted-foreground line-clamp-2 min-h-[2rem]">
                     {team.description || "No description provided"}
                   </p>
-                  
-                  {/* Member Avatars */}
-                  <TeamMemberAvatars teamId={team.$id} memberCount={team.statistics?.memberCount || 0} />
                 </CardContent>
 
                 <CardFooter className="pt-3 px-4 pb-3 border-t bg-muted/5">
-                  <Link 
-                    href={`/workspaces/${workspaceId}/teams/${team.$id}`}
-                    className="flex items-center justify-between w-full group/link"
-                  >
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Shield className="size-3.5" />
-                      <span>View team space</span>
-                    </div>
-                    <ArrowRight className="size-3.5 text-muted-foreground group-hover/link:translate-x-1 transition-transform" />
-                  </Link>
+                  <div className="flex items-center justify-between w-full">
+                    <TeamProjectName teamId={team.$id} />
+                    <TeamMemberAvatarsFooter teamId={team.$id} memberCount={team.statistics?.memberCount || 0} />
+                  </div>
                 </CardFooter>
               </Card>
             ) : (
               // List View
               <Card 
                 key={team.$id} 
-                className="group hover:shadow-md transition-all duration-200 overflow-hidden"
+                role="link"
+                tabIndex={0}
+                onClick={() => router.push(`/workspaces/${workspaceId}/teams/${team.$id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    router.push(`/workspaces/${workspaceId}/teams/${team.$id}`);
+                  }
+                }}
+                className="group hover:shadow-md transition-all duration-200 overflow-hidden cursor-pointer"
               >
                 <CardContent className="p-6">
                   <div className="flex items-center gap-4">
@@ -479,15 +495,21 @@ export const TeamsClient = () => {
                     </div>
                     
                     <div className="flex items-center gap-2">
-                      <Link href={`/workspaces/${workspaceId}/teams/${team.$id}`}>
-                        <Button variant="outline" size="sm" className="gap-2">
-                          <Shield className="size-4" />
-                          View Space
-                        </Button>
-                      </Link>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/workspaces/${workspaceId}/teams/${team.$id}`);
+                        }}
+                      >
+                        <Shield className="size-4" />
+                        View Space
+                      </Button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="size-9">
+                          <Button variant="ghost" size="icon" className="size-9" onClick={(e) => e.stopPropagation()}>
                             <MoreVertical className="size-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -520,13 +542,51 @@ export const TeamsClient = () => {
   );
 };
 
-// Component to show team member avatars
-interface TeamMemberAvatarsProps {
+// Component to show team project name in footer
+interface TeamProjectNameProps {
+  teamId: string;
+}
+
+const TeamProjectName = ({ teamId }: TeamProjectNameProps) => {
+  const { data: projectsData, isLoading } = useGetTeamProjects({ teamId });
+  const projects = (projectsData as { documents: { $id: string; name: string; imageUrl?: string }[]; total: number } | undefined)?.documents || [];
+  
+  if (isLoading) {
+    return (
+      <div className="h-4 w-20 bg-muted animate-pulse rounded" />
+    );
+  }
+  
+  if (projects.length === 0) {
+    return (
+      <span className="text-xs text-muted-foreground">No projects</span>
+    );
+  }
+  
+  const firstProject = projects[0];
+  const additionalCount = projects.length - 1;
+  
+  return (
+    <div className="flex items-center gap-1">
+      <span className="text-xs font-medium text-foreground truncate max-w-[100px]">
+        {firstProject.name}
+      </span>
+      {additionalCount > 0 && (
+        <span className="text-xs text-muted-foreground">
+          +{additionalCount}
+        </span>
+      )}
+    </div>
+  );
+};
+
+// Component to show team member avatars in footer with lead info on hover
+interface TeamMemberAvatarsFooterProps {
   teamId: string;
   memberCount: number;
 }
 
-const TeamMemberAvatars = ({ teamId, memberCount }: TeamMemberAvatarsProps) => {
+const TeamMemberAvatarsFooter = ({ teamId, memberCount }: TeamMemberAvatarsFooterProps) => {
   const { data: teamMembersData, isLoading } = useGetTeamMembers({ teamId });
   const members = teamMembersData?.documents || [];
   
@@ -541,63 +601,76 @@ const TeamMemberAvatars = ({ teamId, memberCount }: TeamMemberAvatarsProps) => {
   const actualCount = members.length || memberCount;
   const remainingCount = actualCount - displayMembers.length;
   
-  // Show loading or no members state
+  // Show loading state
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2">
-        <div className="flex -space-x-2">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="size-7 rounded-full bg-muted animate-pulse border-2 border-background" />
-          ))}
-        </div>
+      <div className="flex -space-x-2">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="size-7 rounded-full bg-muted animate-pulse border-2 border-background" />
+        ))}
       </div>
     );
   }
   
   if (members.length === 0) {
     return (
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Users className="size-3.5" />
-        <span>No members yet</span>
+      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+        <Users className="size-3 " />
+        <span>No members</span>
       </div>
     );
   }
   
   return (
-    <div className="flex items-center gap-2">
+    <TooltipProvider>
       <div className="flex -space-x-2">
-        {displayMembers.map((member, index) => (
-          <div key={member.$id} className="relative">
-            <Avatar className="size-7 border-2 border-background ring-1 ring-border/50">
-              {member.user?.profileImageUrl ? (
-                <AvatarImage src={member.user.profileImageUrl} alt={member.user?.name || 'Member'} />
-              ) : (
-                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white text-[10px] font-semibold">
-                  {member.user?.name
-                    ?.split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .toUpperCase() || "?"}
-                </AvatarFallback>
-              )}
-            </Avatar>
-            {member.role === TeamMemberRole.LEAD && index === 0 && (
-              <div className="absolute -top-0.5 -right-0.5 bg-amber-500 rounded-full p-0.5">
-                <Crown className="size-2 text-white" />
-              </div>
-            )}
+        {displayMembers.map((member) => {
+          const isLead = member.role === TeamMemberRole.LEAD;
+          
+          return (
+            <Tooltip key={member.$id}>
+              <TooltipTrigger asChild>
+                <div className="relative">
+                  <Avatar className="size-7 border-2 border-background ring-1 ring-border/50 hover:ring-2 hover:ring-primary transition-all cursor-pointer">
+                    {member.user?.profileImageUrl ? (
+                      <AvatarImage src={member.user.profileImageUrl} alt={member.user?.name || 'Member'} />
+                    ) : (
+                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white text-[10px] font-semibold">
+                        {member.user?.name
+                          ?.split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .toUpperCase() || "?"}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  {isLead && (
+                    <div className="absolute -top-0.5 -right-0.5 bg-amber-500 rounded-full p-0.5">
+                      <Crown className="size-2 text-white" />
+                    </div>
+                  )}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                <div className="space-y-0.5">
+                  <p className="font-semibold">{member.user?.name || 'Unknown'}</p>
+                  <p className="text-muted-foreground">{member.user?.email || 'No email'}</p>
+                  {isLead && (
+                    <p className="text-amber-500 font-medium">Team Lead</p>
+                  )}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
+        {remainingCount > 0 && (
+          <div className="size-7 rounded-full bg-muted border-2 border-background flex items-center justify-center">
+            <span className="text-[10px] font-semibold text-muted-foreground">
+              +{remainingCount}
+            </span>
           </div>
-        ))}
+        )}
       </div>
-      {remainingCount > 0 ? (
-        <span className="text-xs text-muted-foreground font-medium">
-          +{remainingCount} more
-        </span>
-      ) : displayMembers.length > 0 && (
-        <span className="text-xs text-muted-foreground">
-          {actualCount} {actualCount === 1 ? 'member' : 'members'}
-        </span>
-      )}
-    </div>
+    </TooltipProvider>
   );
 };

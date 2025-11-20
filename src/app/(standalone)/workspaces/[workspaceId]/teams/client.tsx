@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, MoreVertical, Pencil, Trash2, Users2, ArrowRight, Shield, Search, Filter, Grid3x3, List, Users, Layers } from "lucide-react";
+import { Plus, MoreVertical, Pencil, Trash2, Users2, Shield, Search, Filter, Grid3x3, List, Users, Layers, Crown } from "lucide-react";
 import Link from "next/link";
 import { useState, useMemo } from "react";
 
@@ -10,6 +10,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,7 +32,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
+import { useRouter } from "next/navigation";
 import { useGetTeams } from "@/features/teams/api/use-get-teams";
+import { useGetTeamProjects } from "@/features/teams/api/use-get-team-projects";
 import { useDeleteTeam } from "@/features/teams/api/use-delete-team";
 import { useCreateTeamModal } from "@/features/teams/hooks/use-create-team-modal";
 import { useEditTeamModal } from "@/features/teams/hooks/use-edit-team-modal";
@@ -34,7 +42,8 @@ import { useTeamId } from "@/features/teams/hooks/use-team-id";
 import { CreateTeamModal } from "@/features/teams/components/create-team-modal";
 import { EditTeamModal } from "@/features/teams/components/edit-team-modal";
 import { useConfirm } from "@/hooks/use-confirm";
-import { TeamVisibility } from "@/features/teams/types";
+import { TeamVisibility, TeamMemberRole } from "@/features/teams/types";
+import { useGetTeamMembers } from "@/features/teams/api/use-get-team-members";
 import { cn } from "@/lib/utils";
 
 const getVisibilityColor = (visibility: TeamVisibility) => {
@@ -78,6 +87,7 @@ const getVisibilityIcon = (visibility: TeamVisibility) => {
 
 export const TeamsClient = () => {
   const workspaceId = useWorkspaceId();
+  const router = useRouter();
   const { data: teams, isLoading } = useGetTeams({ workspaceId });
   const { open: openCreate } = useCreateTeamModal();
   const { open: openEdit } = useEditTeamModal();
@@ -319,7 +329,16 @@ export const TeamsClient = () => {
             return viewMode === "grid" ? (
               <Card 
                 key={team.$id} 
-                className="group hover:shadow-lg transition-all duration-300 overflow-hidden border-border/40 hover:border-border hover:scale-[1.02]"
+                role="link"
+                tabIndex={0}
+                onClick={() => router.push(`/workspaces/${workspaceId}/teams/${team.$id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    router.push(`/workspaces/${workspaceId}/teams/${team.$id}`);
+                  }
+                }}
+                className="group hover:shadow-lg transition-all duration-300 overflow-hidden border-border/40 hover:border-border hover:scale-[1.02] cursor-pointer"
               >
                 <CardHeader className="pb-4">
                   <div className="flex items-start justify-between">
@@ -353,7 +372,8 @@ export const TeamsClient = () => {
                         <Button 
                           variant="ghost" 
                           size="icon"
-                          className="size-8 opacity-0 group-hover:opacity-100 transition-opacity -mt-1 -mr-2 hover:bg-muted"
+                          className="size-8 -mt-1 -mr-2 hover:bg-muted"
+                          onClick={(e) => e.stopPropagation()}
                         >
                           <MoreVertical className="size-4" />
                         </Button>
@@ -385,16 +405,10 @@ export const TeamsClient = () => {
                 </CardContent>
 
                 <CardFooter className="pt-4 border-t bg-gradient-to-br from-muted/30 to-transparent">
-                  <Link 
-                    href={`/workspaces/${workspaceId}/teams/${team.$id}`}
-                    className="flex items-center justify-between w-full group/link"
-                  >
-                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground group-hover/link:text-foreground transition-colors">
-                      <Shield className="size-4" />
-                      <span>View Team Space</span>
-                    </div>
-                    <ArrowRight className="size-4 text-muted-foreground group-hover/link:text-foreground group-hover/link:translate-x-1 transition-all" />
-                  </Link>
+                  <div className="flex items-center justify-between w-full">
+                    <TeamProjectName teamId={team.$id} />
+                    <TeamMemberAvatarsFooter teamId={team.$id} memberCount={team.statistics?.memberCount || 0} />
+                  </div>
                 </CardFooter>
               </Card>
             ) : (
@@ -471,5 +485,138 @@ export const TeamsClient = () => {
         </div>
       )}
     </div>
+  );
+};
+
+// Component to show team project name in footer
+interface TeamProjectNameProps {
+  teamId: string;
+}
+
+const TeamProjectName = ({ teamId }: TeamProjectNameProps) => {
+  const { data: projectsData, isLoading } = useGetTeamProjects({ teamId });
+  const projects = (projectsData as { documents: { $id: string; name: string; imageUrl?: string }[]; total: number } | undefined)?.documents || [];
+  
+  if (isLoading) {
+    return (
+      <div className="h-4 w-20 bg-muted animate-pulse rounded" />
+    );
+  }
+  
+  if (projects.length === 0) {
+    return (
+      <span className="text-xs text-muted-foreground">No projects</span>
+    );
+  }
+  
+  const firstProject = projects[0];
+  const additionalCount = projects.length - 1;
+  
+  return (
+    <div className="flex items-center gap-1">
+      <span className="text-xs font-medium text-foreground truncate max-w-[100px]">
+        {firstProject.name}
+      </span>
+      {additionalCount > 0 && (
+        <span className="text-xs text-muted-foreground">
+          +{additionalCount}
+        </span>
+      )}
+    </div>
+  );
+};
+
+// Component to show team member avatars in footer with lead info on hover
+interface TeamMemberAvatarsFooterProps {
+  teamId: string;
+  memberCount: number;
+}
+
+const TeamMemberAvatarsFooter = ({ teamId, memberCount }: TeamMemberAvatarsFooterProps) => {
+  const { data: teamMembersData, isLoading } = useGetTeamMembers({ teamId });
+  const members = teamMembersData?.documents || [];
+  
+  // Sort members: team lead first, then others
+  const sortedMembers = [...members].sort((a, b) => {
+    if (a.role === TeamMemberRole.LEAD) return -1;
+    if (b.role === TeamMemberRole.LEAD) return 1;
+    return 0;
+  });
+  
+  const displayMembers = sortedMembers.slice(0, 3);
+  const actualCount = members.length || memberCount;
+  const remainingCount = actualCount - displayMembers.length;
+  
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex -space-x-2">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="size-7 rounded-full bg-muted animate-pulse border-2 border-background" />
+        ))}
+      </div>
+    );
+  }
+  
+  if (members.length === 0) {
+    return (
+      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+        <Users className="size-3" />
+        <span>No members</span>
+      </div>
+    );
+  }
+  
+  return (
+    <TooltipProvider>
+      <div className="flex -space-x-2">
+        {displayMembers.map((member) => {
+          const isLead = member.role === TeamMemberRole.LEAD;
+          
+          return (
+            <Tooltip key={member.$id}>
+              <TooltipTrigger asChild>
+                <div className="relative">
+                  <Avatar className="size-7 border-2 border-background ring-1 ring-border/50 hover:ring-2 hover:ring-primary transition-all cursor-pointer">
+                    {member.user?.profileImageUrl ? (
+                      <AvatarImage src={member.user.profileImageUrl} alt={member.user?.name || 'Member'} />
+                    ) : (
+                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white text-[10px] font-semibold">
+                        {member.user?.name
+                          ?.split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .toUpperCase() || "?"}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  {isLead && (
+                    <div className="absolute -top-0.5 -right-0.5 bg-amber-500 rounded-full p-0.5">
+                      <Crown className="size-2 text-white" />
+                    </div>
+                  )}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                <div className="space-y-0.5">
+                  <p className="font-semibold">{member.user?.name || 'Unknown'}</p>
+                  <p className="text-muted-foreground">{member.user?.email || 'No email'}</p>
+                  {isLead && (
+                    <p className="text-amber-500 font-medium">Team Lead</p>
+                  )}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
+        {remainingCount > 0 && (
+          <div className="size-7 rounded-full bg-muted border-2 border-background flex items-center justify-center">
+            <span className="text-[10px] font-semibold text-muted-foreground">
+              +{remainingCount}
+            </span>
+          </div>
+        )}
+      </div>
+    </TooltipProvider>
   );
 };
