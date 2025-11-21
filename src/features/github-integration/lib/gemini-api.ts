@@ -98,7 +98,7 @@ function extractTextFromResponse(json: GeminiResponse): string {
 
 export class GeminiAPI {
   private apiKey: string;
-  private baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite-preview-06-17:generateContent";
+  private baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent";
 
   constructor() {
     this.apiKey = process.env.GEMINI_API_KEY || "";

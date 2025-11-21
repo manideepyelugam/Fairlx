@@ -7,7 +7,6 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Loader2, Send, Sparkles, FileCode, Copy, Check } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -77,42 +76,45 @@ export const CodebaseQA = ({ projectId, commitsCount = 0 }: CodebaseQAProps) => 
 
   return (
     <>
-      <Card>
-        <CardHeader>
+      <div className=" p-6 rounded-lg border">
+        <div className="pb-8">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Ask a Question</CardTitle>
-              <CardDescription>
+              <h2 className="text-lg font-semibold">Ask a Question</h2>
+              <p className="text-sm text-muted-foreground">
                 Ask anything about your codebase and get AI-powered answers
-              </CardDescription>
+              </p>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Sparkles className="h-4 w-4" />
               <span>AI-Powered</span>
+              <span className="text-xs">•</span>
+              <p className="text-xs text-muted-foreground">
+              {commitsCount > 0 ? `${commitsCount} commits analyzed` : 'Analyzing codebase...'}
+            </p>
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        </div>
+        <div className="space-y-4 relative">
           <Textarea
             placeholder="e.g., How does the authentication system work? What are the main API endpoints?"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="min-h-[100px] resize-none"
+            className="min-h-[100px] shadow-none resize-none"
             disabled={isAsking}
           />
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">
-              {commitsCount > 0 ? `${commitsCount} commits analyzed` : 'Analyzing codebase...'}
-            </p>
-            <Button onClick={handleAsk} disabled={isAsking || !question.trim()}>
-              {isAsking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {!isAsking && <Send className="mr-2 h-4 w-4" />}
-              Ask Question
+          <Button className="absolute top-11 right-2" size={"sm"} onClick={handleAsk} disabled={isAsking || !question.trim()}>
+              {isAsking && <Loader2 className=" h-2 w-2 animate-spin" />}
+              {!isAsking && <Send className=" h-2 w-2" />}
+              
             </Button>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+
+
+
+
 
       {/* Answer Modal */}
       <Dialog open={showAnswerModal} onOpenChange={setShowAnswerModal}>
@@ -169,7 +171,7 @@ export const CodebaseQA = ({ projectId, commitsCount = 0 }: CodebaseQAProps) => 
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-6 px-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="h-6 px-2 bg-white text-black transition-opacity"
                             onClick={() => handleCopyCode(codeString, codeId)}
                           >
                             {copiedCode === codeId ? (
