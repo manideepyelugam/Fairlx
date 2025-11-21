@@ -70,7 +70,7 @@ const CommitCard = ({ commit }: { commit: CommitData }) => {
 
   return (
     <div className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
-      <div className="flex items-start gap-3">
+      <div className="flex items-start w-full overflow-hidden  gap-3">
         <Avatar className="h-10 w-10">
           {commit.authorAvatar && (
             <AvatarImage src={commit.authorAvatar} alt={commit.author} />
@@ -80,10 +80,12 @@ const CommitCard = ({ commit }: { commit: CommitData }) => {
           </AvatarFallback>
         </Avatar>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
+        <div className="flex-1  min-w-0">
+          <div className="flex items-start  justify-between gap-2">
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm truncate">{commit.message}</p>
+<p className="font-medium text-sm break-words max-w-full block">
+  {commit.message}
+</p>
               <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                 <span>{commit.author}</span>
                 <span>•</span>
@@ -328,7 +330,7 @@ export const CommitHistory = ({ projectId }: CommitHistoryProps) => {
   }
 
   return (
-    <Card>
+    <Card className="shadow-none">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -343,10 +345,11 @@ export const CommitHistory = ({ projectId }: CommitHistoryProps) => {
             onClick={handleFetch}
             disabled={isFetching}
             variant="outline"
-            size="sm"
+            size="xs"
+            className="font-medium"
           >
-            {isFetching && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {!isFetching && <RefreshCw className="mr-2 h-4 w-4" />}
+            {isFetching && <Loader2 className=" h-4 w-4 animate-spin" />}
+            {!isFetching && <RefreshCw className=" h-4 w-4" />}
             {commits.length === 0 ? "Fetch Commits" : "Refetch"}
           </Button>
         </div>

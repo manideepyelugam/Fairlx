@@ -9,7 +9,6 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -102,117 +101,120 @@ export const DocumentationView = ({ projectId }: DocumentationViewProps) => {
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-4 w-96 mt-2" />
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-3/4" />
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
     );
   }
 
   if (!documentation) {
     return (
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Generate Documentation</CardTitle>
-              <CardDescription>
-                No documentation available. Click generate to create AI-powered documentation
-              </CardDescription>
-            </div>
-            <Button onClick={handleGenerate} disabled={isGenerating}>
-              {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {!isGenerating && <FileText className="mr-2 h-4 w-4" />}
-              Generate
-            </Button>
+      <Card className="border-dashed">
+        <CardContent className="flex flex-col items-center justify-center py-12">
+          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 mb-4">
+            <FileText className="h-6 w-6 text-primary" />
           </div>
-        </CardHeader>
+          <CardTitle className="text-base font-semibold mb-1">Generate Documentation</CardTitle>
+          <CardDescription className="text-xs text-center mb-6 max-w-md">
+            No documentation available. Click generate to create AI-powered documentation from your repository.
+          </CardDescription>
+          <Button onClick={handleGenerate} disabled={isGenerating} size="xs" className="h-7 px-3">
+            {isGenerating && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+            {!isGenerating && <FileText className="mr-1.5 h-3 w-3" />}
+            <span className="text-xs">Generate Documentation</span>
+          </Button>
+        </CardContent>
       </Card>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-2xl font-semibold">Documentation</CardTitle>
-              <CardDescription className="mt-1.5">
-                AI-generated documentation for your codebase
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={handleExportWord}
-                disabled={isGenerating || isExporting}
-                variant="outline"
-                size="sm"
-                className="gap-2"
-              >
-                {isExporting && <Loader2 className="h-4 w-4 animate-spin" />}
-                {!isExporting && <FileDown className="h-4 w-4" />}
-                Word
-              </Button>
-              <Button
-                onClick={handleExportPDF}
-                disabled={isGenerating || isExporting}
-                variant="outline"
-                size="sm"
-                className="gap-2"
-              >
-                {isExporting && <Loader2 className="h-4 w-4 animate-spin" />}
-                {!isExporting && <Download className="h-4 w-4" />}
-                PDF
-              </Button>
-              <Button
-                onClick={handleGenerate}
-                disabled={isGenerating}
-                variant="outline"
-                size="sm"
-                className="gap-2"
-              >
-                {isGenerating && <Loader2 className="h-4 w-4 animate-spin" />}
-                {!isGenerating && <RefreshCw className="h-4 w-4" />}
-                Regenerate
-              </Button>
-            </div>
+    <div className="space-y-3 ">
+      {/* Action Bar */}
+      <div className="flex items-center justify-between mb-6 gap-2 px-1">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center w-10 h-10 rounded-md bg-primary/10">
+            <FileText className="h-4 w-4 text-primary" />
           </div>
-        </CardHeader>
-      </Card>
+          <div>
+            <h2 className="text-base font-semibold">AI Documentation</h2>
+            <p className="text-xs text-muted-foreground">Generated from your codebase</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Button
+            onClick={handleExportWord}
+            disabled={isGenerating || isExporting}
+            variant="outline"
+            size="xs"
+            className="h-7 px-2 gap-1.5"
+          >
+            {isExporting && <Loader2 className="h-3 w-3 animate-spin" />}
+            {!isExporting && <FileDown className="h-3 w-3" />}
+            <span className="text-xs">Word</span>
+          </Button>
+          <Button
+            onClick={handleExportPDF}
+            disabled={isGenerating || isExporting}
+            variant="outline"
+            size="xs"
+            className="h-7 px-2 gap-1.5"
+          >
+            {isExporting && <Loader2 className="h-3 w-3 animate-spin" />}
+            {!isExporting && <Download className="h-3 w-3" />}
+            <span className="text-xs">PDF</span>
+          </Button>
+          <Button
+            onClick={handleGenerate}
+            disabled={isGenerating}
+            variant="outline"
+            size="xs"
+            className="h-7 px-2 gap-1.5"
+          >
+            {isGenerating && <Loader2 className="h-3 w-3 animate-spin" />}
+            {!isGenerating && <RefreshCw className="h-3 w-3" />}
+            <span className="text-xs">Regenerate</span>
+          </Button>
+        </div>
+      </div>
 
       <Tabs defaultValue="full" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 h-11">
-          <TabsTrigger value="full" className="text-sm font-medium">
-            Full Documentation
-          </TabsTrigger>
-          <TabsTrigger value="api" className="text-sm font-medium">
-            API & Code
-          </TabsTrigger>
-          <TabsTrigger value="structure" className="text-sm font-medium">
-            Structure
-          </TabsTrigger>
-        </TabsList>
+     <TabsList className="grid w-1/2 grid-cols-3 mt-6 h-8 p-0.5">
+  <TabsTrigger
+    value="full"
+    className="text-xs font-medium h-7 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+  >
+    Full Docs
+  </TabsTrigger>
 
-        <TabsContent value="full" className="mt-4">
-          <Card>
-            <CardContent className="p-6">
-              <ScrollArea className="h-[700px] w-full pr-4">
-                <div className="prose prose-slate dark:prose-invert max-w-none prose-headings:font-semibold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-h4:text-lg prose-p:text-base prose-p:leading-7 prose-li:text-base prose-code:text-sm prose-pre:max-w-full prose-pre:overflow-x-auto break-words">
+  <TabsTrigger
+    value="api"
+    className="text-xs font-medium h-7 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+  >
+    API & Code
+  </TabsTrigger>
+
+  <TabsTrigger
+    value="structure"
+    className="text-xs font-medium h-7 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+  >
+    Structure
+  </TabsTrigger>
+</TabsList>
+
+
+        <TabsContent value="full" className="mt-3">
+          <Card className="border p-4 shadow-sm">
+            <CardContent >
+              <ScrollArea className="h-[calc(100vh-240px)] w-full pr-3">
+                <div className="prose prose-slate dark:prose-invert max-w-none prose-headings:font-semibold prose-h1:text-xl prose-h1:mb-3 prose-h2:text-lg prose-h2:mb-2 prose-h3:text-base prose-h3:mb-2 prose-h4:text-sm prose-h4:mb-1.5 prose-p:text-sm prose-p:leading-6 prose-p:mb-3 prose-li:text-sm prose-code:text-xs prose-pre:max-w-full prose-pre:overflow-x-auto prose-ul:my-2 prose-ol:my-2 break-words">
                   <ReactMarkdown
                     components={{
                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       code({ inline, className, children, ...props }: any) {
                         const match = /language-(\w+)/.exec(className || "");
                         return !inline && match ? (
-                          <div className="my-4 rounded-lg overflow-hidden border max-w-full">
+                          <div className="my-3 rounded-md overflow-hidden border shadow-sm max-w-full">
                             <SyntaxHighlighter
                               style={vscDarkPlus}
                               language={match[1]}
@@ -220,8 +222,8 @@ export const DocumentationView = ({ projectId }: DocumentationViewProps) => {
                               customStyle={{
                                 margin: 0,
                                 borderRadius: 0,
-                                fontSize: '0.875rem',
-                                padding: '1rem',
+                                fontSize: '0.75rem',
+                                padding: '0.75rem',
                                 maxWidth: '100%',
                                 overflowX: 'auto',
                               }}
@@ -232,33 +234,33 @@ export const DocumentationView = ({ projectId }: DocumentationViewProps) => {
                             </SyntaxHighlighter>
                           </div>
                         ) : (
-                          <code className="px-1.5 py-0.5 rounded bg-muted text-sm font-mono break-all" {...props}>
+                          <code className="px-1 py-0.5 rounded bg-muted text-xs font-mono break-all" {...props}>
                             {children}
                           </code>
                         );
                       },
                       h1: ({ children }) => (
-                        <h1 className="mt-8 mb-4 pb-2 border-b text-3xl font-semibold tracking-tight break-words">
+                        <h1 className="mt-6 mb-3 pb-2 border-b text-xl font-semibold tracking-tight break-words">
                           {children}
                         </h1>
                       ),
                       h2: ({ children }) => (
-                        <h2 className="mt-6 mb-3 text-2xl font-semibold tracking-tight break-words">
+                        <h2 className="mt-5 mb-2 text-lg font-semibold tracking-tight break-words">
                           {children}
                         </h2>
                       ),
                       h3: ({ children }) => (
-                        <h3 className="mt-5 mb-2 text-xl font-semibold tracking-tight break-words">
+                        <h3 className="mt-4 mb-2 text-base font-semibold tracking-tight break-words">
                           {children}
                         </h3>
                       ),
                       p: ({ children }) => (
-                        <p className="break-words">
+                        <p className="text-sm leading-6 break-words">
                           {children}
                         </p>
                       ),
                       li: ({ children }) => (
-                        <li className="break-words">
+                        <li className="text-sm break-words">
                           {children}
                         </li>
                       ),
@@ -272,24 +274,24 @@ export const DocumentationView = ({ projectId }: DocumentationViewProps) => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="api" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl font-semibold">API & Development</CardTitle>
-              <CardDescription>
+        <TabsContent value="api" className="mt-3">
+          <Card className="border shadow-sm p-4">
+            <CardHeader className="pb-3 px-4 pt-4">
+              <CardTitle className="text-sm font-semibold">API & Development</CardTitle>
+              <CardDescription className="text-xs">
                 Key API routes, endpoints, and implementation details
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[600px] w-full pr-4">
-                <div className="prose prose-slate dark:prose-invert max-w-none prose-headings:font-semibold prose-code:text-sm prose-pre:max-w-full prose-pre:overflow-x-auto break-words">
+            <CardContent className="px-4 pb-4">
+              <ScrollArea className="h-[calc(100vh-280px)] w-full pr-3">
+                <div className="prose prose-slate dark:prose-invert max-w-none prose-headings:font-semibold prose-h1:text-base prose-h2:text-sm prose-h3:text-sm prose-p:text-sm prose-p:leading-6 prose-li:text-sm prose-code:text-xs prose-pre:max-w-full prose-pre:overflow-x-auto break-words">
                   <ReactMarkdown
                     components={{
                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       code({ inline, className, children, ...props }: any) {
                         const match = /language-(\w+)/.exec(className || "");
                         return !inline && match ? (
-                          <div className="my-4 rounded-lg overflow-hidden border max-w-full">
+                          <div className="my-3 rounded-md overflow-hidden border shadow-sm max-w-full">
                             <SyntaxHighlighter
                               style={vscDarkPlus}
                               language={match[1]}
@@ -297,8 +299,8 @@ export const DocumentationView = ({ projectId }: DocumentationViewProps) => {
                               customStyle={{
                                 margin: 0,
                                 borderRadius: 0,
-                                fontSize: '0.875rem',
-                                padding: '1rem',
+                                fontSize: '0.75rem',
+                                padding: '0.75rem',
                                 maxWidth: '100%',
                                 overflowX: 'auto',
                               }}
@@ -309,18 +311,18 @@ export const DocumentationView = ({ projectId }: DocumentationViewProps) => {
                             </SyntaxHighlighter>
                           </div>
                         ) : (
-                          <code className="px-1.5 py-0.5 rounded bg-muted text-sm font-mono break-all" {...props}>
+                          <code className="px-1 py-0.5 rounded bg-muted text-xs font-mono break-all" {...props}>
                             {children}
                           </code>
                         );
                       },
                       p: ({ children }) => (
-                        <p className="break-words">
+                        <p className="text-sm leading-6 break-words">
                           {children}
                         </p>
                       ),
                       li: ({ children }) => (
-                        <li className="break-words">
+                        <li className="text-sm break-words">
                           {children}
                         </li>
                       ),
@@ -334,46 +336,46 @@ export const DocumentationView = ({ projectId }: DocumentationViewProps) => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="structure" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl font-semibold">Project Structure</CardTitle>
-              <CardDescription>
+        <TabsContent value="structure" className="mt-3">
+          <Card className="border p-4 shadow-sm">
+            <CardHeader className="pb-3 px-4 pt-4">
+              <CardTitle className="text-sm font-semibold">Project Structure</CardTitle>
+              <CardDescription className="text-xs">
                 Visual representation of your codebase architecture
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-4 pb-4">
               <Tabs defaultValue="tree" className="w-full">
-                <TabsList>
-                  <TabsTrigger value="tree">File Tree</TabsTrigger>
-                  <TabsTrigger value="diagram">Architecture Diagram</TabsTrigger>
+                <TabsList className="h-8 p-0.5">
+                  <TabsTrigger value="tree" className="text-xs h-7">File Tree</TabsTrigger>
+                  <TabsTrigger value="diagram" className="text-xs h-7">Architecture</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="tree" className="mt-4">
+                <TabsContent value="tree" className="mt-3">
                   {documentation.fileStructure ? (
-                    <ScrollArea className="h-[600px] w-full">
-                      <div className="border rounded-lg p-6 bg-muted/30 font-mono text-sm">
-                        <pre className="whitespace-pre overflow-x-auto">
+                    <ScrollArea className="h-[calc(100vh-340px)] w-full">
+                      <div className="border rounded-md p-3 bg-muted/30 font-mono text-xs">
+                        <pre className="whitespace-pre overflow-x-auto text-xs">
                           {documentation.fileStructure}
                         </pre>
                       </div>
                     </ScrollArea>
                   ) : (
-                    <div className="text-center text-muted-foreground py-12">
+                    <div className="text-center text-muted-foreground py-12 text-xs">
                       No file tree available
                     </div>
                   )}
                 </TabsContent>
 
-                <TabsContent value="diagram" className="mt-4">
+                <TabsContent value="diagram" className="mt-3">
                   {documentation.mermaidDiagram ? (
-                    <ScrollArea className="h-[600px] w-full">
-                      <div className="border rounded-lg p-6 bg-muted/30">
-                        <pre className="text-sm font-mono whitespace-pre overflow-x-auto">
+                    <ScrollArea className="h-[calc(100vh-340px)] w-full">
+                      <div className="border rounded-md p-3 bg-muted/30">
+                        <pre className="text-xs font-mono whitespace-pre overflow-x-auto">
                           {documentation.mermaidDiagram}
                         </pre>
-                        <div className="mt-6 pt-4 border-t">
-                          <p className="text-sm text-muted-foreground">
+                        <div className="mt-4 pt-3 border-t">
+                          <p className="text-xs text-muted-foreground">
                             Copy this Mermaid code to{" "}
                             <a
                               href="https://mermaid.live"
@@ -389,7 +391,7 @@ export const DocumentationView = ({ projectId }: DocumentationViewProps) => {
                       </div>
                     </ScrollArea>
                   ) : (
-                    <div className="text-center text-muted-foreground py-12">
+                    <div className="text-center text-muted-foreground py-12 text-xs">
                       No architecture diagram available
                     </div>
                   )}
