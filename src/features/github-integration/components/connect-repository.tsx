@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Loader2, Trash2, AlertCircle } from "lucide-react";
+import { Loader2, Trash2, AlertCircle, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -178,10 +178,11 @@ export const ConnectRepository = ({
     return (
       <>
         <ConfirmDialog />
-        <div className="space-y-2">
+        <div className="flex items-center gap-2">
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" size="sm" className="flex-1">
+                <RefreshCw className="size-4 mr-2" />
                 Update Repository
               </Button>
             </DialogTrigger>
@@ -313,13 +314,16 @@ export const ConnectRepository = ({
           </Dialog>
 
           <Button
-            variant="destructive"
-            className="w-full"
             onClick={handleDisconnect}
             disabled={isDisconnecting}
+            size="sm"
+            className="flex-1 bg-red-500"
           >
-            {isDisconnecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {!isDisconnecting && <Trash2 className="mr-2 h-4 w-4" />}
+            {isDisconnecting ? (
+              <Loader2 className="size-4 mr-2 animate-spin" />
+            ) : (
+              <Trash2 className="size-4 mr-2" />
+            )}
             Disconnect Repository
           </Button>
         </div>

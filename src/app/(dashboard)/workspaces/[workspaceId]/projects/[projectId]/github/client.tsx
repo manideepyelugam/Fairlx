@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { Github, BookOpen, MessageSquare, GitCommit, Loader2, ExternalLink, Settings, FileText } from "lucide-react";
 
@@ -15,27 +16,23 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 
 import { 
   ConnectRepository,
-  DocumentationView,
   CodebaseQA,
   CommitHistory
 } from "@/features/github-integration/components";
 import { useGetRepository } from "@/features/github-integration";
+import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 
 export const GitHubIntegrationClient = () => {
   const projectId = useProjectId();
+  const workspaceId = useWorkspaceId();
   const { data: repository, isLoading } = useGetRepository(projectId);
   const [commitsCount, setCommitsCount] = useState(0);
+  const documentationPath = workspaceId
+    ? `/workspaces/${workspaceId}/projects/${projectId}/github/documentation`
+    : "#";
 
   // Function to load commits count from localStorage
   const loadCommitsCount = useCallback(() => {
@@ -124,7 +121,7 @@ export const GitHubIntegrationClient = () => {
             {/* Step 1: GitHub Source */}
             <div className="relative flex justify-center lg:justify-end">
               <div className="group relative w-full max-w-sm">
-                <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-blue-400 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-300" />
+                <div className="absolute -inset-1  rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-300" />
                 <Card className="relative border-2 border-blue-500/20 hover:border-blue-500/40 transition-all duration-300 shadow-lg hover:shadow-xl">
                   <CardHeader className="pb-4">
                     <div className="flex items-center gap-3">
@@ -170,7 +167,7 @@ export const GitHubIntegrationClient = () => {
             {/* Step 2: AI Processing */}
             <div className="relative flex justify-center">
               <div className="group relative w-full max-w-sm">
-                <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-purple-400 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-300" />
+                <div className="absolute -inset-1  rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-300" />
                 <Card className="relative border-2 border-purple-500/20 hover:border-purple-500/40 transition-all duration-300 shadow-lg hover:shadow-xl">
                   <CardHeader className="pb-4">
                     <div className="flex items-center gap-3">
@@ -203,7 +200,7 @@ export const GitHubIntegrationClient = () => {
             {/* Step 3: Insights Output */}
             <div className="relative flex justify-center lg:justify-start">
               <div className="group relative w-full max-w-sm">
-                <div className="absolute -inset-1 bg-gradient-to-r from-green-600 to-green-400 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-300" />
+                <div className="absolute -inset-1  rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-300" />
                 <Card className="relative border-2 border-green-500/20 hover:border-green-500/40 transition-all duration-300 shadow-lg hover:shadow-xl">
                   <CardHeader className="pb-4">
                     <div className="flex items-center gap-3">
@@ -293,8 +290,9 @@ export const GitHubIntegrationClient = () => {
 
   // Repository connected - show full interface
   return (
-    <div className="flex flex-col gap-y-4">
+    <div className="flex flex-col gap-y-8">
       <div className="flex items-center justify-between">
+
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
             GitHub Integration
@@ -302,15 +300,17 @@ export const GitHubIntegrationClient = () => {
           <div className="flex items-center gap-2 mt-2">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Github className="h-4 w-4" />
-              <span className="font-medium">{repository.repositoryName}</span>
+              <span className="font-medium text-sm">{repository.repositoryName}</span>
               <span className="text-xs">•</span>
-              <span className="text-xs">Branch: {repository.branch}</span>
+              <span className="text-sm">Branch: {repository.branch}</span>
+              <span className="text-xs">•</span>
+
             </div>
             <a
               href={repository.githubUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"
+              className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
             >
               <ExternalLink className="h-3 w-3" />
               View on GitHub
@@ -334,87 +334,81 @@ export const GitHubIntegrationClient = () => {
 
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Settings className="h-4 w-4 mr-2" />
+              <Button variant="outline" className="!font-medium" size="xs">
+                <Settings className="h-4 w-4 !font-medium" />
                 Repository Details
               </Button>
             </SheetTrigger>
-            <SheetContent>
-              <SheetHeader>
-                <SheetTitle>Repository Details</SheetTitle>
-                <SheetDescription>
+
+            <SheetContent className="w-full sm:max-w-md p-0">
+              <SheetHeader className="pb-0 p-6 border-b">
+                <SheetTitle className="text-lg font-semibold ">
+                  Repository Details
+                </SheetTitle>
+                <SheetDescription className="text-sm font-normal  text-muted-foreground">
                   View and manage repository connection
                 </SheetDescription>
               </SheetHeader>
-              <div className="space-y-6 mt-6">
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm font-medium">Owner</p>
-                    <p className="text-sm text-muted-foreground">{repository.owner}</p>
+
+            
+
+              <div className="space-y-6 p-6">
+                <div className="space-y-5">
+                  <div className="space-y-1.5">
+                    <p className="text-sm font-medium text-foreground">Owner</p>
+                    <p className="text-sm text-muted-foreground break-words">{repository.owner}</p>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium">Repository</p>
-                    <p className="text-sm text-muted-foreground">{repository.repositoryName}</p>
+                  <div className="space-y-1.5">
+                    <p className="text-sm font-medium text-foreground">Repository</p>
+                    <p className="text-sm text-muted-foreground break-words">{repository.repositoryName}</p>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium">Branch</p>
+                  <div className="space-y-1.5">
+                    <p className="text-sm font-medium text-foreground">Branch</p>
                     <p className="text-sm text-muted-foreground">{repository.branch}</p>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium">GitHub URL</p>
+                  <div className="space-y-1.5">
+                    <p className="text-sm font-medium text-foreground">GitHub URL</p>
                     <a
                       href={repository.githubUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:text-blue-700 break-all"
+                      className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline break-all block transition-colors"
                     >
                       {repository.githubUrl}
                     </a>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium">Connected At</p>
+                  <div className="space-y-1.5">
+                    <p className="text-sm font-medium text-foreground">Connected At</p>
                     <p className="text-sm text-muted-foreground">
                       {new Date(repository.$createdAt).toLocaleString()}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium">Last Synced</p>
+                  <div className="space-y-1.5">
+                    <p className="text-sm font-medium text-foreground">Last Synced</p>
                     <p className="text-sm text-muted-foreground">
                       {new Date(repository.lastSyncedAt).toLocaleString()}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium">Status</p>
+                  <div className="space-y-1.5">
+                    <p className="text-sm font-medium text-foreground">Status</p>
                     <p className="text-sm text-muted-foreground capitalize">{repository.status}</p>
                   </div>
                 </div>
 
-                <div className="pt-4 border-t">
+               
+              </div>
+               <div className="pt-6 px-6 border-t ">
                   <ConnectRepository projectId={projectId} isUpdate />
                 </div>
-              </div>
             </SheetContent>
           </Sheet>
 
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                <FileText className="h-4 w-4 mr-2" />
-                Documentation
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden p-0">
-              <DialogHeader className="px-6 pt-6 pb-4">
-                <DialogTitle>AI-Generated Documentation</DialogTitle>
-                <DialogDescription>
-                  Comprehensive documentation generated from your codebase
-                </DialogDescription>
-              </DialogHeader>
-              <div className="px-6 pb-6 overflow-y-auto max-h-[calc(90vh-8rem)]">
-                <DocumentationView projectId={projectId} />
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Button className="!font-medium" variant="outline" size="xs" asChild>
+            <Link href={documentationPath} className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Documentation
+            </Link>
+          </Button>
         </div>
       </div>
 
