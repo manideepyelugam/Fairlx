@@ -314,11 +314,10 @@ export const ConnectRepository = ({
           </Dialog>
 
           <Button
-            variant="destructive"
             onClick={handleDisconnect}
             disabled={isDisconnecting}
             size="sm"
-            className="flex-1"
+            className="flex-1 bg-red-500"
           >
             {isDisconnecting ? (
               <Loader2 className="size-4 mr-2 animate-spin" />
