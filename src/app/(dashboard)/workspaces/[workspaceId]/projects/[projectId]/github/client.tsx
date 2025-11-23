@@ -121,7 +121,7 @@ export const GitHubIntegrationClient = () => {
             {/* Step 1: GitHub Source */}
             <div className="relative flex justify-center lg:justify-end">
               <div className="group relative w-full max-w-sm">
-                <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-blue-400 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-300" />
+                <div className="absolute -inset-1  rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-300" />
                 <Card className="relative border-2 border-blue-500/20 hover:border-blue-500/40 transition-all duration-300 shadow-lg hover:shadow-xl">
                   <CardHeader className="pb-4">
                     <div className="flex items-center gap-3">
@@ -167,7 +167,7 @@ export const GitHubIntegrationClient = () => {
             {/* Step 2: AI Processing */}
             <div className="relative flex justify-center">
               <div className="group relative w-full max-w-sm">
-                <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-purple-400 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-300" />
+                <div className="absolute -inset-1  rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-300" />
                 <Card className="relative border-2 border-purple-500/20 hover:border-purple-500/40 transition-all duration-300 shadow-lg hover:shadow-xl">
                   <CardHeader className="pb-4">
                     <div className="flex items-center gap-3">
@@ -200,7 +200,7 @@ export const GitHubIntegrationClient = () => {
             {/* Step 3: Insights Output */}
             <div className="relative flex justify-center lg:justify-start">
               <div className="group relative w-full max-w-sm">
-                <div className="absolute -inset-1 bg-gradient-to-r from-green-600 to-green-400 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-300" />
+                <div className="absolute -inset-1  rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-300" />
                 <Card className="relative border-2 border-green-500/20 hover:border-green-500/40 transition-all duration-300 shadow-lg hover:shadow-xl">
                   <CardHeader className="pb-4">
                     <div className="flex items-center gap-3">

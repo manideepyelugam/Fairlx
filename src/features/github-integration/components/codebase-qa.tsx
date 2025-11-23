@@ -86,8 +86,8 @@ export const CodebaseQA = ({ projectId, commitsCount = 0 }: CodebaseQAProps) => 
               </p>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Sparkles className="h-4 w-4" />
-              <span>AI-Powered</span>
+              <Sparkles className="h-4 w-4 text-blue-700" />
+              <span className="text-blue-600">AI-Powered</span>
               <span className="text-xs">•</span>
               <p className="text-xs text-muted-foreground">
               {commitsCount > 0 ? `${commitsCount} commits analyzed` : 'Analyzing codebase...'}
