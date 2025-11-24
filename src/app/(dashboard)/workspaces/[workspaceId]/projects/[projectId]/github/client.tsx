@@ -23,6 +23,15 @@ import {
   CommitHistory
 } from "@/features/github-integration/components";
 import { useGetRepository } from "@/features/github-integration";
+import {
+  getCommitsCount,
+  saveCommitsToCache,
+  readLegacyCommits,
+  readLegacyCommitsCount,
+  clearLegacyCommits,
+  notifyCommitsUpdated,
+  COMMIT_CACHE_CHANNEL,
+} from "@/features/github-integration/lib/commit-cache";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 
 export const GitHubIntegrationClient = () => {
@@ -34,55 +43,75 @@ export const GitHubIntegrationClient = () => {
     ? `/workspaces/${workspaceId}/projects/${projectId}/github/documentation`
     : "#";
 
-  // Function to load commits count from localStorage
-  const loadCommitsCount = useCallback(() => {
-    const cached = localStorage.getItem(`commits_${projectId}`);
-    if (cached) {
-      try {
-        const commits = JSON.parse(cached);
-        setCommitsCount(commits.length);
-        console.log(`[CommitsCount] Updated to ${commits.length}`);
-      } catch (error) {
-        console.error("Failed to parse cached commits:", error);
-        // Try to load count-only fallback
-        const countOnly = localStorage.getItem(`commits_count_${projectId}`);
-        if (countOnly) {
-          setCommitsCount(parseInt(countOnly, 10));
-          console.log(`[CommitsCount] Loaded from count fallback: ${countOnly}`);
-        } else {
-          setCommitsCount(0);
-        }
+  const loadCommitsCount = useCallback(async () => {
+    try {
+      const count = await getCommitsCount(projectId);
+      if (count > 0) {
+        setCommitsCount(count);
+        // console.log(`[CommitsCount] Updated to ${count}`);
+        return;
       }
-    } else {
-      // Try to load count-only fallback
-      const countOnly = localStorage.getItem(`commits_count_${projectId}`);
-      if (countOnly) {
-        setCommitsCount(parseInt(countOnly, 10));
-        console.log(`[CommitsCount] Loaded from count fallback: ${countOnly}`);
-      } else {
-        setCommitsCount(0);
+
+      const legacyCommits = readLegacyCommits(projectId);
+      if (legacyCommits.length > 0) {
+        setCommitsCount(legacyCommits.length);
+        await saveCommitsToCache(projectId, legacyCommits);
+        clearLegacyCommits(projectId);
+        notifyCommitsUpdated(projectId);
+        // console.log(`[CommitsCount] Migrated ${legacyCommits.length} legacy commits`);
+        return;
       }
+
+      const legacyCount = readLegacyCommitsCount(projectId);
+      setCommitsCount(legacyCount);
+      // console.log(`[CommitsCount] Loaded legacy count ${legacyCount}`);
+    } catch (error) {
+      console.error("Failed to load cached commits count:", error);
+      setCommitsCount(0);
     }
   }, [projectId]);
 
-  // Load commits count from localStorage on mount and when project changes
+  // Load commits count on mount and when project changes
   useEffect(() => {
     loadCommitsCount();
   }, [loadCommitsCount]);
 
   // Listen for commits updates
   useEffect(() => {
-    const handleCommitsUpdate = () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handleCommitsUpdate = (event: Event) => {
+      const projectDetail = (event as CustomEvent<{ projectId?: string }>).detail?.projectId;
+      if (projectDetail && projectDetail !== projectId) {
+        return;
+      }
+
       console.log(`[CommitsCount] Commits updated event received`);
       loadCommitsCount();
     };
 
     window.addEventListener('commitsUpdated', handleCommitsUpdate);
 
+    let channel: BroadcastChannel | null = null;
+    if ("BroadcastChannel" in window) {
+      channel = new BroadcastChannel(COMMIT_CACHE_CHANNEL);
+      channel.addEventListener('message', (event: MessageEvent<{ projectId?: string }>) => {
+        if (event.data?.projectId && event.data.projectId !== projectId) {
+          return;
+        }
+
+        console.log(`[CommitsCount] Broadcast channel event received`);
+        loadCommitsCount();
+      });
+    }
+
     return () => {
       window.removeEventListener('commitsUpdated', handleCommitsUpdate);
+      channel?.close();
     };
-  }, [loadCommitsCount]);
+  }, [loadCommitsCount, projectId]);
 
   if (isLoading) {
     return <PageLoader />;

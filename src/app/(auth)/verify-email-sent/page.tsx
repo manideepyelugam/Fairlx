@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Mail, RefreshCw } from "lucide-react";
@@ -7,7 +8,7 @@ import { Mail, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-const VerifyEmailSentPage = () => {
+const VerifyEmailSentContent = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
   const email = searchParams.get("email") || "";
@@ -62,6 +63,28 @@ const VerifyEmailSentPage = () => {
         </CardContent>
       </Card>
     </div>
+  );
+};
+
+const VerifyEmailSentPage = () => {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              Check Your Email
+            </CardTitle>
+            <CardDescription>
+              Loading...
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    }>
+      <VerifyEmailSentContent />
+    </Suspense>
   );
 };
 
