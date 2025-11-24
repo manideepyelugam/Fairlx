@@ -4,6 +4,12 @@ import { toast } from "sonner";
 
 import { client } from "@/lib/rpc";
 import { GITHUB_INTEGRATION_QUERY_KEYS } from "../constants";
+import {
+  saveCommitsToCache,
+  clearCommitsCache,
+  clearLegacyCommits,
+  notifyCommitsUpdated,
+} from "../lib/commit-cache";
 
 // Link Repository
 type LinkRepositoryRequest = InferRequestType<
@@ -31,9 +37,9 @@ export const useLinkRepository = () => {
     onSuccess: async ({ data }) => {
       toast.success("Repository linked successfully");
       
-      // Clear localStorage cache for commits only (new repo = fresh commits)
-      localStorage.removeItem(`commits_${data.projectId}`);
-      localStorage.removeItem(`commits_count_${data.projectId}`);
+  // Clear cached commits for fresh repo link
+  await clearCommitsCache(data.projectId);
+  clearLegacyCommits(data.projectId);
       
       // Invalidate all related queries
       queryClient.invalidateQueries({
@@ -66,32 +72,23 @@ export const useLinkRepository = () => {
                 authorAvatar: commit.authorAvatar,
                 date: commit.date,
                 url: commit.url,
-                aiSummary: commit.aiSummary,
-                filesChanged: commit.filesChanged,
-                additions: commit.additions,
-                deletions: commit.deletions,
+                aiSummary: commit.aiSummary ?? null,
+                filesChanged: commit.filesChanged ?? 0,
+                additions: commit.additions ?? 0,
+                deletions: commit.deletions ?? 0,
                 // Omit 'files' array which can be very large
               }));
-              
-              localStorage.setItem(
-                `commits_${data.projectId}`,
-                JSON.stringify(optimizedCommits)
-              );
-              
-              console.log(`[Cache] Saved ${optimizedCommits.length} commits to localStorage (optimized)`);
+
+              await saveCommitsToCache(data.projectId, optimizedCommits);
+              clearLegacyCommits(data.projectId);
+              notifyCommitsUpdated(data.projectId);
+              console.log(`[Cache] Saved ${optimizedCommits.length} commits to IndexedDB (optimized)`);
             } catch (error) {
-              console.error('[Cache] Failed to save commits to localStorage:', error);
-              // If still too large, save only count
-              try {
-                localStorage.setItem(`commits_count_${data.projectId}`, String(commitsData.data.summaries.length));
-                console.log(`[Cache] Saved commits count only: ${commitsData.data.summaries.length}`);
-              } catch (e) {
-                console.error('[Cache] Failed to save commits count:', e);
-              }
+              console.error('[Cache] Failed to save commits to IndexedDB:', error);
             }
             
             // Dispatch custom event to notify CommitHistory component
-            window.dispatchEvent(new Event('commitsUpdated'));
+            notifyCommitsUpdated(data.projectId);
             
             // Invalidate commits query to refetch
             queryClient.invalidateQueries({
@@ -158,12 +155,11 @@ export const useDisconnectRepository = () => {
         throw new Error("Failed to disconnect repository");
       }
     },
-    onSuccess: (_, variables) => {
+    onSuccess: async (_, variables) => {
       toast.success("Repository disconnected");
       
-      // Clear localStorage cache for commits only (repo details in DB)
-      localStorage.removeItem(`commits_${variables.projectId}`);
-      localStorage.removeItem(`commits_count_${variables.projectId}`);
+      await clearCommitsCache(variables.projectId);
+      clearLegacyCommits(variables.projectId);
       
       // Invalidate all related queries
       queryClient.invalidateQueries({

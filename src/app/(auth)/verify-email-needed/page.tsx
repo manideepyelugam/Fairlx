@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,7 +20,7 @@ import { DottedSeparator } from "@/components/dotted-separator";
 
 type FormData = z.infer<typeof resendVerificationSchema>;
 
-const VerifyEmailNeededPage = () => {
+const VerifyEmailNeededContent = () => {
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "";
   const [emailSent, setEmailSent] = useState(false);
@@ -164,6 +164,28 @@ const VerifyEmailNeededPage = () => {
         </CardContent>
       </Card>
     </div>
+  );
+};
+
+const VerifyEmailNeededPage = () => {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-orange-500" />
+              Email Verification Required
+            </CardTitle>
+            <CardDescription>
+              Loading...
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    }>
+      <VerifyEmailNeededContent />
+    </Suspense>
   );
 };
 

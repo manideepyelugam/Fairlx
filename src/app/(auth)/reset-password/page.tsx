@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 
 type FormData = z.infer<typeof resetPasswordSchema>;
 
-const ResetPasswordPage = () => {
+const ResetPasswordContent = () => {
   const searchParams = useSearchParams();
   const resetPassword = useResetPassword();
   const [showPassword, setShowPassword] = useState(false);
@@ -174,6 +174,25 @@ const ResetPasswordPage = () => {
         </CardContent>
       </Card>
     </div>
+  );
+};
+
+const ResetPasswordPage = () => {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Reset Password</CardTitle>
+            <CardDescription>
+              Loading...
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    }>
+      <ResetPasswordContent />
+    </Suspense>
   );
 };
 
