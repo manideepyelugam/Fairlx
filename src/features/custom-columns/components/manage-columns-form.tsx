@@ -47,15 +47,21 @@ export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
   const workspaceId = useWorkspaceId();
   const projectId = useProjectId();
   const [showCreateForm, setShowCreateForm] = useState(false);
-  
+
+  // Track pending changes
+  const [pendingColumnToggles, setPendingColumnToggles] = useState<Set<TaskStatus>>(new Set());
+  const [pendingColumnDeletions, setPendingColumnDeletions] = useState<Set<string>>(new Set());
+  const [pendingColumnCreations, setPendingColumnCreations] = useState<FormData[]>([]);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
   const { mutate: createColumn, isPending: isCreating } = useCreateCustomColumn();
   const { mutate: deleteColumn, isPending: isDeleting } = useDeleteCustomColumn();
-  const { data: customColumns, isLoading: isLoadingColumns } = useGetCustomColumns({ 
-    workspaceId, 
-    projectId: projectId || "" 
+  const { data: customColumns, isLoading: isLoadingColumns } = useGetCustomColumns({
+    workspaceId,
+    projectId: projectId || ""
   });
   const { mutate: moveTasksFromDisabledColumn } = useMoveTasksFromDisabledColumn();
-  
+
   const {
     defaultColumns,
     toggleColumn,
@@ -73,6 +79,12 @@ export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
     "destructive"
   );
 
+  const [ConfirmUnsavedDialog, confirmUnsaved] = useConfirm(
+    "Unsaved Changes",
+    "You have unsaved changes. Do you want to save them before closing?",
+    "outline"
+  );
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -83,32 +95,22 @@ export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
   });
 
   const onSubmit = (values: FormData) => {
-    if (!projectId) {
-      toast.error("Project context missing");
-      return;
-    }
-    createColumn({ 
-      json: { 
-        ...values, 
-        workspaceId,
-        projectId
-      } 
-    }, {
-      onSuccess: () => {
-        form.reset();
-        setShowCreateForm(false);
-        toast.success("Column created successfully");
-      },
-    });
+    // Add to pending creations instead of creating immediately
+    setPendingColumnCreations(prev => [...prev, values]);
+    setHasUnsavedChanges(true);
+    form.reset();
+    setShowCreateForm(false);
+    toast.success("Column added to pending changes");
   };
 
   const handleDeleteCustomColumn = async (columnId: string) => {
     const ok = await confirmDelete();
     if (!ok) return;
 
-    deleteColumn({
-      param: { customColumnId: columnId },
-    });
+    // Add to pending deletions instead of deleting immediately
+    setPendingColumnDeletions(prev => new Set(prev).add(columnId));
+    setHasUnsavedChanges(true);
+    toast.success("Column deletion added to pending changes");
   };
 
   const handleToggleDefaultColumn = async (columnId: TaskStatus) => {
@@ -116,16 +118,132 @@ export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
     if (!column) return;
 
     if (column.isEnabled) {
-      // Disabling column - move tasks first
+      // Disabling column - confirm first
       const ok = await confirmHide();
       if (!ok) return;
-
-      // Move tasks from this column to TODO
-      moveTasksFromDisabledColumn({ fromColumn: columnId });
     }
-    
-    toggleColumn(columnId);
-    toast.success(`${column.name} column ${column.isEnabled ? 'hidden' : 'shown'}`);
+
+    // Add to pending toggles
+    setPendingColumnToggles(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(columnId)) {
+        newSet.delete(columnId);
+      } else {
+        newSet.add(columnId);
+      }
+      return newSet;
+    });
+    setHasUnsavedChanges(true);
+    toast.success("Column visibility change added to pending changes");
+  };
+
+  const handleSaveChanges = async () => {
+    if (!projectId) {
+      toast.error("Project context missing");
+      return;
+    }
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    // Apply column creations
+    for (const columnData of pendingColumnCreations) {
+      try {
+        await new Promise((resolve, reject) => {
+          createColumn(
+            {
+              json: {
+                ...columnData,
+                workspaceId,
+                projectId,
+              },
+            },
+            {
+              onSuccess: () => {
+                successCount++;
+                resolve(true);
+              },
+              onError: () => {
+                errorCount++;
+                reject();
+              },
+            }
+          );
+        });
+      } catch (error) {
+        // Error already counted
+      }
+    }
+
+    // Apply column deletions
+    for (const columnId of pendingColumnDeletions) {
+      try {
+        await new Promise((resolve, reject) => {
+          deleteColumn(
+            {
+              param: { customColumnId: columnId },
+            },
+            {
+              onSuccess: () => {
+                successCount++;
+                resolve(true);
+              },
+              onError: () => {
+                errorCount++;
+                reject();
+              },
+            }
+          );
+        });
+      } catch (error) {
+        // Error already counted
+      }
+    }
+
+    // Apply column toggles
+    for (const columnId of pendingColumnToggles) {
+      const column = defaultColumns.find((col) => col.id === columnId);
+      if (column && column.isEnabled) {
+        // Move tasks from disabled column to TODO
+        moveTasksFromDisabledColumn({ fromColumn: columnId });
+      }
+      toggleColumn(columnId);
+      successCount++;
+    }
+
+    // Clear pending changes
+    setPendingColumnCreations([]);
+    setPendingColumnDeletions(new Set());
+    setPendingColumnToggles(new Set());
+    setHasUnsavedChanges(false);
+
+    if (errorCount > 0) {
+      toast.error(`${errorCount} change(s) failed to save`);
+    }
+    if (successCount > 0) {
+      toast.success(`${successCount} change(s) saved successfully`);
+    }
+
+    // Close the modal after saving
+    onCancel?.();
+  };
+
+  const handleClose = async () => {
+    if (hasUnsavedChanges) {
+      const shouldSave = await confirmUnsaved();
+      if (shouldSave) {
+        await handleSaveChanges();
+      } else {
+        // Discard changes and close
+        setPendingColumnCreations([]);
+        setPendingColumnDeletions(new Set());
+        setPendingColumnToggles(new Set());
+        setHasUnsavedChanges(false);
+        onCancel?.();
+      }
+    } else {
+      onCancel?.();
+    }
   };
 
   if (isLoadingColumns) {
@@ -147,11 +265,17 @@ export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
     <>
       <ConfirmHideDialog />
       <ConfirmDeleteDialog />
+      <ConfirmUnsavedDialog />
       <Card className="w-full h-full border-none shadow-none">
         <CardHeader className="flex p-7">
           <CardTitle className="text-xl font-bold flex items-center gap-2">
             <Settings2Icon className="size-5" />
             Manage Columns
+            {hasUnsavedChanges && (
+              <Badge variant="outline" className="text-xs bg-orange-100 text-orange-700 border-orange-200 ml-2">
+                Unsaved Changes
+              </Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <div className="px-7">
@@ -197,8 +321,8 @@ export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
                         <FormItem>
                           <FormLabel className="text-sm font-medium">Column Name</FormLabel>
                           <FormControl>
-                            <Input 
-                              {...field} 
+                            <Input
+                              {...field}
                               placeholder="e.g., Priority, Status, Review"
                               className="h-11 text-base"
                             />
@@ -207,7 +331,7 @@ export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
                         </FormItem>
                       )}
                     />
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
@@ -228,7 +352,7 @@ export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={form.control}
                         name="color"
@@ -280,31 +404,42 @@ export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
             {/* Custom Columns List */}
             {customColumns?.documents && customColumns.documents.length > 0 ? (
               <div className="space-y-3">
-                {customColumns.documents.map((column) => (
-                  <div key={column.$id} className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/30 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div 
-                        className="size-5 rounded-full border-2 border-white shadow-sm" 
-                        style={{ backgroundColor: column.color }} 
-                      />
-                      <span className="font-medium text-base">{column.name}</span>
-                      <Badge variant="outline" className="text-xs bg-purple-100 text-purple-700 border-purple-200">
-                        Custom
-                      </Badge>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteCustomColumn(column.$id)}
-                      disabled={isDeleting}
-                      className="hover:bg-red-50 hover:text-red-700"
+                {customColumns.documents.map((column) => {
+                  const isPendingDeletion = pendingColumnDeletions.has(column.$id);
+                  return (
+                    <div
+                      key={column.$id}
+                      className={`flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/30 transition-colors ${isPendingDeletion ? 'opacity-50 bg-red-50 dark:bg-red-950/20' : ''}`}
                     >
-                      <Trash2Icon className="size-4" />
-                      Delete
-                    </Button>
-                  </div>
-                ))}
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="size-5 rounded-full border-2 border-white shadow-sm"
+                          style={{ backgroundColor: column.color }}
+                        />
+                        <span className={`font-medium text-base ${isPendingDeletion ? 'line-through' : ''}`}>{column.name}</span>
+                        <Badge variant="outline" className="text-xs bg-purple-100 text-purple-700 border-purple-200">
+                          Custom
+                        </Badge>
+                        {isPendingDeletion && (
+                          <Badge variant="destructive" className="text-xs">
+                            Pending Deletion
+                          </Badge>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteCustomColumn(column.$id)}
+                        disabled={isDeleting || isPendingDeletion}
+                        className="hover:bg-red-50 hover:text-red-700"
+                      >
+                        <Trash2Icon className="size-4" />
+                        Delete
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               !showCreateForm && (
@@ -331,6 +466,48 @@ export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
                 </div>
               )
             )}
+
+            {/* Pending Column Creations */}
+            {pendingColumnCreations.length > 0 && (
+              <div className="space-y-3 mt-3">
+                <p className="text-sm font-medium text-muted-foreground">Pending New Columns:</p>
+                {pendingColumnCreations.map((columnData, index) => (
+                  <div
+                    key={`pending-${index}`}
+                    className="flex items-center justify-between p-4 rounded-lg border bg-green-50 dark:bg-green-950/20 border-green-200"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="size-5 rounded-full border-2 border-white shadow-sm"
+                        style={{ backgroundColor: columnData.color }}
+                      />
+                      <span className="font-medium text-base">{columnData.name}</span>
+                      <Badge variant="outline" className="text-xs bg-purple-100 text-purple-700 border-purple-200">
+                        Custom
+                      </Badge>
+                      <Badge variant="outline" className="text-xs bg-green-100 text-green-700 border-green-200">
+                        Pending Creation
+                      </Badge>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setPendingColumnCreations(prev => prev.filter((_, i) => i !== index));
+                        if (pendingColumnCreations.length === 1 && pendingColumnDeletions.size === 0 && pendingColumnToggles.size === 0) {
+                          setHasUnsavedChanges(false);
+                        }
+                      }}
+                      className="hover:bg-red-50 hover:text-red-700"
+                    >
+                      <Trash2Icon className="size-4" />
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <DottedSeparator />
@@ -347,45 +524,67 @@ export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
               <p className="text-sm text-muted-foreground mb-4">
                 Show or hide the default workflow columns for this project. Hidden columns will move all tasks to &ldquo;Todo&rdquo;.
               </p>
-            <div className="space-y-3">
-              {defaultColumns.map((column) => (
-                <div key={column.id} className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/20 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <span className="font-medium">{column.name}</span>
-                    <Badge variant={column.isEnabled ? "default" : "secondary"} className="text-xs">
-                      {column.isEnabled ? "Visible" : "Hidden"}
-                    </Badge>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleToggleDefaultColumn(column.id)}
-                    className={column.isEnabled ? "hover:bg-orange-50 hover:text-orange-700" : "hover:bg-green-50 hover:text-green-700"}
-                  >
-                    {column.isEnabled ? (
-                      <EyeOffIcon className="size-4 mr-2" />
-                    ) : (
-                      <EyeIcon className="size-4 mr-2" />
-                    )}
-                    {column.isEnabled ? "Hide" : "Show"}
-                  </Button>
-                </div>
-              ))}
-            </div>
+              <div className="space-y-3">
+                {defaultColumns.map((column) => {
+                  const isPendingToggle = pendingColumnToggles.has(column.id);
+                  const willBeEnabled = isPendingToggle ? !column.isEnabled : column.isEnabled;
+                  return (
+                    <div
+                      key={column.id}
+                      className={`flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/20 transition-colors ${isPendingToggle ? 'bg-yellow-50 dark:bg-yellow-950/20' : ''}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="font-medium">{column.name}</span>
+                        <Badge variant={willBeEnabled ? "default" : "secondary"} className="text-xs">
+                          {willBeEnabled ? "Visible" : "Hidden"}
+                        </Badge>
+                        {isPendingToggle && (
+                          <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-700 border-yellow-200">
+                            Pending Change
+                          </Badge>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleToggleDefaultColumn(column.id)}
+                        className={column.isEnabled ? "hover:bg-orange-50 hover:text-orange-700" : "hover:bg-green-50 hover:text-green-700"}
+                      >
+                        {column.isEnabled ? (
+                          <EyeOffIcon className="size-4 mr-2" />
+                        ) : (
+                          <EyeIcon className="size-4 mr-2" />
+                        )}
+                        {column.isEnabled ? "Hide" : "Show"}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
           <DottedSeparator />
 
           {/* Actions */}
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-3">
             <Button
               type="button"
               variant="outline"
-              onClick={onCancel}
+              onClick={handleClose}
+              disabled={isCreating || isDeleting}
             >
-              Close
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={handleSaveChanges}
+              disabled={!hasUnsavedChanges || isCreating || isDeleting}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isCreating || isDeleting ? "Saving..." : "Save & Close"}
             </Button>
           </div>
         </CardContent>
