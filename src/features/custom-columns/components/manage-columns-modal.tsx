@@ -8,7 +8,7 @@ export const ManageColumnsModal = () => {
   const { isOpen, setIsOpen, close } = useManageColumnsModal();
 
   return (
-    <ResponsiveModal open={isOpen} onOpenChange={setIsOpen}>
+    <ResponsiveModal open={isOpen} onOpenChange={setIsOpen} showCloseButton={false}>
       <ManageColumnsForm onCancel={close} />
     </ResponsiveModal>
   );

@@ -104,7 +104,7 @@ export const CreateWorkItemBar = ({
       <Button
         size="sm"
         onClick={() => setIsOpen(true)}
-        className="px-3 py-1 bg-white text-white border border-gray-300 text-xs font-medium h-6"
+        className="px-3 py-1 bg-white text-gray-700 border border-gray-300 text-xs font-medium h-6"
       >
         <Plus className="size-3 mr-1" />
         Add work item

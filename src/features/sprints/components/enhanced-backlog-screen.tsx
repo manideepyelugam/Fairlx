@@ -2,12 +2,12 @@
 
 import { useState, useMemo } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
-import { 
-  ChevronDown, 
-  ChevronRight, 
-  Play, 
-  CheckCircle2, 
-  Settings, 
+import {
+  ChevronDown,
+  ChevronRight,
+  Play,
+  CheckCircle2,
+  Settings,
   Plus,
   Calendar,
   MoreHorizontal,
@@ -66,6 +66,7 @@ import { SprintStatus, WorkItemStatus, WorkItemPriority, WorkItemType } from "..
 import type { PopulatedWorkItem } from "../types";
 import { UpdateSprintDatesDialog } from "./update-sprint-dates-dialog";
 import { SubtasksList } from "@/features/subtasks/components";
+import { SprintSettingsSheet } from "./sprint-settings-sheet";
 
 interface EnhancedBacklogScreenProps {
   workspaceId: string;
@@ -85,6 +86,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   const [editingWorkItemId, setEditingWorkItemId] = useState<string | null>(null);
   const [editingWorkItemTitle, setEditingWorkItemTitle] = useState("");
   const [dateDialogSprintId, setDateDialogSprintId] = useState<string | null>(null);
+  const [sprintSettingsId, setSprintSettingsId] = useState<string | null>(null);
 
   // API Hooks
   const { data: sprintsData } = useGetSprints({ workspaceId, projectId });
@@ -106,7 +108,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   const backlogItems = useMemo(() => {
     const items = workItemsData?.documents?.filter((item) => !item.sprintId) || [];
     if (!searchQuery) return items;
-    return items.filter((item) => 
+    return items.filter((item) =>
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.key.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -115,7 +117,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   const getSprintWorkItems = (sprintId: string) => {
     const items = workItemsData?.documents?.filter((item) => item.sprintId === sprintId) || [];
     if (!searchQuery) return items;
-    return items.filter((item) => 
+    return items.filter((item) =>
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.key.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -184,7 +186,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
 
     // Update work item's sprint assignment
     const newSprintId = destination.droppableId === "backlog" ? null : destination.droppableId;
-    
+
     updateWorkItem({
       param: { workItemId: draggableId },
       json: { sprintId: newSprintId },
@@ -195,10 +197,10 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
 
   const handleUpdateWorkItem = (updates: Partial<PopulatedWorkItem>) => {
     if (!selectedItem) return;
-    
+
     // Extract only the updatable fields and convert types as needed
     const jsonUpdates: Record<string, string | number | boolean | string[] | Date | null | undefined> = {};
-    
+
     if (updates.title !== undefined) jsonUpdates.title = updates.title;
     if (updates.type !== undefined) jsonUpdates.type = updates.type;
     if (updates.status !== undefined) jsonUpdates.status = updates.status;
@@ -214,12 +216,12 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     if (updates.dueDate !== undefined) jsonUpdates.dueDate = new Date(updates.dueDate);
     if (updates.estimatedHours !== undefined) jsonUpdates.estimatedHours = updates.estimatedHours;
     if (updates.labels !== undefined) jsonUpdates.labels = updates.labels;
-    
+
     updateWorkItem({
       param: { workItemId: selectedItem.$id },
       json: jsonUpdates,
     });
-    
+
     // Update local state immediately for better UX
     setSelectedItem({ ...selectedItem, ...updates });
   };
@@ -284,12 +286,12 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
       toast.error("Title cannot be empty");
       return;
     }
-    
+
     updateWorkItem({
       param: { workItemId },
       json: { title: editingWorkItemTitle },
     });
-    
+
     setEditingWorkItemId(null);
     setEditingWorkItemTitle("");
   };
@@ -438,7 +440,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                 {format(new Date(sprint.startDate), "d MMM")} – {format(new Date(sprint.endDate), "d MMM")}
                               </span>
                             ) : (
-                              <button 
+                              <button
                                 className="text-xs text-blue-600 hover:underline flex items-center gap-1"
                                 onClick={() => setDateDialogSprintId(sprint.$id)}
                               >
@@ -508,11 +510,13 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                 <Edit2 className="size-3 mr-2" />
                                 Rename sprint
                               </DropdownMenuItem>
-                              <DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => setSprintSettingsId(sprint.$id)}
+                              >
                                 <Settings className="size-3 mr-2" />
                                 Sprint settings
                               </DropdownMenuItem>
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 className="text-red-600"
                                 onClick={() => handleDeleteSprint(sprint.$id)}
                               >
@@ -552,15 +556,14 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                       ref={provided.innerRef}
                                       {...provided.draggableProps}
                                       {...provided.dragHandleProps}
-                                      className={`px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors ${
-                                        snapshot.isDragging ? "shadow-lg rounded-lg border border-gray-200 bg-white" : ""
-                                      }`}
+                                      className={`px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors ${snapshot.isDragging ? "shadow-lg rounded-lg border border-gray-200 bg-white" : ""
+                                        }`}
                                       onClick={() => handleWorkItemClick(item)}
                                     >
                                       <div className="flex items-center gap-4">
                                         <GripVertical className="size-4 text-gray-400 flex-shrink-0" />
                                         <span className="font-mono text-xs text-gray-500 w-20 flex-shrink-0">{item.key}</span>
-                                        
+
                                         {editingWorkItemId === item.$id ? (
                                           <Input
                                             value={editingWorkItemTitle}
@@ -575,14 +578,14 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                             autoFocus
                                           />
                                         ) : (
-                                          <span 
+                                          <span
                                             className="flex-1 text-sm text-gray-900 truncate hover:text-blue-600 cursor-text"
                                             onClick={(e) => handleStartEditWorkItem(item, e)}
                                           >
                                             {item.title}
                                           </span>
                                         )}
-                                        
+
                                         {/* Epic Dropdown */}
                                         <Select
                                           value={item.epicId || "none"}
@@ -711,7 +714,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                               ))}
                             </div>
                           )}
-                          
+
                           {/* Create Work Item Row */}
                           {isCreatingInSprint === sprint.$id ? (
                             <div className="px-4 py-3 border-t border-gray-100">
@@ -760,7 +763,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                               Create work item
                             </button>
                           )}
-                          
+
                           {provided.placeholder}
                         </div>
                       )}
@@ -827,15 +830,14 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
-                                className={`px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors ${
-                                  snapshot.isDragging ? "shadow-lg rounded-lg border border-gray-200 bg-white" : ""
-                                }`}
+                                className={`px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors ${snapshot.isDragging ? "shadow-lg rounded-lg border border-gray-200 bg-white" : ""
+                                  }`}
                                 onClick={() => handleWorkItemClick(item)}
                               >
                                 <div className="flex items-center gap-4">
                                   <GripVertical className="size-4 text-gray-400 flex-shrink-0" />
                                   <span className="font-mono text-xs text-gray-500 w-20 flex-shrink-0">{item.key}</span>
-                                  
+
                                   {editingWorkItemId === item.$id ? (
                                     <Input
                                       value={editingWorkItemTitle}
@@ -850,14 +852,14 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                       autoFocus
                                     />
                                   ) : (
-                                    <span 
+                                    <span
                                       className="flex-1 text-sm text-gray-900 truncate hover:text-blue-600 cursor-text"
                                       onClick={(e) => handleStartEditWorkItem(item, e)}
                                     >
                                       {item.title}
                                     </span>
                                   )}
-                                  
+
                                   {/* Epic Dropdown */}
                                   <Select
                                     value={item.epicId || "none"}
@@ -1009,7 +1011,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                         ))}
                       </div>
                     )}
-                    
+
                     {/* Create Work Item Row in Backlog */}
                     {isCreatingInBacklog ? (
                       <div className="px-4 py-3 border-t border-gray-100">
@@ -1058,7 +1060,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                         Create work item
                       </button>
                     )}
-                    
+
                     {provided.placeholder}
                   </div>
                 )}
@@ -1195,9 +1197,9 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                   </TabsContent>
 
                   <TabsContent value="subtasks" className="mt-4">
-                    <SubtasksList 
-                      workItemId={selectedItem.$id} 
-                      workspaceId={workspaceId} 
+                    <SubtasksList
+                      workItemId={selectedItem.$id}
+                      workspaceId={workspaceId}
                     />
                   </TabsContent>
 
@@ -1227,6 +1229,12 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
           />
         )}
       </div>
+      {/* Sprint Settings Sheet */}
+      <SprintSettingsSheet
+        open={!!sprintSettingsId}
+        onOpenChange={(open) => !open && setSprintSettingsId(null)}
+        sprint={sprints.find((s) => s.$id === sprintSettingsId) || null}
+      />
     </DragDropContext>
   );
 }
