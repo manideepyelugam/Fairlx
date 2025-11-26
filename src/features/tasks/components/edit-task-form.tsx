@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
 
@@ -28,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 import { updateTaskSchema } from "../schemas";
 import { useUpdateTask } from "../api/use-update-task";
@@ -37,6 +40,7 @@ import { PrioritySelector } from "./priority-selector";
 import { LabelSelector } from "./label-management";
 import { Textarea } from "@/components/ui/textarea";
 import { AssigneeMultiSelect } from "./assignee-multi-select";
+import { CreateTaskAttachmentUpload } from "@/features/attachments/components/create-task-attachment-upload";
 
 interface EditTaskFormProps {
   onCancel?: () => void;
@@ -52,10 +56,11 @@ export const EditTaskForm = ({
   initialValues,
 }: EditTaskFormProps) => {
   const { mutate, isPending } = useUpdateTask();
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
 
   // Mock available labels - in a real app, this would come from an API
   const availableLabels = [
-    "frontend", "backend", "bug", "feature", "urgent", "documentation", 
+    "frontend", "backend", "bug", "feature", "urgent", "documentation",
     "testing", "design", "security", "performance", "api", "ui/ux"
   ];
 
@@ -70,6 +75,8 @@ export const EditTaskForm = ({
         ? new Date(initialValues.endDate)
         : undefined,
       assigneeIds: initialValues.assigneeIds || (initialValues.assigneeId ? [initialValues.assigneeId] : []),
+      assignedTeamId: initialValues.assignedTeamId ?? undefined,
+      flagged: initialValues.flagged ?? false,
     },
   });
 
@@ -182,7 +189,7 @@ export const EditTaskForm = ({
                   <FormItem>
                     <FormLabel>Project</FormLabel>
                     <Select
-                      defaultValue={field.value}
+                      value={field.value}
                       onValueChange={field.onChange}
                     >
                       <FormControl>
@@ -308,6 +315,13 @@ export const EditTaskForm = ({
                   </FormItem>
                 )}
               />
+              <div className="space-y-2">
+                <Label>Attachments (Optional)</Label>
+                <CreateTaskAttachmentUpload
+                  files={attachmentFiles}
+                  onFilesChange={setAttachmentFiles}
+                />
+              </div>
             </div>
             <DottedSeparator className="py-7" />
             <div className="flex items-center justify-between">

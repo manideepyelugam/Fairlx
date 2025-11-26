@@ -15,8 +15,8 @@ export const createProgramSchema = z.object({
   workspaceId: z.string().min(1, "Workspace ID is required"),
   programLeadId: z.string().optional(),
   imageUrl: z.string().url("Invalid image URL").optional().or(z.literal("")),
-  startDate: z.string().datetime().optional(),
-  endDate: z.string().datetime().optional(),
+  startDate: z.string().optional().or(z.literal("")),
+  endDate: z.string().optional().or(z.literal("")),
   status: z
     .nativeEnum(ProgramStatus)
     .default(ProgramStatus.PLANNING)

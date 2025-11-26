@@ -38,9 +38,9 @@ interface DataKanbanProps {
   projectId?: string;
 }
 
-export const DataKanban = ({ 
-  data, 
-  onChange, 
+export const DataKanban = ({
+  data,
+  onChange,
   isAdmin = false,
   members = [],
   projectId
@@ -114,13 +114,13 @@ export const DataKanban = ({
     setSelectedTasks(prev => {
       const newSet = new Set(prev);
       const statusTasks = tasks[status];
-      
+
       if (selected) {
         statusTasks.forEach(task => newSet.add(task.$id));
       } else {
         statusTasks.forEach(task => newSet.delete(task.$id));
       }
-      
+
       return newSet;
     });
   }, [tasks]);
@@ -135,6 +135,41 @@ export const DataKanban = ({
       setSelectedTasks(new Set());
     }
   }, [selectionMode]);
+
+  const handleClearColumnSelection = useCallback((status: TaskStatus) => {
+    setSelectedTasks(prev => {
+      const newSet = new Set(prev);
+      const statusTasks = tasks[status];
+      statusTasks.forEach(task => newSet.delete(task.$id));
+      return newSet;
+    });
+  }, [tasks]);
+
+  const handleSortByPriority = useCallback((status: TaskStatus) => {
+    setTasks(prev => {
+      const newTasks = { ...prev };
+      const priorityOrder = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+      newTasks[status] = [...newTasks[status]].sort((a, b) => {
+        const aPriority = a.priority ? priorityOrder[a.priority as keyof typeof priorityOrder] ?? 4 : 4;
+        const bPriority = b.priority ? priorityOrder[b.priority as keyof typeof priorityOrder] ?? 4 : 4;
+        return aPriority - bPriority;
+      });
+      return newTasks;
+    });
+  }, []);
+
+  const handleSortByDueDate = useCallback((status: TaskStatus) => {
+    setTasks(prev => {
+      const newTasks = { ...prev };
+      newTasks[status] = [...newTasks[status]].sort((a, b) => {
+        if (!a.dueDate && !b.dueDate) return 0;
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      });
+      return newTasks;
+    });
+  }, []);
 
   const handleBulkStatusChange = useCallback((status: TaskStatus | string) => {
     if (selectedTasks.size === 0) return;
@@ -189,7 +224,7 @@ export const DataKanban = ({
 
         // If there's no moved task (shouldn't happen, but just in case), return the previous state
         if (!movedTask) {
-      console.warn("No task found at the source index");
+          console.warn("No task found at the source index");
           return prevTasks;
         }
 
@@ -279,7 +314,7 @@ export const DataKanban = ({
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="flex overflow-x-auto gap-4 pb-4">
           {columnsOrder.map((board) => {
-            const selectedInColumn = tasks[board].filter(task => 
+            const selectedInColumn = tasks[board].filter(task =>
               selectedTasks.has(task.$id)
             ).length;
 
@@ -294,6 +329,9 @@ export const DataKanban = ({
                   selectedCount={selectedInColumn}
                   onSelectAll={handleSelectAll}
                   showSelection={selectionMode}
+                  onClearSelection={handleClearColumnSelection}
+                  onSortByPriority={handleSortByPriority}
+                  onSortByDueDate={handleSortByDueDate}
                 />
                 <Droppable droppableId={board}>
                   {(provided) => (
@@ -315,8 +353,8 @@ export const DataKanban = ({
                               {...provided.dragHandleProps}
                               ref={provided.innerRef}
                             >
-                              <KanbanCard 
-                                task={task} 
+                              <KanbanCard
+                                task={task}
                                 isSelected={selectedTasks.has(task.$id)}
                                 onSelect={handleTaskSelect}
                                 showSelection={selectionMode}

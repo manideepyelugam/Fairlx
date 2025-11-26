@@ -76,10 +76,10 @@ const getStatusLabel = (status: ProgramStatus) => {
 };
 
 const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('en-US', { 
-    month: 'short', 
-    day: 'numeric', 
-    year: 'numeric' 
+  return new Date(dateString).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
   });
 };
 
@@ -104,12 +104,12 @@ export const ProgramsClient = () => {
   // Filter and search programs
   const filteredPrograms = useMemo(() => {
     if (!programs?.documents) return [];
-    
+
     return programs.documents.filter((program) => {
       const matchesSearch = program.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           program.description?.toLowerCase().includes(searchQuery.toLowerCase());
+        program.description?.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === "all" || program.status === statusFilter;
-      
+
       return matchesSearch && matchesStatus;
     });
   }, [programs, searchQuery, statusFilter]);
@@ -117,7 +117,7 @@ export const ProgramsClient = () => {
   // Program statistics
   const stats = useMemo(() => {
     if (!programs?.documents) return { total: 0, active: 0, planning: 0, completed: 0 };
-    
+
     return {
       total: programs.documents.length,
       active: programs.documents.filter(p => p.status === ProgramStatus.ACTIVE).length,
@@ -143,7 +143,7 @@ export const ProgramsClient = () => {
       <DeleteDialog />
       <CreateProgramModal />
       <EditProgramModal />
-      
+
       {/* Header with Stats */}
       <div className="space-y-6 mb-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -153,10 +153,12 @@ export const ProgramsClient = () => {
               Strategic initiatives that drive your organization forward
             </p>
           </div>
-          <Button onClick={openCreate} size="default" className="gap-2">
-            <Plus className="size-4" />
-            Create Program
-          </Button>
+          {!isLoading && programs && programs.documents.length > 0 && (
+            <Button onClick={openCreate} size="default" className="gap-2">
+              <Plus className="size-4" />
+              Create Program
+            </Button>
+          )}
         </div>
 
         {/* Statistics Cards */}
@@ -321,10 +323,10 @@ export const ProgramsClient = () => {
         )}>
           {filteredPrograms.map((program) => {
             const StatusIcon = getStatusIcon(program.status);
-            
+
             return viewMode === "grid" ? (
-              <Card 
-                key={program.$id} 
+              <Card
+                key={program.$id}
                 className="group hover:shadow-md transition-all duration-200 overflow-hidden border-border/40 hover:border-border"
               >
                 <CardHeader className="pb-4">
@@ -351,8 +353,8 @@ export const ProgramsClient = () => {
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="icon"
                           className="size-8 opacity-0 group-hover:opacity-100 transition-opacity -mt-1 -mr-2"
                         >
@@ -378,7 +380,7 @@ export const ProgramsClient = () => {
                     </DropdownMenu>
                   </div>
                 </CardHeader>
-                
+
                 <CardContent className="pb-4">
                   <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">
                     {program.description || "No description provided"}
@@ -404,7 +406,7 @@ export const ProgramsClient = () => {
                 </CardContent>
 
                 <CardFooter className="pt-4 border-t bg-muted/5">
-                  <Link 
+                  <Link
                     href={`/workspaces/${workspaceId}/programs/${program.$id}`}
                     className="flex items-center justify-between w-full group/link"
                   >
@@ -415,8 +417,8 @@ export const ProgramsClient = () => {
               </Card>
             ) : (
               // List View
-              <Card 
-                key={program.$id} 
+              <Card
+                key={program.$id}
                 className="group hover:shadow-md transition-all duration-200 overflow-hidden"
               >
                 <CardContent className="p-6">
@@ -430,7 +432,7 @@ export const ProgramsClient = () => {
                         </AvatarFallback>
                       )}
                     </Avatar>
-                    
+
                     <div className="flex-1 min-w-0 space-y-2">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
@@ -444,7 +446,7 @@ export const ProgramsClient = () => {
                           {getStatusLabel(program.status)}
                         </Badge>
                       </div>
-                      
+
                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
                         {program.startDate && (
                           <div className="flex items-center gap-1.5">
@@ -463,7 +465,7 @@ export const ProgramsClient = () => {
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       <Link href={`/workspaces/${workspaceId}/programs/${program.$id}`}>
                         <Button variant="outline" size="sm" className="gap-2">
