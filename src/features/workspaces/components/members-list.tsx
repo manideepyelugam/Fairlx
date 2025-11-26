@@ -1,13 +1,13 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import { 
-  ArrowLeft, 
-  MoreVerticalIcon, 
-  CopyIcon, 
-  Shield, 
-  UserCog, 
-  Trash2, 
+import {
+  ArrowLeft,
+  MoreVerticalIcon,
+  CopyIcon,
+  Shield,
+  UserCog,
+  Trash2,
   Crown,
   Mail,
   Facebook,
@@ -139,13 +139,12 @@ export const MembersList = () => {
     <div className="space-y-4">
       <ConfirmDialog />
       <ResetDialog />
-      
+
       {/* Header Section */}
       <div className="flex items-center gap-3">
-        <Button asChild variant="secondary" size="sm">
+        <Button asChild variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-gray-100">
           <Link href={`/workspaces/${workspaceId}`}>
-            <ArrowLeft className="size-4 mr-2" />
-            Back
+            <ArrowLeft className="size-4 text-gray-600" />
           </Link>
         </Button>
         <div>
@@ -216,88 +215,88 @@ export const MembersList = () => {
               return (
                 <Fragment key={member.$id}>
                   <div className="p-3 rounded-lg border hover:border-primary/50 hover:bg-accent/50 transition-all">
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <MemberAvatar
-                            className="size-10"
-                            fallbackClassName="text-base"
-                            name={displayName}
-                            imageUrl={member.profileImageUrl}
-                            tooltipText={displayName}
-                          />
-                          {isAdmin && (
-                            <div className="absolute -bottom-1 -right-1 bg-amber-500 rounded-full p-1 border-2 border-background">
-                              <Crown className="size-3 text-white" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="text-sm font-semibold truncate">{displayName}</p>
-                            {isAdmin && (
-                              <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-500/20 font-medium">
-                                <Crown className="size-3 mr-1" />
-                                Admin
-                              </Badge>
-                            )}
-                            {isCurrentUser && (
-                              <Badge variant="outline" className="bg-blue-500/10 text-blue-700 border-blue-500/20 text-xs">
-                                You
-                              </Badge>
-                            )}
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <MemberAvatar
+                          className="size-10"
+                          fallbackClassName="text-base"
+                          name={displayName}
+                          imageUrl={member.profileImageUrl}
+                          tooltipText={displayName}
+                        />
+                        {isAdmin && (
+                          <div className="absolute -bottom-1 -right-1 bg-amber-500 rounded-full p-1 border-2 border-background">
+                            <Crown className="size-3 text-white" />
                           </div>
-                          <p className="text-xs text-muted-foreground truncate">{displayEmail}</p>
-                        </div>
-                        {isCurrentUserAdmin && !isCurrentUser && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="size-9 shrink-0">
-                                <MoreVerticalIcon className="size-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent side="bottom" align="end" className="w-56">
-                              <DropdownMenuLabel>Manage Member</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              {!isAdmin && (
-                                <DropdownMenuItem
-                                  onClick={() => handleUpdateMember(member.$id, MemberRole.ADMIN)}
-                                  disabled={isUpdatingMember}
-                                  className="cursor-pointer"
-                                >
-                                  <Crown className="size-4 mr-2 text-amber-600" />
-                                  <span>Set as Administrator</span>
-                                </DropdownMenuItem>
-                              )}
-                              {isAdmin && (
-                                <DropdownMenuItem
-                                  onClick={() => handleUpdateMember(member.$id, MemberRole.MEMBER)}
-                                  disabled={isUpdatingMember}
-                                  className="cursor-pointer"
-                                >
-                                  <UserCog className="size-4 mr-2 text-blue-600" />
-                                  <span>Set as Member</span>
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => handleDeleteMember(member.$id)}
-                                disabled={isDeletingMember}
-                                className="cursor-pointer text-destructive focus:text-destructive"
-                              >
-                                <Trash2 className="size-4 mr-2" />
-                                <span>Remove Member</span>
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                        {!isCurrentUserAdmin && isCurrentUser && (
-                          <Badge variant="secondary" className="shrink-0">
-                            <Shield className="size-3 mr-1" />
-                            Your Profile
-                          </Badge>
                         )}
                       </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-sm font-semibold truncate">{displayName}</p>
+                          {isAdmin && (
+                            <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-amber-500/20 font-medium">
+                              <Crown className="size-3 mr-1" />
+                              Admin
+                            </Badge>
+                          )}
+                          {isCurrentUser && (
+                            <Badge variant="outline" className="bg-blue-500/10 text-blue-700 border-blue-500/20 text-xs">
+                              You
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">{displayEmail}</p>
+                      </div>
+                      {isCurrentUserAdmin && !isCurrentUser && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="size-9 shrink-0">
+                              <MoreVerticalIcon className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent side="bottom" align="end" className="w-56">
+                            <DropdownMenuLabel>Manage Member</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {!isAdmin && (
+                              <DropdownMenuItem
+                                onClick={() => handleUpdateMember(member.$id, MemberRole.ADMIN)}
+                                disabled={isUpdatingMember}
+                                className="cursor-pointer"
+                              >
+                                <Crown className="size-4 mr-2 text-amber-600" />
+                                <span>Set as Administrator</span>
+                              </DropdownMenuItem>
+                            )}
+                            {isAdmin && (
+                              <DropdownMenuItem
+                                onClick={() => handleUpdateMember(member.$id, MemberRole.MEMBER)}
+                                disabled={isUpdatingMember}
+                                className="cursor-pointer"
+                              >
+                                <UserCog className="size-4 mr-2 text-blue-600" />
+                                <span>Set as Member</span>
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteMember(member.$id)}
+                              disabled={isDeletingMember}
+                              className="cursor-pointer text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="size-4 mr-2" />
+                              <span>Remove Member</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                      {!isCurrentUserAdmin && isCurrentUser && (
+                        <Badge variant="secondary" className="shrink-0">
+                          <Shield className="size-3 mr-1" />
+                          Your Profile
+                        </Badge>
+                      )}
                     </div>
+                  </div>
                 </Fragment>
               );
             })}
@@ -415,31 +414,31 @@ export const MembersList = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="p-3 rounded-lg border-2 border-dashed bg-accent/30">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <LinkIcon className="size-5 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium mb-1">Quick Invite Link</p>
-                  <div className="flex items-center gap-2">
-                    <Input 
-                      value={fullInviteLink} 
-                      readOnly 
-                      className="font-mono text-xs h-9"
-                    />
-                    <Button
-                      onClick={handleCopyInviteLink}
-                      variant="secondary"
-                      size="sm"
-                      className="shrink-0 gap-2"
-                    >
-                      <CopyIcon className="size-4" />
-                      Copy
-                    </Button>
-                  </div>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <LinkIcon className="size-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium mb-1">Quick Invite Link</p>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={fullInviteLink}
+                    readOnly
+                    className="font-mono text-xs h-9"
+                  />
+                  <Button
+                    onClick={handleCopyInviteLink}
+                    variant="secondary"
+                    size="sm"
+                    className="shrink-0 gap-2"
+                  >
+                    <CopyIcon className="size-4" />
+                    Copy
+                  </Button>
                 </div>
               </div>
             </div>
+          </div>
 
           {isCurrentUserAdmin && (
             <>

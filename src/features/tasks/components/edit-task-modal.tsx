@@ -1,6 +1,7 @@
 "use client";
 
-import { ResponsiveModal } from "@/components/responsive-modal";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 import { EditTaskFormWrapper } from "./edit-task-form-wrapper";
 
@@ -10,8 +11,13 @@ export const EditTaskModal = () => {
   const { taskId, close } = useEditTaskModal();
 
   return (
-    <ResponsiveModal open={!!taskId} onOpenChange={close}>
-      {taskId && <EditTaskFormWrapper id={taskId} onCancel={close} />}
-    </ResponsiveModal>
+    <Dialog open={!!taskId} onOpenChange={close}>
+      <DialogContent className="max-w-lg w-full max-h-[85vh] overflow-y-auto p-0 border-none">
+        <VisuallyHidden>
+          <DialogTitle>Edit Task</DialogTitle>
+        </VisuallyHidden>
+        {taskId && <EditTaskFormWrapper id={taskId} onCancel={close} />}
+      </DialogContent>
+    </Dialog>
   );
 };

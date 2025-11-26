@@ -172,6 +172,7 @@ export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
         });
       } catch (error) {
         // Error already counted
+        console.log(error);
       }
     }
 
@@ -197,6 +198,7 @@ export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
         });
       } catch (error) {
         // Error already counted
+        console.log(error);
       }
     }
 

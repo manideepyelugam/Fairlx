@@ -5,10 +5,21 @@ import {
   CircleIcon,
   PlusIcon,
   MoreHorizontalIcon,
+  CheckSquare,
+  XSquare,
+  ArrowUpDown,
+  Calendar,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { snakeCaseToTitleCase } from "@/lib/utils";
 
 import { TaskStatus } from "../types";
@@ -33,6 +44,9 @@ interface KanbanColumnHeaderProps {
   selectedCount?: number;
   onSelectAll?: (status: TaskStatus, selected: boolean) => void;
   showSelection?: boolean;
+  onClearSelection?: (status: TaskStatus) => void;
+  onSortByPriority?: (status: TaskStatus) => void;
+  onSortByDueDate?: (status: TaskStatus) => void;
 }
 
 export const KanbanColumnHeader = ({
@@ -41,11 +55,14 @@ export const KanbanColumnHeader = ({
   selectedCount = 0,
   onSelectAll,
   showSelection = false,
+  onClearSelection,
+  onSortByPriority,
+  onSortByDueDate,
 }: KanbanColumnHeaderProps) => {
   const { open } = useCreateTaskModal();
 
   const icon = statusIconMap[board];
-  
+
   const isAllSelected = taskCount > 0 && selectedCount === taskCount;
   const isPartiallySelected = selectedCount > 0 && selectedCount < taskCount;
 
@@ -69,9 +86,36 @@ export const KanbanColumnHeader = ({
         <Button onClick={open} variant="ghost" size="icon" className="h-6 w-6 hover:bg-gray-100">
           <PlusIcon className="h-4 w-4 text-gray-500" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-gray-100">
-          <MoreHorizontalIcon className="h-4 w-4 text-gray-500" />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-gray-100">
+              <MoreHorizontalIcon className="h-4 w-4 text-gray-500" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {showSelection && (
+              <>
+                <DropdownMenuItem onClick={() => onSelectAll?.(board, true)}>
+                  <CheckSquare className="h-4 w-4 mr-2" />
+                  Select All
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onClearSelection?.(board)}>
+                  <XSquare className="h-4 w-4 mr-2" />
+                  Clear Selection
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            <DropdownMenuItem onClick={() => onSortByPriority?.(board)}>
+              <ArrowUpDown className="h-4 w-4 mr-2" />
+              Sort by Priority
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSortByDueDate?.(board)}>
+              <Calendar className="h-4 w-4 mr-2" />
+              Sort by Due Date
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
