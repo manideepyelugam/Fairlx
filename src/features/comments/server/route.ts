@@ -23,8 +23,7 @@ export const getComments = async (
 
 // Get all comment authors from workspace members
 export const getCommentAuthors = async (
-  authorIds: string[],
-  _workspaceId: string
+  authorIds: string[]
 ): Promise<Map<string, CommentAuthor>> => {
   const { users } = await createAdminClient();
   const authorsMap = new Map<string, CommentAuthor>();
@@ -221,7 +220,7 @@ export const getPopulatedComments = async (
 
   // Get all author IDs
   const authorIds = comments.map((c) => c.authorId);
-  const authorsMap = await getCommentAuthors(authorIds, workspaceId);
+  const authorsMap = await getCommentAuthors(authorIds);
 
   // Separate root comments and replies
   const rootComments = comments.filter((c) => !c.parentId);
