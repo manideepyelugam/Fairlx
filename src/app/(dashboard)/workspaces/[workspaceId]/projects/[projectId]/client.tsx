@@ -43,16 +43,6 @@ export const ProjectIdClient = () => {
 
 
         <div className="flex items-center gap-2">
-          <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/backlog`} className="!text-sm">
-            <button 
-              type="button" 
-              className="inline-flex items-center rounded-md border border-input px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            >
-              <Layers className="size-4 mr-3" />
-              Backlog
-            </button>
-          </Link>
-
           <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/sprints`} className="!text-sm">
             <button 
               type="button" 
