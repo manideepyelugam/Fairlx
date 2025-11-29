@@ -33,7 +33,9 @@ interface DataKanbanProps {
   onChange: (
     tasks: { $id: string; status: TaskStatus; position: number }[]
   ) => void;
-  isAdmin?: boolean;
+  canCreateTasks?: boolean;
+  canEditTasks?: boolean;
+  canDeleteTasks?: boolean;
   members?: Array<{ $id: string; name: string }>;
   projectId?: string;
 }
@@ -41,7 +43,9 @@ interface DataKanbanProps {
 export const DataKanban = ({
   data,
   onChange,
-  isAdmin = false,
+  canCreateTasks = true,
+  canEditTasks = true,
+  canDeleteTasks = true,
   members = [],
   projectId
 }: DataKanbanProps) => {
@@ -294,7 +298,7 @@ export const DataKanban = ({
     <>
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-2">
-          {isAdmin && (
+          {canDeleteTasks && (
             <Button
               variant={selectionMode ? "secondary" : "outline"}
               size="sm"
@@ -332,6 +336,7 @@ export const DataKanban = ({
                   onClearSelection={handleClearColumnSelection}
                   onSortByPriority={handleSortByPriority}
                   onSortByDueDate={handleSortByDueDate}
+                  canCreateTasks={canCreateTasks}
                 />
                 <Droppable droppableId={board}>
                   {(provided) => (
@@ -358,6 +363,8 @@ export const DataKanban = ({
                                 isSelected={selectedTasks.has(task.$id)}
                                 onSelect={handleTaskSelect}
                                 showSelection={selectionMode}
+                                canEdit={canEditTasks}
+                                canDelete={canDeleteTasks}
                               />
                             </div>
                           )}
@@ -365,14 +372,16 @@ export const DataKanban = ({
                       ))}
                       {provided.placeholder}
                       {/* Add Task Button */}
-                      <Button
-                        onClick={openCreateTask}
-                        variant="ghost"
-                        className="w-full justify-start text-gray-500 hover:text-gray-700 hover:bg-gray-100 mt-2"
-                      >
-                        <PlusIcon className="h-4 w-4 mr-2" />
-                        Add Task
-                      </Button>
+                      {canCreateTasks && (
+                        <Button
+                          onClick={openCreateTask}
+                          variant="ghost"
+                          className="w-full justify-start text-gray-500 hover:text-gray-700 hover:bg-gray-100 mt-2"
+                        >
+                          <PlusIcon className="h-4 w-4 mr-2" />
+                          Add Task
+                        </Button>
+                      )}
                     </div>
                   )}
                 </Droppable>
@@ -387,7 +396,7 @@ export const DataKanban = ({
         onClearSelection={handleClearSelection}
         onStatusChange={handleBulkStatusChange}
         onAssigneeChange={handleBulkAssigneeChange}
-        isAdmin={isAdmin}
+        isAdmin={canDeleteTasks}
         assignees={members}
         projectId={projectId}
       />
