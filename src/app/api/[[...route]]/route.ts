@@ -19,6 +19,7 @@ import auditLogs from "@/features/audit-logs/api/route";
 import subtasks from "@/features/subtasks/server/route";
 import teams from "@/features/teams/server/route";
 import programs from "@/features/programs/server/route";
+import comments from "@/features/comments/api/route";
 
 const app = new Hono().basePath("/api");
 
@@ -41,7 +42,8 @@ const routes = app
   .route("/audit-logs", auditLogs)
   .route("/subtasks", subtasks)
   .route("/teams", teams)
-  .route("/programs", programs);
+  .route("/programs", programs)
+  .route("/comments", comments);
 
 export const GET = handle(app);
 export const POST = handle(app);
