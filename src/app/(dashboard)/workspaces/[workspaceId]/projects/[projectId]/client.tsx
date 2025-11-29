@@ -1,6 +1,6 @@
 "use client";
 
-import { Layers, Github } from "lucide-react";
+import { Layers, Github, FileText } from "lucide-react";
 import Link from "next/link";
 
 import { PageError } from "@/components/page-error";
@@ -49,6 +49,16 @@ export const ProjectIdClient = () => {
             >
               <Layers className="size-4 mr-3" />
               Sprint Board
+            </button>
+          </Link>
+
+          <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/docs`} className="!text-sm">
+            <button 
+              type="button" 
+              className="inline-flex items-center rounded-md border border-input px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <FileText className="size-4 mr-3" />
+              Docs
             </button>
           </Link>
 
