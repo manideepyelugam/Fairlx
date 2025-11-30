@@ -199,7 +199,7 @@ export const TeamIdClient = ({ teamId }: TeamIdClientProps) => {
                 <p className="text-sm text-muted-foreground mt-1">{team.description}</p>
               )}
               <p className="text-xs text-muted-foreground mt-1">
-                {team.statistics?.memberCount || 0} {team.statistics?.memberCount === 1 ? 'member' : 'members'}
+                {team.memberCount || 0} {team.memberCount === 1 ? 'member' : 'members'}
               </p>
             </div>
           </div>

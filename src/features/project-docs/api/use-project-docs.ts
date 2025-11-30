@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { client } from "@/lib/rpc";
-import { DocumentCategory, ProjectDocument, PopulatedProjectDocument } from "../types";
+import { DocumentCategory, PopulatedProjectDocument } from "../types";
 
 // Query keys
 export const PROJECT_DOCS_QUERY_KEYS = {
@@ -154,7 +154,8 @@ export const useUpdateProjectDocument = () => {
   const queryClient = useQueryClient();
 
   return useMutation<DocumentResponse, Error, UpdateDocumentParams>({
-    mutationFn: async ({ documentId, projectId, ...updates }) => {
+    mutationFn: async ({ documentId, projectId: _, ...updates }) => {
+      void _; // projectId is used in onSuccess, not in the API call
       const response = await client.api["project-docs"][":documentId"].$patch({
         param: { documentId },
         json: updates,
