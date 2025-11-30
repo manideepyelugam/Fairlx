@@ -28,9 +28,11 @@ import {
 
 import { PageError } from "@/components/page-error";
 import { PageLoader } from "@/components/page-loader";
+import { DatePicker } from "@/components/date-picker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -116,6 +118,8 @@ export const ProjectIdSettingsClient = () => {
     resolver: zodResolver(updateProjectSchema),
     defaultValues: {
       name: project?.name || "",
+      description: project?.description || "",
+      deadline: project?.deadline || "",
       image: project?.imageUrl || "",
     },
   });
@@ -124,6 +128,8 @@ export const ProjectIdSettingsClient = () => {
   if (project && form.getValues("name") !== project.name) {
     form.reset({
       name: project.name,
+      description: project.description || "",
+      deadline: project.deadline || "",
       image: project.imageUrl || "",
     });
   }
@@ -147,6 +153,7 @@ export const ProjectIdSettingsClient = () => {
     const finalValues = {
       ...values,
       image: values.image instanceof File ? values.image : "",
+      deadline: values.deadline || undefined,
     };
     updateProject({ form: finalValues, param: { projectId: project.$id } });
   };
@@ -187,20 +194,14 @@ export const ProjectIdSettingsClient = () => {
 
   const getTeamMembers = (teamId: string) => {
     const team = teams.find((t) => t.$id === teamId);
-    return team?.memberIds?.length || 0;
+    return team?.memberCount || 0;
   };
 
   // Get members working on this project (from assigned teams)
   const getProjectMembers = () => {
-    if (assignedTeamIds.length === 0) {
-      return members; // All workspace members if no teams assigned
-    }
-    const teamMemberIds = new Set<string>();
-    assignedTeamIds.forEach((teamId) => {
-      const team = teams.find((t) => t.$id === teamId);
-      team?.memberIds?.forEach((id: string) => teamMemberIds.add(id));
-    });
-    return members.filter((m) => teamMemberIds.has(m.$id));
+    // Return all workspace members for now
+    // TODO: When team member IDs are available in Team type, filter by team membership
+    return members;
   };
 
   const projectMembers = getProjectMembers();
@@ -295,6 +296,53 @@ export const ProjectIdSettingsClient = () => {
                           </FormControl>
                           <FormDescription>
                             This is the display name for your project
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Enter project description"
+                              className="max-w-md resize-none"
+                              rows={4}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            A brief description of your project (optional)
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="deadline"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Project Deadline</FormLabel>
+                          <div className="pt-1">
+                            <DatePicker
+                              value={field.value ? new Date(field.value) : undefined}
+                              onChange={(date) => {
+                                field.onChange(date ? date.toISOString() : "");
+                              }}
+                              className="max-w-md h-10"
+                              size="default"
+                              placeholder="Select deadline"
+                            />
+                          </div>
+                          <FormDescription>
+                            Set a deadline for this project (optional)
                           </FormDescription>
                           <FormMessage />
                         </FormItem>

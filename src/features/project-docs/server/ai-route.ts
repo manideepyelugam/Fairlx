@@ -9,9 +9,11 @@ import {
   PROJECT_DOCS_ID, 
   PROJECT_DOCS_BUCKET_ID, 
   PROJECTS_ID, 
-  TASKS_ID 
+  TASKS_ID,
+  MEMBERS_ID,
 } from "@/config";
 import { getMember } from "@/features/members/utils";
+import { Member } from "@/features/members/types";
 import { ProjectDocsAI } from "../lib/project-docs-ai";
 import { ProjectDocument } from "../types";
 import { Task } from "@/features/tasks/types";
@@ -19,6 +21,7 @@ import {
   ProjectAIContext, 
   DocumentContext, 
   TaskContext,
+  MemberContext,
   ProjectAIAnswer 
 } from "../types/ai-context";
 
@@ -131,6 +134,40 @@ const app = new Hono()
           ]
         );
 
+        // Get workspace members
+        const membersResponse = await databases.listDocuments<Member>(
+          DATABASE_ID,
+          MEMBERS_ID,
+          [
+            Query.equal("workspaceId", workspaceId),
+            Query.limit(100),
+          ]
+        );
+
+        // Create a map of member userId to member details
+        const memberMap = new Map<string, Member>();
+        membersResponse.documents.forEach((m) => {
+          memberMap.set(m.userId, m);
+        });
+
+        // Count tasks per assignee
+        const tasksByAssignee: Record<string, number> = {};
+        tasksResponse.documents.forEach((task) => {
+          if (task.assigneeId) {
+            tasksByAssignee[task.assigneeId] = (tasksByAssignee[task.assigneeId] || 0) + 1;
+          }
+        });
+
+        // Process members with task counts
+        const members: MemberContext[] = membersResponse.documents.map((m) => ({
+          id: m.$id,
+          userId: m.userId,
+          name: m.name || m.email || "Unknown Member",
+          email: m.email || undefined,
+          role: m.role,
+          tasksAssigned: tasksByAssignee[m.userId] || 0,
+        }));
+
         // Process documents with extracted text
         const documents: DocumentContext[] = await Promise.all(
           docsResponse.documents.map(async (doc) => {
@@ -153,16 +190,21 @@ const app = new Hono()
           })
         );
 
-        // Process tasks
-        const tasks: TaskContext[] = tasksResponse.documents.map((task) => ({
-          id: task.$id,
-          name: task.name,
-          status: task.status,
-          priority: task.priority || undefined,
-          description: task.description || undefined,
-          dueDate: task.dueDate || undefined,
-          labels: task.labels || undefined,
-        }));
+        // Process tasks with assignee names
+        const tasks: TaskContext[] = tasksResponse.documents.map((task) => {
+          const assignee = task.assigneeId ? memberMap.get(task.assigneeId) : undefined;
+          return {
+            id: task.$id,
+            name: task.name,
+            status: task.status,
+            priority: task.priority || undefined,
+            description: task.description || undefined,
+            assigneeId: task.assigneeId || undefined,
+            assigneeName: assignee ? (assignee.name || assignee.email || "Unknown") : undefined,
+            dueDate: task.dueDate || undefined,
+            labels: task.labels || undefined,
+          };
+        });
 
         // Calculate summary stats
         const tasksByStatus: Record<string, number> = {};
@@ -181,10 +223,13 @@ const app = new Hono()
           },
           documents,
           tasks,
+          members,
           summary: {
             totalDocuments: documents.length,
             totalTasks: tasks.length,
+            totalMembers: members.length,
             tasksByStatus,
+            tasksByAssignee,
             documentCategories,
           },
         };
@@ -259,6 +304,22 @@ const app = new Hono()
           ]
         );
 
+        // Get workspace members
+        const membersResponse = await databases.listDocuments<Member>(
+          DATABASE_ID,
+          MEMBERS_ID,
+          [
+            Query.equal("workspaceId", workspaceId),
+            Query.limit(100),
+          ]
+        );
+
+        // Create a map of member userId to member details
+        const memberMap = new Map<string, Member>();
+        membersResponse.documents.forEach((m) => {
+          memberMap.set(m.userId, m);
+        });
+
         // Process documents with extracted text
         const documentContexts: string[] = await Promise.all(
           docsResponse.documents.map(async (doc) => {
@@ -280,10 +341,18 @@ ${extractedText.slice(0, 5000)}
           })
         );
 
-        // Format tasks context
-        const taskContexts = tasksResponse.documents.map((task) => 
-          `- **${task.name}** [${task.status}] ${task.priority ? `(${task.priority})` : ""} - ${task.description?.slice(0, 200) || "No description"}`
-        ).join("\n");
+        // Format tasks context with assignee names
+        const taskContexts = tasksResponse.documents.map((task) => {
+          const assignee = task.assigneeId ? memberMap.get(task.assigneeId) : undefined;
+          const assigneeName = assignee ? (assignee.name || assignee.email || "Unknown") : "Unassigned";
+          return `- **${task.name}** [${task.status}] ${task.priority ? `(${task.priority})` : ""} | Assigned to: ${assigneeName} - ${task.description?.slice(0, 200) || "No description"}`;
+        }).join("\n");
+
+        // Format members context
+        const memberContexts = membersResponse.documents.map((m) => {
+          const taskCount = tasksResponse.documents.filter(t => t.assigneeId === m.userId).length;
+          return `- **${m.name || m.email || "Unknown"}** (${m.role}) - ${taskCount} task(s) assigned`;
+        }).join("\n");
 
         // Build the comprehensive prompt
         const prompt = `You are an AI assistant with deep knowledge of this specific project. Answer questions based on the project context provided below.
@@ -296,7 +365,11 @@ ${extractedText.slice(0, 5000)}
 ## Project Statistics
 - **Total Documents:** ${docsResponse.documents.length}
 - **Total Tasks:** ${tasksResponse.documents.length}
+- **Team Members:** ${membersResponse.documents.length}
 - **Document Categories:** ${[...new Set(docsResponse.documents.map(d => d.category))].join(", ") || "None"}
+
+## Team Members
+${memberContexts || "No team members found."}
 
 ## Project Documents
 ${documentContexts.join("\n---\n") || "No documents uploaded yet."}
@@ -330,6 +403,7 @@ Provide a comprehensive, helpful answer:`;
           contextUsed: {
             documentsCount: docsResponse.documents.length,
             tasksCount: tasksResponse.documents.length,
+            membersCount: membersResponse.documents.length,
             categories: [...new Set(docsResponse.documents.map(d => d.category))],
           },
         };

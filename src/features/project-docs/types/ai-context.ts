@@ -10,10 +10,13 @@ export interface ProjectAIContext {
   };
   documents: DocumentContext[];
   tasks: TaskContext[];
+  members: MemberContext[];
   summary: {
     totalDocuments: number;
     totalTasks: number;
+    totalMembers: number;
     tasksByStatus: Record<string, number>;
+    tasksByAssignee: Record<string, number>;
     documentCategories: string[];
   };
 }
@@ -34,9 +37,19 @@ export interface TaskContext {
   status: string;
   priority?: string;
   description?: string;
-  assignees?: string[];
+  assigneeId?: string;
+  assigneeName?: string;
   dueDate?: string;
   labels?: string[];
+}
+
+export interface MemberContext {
+  id: string;
+  userId: string;
+  name: string;
+  email?: string;
+  role: string;
+  tasksAssigned: number;
 }
 
 export interface ProjectAIQuestion {
@@ -52,6 +65,7 @@ export interface ProjectAIAnswer {
   contextUsed: {
     documentsCount: number;
     tasksCount: number;
+    membersCount: number;
     categories: string[];
   };
 }

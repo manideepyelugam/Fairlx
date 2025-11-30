@@ -17,6 +17,7 @@ import {
   MessageSquare,
   Minimize2,
   Maximize2,
+  Users,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -196,6 +197,10 @@ export const ProjectAIChat = ({ projectId, workspaceId }: ProjectAIChatProps) =>
                   <ListTodo className="h-3 w-3 mr-1" />
                   {context.summary.totalTasks} Tasks
                 </Badge>
+                <Badge variant="outline" className="text-xs">
+                  <Users className="h-3 w-3 mr-1" />
+                  {context.summary.totalMembers} Members
+                </Badge>
               </div>
             )}
 
@@ -298,7 +303,7 @@ export const ProjectAIChat = ({ projectId, workspaceId }: ProjectAIChatProps) =>
                     </div>
                     <div className="flex items-center gap-2 mt-2 pt-2 border-t">
                       <span className="text-xs text-muted-foreground">
-                        {item.contextUsed.documentsCount} docs, {item.contextUsed.tasksCount} tasks analyzed
+                        {item.contextUsed.documentsCount} docs, {item.contextUsed.tasksCount} tasks, {item.contextUsed.membersCount} members analyzed
                       </span>
                     </div>
                   </div>
