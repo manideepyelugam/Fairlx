@@ -16,8 +16,11 @@ import {
   formatFileSize,
 } from "../schemas";
 import { ProjectDocument, DocumentCategory } from "../types";
+import aiRoute from "./ai-route";
 
 const app = new Hono()
+  // Mount AI routes
+  .route("/ai", aiRoute)
   // Get all documents for a project
   .get(
     "/",

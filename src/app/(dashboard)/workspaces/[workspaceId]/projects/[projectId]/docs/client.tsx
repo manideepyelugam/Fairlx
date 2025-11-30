@@ -96,7 +96,7 @@ export const ProjectDocsClient = () => {
           </CardHeader>
           <CardContent>
             <p className="text-xs text-muted-foreground">
-              Documents can be used by AI to provide context-aware assistance.
+              Documents are automatically analyzed by AI for context-aware assistance.
             </p>
           </CardContent>
         </Card>
