@@ -47,6 +47,7 @@ interface KanbanColumnHeaderProps {
   onClearSelection?: (status: TaskStatus) => void;
   onSortByPriority?: (status: TaskStatus) => void;
   onSortByDueDate?: (status: TaskStatus) => void;
+  canCreateTasks?: boolean;
 }
 
 export const KanbanColumnHeader = ({
@@ -58,6 +59,7 @@ export const KanbanColumnHeader = ({
   onClearSelection,
   onSortByPriority,
   onSortByDueDate,
+  canCreateTasks = true,
 }: KanbanColumnHeaderProps) => {
   const { open } = useCreateTaskModal();
 
@@ -83,9 +85,11 @@ export const KanbanColumnHeader = ({
         <h2 className="text-sm font-semibold text-gray-700">{snakeCaseToTitleCase(board)}</h2>
       </div>
       <div className="flex items-center gap-2">
-        <Button onClick={open} variant="ghost" size="icon" className="h-6 w-6 hover:bg-gray-100">
-          <PlusIcon className="h-4 w-4 text-gray-500" />
-        </Button>
+        {canCreateTasks && (
+          <Button onClick={open} variant="ghost" size="icon" className="h-6 w-6 hover:bg-gray-100">
+            <PlusIcon className="h-4 w-4 text-gray-500" />
+          </Button>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-gray-100">
