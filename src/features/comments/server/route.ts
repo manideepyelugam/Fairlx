@@ -12,10 +12,14 @@ export const getComments = async (
 ): Promise<Comment[]> => {
   const { databases } = await createAdminClient();
 
+  if (!COMMENTS_ID) {
+    throw new Error("COMMENTS_ID is not defined. Please check your environment variables.");
+  }
+
   const comments = await databases.listDocuments(DATABASE_ID, COMMENTS_ID, [
     Query.equal("taskId", taskId),
     Query.equal("workspaceId", workspaceId),
-    Query.orderAsc("$createdAt"),
+    Query.orderAsc("$createdAt")
   ]);
 
   return comments.documents as Comment[];
@@ -98,7 +102,7 @@ export const createComment = async (data: {
       triggeredByName: authorName,
       notificationType: "task_comment",
       workspaceId: data.workspaceId,
-    }).catch(() => {});
+    }).catch(() => { });
 
     // Notify workspace admins
     notifyWorkspaceAdmins({
@@ -108,7 +112,7 @@ export const createComment = async (data: {
       triggeredByName: authorName,
       notificationType: "task_comment",
       workspaceId: data.workspaceId,
-    }).catch(() => {});
+    }).catch(() => { });
   } catch {
     // Silently fail - notifications are non-critical
   }
