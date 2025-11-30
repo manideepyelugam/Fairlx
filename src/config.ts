@@ -24,6 +24,10 @@ export const COMMENTS_ID = process.env.NEXT_PUBLIC_APPWRITE_COMMENTS_ID!;
 export const GITHUB_REPOS_ID = process.env.NEXT_PUBLIC_APPWRITE_GITHUB_REPOS_ID!;
 export const CODE_DOCS_ID = process.env.NEXT_PUBLIC_APPWRITE_CODE_DOCS_ID!;
 
+// Project Documents Collections
+export const PROJECT_DOCS_ID = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_DOCS_ID!;
+export const PROJECT_DOCS_BUCKET_ID = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_DOCS_BUCKET_ID!;
+
 // Teams & Programs Collections
 export const TEAMS_ID = process.env.NEXT_PUBLIC_APPWRITE_TEAMS_ID!;
 export const TEAM_MEMBERS_ID = process.env.NEXT_PUBLIC_APPWRITE_TEAM_MEMBERS_ID!;

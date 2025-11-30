@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import {
   ChevronDown,
@@ -17,7 +16,6 @@ import {
   GripVertical,
   Edit2,
   Trash2,
-  ArrowLeft
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -76,7 +74,6 @@ interface EnhancedBacklogScreenProps {
 }
 
 export default function EnhancedBacklogScreen({ workspaceId, projectId }: EnhancedBacklogScreenProps) {
-  const router = useRouter();
   const [selectedItem, setSelectedItem] = useState<PopulatedWorkItem | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [expandedSprints, setExpandedSprints] = useState<string[]>([]);
@@ -338,20 +335,12 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="min-h-screen bg-white">
+      <div className="bg-white">
         {/* Header */}
         <div className="border-b bg-white sticky top-0 z-30">
-          <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="px-4 py-4">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-4 flex-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => router.back()}
-                  className="h-8 w-8 p-0 hover:bg-gray-100"
-                >
-                  <ArrowLeft className="size-4 text-gray-600" />
-                </Button>
                 {/* Search */}
                 <div className="flex-1 max-w-md">
                   <div className="relative">
@@ -397,7 +386,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
         </div>
 
         {/* Content */}
-        <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="px-4 py-4">
           <div className="space-y-4">
             {/* Sprint Sections */}
             {sprints.map((sprint) => {
