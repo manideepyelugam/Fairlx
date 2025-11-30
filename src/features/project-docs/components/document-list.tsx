@@ -3,14 +3,10 @@
 import { useState } from "react";
 import { 
   FileText, 
-  Filter, 
   Grid3X3, 
   List, 
   Search, 
   FolderOpen,
-  Archive,
-  SortAsc,
-  SortDesc,
   Loader2,
   Upload,
 } from "lucide-react";
@@ -29,7 +25,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { DocumentCard } from "./document-card";
 import { DocumentUploadModal } from "./document-upload-modal";

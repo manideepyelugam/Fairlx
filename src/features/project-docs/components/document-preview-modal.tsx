@@ -81,6 +81,7 @@ export const DocumentPreviewModal = ({
     if (isImage) {
       return (
         <div className="flex items-center justify-center h-full overflow-auto p-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={document.url}
             alt={document.name}

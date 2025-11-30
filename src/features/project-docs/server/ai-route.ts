@@ -1,9 +1,10 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { Query, Storage as StorageType } from "node-appwrite";
+import { ID, Query, Storage as StorageType } from "node-appwrite";
 
 import { sessionMiddleware } from "@/lib/session-middleware";
+import { createAdminClient } from "@/lib/appwrite";
 import { 
   DATABASE_ID, 
   PROJECT_DOCS_ID, 
@@ -16,13 +17,15 @@ import { getMember } from "@/features/members/utils";
 import { Member } from "@/features/members/types";
 import { ProjectDocsAI } from "../lib/project-docs-ai";
 import { ProjectDocument } from "../types";
-import { Task } from "@/features/tasks/types";
+import { Task, TaskStatus, TaskPriority } from "@/features/tasks/types";
 import { 
   ProjectAIContext, 
   DocumentContext, 
   TaskContext,
   MemberContext,
-  ProjectAIAnswer 
+  ProjectAIAnswer,
+  AITaskData,
+  AITaskResponse,
 } from "../types/ai-context";
 
 // Schema for asking questions
@@ -36,6 +39,41 @@ const askProjectQuestionSchema = z.object({
 const getProjectAIContextSchema = z.object({
   projectId: z.string(),
   workspaceId: z.string(),
+});
+
+// Schema for AI task creation
+const aiCreateTaskSchema = z.object({
+  projectId: z.string(),
+  workspaceId: z.string(),
+  prompt: z.string().min(5).max(2000),
+  autoExecute: z.boolean().optional().default(false),
+});
+
+// Schema for AI task update
+const aiUpdateTaskSchema = z.object({
+  projectId: z.string(),
+  workspaceId: z.string(),
+  taskId: z.string(),
+  prompt: z.string().min(5).max(2000),
+  autoExecute: z.boolean().optional().default(false),
+});
+
+// Schema for executing AI task suggestion
+const executeTaskSuggestionSchema = z.object({
+  projectId: z.string(),
+  workspaceId: z.string(),
+  taskData: z.object({
+    name: z.string().optional(), // Optional for updates, required logic handled in endpoint
+    description: z.string().optional().nullable(),
+    status: z.string().optional(),
+    priority: z.string().optional(),
+    dueDate: z.string().optional().nullable(),
+    endDate: z.string().optional().nullable(),
+    assigneeIds: z.array(z.string()).optional(),
+    labels: z.array(z.string()).optional(),
+    estimatedHours: z.number().optional().nullable(),
+  }),
+  taskId: z.string().optional(), // For updates
 });
 
 /**
@@ -144,10 +182,10 @@ const app = new Hono()
           ]
         );
 
-        // Create a map of member userId to member details
+        // Create a map of member $id to member details (assigneeIds use member document IDs)
         const memberMap = new Map<string, Member>();
         membersResponse.documents.forEach((m) => {
-          memberMap.set(m.userId, m);
+          memberMap.set(m.$id, m);
         });
 
         // Count tasks per assignee
@@ -192,15 +230,21 @@ const app = new Hono()
 
         // Process tasks with assignee names
         const tasks: TaskContext[] = tasksResponse.documents.map((task) => {
-          const assignee = task.assigneeId ? memberMap.get(task.assigneeId) : undefined;
+          // Handle multiple assignees
+          const assigneeIds = task.assigneeIds || (task.assigneeId ? [task.assigneeId] : []);
+          const assigneeNames = assigneeIds
+            .map(id => memberMap.get(id))
+            .filter(Boolean)
+            .map(m => m!.name || m!.email || "Unknown");
+          
           return {
             id: task.$id,
             name: task.name,
             status: task.status,
             priority: task.priority || undefined,
             description: task.description || undefined,
-            assigneeId: task.assigneeId || undefined,
-            assigneeName: assignee ? (assignee.name || assignee.email || "Unknown") : undefined,
+            assigneeId: task.assigneeId || assigneeIds[0] || undefined,
+            assigneeName: assigneeNames.length > 0 ? assigneeNames.join(", ") : undefined,
             dueDate: task.dueDate || undefined,
             labels: task.labels || undefined,
           };
@@ -218,6 +262,7 @@ const app = new Hono()
           project: {
             id: project.$id,
             name: project.name,
+            description: project.description || undefined,
             workspaceId: project.workspaceId,
             createdAt: project.$createdAt,
           },
@@ -314,10 +359,10 @@ const app = new Hono()
           ]
         );
 
-        // Create a map of member userId to member details
+        // Create a map of member $id to member details (assigneeIds use member document IDs)
         const memberMap = new Map<string, Member>();
         membersResponse.documents.forEach((m) => {
-          memberMap.set(m.userId, m);
+          memberMap.set(m.$id, m);
         });
 
         // Process documents with extracted text
@@ -343,14 +388,30 @@ ${extractedText.slice(0, 5000)}
 
         // Format tasks context with assignee names
         const taskContexts = tasksResponse.documents.map((task) => {
-          const assignee = task.assigneeId ? memberMap.get(task.assigneeId) : undefined;
-          const assigneeName = assignee ? (assignee.name || assignee.email || "Unknown") : "Unassigned";
-          return `- **${task.name}** [${task.status}] ${task.priority ? `(${task.priority})` : ""} | Assigned to: ${assigneeName} - ${task.description?.slice(0, 200) || "No description"}`;
+          // Handle multiple assignees
+          const assigneeIds = task.assigneeIds || (task.assigneeId ? [task.assigneeId] : []);
+          const assigneeNames = assigneeIds
+            .map(id => memberMap.get(id))
+            .filter(Boolean)
+            .map(m => m!.name || m!.email || "Unknown");
+          const assigneeDisplay = assigneeNames.length > 0 ? assigneeNames.join(", ") : "Unassigned";
+          
+          // Format due date
+          const dueDateDisplay = task.dueDate 
+            ? new Date(task.dueDate).toLocaleDateString() 
+            : "No due date";
+          const endDateDisplay = task.endDate 
+            ? new Date(task.endDate).toLocaleDateString() 
+            : null;
+          
+          return `- **${task.name}** [${task.status}] ${task.priority ? `(${task.priority})` : ""} | Assigned to: ${assigneeDisplay} | Due: ${dueDateDisplay}${endDateDisplay ? ` | End: ${endDateDisplay}` : ""} | Labels: ${task.labels?.join(", ") || "None"} | Est. Hours: ${task.estimatedHours || "Not set"} - ${task.description?.slice(0, 200) || "No description"}`;
         }).join("\n");
 
         // Format members context
         const memberContexts = membersResponse.documents.map((m) => {
-          const taskCount = tasksResponse.documents.filter(t => t.assigneeId === m.userId).length;
+          const taskCount = tasksResponse.documents.filter(t => 
+            t.assigneeIds?.includes(m.$id) || t.assigneeId === m.$id
+          ).length;
           return `- **${m.name || m.email || "Unknown"}** (${m.role}) - ${taskCount} task(s) assigned`;
         }).join("\n");
 
@@ -359,7 +420,7 @@ ${extractedText.slice(0, 5000)}
 
 ## Project Information
 **Name:** ${project.name}
-**Project ID:** ${projectId}
+**Description:** ${project.description || "No project description provided"}
 **Created:** ${new Date(project.$createdAt).toLocaleDateString()}
 
 ## Project Statistics
@@ -413,6 +474,767 @@ Provide a comprehensive, helpful answer:`;
         console.error("Error answering question:", error);
         return c.json({ 
           error: error instanceof Error ? error.message : "Failed to process question" 
+        }, 500);
+      }
+    }
+  )
+  // Create a task using AI
+  .post(
+    "/create-task",
+    sessionMiddleware,
+    zValidator("json", aiCreateTaskSchema),
+    async (c) => {
+      try {
+        const user = c.get("user");
+        const databases = c.get("databases");
+        const { projectId, workspaceId, prompt, autoExecute } = c.req.valid("json");
+
+        // Verify workspace membership
+        const member = await getMember({
+          databases,
+          workspaceId,
+          userId: user.$id,
+        });
+
+        if (!member) {
+          return c.json({ error: "Unauthorized" }, 401);
+        }
+
+        // Initialize Project Docs AI
+        const projectDocsAI = new ProjectDocsAI();
+
+        if (!projectDocsAI.isConfigured()) {
+          return c.json(
+            { error: "AI features require GEMINI_API_KEY to be configured" },
+            400
+          );
+        }
+
+        // Get project details
+        const project = await databases.getDocument(
+          DATABASE_ID,
+          PROJECTS_ID,
+          projectId
+        );
+
+        // Get workspace members for assignment suggestions
+        const membersResponse = await databases.listDocuments<Member>(
+          DATABASE_ID,
+          MEMBERS_ID,
+          [
+            Query.equal("workspaceId", workspaceId),
+            Query.limit(100),
+          ]
+        );
+
+        // Get existing tasks for context
+        const tasksResponse = await databases.listDocuments<Task>(
+          DATABASE_ID,
+          TASKS_ID,
+          [
+            Query.equal("projectId", projectId),
+            Query.equal("workspaceId", workspaceId),
+            Query.limit(20),
+          ]
+        );
+
+        // Format members for AI context
+        const membersList = membersResponse.documents.map(m => 
+          `- ${m.name || m.email} (ID: ${m.$id}, Role: ${m.role})`
+        ).join("\n");
+
+        // Format existing tasks for context (including their labels)
+        const existingLabels = new Set<string>();
+        const tasksList = tasksResponse.documents.map(t => {
+          if (t.labels) {
+            t.labels.forEach(l => existingLabels.add(l));
+          }
+          return `- ${t.name} [${t.status}] ${t.priority ? `(${t.priority})` : ""} ${t.labels?.length ? `Labels: ${t.labels.join(", ")}` : ""}`;
+        }).join("\n");
+
+        const existingLabelsList = Array.from(existingLabels).join(", ");
+
+        // Build prompt for AI
+        const aiPrompt = `You are a task creation assistant for project "${project.name}". Based on the user's request, generate task details in JSON format.
+
+## Available Team Members
+${membersList || "No members found"}
+
+## Existing Tasks (for context)
+${tasksList || "No existing tasks"}
+
+## Existing Labels in Project
+${existingLabelsList || "No existing labels"}
+
+## Valid Task Statuses
+- ASSIGNED
+- IN_PROGRESS
+- COMPLETED
+- CLOSED
+
+## Valid Priorities
+- LOW
+- MEDIUM
+- HIGH
+- URGENT
+
+## Common Label Categories (use these as inspiration)
+- Type: bug, feature, enhancement, documentation, refactor, testing
+- Area: frontend, backend, api, database, ui, ux, security, performance
+- Effort: quick-win, complex, needs-research
+- Other: urgent, blocked, review-needed
+
+## User Request
+${prompt}
+
+---
+
+Generate a JSON object with the following structure (only include fields that are relevant):
+{
+  "name": "Task name (required, be specific and actionable)",
+  "description": "Detailed task description",
+  "status": "ASSIGNED",
+  "priority": "MEDIUM",
+  "dueDate": "YYYY-MM-DD (if mentioned or can be inferred)",
+  "endDate": "YYYY-MM-DD (if mentioned)",
+  "assigneeIds": ["member-id-1"] (only if specific assignee mentioned by name),
+  "labels": ["label1", "label2"] (ALWAYS suggest 1-3 relevant labels based on task type/category),
+  "estimatedHours": 4 (if time estimate is mentioned)
+}
+
+IMPORTANT: 
+- Return ONLY valid JSON, no markdown code blocks
+- Use actual member IDs from the list above for assigneeIds (only if user mentions a specific person)
+- Make the task name clear and actionable
+- ALWAYS generate relevant labels based on the task type (e.g., "bug" for bugs, "feature" for features, "frontend"/"backend" for technical tasks)
+- Prefer existing labels from the project when applicable
+- If dates are mentioned like "tomorrow" or "next week", calculate the actual date from today (${new Date().toISOString().split('T')[0]})
+- Default status to "ASSIGNED" if not specified
+- Default priority to "MEDIUM" if not specified`;
+
+        const aiResponse = await projectDocsAI.answerProjectQuestion(aiPrompt);
+
+        // Parse AI response to extract task data
+        let taskData: AITaskData;
+        try {
+          // Clean the response - remove markdown code blocks if present
+          let cleanedResponse = aiResponse.trim();
+          if (cleanedResponse.startsWith("```json")) {
+            cleanedResponse = cleanedResponse.slice(7);
+          }
+          if (cleanedResponse.startsWith("```")) {
+            cleanedResponse = cleanedResponse.slice(3);
+          }
+          if (cleanedResponse.endsWith("```")) {
+            cleanedResponse = cleanedResponse.slice(0, -3);
+          }
+          cleanedResponse = cleanedResponse.trim();
+
+          taskData = JSON.parse(cleanedResponse);
+          
+          // Validate required field
+          if (!taskData.name) {
+            throw new Error("Task name is required");
+          }
+
+          // Set defaults
+          taskData.status = taskData.status || TaskStatus.ASSIGNED;
+          taskData.priority = taskData.priority || TaskPriority.MEDIUM;
+        } catch (parseError) {
+          console.error("Failed to parse AI response:", parseError, aiResponse);
+          return c.json({
+            success: false,
+            action: {
+              type: "suggest_create" as const,
+              executed: false,
+            },
+            message: "I couldn't understand the task details. Could you please provide more specific information like task name and description?",
+          } satisfies AITaskResponse);
+        }
+
+        // If autoExecute is true, create the task directly
+        if (autoExecute) {
+          try {
+            // Get highest position for the new task
+            const highestPositionTask = await databases.listDocuments(
+              DATABASE_ID,
+              TASKS_ID,
+              [
+                Query.equal("status", taskData.status || TaskStatus.ASSIGNED),
+                Query.equal("workspaceId", workspaceId),
+                Query.orderDesc("position"),
+                Query.limit(1),
+              ]
+            );
+
+            const newPosition =
+              highestPositionTask.documents.length > 0
+                ? (highestPositionTask.documents[0] as Task).position + 1000
+                : 1000;
+
+            const task = await databases.createDocument(
+              DATABASE_ID,
+              TASKS_ID,
+              ID.unique(),
+              {
+                name: taskData.name,
+                description: taskData.description || "",
+                status: taskData.status,
+                priority: taskData.priority,
+                dueDate: taskData.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                endDate: taskData.endDate || undefined,
+                assigneeId: taskData.assigneeIds?.[0] || "",
+                assigneeIds: taskData.assigneeIds || [],
+                labels: taskData.labels || [],
+                estimatedHours: taskData.estimatedHours,
+                workspaceId,
+                projectId,
+                position: newPosition,
+              }
+            );
+
+            return c.json({
+              success: true,
+              action: {
+                type: "create" as const,
+                taskData,
+                executed: true,
+                result: {
+                  success: true,
+                  taskId: task.$id,
+                  message: `Task "${taskData.name}" created successfully`,
+                },
+              },
+              message: `✅ Task "${taskData.name}" has been created successfully!`,
+              task: {
+                id: task.$id,
+                name: task.name as string,
+                status: task.status as string,
+              },
+            } satisfies AITaskResponse);
+          } catch (createError) {
+            console.error("Failed to create task:", createError);
+            return c.json({
+              success: false,
+              action: {
+                type: "create" as const,
+                taskData,
+                executed: false,
+                result: {
+                  success: false,
+                  message: "Failed to create task",
+                },
+              },
+              message: "Failed to create the task. Please try again.",
+            } satisfies AITaskResponse);
+          }
+        }
+
+        // Return suggestion for review
+        // Include available members for selection - populate with actual user data
+        const { users } = await createAdminClient();
+        const availableMembers = (await Promise.all(
+          membersResponse.documents.map(async (m) => {
+            try {
+              const userData = await users.get(m.userId);
+              return {
+                id: m.$id,
+                name: userData.name || userData.email || "Unknown",
+                email: userData.email,
+                role: m.role,
+              };
+            } catch {
+              return {
+                id: m.$id,
+                name: m.name || m.email || "Unknown",
+                email: m.email,
+                role: m.role,
+              };
+            }
+          })
+        ));
+
+        // Collect suggested labels (from AI + existing project labels)
+        const suggestedLabels = Array.from(new Set([
+          ...(taskData.labels || []),
+          ...Array.from(existingLabels),
+          // Common labels
+          "bug", "feature", "enhancement", "frontend", "backend", "documentation"
+        ])).slice(0, 15); // Limit to 15 suggestions
+
+        return c.json({
+          success: true,
+          action: {
+            type: "suggest_create" as const,
+            taskData,
+            executed: false,
+          },
+          message: `I've prepared a task based on your request. Review the details and click "Create Task" to add it to your project.`,
+          availableMembers,
+          suggestedLabels,
+        } satisfies AITaskResponse);
+      } catch (error) {
+        console.error("Error creating task via AI:", error);
+        return c.json({ 
+          error: error instanceof Error ? error.message : "Failed to process task creation" 
+        }, 500);
+      }
+    }
+  )
+  // Update a task using AI
+  .post(
+    "/update-task",
+    sessionMiddleware,
+    zValidator("json", aiUpdateTaskSchema),
+    async (c) => {
+      try {
+        const user = c.get("user");
+        const databases = c.get("databases");
+        const { projectId, workspaceId, taskId, prompt, autoExecute } = c.req.valid("json");
+
+        // Verify workspace membership
+        const member = await getMember({
+          databases,
+          workspaceId,
+          userId: user.$id,
+        });
+
+        if (!member) {
+          return c.json({ error: "Unauthorized" }, 401);
+        }
+
+        // Get the existing task
+        const existingTask = await databases.getDocument<Task>(
+          DATABASE_ID,
+          TASKS_ID,
+          taskId
+        );
+
+        if (existingTask.workspaceId !== workspaceId || existingTask.projectId !== projectId) {
+          return c.json({ error: "Task not found in this project" }, 404);
+        }
+
+        // Initialize Project Docs AI
+        const projectDocsAI = new ProjectDocsAI();
+
+        if (!projectDocsAI.isConfigured()) {
+          return c.json(
+            { error: "AI features require GEMINI_API_KEY to be configured" },
+            400
+          );
+        }
+
+        // Get workspace members
+        const membersResponse = await databases.listDocuments<Member>(
+          DATABASE_ID,
+          MEMBERS_ID,
+          [
+            Query.equal("workspaceId", workspaceId),
+            Query.limit(100),
+          ]
+        );
+
+        const membersList = membersResponse.documents.map(m => 
+          `- ${m.name || m.email} (ID: ${m.$id}, Role: ${m.role})`
+        ).join("\n");
+
+        // Build prompt for AI
+        const aiPrompt = `You are a task update assistant. Based on the user's request, generate the updated task fields in JSON format.
+
+## Current Task Details
+- Name: ${existingTask.name}
+- Description: ${existingTask.description || "No description"}
+- Status: ${existingTask.status}
+- Priority: ${existingTask.priority || "Not set"}
+- Due Date: ${existingTask.dueDate || "Not set"}
+- End Date: ${existingTask.endDate || "Not set"}
+- Assignees: ${existingTask.assigneeIds?.join(", ") || existingTask.assigneeId || "Unassigned"}
+- Labels: ${existingTask.labels?.join(", ") || "None"}
+- Estimated Hours: ${existingTask.estimatedHours || "Not set"}
+
+## Available Team Members
+${membersList || "No members found"}
+
+## Valid Task Statuses
+- ASSIGNED
+- IN_PROGRESS
+- COMPLETED
+- CLOSED
+
+## Valid Priorities
+- LOW
+- MEDIUM
+- HIGH
+- URGENT
+
+## User's Update Request
+${prompt}
+
+---
+
+Generate a JSON object with ONLY the fields that should be updated based on the user's request:
+{
+  "name": "New task name (only if changing)",
+  "description": "New description (only if changing)",
+  "status": "NEW_STATUS (only if changing)",
+  "priority": "NEW_PRIORITY (only if changing)",
+  "dueDate": "YYYY-MM-DD (only if changing)",
+  "endDate": "YYYY-MM-DD (only if changing)",
+  "assigneeIds": ["member-id"] (only if changing assignee),
+  "labels": ["label1"] (only if changing),
+  "estimatedHours": 4 (only if changing)
+}
+
+IMPORTANT:
+- Return ONLY valid JSON, no markdown code blocks
+- Include ONLY fields that are being changed
+- Use actual member IDs from the list for assigneeIds
+- If dates are mentioned like "tomorrow", calculate from today (${new Date().toISOString().split('T')[0]})`;
+
+        const aiResponse = await projectDocsAI.answerProjectQuestion(aiPrompt);
+
+        // Parse AI response
+        let updateData: Partial<AITaskData>;
+        try {
+          let cleanedResponse = aiResponse.trim();
+          if (cleanedResponse.startsWith("```json")) {
+            cleanedResponse = cleanedResponse.slice(7);
+          }
+          if (cleanedResponse.startsWith("```")) {
+            cleanedResponse = cleanedResponse.slice(3);
+          }
+          if (cleanedResponse.endsWith("```")) {
+            cleanedResponse = cleanedResponse.slice(0, -3);
+          }
+          cleanedResponse = cleanedResponse.trim();
+
+          updateData = JSON.parse(cleanedResponse);
+
+          if (Object.keys(updateData).length === 0) {
+            return c.json({
+              success: false,
+              action: {
+                type: "suggest_update" as const,
+                taskId,
+                executed: false,
+              },
+              message: "I couldn't determine what changes you want to make. Please be more specific about what you'd like to update.",
+            } satisfies AITaskResponse);
+          }
+        } catch (parseError) {
+          console.error("Failed to parse AI response:", parseError, aiResponse);
+          return c.json({
+            success: false,
+            action: {
+              type: "suggest_update" as const,
+              taskId,
+              executed: false,
+            },
+            message: "I couldn't understand the update request. Please be more specific about what you'd like to change.",
+          } satisfies AITaskResponse);
+        }
+
+        // If autoExecute is true, update the task directly
+        if (autoExecute) {
+          try {
+            const updatePayload: Record<string, unknown> = {};
+            
+            if (updateData.name !== undefined) updatePayload.name = updateData.name;
+            if (updateData.description !== undefined) updatePayload.description = updateData.description;
+            if (updateData.status !== undefined) updatePayload.status = updateData.status;
+            if (updateData.priority !== undefined) updatePayload.priority = updateData.priority;
+            if (updateData.dueDate !== undefined) updatePayload.dueDate = updateData.dueDate;
+            if (updateData.endDate !== undefined) updatePayload.endDate = updateData.endDate;
+            if (updateData.labels !== undefined) updatePayload.labels = updateData.labels;
+            if (updateData.estimatedHours !== undefined) updatePayload.estimatedHours = updateData.estimatedHours;
+            
+            if (updateData.assigneeIds && updateData.assigneeIds.length > 0) {
+              updatePayload.assigneeIds = updateData.assigneeIds;
+              updatePayload.assigneeId = updateData.assigneeIds[0];
+            }
+
+            const updatedTask = await databases.updateDocument(
+              DATABASE_ID,
+              TASKS_ID,
+              taskId,
+              updatePayload
+            );
+
+            const changedFields = Object.keys(updateData).join(", ");
+
+            return c.json({
+              success: true,
+              action: {
+                type: "update" as const,
+                taskId,
+                taskData: updateData as AITaskData,
+                executed: true,
+                result: {
+                  success: true,
+                  taskId: updatedTask.$id,
+                  message: `Task updated: ${changedFields}`,
+                },
+              },
+              message: `✅ Task "${existingTask.name}" has been updated successfully! Changed: ${changedFields}`,
+              task: {
+                id: updatedTask.$id,
+                name: updatedTask.name as string,
+                status: updatedTask.status as string,
+              },
+            } satisfies AITaskResponse);
+          } catch (updateError) {
+            console.error("Failed to update task:", updateError);
+            return c.json({
+              success: false,
+              action: {
+                type: "update" as const,
+                taskId,
+                taskData: updateData as AITaskData,
+                executed: false,
+                result: {
+                  success: false,
+                  message: "Failed to update task",
+                },
+              },
+              message: "Failed to update the task. Please try again.",
+            } satisfies AITaskResponse);
+          }
+        }
+
+        // Generate suggestions for review
+        const suggestions = Object.entries(updateData).map(([field, value]) => ({
+          field,
+          currentValue: String((existingTask as Record<string, unknown>)[field] || "Not set"),
+          suggestedValue: String(value),
+          reason: `Based on your request: "${prompt}"`,
+        }));
+
+        // Include available members for selection - populate with actual user data
+        const { users } = await createAdminClient();
+        const availableMembers = (await Promise.all(
+          membersResponse.documents.map(async (m) => {
+            try {
+              const userData = await users.get(m.userId);
+              return {
+                id: m.$id,
+                name: userData.name || userData.email || "Unknown",
+                email: userData.email,
+                role: m.role,
+              };
+            } catch {
+              return {
+                id: m.$id,
+                name: m.name || m.email || "Unknown",
+                email: m.email,
+                role: m.role,
+              };
+            }
+          })
+        ));
+
+        // Get existing labels from project tasks for suggestions
+        const projectTasksResponse = await databases.listDocuments<Task>(
+          DATABASE_ID,
+          TASKS_ID,
+          [
+            Query.equal("projectId", projectId),
+            Query.limit(100),
+          ]
+        );
+        
+        const existingProjectLabels = new Set<string>();
+        projectTasksResponse.documents.forEach(t => {
+          if (t.labels) {
+            t.labels.forEach(l => existingProjectLabels.add(l));
+          }
+        });
+
+        const suggestedLabels = Array.from(new Set([
+          ...(updateData.labels || []),
+          ...(existingTask.labels || []),
+          ...Array.from(existingProjectLabels),
+          "bug", "feature", "enhancement", "frontend", "backend", "documentation"
+        ])).slice(0, 15);
+
+        // Merge existing task data with the proposed updates
+        // This ensures the preview card shows the full task state
+        const mergedTaskData: AITaskData = {
+          name: updateData.name || existingTask.name,
+          description: updateData.description !== undefined ? updateData.description : (existingTask.description || ""),
+          status: updateData.status || existingTask.status,
+          priority: updateData.priority || existingTask.priority,
+          dueDate: updateData.dueDate || existingTask.dueDate,
+          endDate: updateData.endDate || existingTask.endDate,
+          assigneeIds: updateData.assigneeIds || existingTask.assigneeIds || (existingTask.assigneeId ? [existingTask.assigneeId] : []),
+          labels: updateData.labels || existingTask.labels || [],
+          estimatedHours: updateData.estimatedHours !== undefined ? updateData.estimatedHours : existingTask.estimatedHours,
+        };
+
+        return c.json({
+          success: true,
+          action: {
+            type: "suggest_update" as const,
+            taskId,
+            taskData: mergedTaskData,
+            suggestions,
+            executed: false,
+          },
+          message: `I've prepared updates for task "${existingTask.name}". Review the changes and click "Apply Updates" to save.`,
+          availableMembers,
+          suggestedLabels,
+        } satisfies AITaskResponse);
+      } catch (error) {
+        console.error("Error updating task via AI:", error);
+        return c.json({ 
+          error: error instanceof Error ? error.message : "Failed to process task update" 
+        }, 500);
+      }
+    }
+  )
+  // Execute a task suggestion (create or update)
+  .post(
+    "/execute-task",
+    sessionMiddleware,
+    zValidator("json", executeTaskSuggestionSchema),
+    async (c) => {
+      try {
+        const user = c.get("user");
+        const databases = c.get("databases");
+        const { projectId, workspaceId, taskData, taskId } = c.req.valid("json");
+
+        // Verify workspace membership
+        const member = await getMember({
+          databases,
+          workspaceId,
+          userId: user.$id,
+        });
+
+        if (!member) {
+          return c.json({ error: "Unauthorized" }, 401);
+        }
+
+        // If taskId is provided, this is an update
+        if (taskId) {
+          const existingTask = await databases.getDocument<Task>(
+            DATABASE_ID,
+            TASKS_ID,
+            taskId
+          );
+
+          if (existingTask.workspaceId !== workspaceId || existingTask.projectId !== projectId) {
+            return c.json({ error: "Task not found in this project" }, 404);
+          }
+
+          const updatePayload: Record<string, unknown> = {};
+          
+          if (taskData.name !== undefined) updatePayload.name = taskData.name;
+          if (taskData.description !== undefined) updatePayload.description = taskData.description;
+          if (taskData.status !== undefined) updatePayload.status = taskData.status;
+          if (taskData.priority !== undefined) updatePayload.priority = taskData.priority;
+          if (taskData.dueDate !== undefined) updatePayload.dueDate = taskData.dueDate;
+          if (taskData.endDate !== undefined) updatePayload.endDate = taskData.endDate;
+          if (taskData.labels !== undefined) updatePayload.labels = taskData.labels;
+          if (taskData.estimatedHours !== undefined) updatePayload.estimatedHours = taskData.estimatedHours;
+          
+          if (taskData.assigneeIds && taskData.assigneeIds.length > 0) {
+            updatePayload.assigneeIds = taskData.assigneeIds;
+            updatePayload.assigneeId = taskData.assigneeIds[0];
+          }
+
+          const updatedTask = await databases.updateDocument(
+            DATABASE_ID,
+            TASKS_ID,
+            taskId,
+            updatePayload
+          );
+
+          return c.json({
+            success: true,
+            action: {
+              type: "update" as const,
+              taskId,
+              taskData,
+              executed: true,
+              result: {
+                success: true,
+                taskId: updatedTask.$id,
+                message: `Task "${updatedTask.name}" updated successfully`,
+              },
+            },
+            message: `✅ Task "${updatedTask.name}" has been updated!`,
+            task: {
+              id: updatedTask.$id,
+              name: updatedTask.name as string,
+              status: updatedTask.status as string,
+            },
+          } satisfies AITaskResponse);
+        }
+
+        // This is a create operation - name is required
+        if (!taskData.name) {
+          return c.json({ error: "Task name is required for creating a task" }, 400);
+        }
+
+        const highestPositionTask = await databases.listDocuments(
+          DATABASE_ID,
+          TASKS_ID,
+          [
+            Query.equal("status", taskData.status || TaskStatus.ASSIGNED),
+            Query.equal("workspaceId", workspaceId),
+            Query.orderDesc("position"),
+            Query.limit(1),
+          ]
+        );
+
+        const newPosition =
+          highestPositionTask.documents.length > 0
+            ? (highestPositionTask.documents[0] as Task).position + 1000
+            : 1000;
+
+        const task = await databases.createDocument(
+          DATABASE_ID,
+          TASKS_ID,
+          ID.unique(),
+          {
+            name: taskData.name,
+            description: taskData.description || "",
+            status: taskData.status || TaskStatus.ASSIGNED,
+            priority: taskData.priority || TaskPriority.MEDIUM,
+            dueDate: taskData.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Default to 1 week from now
+            endDate: taskData.endDate || undefined,
+            assigneeId: taskData.assigneeIds?.[0] || "",
+            assigneeIds: taskData.assigneeIds || [],
+            labels: taskData.labels || [],
+            estimatedHours: taskData.estimatedHours,
+            workspaceId,
+            projectId,
+            position: newPosition,
+          }
+        );
+
+        return c.json({
+          success: true,
+          action: {
+            type: "create" as const,
+            taskData,
+            executed: true,
+            result: {
+              success: true,
+              taskId: task.$id,
+              message: `Task "${taskData.name}" created successfully`,
+            },
+          },
+          message: `✅ Task "${taskData.name}" has been created!`,
+          task: {
+            id: task.$id,
+            name: task.name as string,
+            status: task.status as string,
+          },
+        } satisfies AITaskResponse);
+      } catch (error) {
+        console.error("Error executing task suggestion:", error);
+        return c.json({ 
+          error: error instanceof Error ? error.message : "Failed to execute task operation" 
         }, 500);
       }
     }

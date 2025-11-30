@@ -458,7 +458,7 @@ export const TeamsClient = () => {
                 <CardFooter className="pt-3 px-4 pb-3 border-t bg-muted/5">
                   <div className="flex items-center justify-between w-full">
                     <TeamProjectName teamId={team.$id} />
-                    <TeamMemberAvatarsFooter teamId={team.$id} memberCount={team.statistics?.memberCount || 0} />
+                    <TeamMemberAvatarsFooter teamId={team.$id} memberCount={team.memberCount || 0} />
                   </div>
                 </CardFooter>
               </Card>
