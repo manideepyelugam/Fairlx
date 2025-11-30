@@ -12,7 +12,7 @@ import { useGetMembers } from "@/features/members/api/use-get-members";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { columns } from "./columns";
+import { createColumns } from "./columns";
 import { DataCalendar } from "./data-calendar";
 import { DataFilters } from "./data-filters";
 import { DataTable } from "./data-table";
@@ -129,10 +129,12 @@ export const TaskViewSwitcher = ({
               </TabsTrigger>
             )}
           </TabsList>
-          <Button onClick={open} size="xs" className="w-full font-medium px-3 py-2 tracking-tight !bg-[#2663ec] lg:w-auto">
-            <PlusIcon className="size-3 " />
-            Add Task
-          </Button>
+          {isAdmin && (
+            <Button onClick={open} size="xs" className="w-full font-medium px-3 py-2 tracking-tight !bg-[#2663ec] lg:w-auto">
+              <PlusIcon className="size-3 " />
+              Add Task
+            </Button>
+          )}
         </div>
 
 
@@ -151,13 +153,18 @@ export const TaskViewSwitcher = ({
               <DataDashboard tasks={filteredTasks?.documents} isLoading={isLoadingTasks} />
             </TabsContent>
             <TabsContent value="table" className="mt-0 p-4">
-              <DataTable columns={columns} data={filteredTasks?.documents ?? []} />
+              <DataTable
+                columns={createColumns(isAdmin, isAdmin)}
+                data={filteredTasks?.documents ?? []}
+              />
             </TabsContent>
             <TabsContent value="kanban" className="mt-0 p-4">
               <EnhancedDataKanban
                 data={filteredTasks?.documents ?? []}
                 onChange={onKanbanChange}
-                isAdmin={isAdmin}
+                canCreateTasks={isAdmin}
+                canEditTasks={isAdmin}
+                canDeleteTasks={isAdmin}
                 members={members?.documents ?? []}
                 projectId={paramProjectId || projectId || undefined}
               />
@@ -166,8 +173,8 @@ export const TaskViewSwitcher = ({
               <DataCalendar data={filteredTasks?.documents ?? []} />
             </TabsContent>
             <TabsContent value="timeline" className="mt-0 h-full">
-              <TimelineView 
-                workspaceId={workspaceId} 
+              <TimelineView
+                workspaceId={workspaceId}
                 projectId={paramProjectId || projectId || undefined}
               />
             </TabsContent>
