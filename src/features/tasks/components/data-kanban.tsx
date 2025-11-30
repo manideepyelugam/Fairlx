@@ -76,6 +76,12 @@ export const DataKanban = ({
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
   const [columnsOrder] = useState<TaskStatus[]>(boards);
+  const [sortDirections, setSortDirections] = useState<Record<TaskStatus, 'asc' | 'desc'>>({
+    [TaskStatus.ASSIGNED]: 'asc',
+    [TaskStatus.IN_PROGRESS]: 'asc',
+    [TaskStatus.COMPLETED]: 'asc',
+    [TaskStatus.CLOSED]: 'asc',
+  });
 
   const { mutate: bulkUpdateTasks } = useBulkUpdateTasks();
   const { open: openCreateTask } = useCreateTaskModal();
@@ -150,30 +156,62 @@ export const DataKanban = ({
   }, [tasks]);
 
   const handleSortByPriority = useCallback((status: TaskStatus) => {
+    // Toggle sort direction
+    const newDirection = sortDirections[status] === 'asc' ? 'desc' : 'asc';
+    setSortDirections(prev => ({ ...prev, [status]: newDirection }));
+
     setTasks(prev => {
       const newTasks = { ...prev };
       const priorityOrder = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
       newTasks[status] = [...newTasks[status]].sort((a, b) => {
         const aPriority = a.priority ? priorityOrder[a.priority as keyof typeof priorityOrder] ?? 4 : 4;
         const bPriority = b.priority ? priorityOrder[b.priority as keyof typeof priorityOrder] ?? 4 : 4;
-        return aPriority - bPriority;
+        const comparison = aPriority - bPriority;
+        return newDirection === 'asc' ? comparison : -comparison;
       });
+
+      // Update positions after sorting
+      const updates = newTasks[status].map((task, index) => ({
+        $id: task.$id,
+        status,
+        position: Math.min((index + 1) * 1000, 1_000_000),
+      }));
+
+      // Persist the new positions
+      onChange(updates);
+
       return newTasks;
     });
-  }, []);
+  }, [onChange, sortDirections]);
 
   const handleSortByDueDate = useCallback((status: TaskStatus) => {
+    // Toggle sort direction
+    const newDirection = sortDirections[status] === 'asc' ? 'desc' : 'asc';
+    setSortDirections(prev => ({ ...prev, [status]: newDirection }));
+
     setTasks(prev => {
       const newTasks = { ...prev };
       newTasks[status] = [...newTasks[status]].sort((a, b) => {
         if (!a.dueDate && !b.dueDate) return 0;
         if (!a.dueDate) return 1;
         if (!b.dueDate) return -1;
-        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        const comparison = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        return newDirection === 'asc' ? comparison : -comparison;
       });
+
+      // Update positions after sorting
+      const updates = newTasks[status].map((task, index) => ({
+        $id: task.$id,
+        status,
+        position: Math.min((index + 1) * 1000, 1_000_000),
+      }));
+
+      // Persist the new positions
+      onChange(updates);
+
       return newTasks;
     });
-  }, []);
+  }, [onChange, sortDirections]);
 
   const handleBulkStatusChange = useCallback((status: TaskStatus | string) => {
     if (selectedTasks.size === 0) return;
@@ -337,6 +375,7 @@ export const DataKanban = ({
                   onSortByPriority={handleSortByPriority}
                   onSortByDueDate={handleSortByDueDate}
                   canCreateTasks={canCreateTasks}
+                  sortDirection={sortDirections[board]}
                 />
                 <Droppable droppableId={board}>
                   {(provided) => (

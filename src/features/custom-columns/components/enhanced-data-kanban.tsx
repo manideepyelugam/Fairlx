@@ -109,6 +109,7 @@ export const EnhancedDataKanban = ({
 
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
+  const [sortDirections, setSortDirections] = useState<Record<string, 'asc' | 'desc'>>({});
 
   const { mutate: bulkUpdateTasks } = useBulkUpdateTasks();
 
@@ -234,6 +235,64 @@ export const EnhancedDataKanban = ({
 
     setSelectedTasks(new Set());
   }, [selectedTasks, bulkUpdateTasks]);
+
+  const handleSortByPriority = useCallback((columnId: string) => {
+    // Toggle sort direction
+    const newDirection = sortDirections[columnId] === 'asc' ? 'desc' : 'asc';
+    setSortDirections(prev => ({ ...prev, [columnId]: newDirection }));
+
+    setTasks(prev => {
+      const newTasks = { ...prev };
+      const priorityOrder = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+      newTasks[columnId] = [...newTasks[columnId]].sort((a, b) => {
+        const aPriority = a.priority ? priorityOrder[a.priority as keyof typeof priorityOrder] ?? 4 : 4;
+        const bPriority = b.priority ? priorityOrder[b.priority as keyof typeof priorityOrder] ?? 4 : 4;
+        const comparison = aPriority - bPriority;
+        return newDirection === 'asc' ? comparison : -comparison;
+      });
+
+      // Update positions after sorting
+      const updates = newTasks[columnId].map((task, index) => ({
+        $id: task.$id,
+        status: columnId,
+        position: Math.min((index + 1) * 1000, 1_000_000),
+      }));
+
+      // Persist the new positions
+      onChange(updates);
+
+      return newTasks;
+    });
+  }, [onChange, sortDirections]);
+
+  const handleSortByDueDate = useCallback((columnId: string) => {
+    // Toggle sort direction
+    const newDirection = sortDirections[columnId] === 'asc' ? 'desc' : 'asc';
+    setSortDirections(prev => ({ ...prev, [columnId]: newDirection }));
+
+    setTasks(prev => {
+      const newTasks = { ...prev };
+      newTasks[columnId] = [...newTasks[columnId]].sort((a, b) => {
+        if (!a.dueDate && !b.dueDate) return 0;
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        const comparison = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        return newDirection === 'asc' ? comparison : -comparison;
+      });
+
+      // Update positions after sorting
+      const updates = newTasks[columnId].map((task, index) => ({
+        $id: task.$id,
+        status: columnId,
+        position: Math.min((index + 1) * 1000, 1_000_000),
+      }));
+
+      // Persist the new positions
+      onChange(updates);
+
+      return newTasks;
+    });
+  }, [onChange, sortDirections]);
 
   const onDragEnd = useCallback(
     (result: DropResult) => {
@@ -431,6 +490,9 @@ export const EnhancedDataKanban = ({
                                 onSelectAll={(status, selected) => handleSelectAll(column.id, selected)}
                                 showSelection={selectionMode}
                                 canCreateTasks={canCreateTasks}
+                                onSortByPriority={() => handleSortByPriority(column.id)}
+                                onSortByDueDate={() => handleSortByDueDate(column.id)}
+                                sortDirection={sortDirections[column.id] || 'asc'}
                               />
                             ) : (
                               <CustomColumnHeader
@@ -439,6 +501,9 @@ export const EnhancedDataKanban = ({
                                 selectedCount={selectedInColumn}
                                 onSelectAll={handleSelectAll}
                                 showSelection={selectionMode}
+                                onSortByPriority={() => handleSortByPriority(column.id)}
+                                onSortByDueDate={() => handleSortByDueDate(column.id)}
+                                sortDirection={sortDirections[column.id] || 'asc'}
                               />
                             )}
                           </div>

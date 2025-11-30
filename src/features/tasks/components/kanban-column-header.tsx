@@ -48,6 +48,7 @@ interface KanbanColumnHeaderProps {
   onSortByPriority?: (status: TaskStatus) => void;
   onSortByDueDate?: (status: TaskStatus) => void;
   canCreateTasks?: boolean;
+  sortDirection?: 'asc' | 'desc';
 }
 
 export const KanbanColumnHeader = ({
@@ -60,6 +61,7 @@ export const KanbanColumnHeader = ({
   onSortByPriority,
   onSortByDueDate,
   canCreateTasks = true,
+  sortDirection = 'asc',
 }: KanbanColumnHeaderProps) => {
   const { open } = useCreateTaskModal();
 
@@ -112,11 +114,11 @@ export const KanbanColumnHeader = ({
             )}
             <DropdownMenuItem onClick={() => onSortByPriority?.(board)}>
               <ArrowUpDown className="h-4 w-4 mr-2" />
-              Sort by Priority
+              Sort by Priority ({sortDirection === 'asc' ? 'Low→High' : 'High→Low'})
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onSortByDueDate?.(board)}>
               <Calendar className="h-4 w-4 mr-2" />
-              Sort by Due Date
+              Sort by Due Date ({sortDirection === 'asc' ? 'Earliest' : 'Latest'})
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -68,6 +68,8 @@ export default async function TimelinePage({
         initialData={processedData}
         sprints={timelineData.sprints.documents}
         workItems={timelineData.workItems.documents}
+        workspaceId={workspaceId}
+        projectId={projectId || ""}
       />
     </Suspense>
   );

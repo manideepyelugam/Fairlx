@@ -69,6 +69,7 @@ import type { PopulatedWorkItem } from "../types";
 import { UpdateSprintDatesDialog } from "./update-sprint-dates-dialog";
 import { SubtasksList } from "@/features/subtasks/components";
 import { SprintSettingsSheet } from "./sprint-settings-sheet";
+import { CreateEpicDialog } from "./create-epic-dialog";
 
 interface EnhancedBacklogScreenProps {
   workspaceId: string;
@@ -90,6 +91,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   const [editingWorkItemTitle, setEditingWorkItemTitle] = useState("");
   const [dateDialogSprintId, setDateDialogSprintId] = useState<string | null>(null);
   const [sprintSettingsId, setSprintSettingsId] = useState<string | null>(null);
+  const [isCreateEpicDialogOpen, setIsCreateEpicDialogOpen] = useState(false);
 
   // API Hooks
   const { data: sprintsData } = useGetSprints({ workspaceId, projectId });
@@ -109,7 +111,9 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   }, [sprintsData]);
 
   const backlogItems = useMemo(() => {
-    const items = workItemsData?.documents?.filter((item) => !item.sprintId) || [];
+    const items = workItemsData?.documents?.filter((item) =>
+      !item.sprintId && item.type !== WorkItemType.EPIC
+    ) || [];
     if (!searchQuery) return items;
     return items.filter((item) =>
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -118,7 +122,9 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   }, [workItemsData, searchQuery]);
 
   const getSprintWorkItems = (sprintId: string) => {
-    const items = workItemsData?.documents?.filter((item) => item.sprintId === sprintId) || [];
+    const items = workItemsData?.documents?.filter((item) =>
+      item.sprintId === sprintId && item.type !== WorkItemType.EPIC
+    ) || [];
     if (!searchQuery) return items;
     return items.filter((item) =>
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -384,6 +390,14 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <Button
+                  onClick={() => setIsCreateEpicDialogOpen(true)}
+                  variant="outline"
+                  className="h-10 px-4 text-sm"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Epic
+                </Button>
+                <Button
                   onClick={handleCreateSprint}
                   disabled={isCreatingSprint}
                   className="h-10 px-4 text-sm"
@@ -614,7 +628,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                             <SelectItem value="none">No Epic</SelectItem>
                                             {epicsData?.documents?.map((epic) => (
                                               <SelectItem key={epic.$id} value={epic.$id}>
-                                                {epic.key}
+                                                {epic.title}
                                               </SelectItem>
                                             ))}
                                           </SelectContent>
@@ -888,7 +902,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                       <SelectItem value="none">No Epic</SelectItem>
                                       {epicsData?.documents?.map((epic) => (
                                         <SelectItem key={epic.$id} value={epic.$id}>
-                                          {epic.key}
+                                          {epic.title}
                                         </SelectItem>
                                       ))}
                                     </SelectContent>
@@ -1247,6 +1261,14 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
         open={!!sprintSettingsId}
         onOpenChange={(open) => !open && setSprintSettingsId(null)}
         sprint={sprints.find((s) => s.$id === sprintSettingsId) || null}
+      />
+
+      {/* Create Epic Dialog */}
+      <CreateEpicDialog
+        workspaceId={workspaceId}
+        projectId={projectId}
+        open={isCreateEpicDialogOpen}
+        onCloseAction={() => setIsCreateEpicDialogOpen(false)}
       />
     </DragDropContext>
   );
