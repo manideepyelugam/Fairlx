@@ -110,7 +110,7 @@ export const TaskViewSwitcher = ({
         <div className="flex flex-col gap-y-2  px-4 py-6 lg:flex-row justify-between items-center">
           <TabsList className="w-full lg:w-auto">
             <TabsTrigger className="h-8 w-full text-xs lg:w-auto" value="dashboard">
-              Dashboard
+              {showMyTasksOnly ? "My Space" : "Dashboard"}
             </TabsTrigger>
             <TabsTrigger className="h-8 w-full text-xs lg:w-auto" value="table">
               Table
