@@ -2,7 +2,7 @@
 
 import { useRouter, useParams } from "next/navigation";
 import { RiAddCircleFill } from "react-icons/ri";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Info } from "lucide-react";
 import { useState } from "react";
 
 import { useGetSpaces } from "@/features/spaces/api/use-get-spaces";
@@ -10,6 +10,12 @@ import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useCreateSpaceModal } from "@/features/spaces/hooks/use-create-space-modal";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export const Spaces = () => {
   const router = useRouter();
@@ -54,12 +60,29 @@ export const Spaces = () => {
           )}
           Spaces
         </button>
-        {isAdmin && (
-          <RiAddCircleFill
-            onClick={open}
-            className="size-5 text-neutral-500 cursor-pointer hover:opacity-75 transition"
-          />
-        )}
+        <div className="flex items-center gap-1">
+          <TooltipProvider>
+            <Tooltip delayDuration={200}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => router.push(`/workspaces/${workspaceId}/spaces?guide=true`)}
+                  className="p-1 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 rounded transition"
+                >
+                  <Info className="size-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" align="start">
+                Click for Spaces guide
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          {isAdmin && (
+            <RiAddCircleFill
+              onClick={open}
+              className="size-5 text-neutral-500 cursor-pointer hover:opacity-75 transition"
+            />
+          )}
+        </div>
       </div>
 
       {isExpanded && (

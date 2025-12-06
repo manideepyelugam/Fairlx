@@ -57,6 +57,8 @@ Below are the collections implied by the codebase. Use `string` for text, `integ
 - imageUrl **(string, 500)**
 - inviteCode **(string, 64)**
 - userId **(req, string, 64)** (owner)
+- uiMode **(enum: SIMPLE|ADVANCED, default ADVANCED)** - UI complexity mode
+- enabledFeatures **(string, 1000)** - JSON object of enabled features
 
 ### members
 - workspaceId **(req, string, 64)**

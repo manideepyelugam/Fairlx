@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { client } from "@/lib/rpc";
+import { QUERY_CONFIG } from "@/lib/query-config";
 
 import { TeamVisibility } from "../types";
 
@@ -43,6 +44,8 @@ export const useGetTeams = ({
       sanitizedSearch,
     ],
     enabled: Boolean(sanitizedWorkspaceId),
+    staleTime: QUERY_CONFIG.SEMI_DYNAMIC.staleTime,
+    gcTime: QUERY_CONFIG.SEMI_DYNAMIC.gcTime,
     queryFn: async () => {
       if (!sanitizedWorkspaceId) {
         throw new Error("workspaceId is required to fetch teams.");

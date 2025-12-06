@@ -12,6 +12,7 @@ import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 
 import { cn } from "@/lib/utils";
 import { DottedSeparator } from "@/components/dotted-separator";
+import { HelpTooltip } from "@/components/help-tooltip";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -121,7 +122,14 @@ export const CreateSpaceForm = ({ onCancel }: CreateSpaceFormProps) => {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Space Name</FormLabel>
+                    <FormLabel className="flex items-center gap-2">
+                      Space Name
+                      <HelpTooltip 
+                        content="A descriptive name for your space (e.g., 'Engineering', 'Marketing'). This helps identify the department or product area." 
+                        side="right"
+                        align="start"
+                      />
+                    </FormLabel>
                     <FormControl>
                       <Input 
                         placeholder="e.g., Engineering, Marketing" 
@@ -139,7 +147,14 @@ export const CreateSpaceForm = ({ onCancel }: CreateSpaceFormProps) => {
                 name="key"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Space Key</FormLabel>
+                    <FormLabel className="flex items-center gap-2">
+                      Space Key
+                      <HelpTooltip 
+                        content="A short uppercase identifier (2-10 characters). This will prefix all work items in this space. Example: Space key 'ENG' creates work items like 'ENG-123'." 
+                        side="right"
+                        align="start"
+                      />
+                    </FormLabel>
                     <FormControl>
                       <Input 
                         placeholder="e.g., ENG, MKT" 

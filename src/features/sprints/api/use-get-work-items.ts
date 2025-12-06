@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { client } from "@/lib/rpc";
+import { QUERY_CONFIG } from "@/lib/query-config";
 
 import { WorkItemType, WorkItemStatus, WorkItemPriority } from "../types";
 
@@ -50,6 +51,8 @@ export const useGetWorkItems = ({
       includeChildren,
     ],
     enabled: Boolean(workspaceId),
+    staleTime: QUERY_CONFIG.DYNAMIC.staleTime,
+    gcTime: QUERY_CONFIG.DYNAMIC.gcTime,
     queryFn: async () => {
       if (!workspaceId) {
         throw new Error("workspaceId is required to fetch work items.");
