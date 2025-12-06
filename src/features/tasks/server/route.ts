@@ -260,6 +260,31 @@ const app = new Hono()
         return c.json({ error: "Unauthorized" }, 401);
       }
 
+      // Check for an active sprint in this project to auto-assign
+      const { SPRINTS_ID } = await import("@/config");
+      const { SprintStatus } = await import("@/features/sprints/types");
+      
+      let targetSprintId: string | null = null;
+      
+      try {
+        const activeSprints = await databases.listDocuments(
+          DATABASE_ID,
+          SPRINTS_ID,
+          [
+            Query.equal("projectId", projectId),
+            Query.equal("status", SprintStatus.ACTIVE),
+            Query.limit(1),
+          ]
+        );
+        
+        if (activeSprints.documents.length > 0) {
+          targetSprintId = activeSprints.documents[0].$id;
+        }
+      } catch (error) {
+        // If sprint collection doesn't exist or error occurs, continue without sprint assignment
+        console.log("Could not check for active sprints:", error);
+      }
+
       const highestPositionTask = await databases.listDocuments(
         DATABASE_ID,
         TASKS_ID,
@@ -314,6 +339,7 @@ const app = new Hono()
           labels: labels || [],
           flagged: false,
           lastModifiedBy: user.$id,
+          sprintId: targetSprintId, // Auto-assign to active sprint if available
         }
       ) as Task;
 
