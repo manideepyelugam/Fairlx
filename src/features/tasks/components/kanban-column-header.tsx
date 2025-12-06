@@ -9,6 +9,8 @@ import {
   XSquare,
   ArrowUpDown,
   Calendar,
+  AlertTriangleIcon,
+  Settings2Icon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -20,20 +22,30 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { snakeCaseToTitleCase } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
+import { snakeCaseToTitleCase, cn } from "@/lib/utils";
 
 import { TaskStatus } from "../types";
 import { useCreateTaskModal } from "../hooks/use-create-task-modal";
 
 const statusIconMap: Record<TaskStatus, React.ReactNode> = {
-  [TaskStatus.ASSIGNED]: <CircleIcon className="size-[18px] text-red-400" />,
+  [TaskStatus.TODO]: <CircleIcon className="size-[18px] text-gray-400" />,
+  [TaskStatus.ASSIGNED]: (
+    <CircleIcon className="size-[18px] text-red-400" />
+  ),
   [TaskStatus.IN_PROGRESS]: (
     <CircleDotDashedIcon className="size-[18px] text-yellow-400" />
   ),
-  [TaskStatus.COMPLETED]: (
+  [TaskStatus.IN_REVIEW]: (
     <CircleDotIcon className="size-[18px] text-blue-400" />
   ),
-  [TaskStatus.CLOSED]: (
+  [TaskStatus.DONE]: (
     <CircleCheckIcon className="size-[18px] text-emerald-400" />
   ),
 };
@@ -49,6 +61,9 @@ interface KanbanColumnHeaderProps {
   onSortByDueDate?: (status: TaskStatus) => void;
   canCreateTasks?: boolean;
   sortDirection?: 'asc' | 'desc';
+  // WIP Limit props
+  wipLimit?: number;
+  onSetWipLimit?: (status: TaskStatus, limit: number | null) => void;
 }
 
 export const KanbanColumnHeader = ({
@@ -62,6 +77,8 @@ export const KanbanColumnHeader = ({
   onSortByDueDate,
   canCreateTasks = true,
   sortDirection = 'asc',
+  wipLimit,
+  onSetWipLimit,
 }: KanbanColumnHeaderProps) => {
   const { open } = useCreateTaskModal();
 
@@ -70,8 +87,16 @@ export const KanbanColumnHeader = ({
   const isAllSelected = taskCount > 0 && selectedCount === taskCount;
   const isPartiallySelected = selectedCount > 0 && selectedCount < taskCount;
 
+  // WIP limit status
+  const isOverWipLimit = wipLimit !== undefined && wipLimit > 0 && taskCount > wipLimit;
+  const isAtWipLimit = wipLimit !== undefined && wipLimit > 0 && taskCount === wipLimit;
+  const wipPercentage = wipLimit && wipLimit > 0 ? Math.min((taskCount / wipLimit) * 100, 100) : 0;
+
   return (
-    <div className="px-3 py-2 flex items-center justify-between mb-2">
+    <div className={cn(
+      "px-3 py-2 flex items-center justify-between mb-2 rounded-t-lg",
+      isOverWipLimit && "bg-red-50 border-b-2 border-red-400"
+    )}>
       <div className="flex items-center gap-x-2">
         {showSelection && (
           <Checkbox
@@ -85,12 +110,92 @@ export const KanbanColumnHeader = ({
         )}
         {icon}
         <h2 className="text-sm font-semibold text-gray-700">{snakeCaseToTitleCase(board)}</h2>
+        
+        {/* Task count with WIP limit indicator */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1">
+                <Badge 
+                  variant={isOverWipLimit ? "destructive" : isAtWipLimit ? "secondary" : "outline"} 
+                  className={cn(
+                    "text-xs px-1.5 py-0 h-5",
+                    isOverWipLimit && "animate-pulse"
+                  )}
+                >
+                  {taskCount}
+                  {wipLimit !== undefined && wipLimit > 0 && (
+                    <span className="text-muted-foreground ml-0.5">/{wipLimit}</span>
+                  )}
+                </Badge>
+                {isOverWipLimit && (
+                  <AlertTriangleIcon className="size-4 text-red-500" />
+                )}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              {wipLimit !== undefined && wipLimit > 0 ? (
+                <div className="text-xs">
+                  <div className="font-medium">
+                    {isOverWipLimit 
+                      ? `⚠️ Over WIP limit by ${taskCount - wipLimit}` 
+                      : isAtWipLimit 
+                        ? "At WIP limit"
+                        : `${wipLimit - taskCount} slots remaining`
+                    }
+                  </div>
+                  <div className="text-muted-foreground">
+                    WIP Limit: {wipLimit} | Current: {taskCount}
+                  </div>
+                </div>
+              ) : (
+                <span>{taskCount} tasks</span>
+              )}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
+      
+      {/* WIP Progress bar (only show if limit is set) */}
+      {wipLimit !== undefined && wipLimit > 0 && (
+        <div className="flex-1 mx-3 max-w-[60px]">
+          <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+            <div 
+              className={cn(
+                "h-full transition-all",
+                isOverWipLimit ? "bg-red-500" : isAtWipLimit ? "bg-yellow-500" : "bg-green-500"
+              )}
+              style={{ width: `${wipPercentage}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center gap-2">
         {canCreateTasks && (
-          <Button onClick={open} variant="ghost" size="icon" className="h-6 w-6 hover:bg-gray-100">
-            <PlusIcon className="h-4 w-4 text-gray-500" />
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  onClick={open} 
+                  variant="ghost" 
+                  size="icon" 
+                  className={cn(
+                    "h-6 w-6 hover:bg-gray-100",
+                    isOverWipLimit && "opacity-50"
+                  )}
+                  disabled={isOverWipLimit}
+                >
+                  <PlusIcon className="h-4 w-4 text-gray-500" />
+                </Button>
+              </TooltipTrigger>
+              {isOverWipLimit && (
+                <TooltipContent>
+                  <span className="text-xs">Cannot add tasks - WIP limit exceeded</span>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
         )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -120,6 +225,21 @@ export const KanbanColumnHeader = ({
               <Calendar className="h-4 w-4 mr-2" />
               Sort by Due Date ({sortDirection === 'asc' ? 'Earliest' : 'Latest'})
             </DropdownMenuItem>
+            {onSetWipLimit && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => {
+                  const limit = prompt("Set WIP limit (0 to remove):", String(wipLimit || ""));
+                  if (limit !== null) {
+                    const numLimit = parseInt(limit);
+                    onSetWipLimit(board, numLimit > 0 ? numLimit : null);
+                  }
+                }}>
+                  <Settings2Icon className="h-4 w-4 mr-2" />
+                  {wipLimit ? `Change WIP Limit (${wipLimit})` : "Set WIP Limit"}
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

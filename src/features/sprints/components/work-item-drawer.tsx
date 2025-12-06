@@ -130,7 +130,7 @@ export const WorkItemDrawer = ({
                     <SelectItem value={WorkItemStatus.IN_PROGRESS}>IN PROGRESS</SelectItem>
                     <SelectItem value={WorkItemStatus.IN_REVIEW}>IN REVIEW</SelectItem>
                     <SelectItem value={WorkItemStatus.DONE}>DONE</SelectItem>
-                    <SelectItem value={WorkItemStatus.BLOCKED}>BLOCKED</SelectItem>
+                    <SelectItem value={WorkItemStatus.ASSIGNED}>ASSIGNED</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

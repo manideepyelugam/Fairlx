@@ -24,10 +24,11 @@ interface EventCardProps {
 }
 
 const statusColorMap: Record<TaskStatus, string> = {
+  [TaskStatus.TODO]: "border-l-gray-400",
   [TaskStatus.ASSIGNED]: "border-l-red-400",
   [TaskStatus.IN_PROGRESS]: "border-l-yellow-400",
-  [TaskStatus.COMPLETED]: "border-l-blue-400",
-  [TaskStatus.CLOSED]: "border-l-emerald-400",
+  [TaskStatus.IN_REVIEW]: "border-l-blue-400",
+  [TaskStatus.DONE]: "border-l-emerald-400",
 };
 
 export const EventCard = ({

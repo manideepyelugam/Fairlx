@@ -1,12 +1,19 @@
 import { redirect } from "next/navigation";
 
-import { getCurrent } from "@/features/auth/queries";
-
-import { BacklogClient } from "./client";
-
-export default async function BacklogPage() {
-  const user = await getCurrent();
-  if (!user) redirect("/sign-in");
-
-  return <BacklogClient />;
+// Redirect to project page with backlog tab - the dedicated backlog page is deprecated
+// The backlog is now available as a tab in the TaskViewSwitcher
+export default async function BacklogPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ workspaceId: string; projectId: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const { workspaceId, projectId } = await params;
+  const search = await searchParams;
+  
+  // Preserve any query params like workItemId
+  const queryString = search.workItemId ? `&workItemId=${search.workItemId}` : "";
+  
+  redirect(`/workspaces/${workspaceId}/projects/${projectId}?task-view=backlog${queryString}`);
 }

@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 
-import { DATABASE_ID, WORK_ITEMS_ID, PROJECTS_ID } from "@/config";
+import { DATABASE_ID, WORK_ITEMS_ID, PROJECTS_ID, MEMBERS_ID, SPRINTS_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
 
@@ -23,6 +23,8 @@ import {
   WorkItemStatus,
   WorkItemPriority,
   PopulatedWorkItem,
+  Sprint,
+  SprintStatus,
 } from "../types";
 
 // Generate unique work item key
@@ -192,25 +194,52 @@ const app = new Hono()
       );
 
       // Populate assignees and related items
+      // First, collect all unique assignee IDs from all work items
+      const allAssigneeIds = new Set<string>();
+      workItems.documents.forEach((workItem) => {
+        if (workItem.assigneeIds && Array.isArray(workItem.assigneeIds)) {
+          workItem.assigneeIds.forEach(id => {
+            if (id && typeof id === 'string') {
+              allAssigneeIds.add(id);
+            }
+          });
+        }
+      });
+
+      // Fetch all members at once (assigneeIds are member document IDs)
+      const membersData = allAssigneeIds.size > 0 
+        ? await databases.listDocuments(
+            DATABASE_ID,
+            MEMBERS_ID,
+            [Query.equal("$id", Array.from(allAssigneeIds))]
+          )
+        : { documents: [] };
+
+      // Build a map of member ID -> user data for quick lookup
+      const assigneeMap = new Map<string, { $id: string; name: string; email: string; profileImageUrl: string | null }>();
+      
+      await Promise.all(
+        membersData.documents.map(async (member) => {
+          try {
+            const user = await users.get(member.userId);
+            assigneeMap.set(member.$id, {
+              $id: member.$id,
+              name: user.name || user.email,
+              email: user.email,
+              profileImageUrl: user.prefs?.profileImageUrl || null,
+            });
+          } catch {
+            // User not found - skip this member
+          }
+        })
+      );
+
       const populatedWorkItems = await Promise.all(
         workItems.documents.map(async (workItem) => {
-          const assigneeResults = await Promise.all(
-            workItem.assigneeIds.map(async (assigneeId) => {
-              try {
-                const assignee = await users.get(assigneeId);
-                return {
-                  $id: assignee.$id,
-                  name: assignee.name,
-                  email: assignee.email,
-                  profileImageUrl: assignee.prefs?.profileImageUrl || null,
-                };
-              } catch {
-                return null;
-              }
-            })
-          );
-          
-          const assignees = assigneeResults.filter((a): a is NonNullable<typeof a> => a !== null);
+          // Get assignees from the pre-built map
+          const assignees = (workItem.assigneeIds || [])
+            .map(id => assigneeMap.get(id))
+            .filter((a): a is NonNullable<typeof a> => a !== null);
 
           let epic = null;
           if (workItem.epicId) {
@@ -248,6 +277,25 @@ const app = new Hono()
             }
           }
 
+          // Populate project data
+          let project = null;
+          if (workItem.projectId) {
+            try {
+              const projectDoc = await databases.getDocument<Project>(
+                DATABASE_ID,
+                PROJECTS_ID,
+                workItem.projectId
+              );
+              project = {
+                $id: projectDoc.$id,
+                name: projectDoc.name,
+                imageUrl: projectDoc.imageUrl,
+              };
+            } catch {
+              // Project might be deleted
+            }
+          }
+
           const children = await databases.listDocuments(
             DATABASE_ID,
             WORK_ITEMS_ID,
@@ -264,6 +312,7 @@ const app = new Hono()
             assignees,
             epic,
             parent,
+            project,
             childrenCount: children.total,
             children: childrenData,
           };
@@ -350,24 +399,30 @@ const app = new Hono()
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      // Populate assignees
-      const assigneeResults = await Promise.all(
-        workItem.assigneeIds.map(async (assigneeId) => {
+      // Populate assignees - assigneeIds are member document IDs
+      const membersData = workItem.assigneeIds && workItem.assigneeIds.length > 0
+        ? await databases.listDocuments(
+            DATABASE_ID,
+            MEMBERS_ID,
+            [Query.equal("$id", workItem.assigneeIds)]
+          )
+        : { documents: [] };
+
+      const assignees = (await Promise.all(
+        membersData.documents.map(async (memberDoc) => {
           try {
-            const assignee = await users.get(assigneeId);
+            const userInfo = await users.get(memberDoc.userId);
             return {
-              $id: assignee.$id,
-              name: assignee.name,
-              email: assignee.email,
-              profileImageUrl: assignee.prefs?.profileImageUrl || null,
+              $id: memberDoc.$id,
+              name: userInfo.name || userInfo.email,
+              email: userInfo.email,
+              profileImageUrl: userInfo.prefs?.profileImageUrl || null,
             };
           } catch {
             return null;
           }
         })
-      );
-      
-      const assignees = assigneeResults.filter((a): a is NonNullable<typeof a> => a !== null);
+      )).filter((a): a is NonNullable<typeof a> => a !== null);
 
       let epic = null;
       if (workItem.epicId) {
@@ -445,6 +500,29 @@ const app = new Hono()
         return c.json({ error: "Unauthorized" }, 401);
       }
 
+      // Determine the target sprint:
+      // 1. If sprintId is explicitly provided, use it
+      // 2. If no sprintId provided, check for an active sprint in this project
+      // 3. If no active sprint, leave as backlog (null sprintId)
+      let targetSprintId = data.sprintId;
+      
+      if (!targetSprintId) {
+        // Check for an active sprint in this project
+        const activeSprints = await databases.listDocuments<Sprint>(
+          DATABASE_ID,
+          SPRINTS_ID,
+          [
+            Query.equal("projectId", data.projectId),
+            Query.equal("status", SprintStatus.ACTIVE),
+            Query.limit(1),
+          ]
+        );
+        
+        if (activeSprints.documents.length > 0) {
+          targetSprintId = activeSprints.documents[0].$id;
+        }
+      }
+
       // Get the highest position
       const queryFilters = [
         Query.equal("projectId", data.projectId),
@@ -452,8 +530,8 @@ const app = new Hono()
         Query.limit(1),
       ];
 
-      if (data.sprintId) {
-        queryFilters.push(Query.equal("sprintId", data.sprintId));
+      if (targetSprintId) {
+        queryFilters.push(Query.equal("sprintId", targetSprintId));
       } else {
         queryFilters.push(Query.isNull("sprintId"));
       }
@@ -488,6 +566,7 @@ const app = new Hono()
               key,
               position: highestPosition + 1000,
               dueDate: data.dueDate?.toISOString(),
+              sprintId: targetSprintId || null, // Use the determined target sprint (active sprint or null for backlog)
             }
           );
         } catch (error: unknown) {

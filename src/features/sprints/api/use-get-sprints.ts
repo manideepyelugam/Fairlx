@@ -6,7 +6,7 @@ import { SprintStatus } from "../types";
 
 interface UseGetSprintsProps {
   workspaceId: string;
-  projectId: string;
+  projectId?: string;
   status?: SprintStatus;
 }
 

@@ -68,7 +68,7 @@ interface DataCalendarProps {
 
 export const DataCalendar = ({ data }: DataCalendarProps) => {
   const [value, setValue] = useState(
-    data.length > 0 ? new Date(data[0].dueDate) : new Date()
+    data.length > 0 && data[0].dueDate ? new Date(data[0].dueDate) : new Date()
   );
 
   const events = data.map((task) => {
@@ -81,15 +81,15 @@ export const DataCalendar = ({ data }: DataCalendarProps) => {
       : [];
     
     return {
-      start: new Date(task.dueDate),
-      end: task.endDate && !isMilestone ? new Date(task.endDate) : new Date(task.dueDate),
-      title: task.name,
+      start: new Date(task.dueDate || new Date()),
+      end: task.endDate && !isMilestone ? new Date(task.endDate) : new Date(task.dueDate || new Date()),
+      title: task.title || task.name || "",
       project: task.project,
       assignee: task.assignee,
       assignees: assigneeList,
       status: Object.values(TaskStatus).includes(task.status as TaskStatus) 
         ? task.status as TaskStatus 
-        : TaskStatus.ASSIGNED, // Default fallback for custom columns
+        : TaskStatus.TODO, // Default fallback for custom columns
       id: task.$id,
       isMilestone,
     };

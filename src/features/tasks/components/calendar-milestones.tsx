@@ -17,11 +17,12 @@ interface CalendarMilestonesProps {
   data: PopulatedTask[];
 }
 
-const statusConfig = {
+const statusConfig: Record<string, { color: string; textColor: string }> = {
+  [TaskStatus.TODO]: { color: "bg-gray-500", textColor: "text-gray-700" },
   [TaskStatus.ASSIGNED]: { color: "bg-red-500", textColor: "text-red-700" },
   [TaskStatus.IN_PROGRESS]: { color: "bg-yellow-500", textColor: "text-yellow-700" },
-  [TaskStatus.COMPLETED]: { color: "bg-blue-500", textColor: "text-blue-700" },
-  [TaskStatus.CLOSED]: { color: "bg-emerald-500", textColor: "text-emerald-700" },
+  [TaskStatus.IN_REVIEW]: { color: "bg-blue-500", textColor: "text-blue-700" },
+  [TaskStatus.DONE]: { color: "bg-emerald-500", textColor: "text-emerald-700" },
 };
 
 export const CalendarMilestones = ({ data }: CalendarMilestonesProps) => {
@@ -40,7 +41,7 @@ export const CalendarMilestones = ({ data }: CalendarMilestonesProps) => {
   // Process tasks for the calendar
   const tasksWithDates = useMemo(() => {
     return data.map(task => {
-      const startDate = new Date(task.dueDate);
+      const startDate = new Date(task.dueDate || new Date().toISOString());
       const endDate = task.endDate ? new Date(task.endDate) : startDate;
       const isMilestone = startDate.getTime() === endDate.getTime();
       

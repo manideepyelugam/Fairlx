@@ -61,12 +61,6 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    console.log("[Profile Client] File selected:", {
-      name: file.name,
-      size: file.size,
-      type: file.type
-    });
-
     // Validate file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
       console.error("[Profile Client] File too large:", file.size);
@@ -81,12 +75,10 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
       return;
     }
 
-    console.log("[Profile Client] Starting upload...");
     uploadImage(
       { file },
       {
         onSuccess: (data) => {
-          console.log("[Profile Client] Upload successful:", data);
           toast.success("Profile picture updated successfully");
           setProfileImageUrl(data.data.url);
         },

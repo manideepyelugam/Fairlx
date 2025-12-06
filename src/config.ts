@@ -37,3 +37,24 @@ export const CUSTOM_ROLES_ID = process.env.NEXT_PUBLIC_APPWRITE_CUSTOM_ROLES_ID!
 // Email/Messaging Configuration
 export const SMTP_PROVIDER_ID = process.env.NEXT_PUBLIC_APPWRITE_SMTP_PROVIDER_ID!;
 export const EMAIL_TOPIC_ID = process.env.NEXT_PUBLIC_APPWRITE_EMAIL_TOPIC_ID!;
+
+// ===============================
+// NEW: Spaces & Workflows Collections
+// ===============================
+export const SPACES_ID = process.env.NEXT_PUBLIC_APPWRITE_SPACES_ID!;
+export const SPACE_MEMBERS_ID = process.env.NEXT_PUBLIC_APPWRITE_SPACE_MEMBERS_ID!;
+
+// Workflow Collections
+export const WORKFLOWS_ID = process.env.NEXT_PUBLIC_APPWRITE_WORKFLOWS_ID!;
+export const WORKFLOW_STATUSES_ID = process.env.NEXT_PUBLIC_APPWRITE_WORKFLOW_STATUSES_ID!;
+export const WORKFLOW_TRANSITIONS_ID = process.env.NEXT_PUBLIC_APPWRITE_WORKFLOW_TRANSITIONS_ID!;
+
+// Custom Fields Collections
+export const CUSTOM_FIELDS_ID = process.env.NEXT_PUBLIC_APPWRITE_CUSTOM_FIELDS_ID!;
+export const CUSTOM_WORK_ITEM_TYPES_ID = process.env.NEXT_PUBLIC_APPWRITE_CUSTOM_WORK_ITEM_TYPES_ID!;
+
+// Work Item Links Collection
+export const WORK_ITEM_LINKS_ID = process.env.NEXT_PUBLIC_APPWRITE_WORK_ITEM_LINKS_ID!;
+
+// Saved Views/Filters Collection
+export const SAVED_VIEWS_ID = process.env.NEXT_PUBLIC_APPWRITE_SAVED_VIEWS_ID!;;

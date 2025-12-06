@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BoardType, ProjectStatus } from "./types";
 
 export const createProjectSchema = z.object({
   name: z.string().trim().min(1, "Project name is required."),
@@ -23,6 +24,34 @@ export const updateProjectSchema = z.object({
       z.string().transform((value) => (value === "" ? undefined : value)),
     ])
     .optional(),
+  spaceId: z.string().optional().nullable(),
+  
+  // Board configuration
+  boardType: z.nativeEnum(BoardType).optional(),
+  key: z.string().trim().min(2).max(10).toUpperCase()
+    .regex(/^[A-Z][A-Z0-9]*$/)
+    .optional(),
+  status: z.nativeEnum(ProjectStatus).optional(),
+  
+  // Workflow
+  workflowId: z.string().optional().nullable(),
+  
+  // Settings
+  defaultAssigneeId: z.string().optional().nullable(),
+  autoAssignToCreator: z.boolean().optional(),
+  enableTimeTracking: z.boolean().optional(),
+  
+  // Kanban settings
+  wipLimits: z.record(z.number().min(0)).optional(),
+  defaultSwimlane: z.enum(["assignee", "epic", "type", "none"]).optional(),
+  
+  // Sprint settings
+  defaultSprintDuration: z.number().min(1).max(60).optional(),
+  sprintStartDay: z.number().min(0).max(6).optional(),
+  
+  // UI
+  color: z.string().optional().nullable(),
+  position: z.number().min(0).optional(),
 });
 
 export const assignProjectToTeamSchema = z.object({

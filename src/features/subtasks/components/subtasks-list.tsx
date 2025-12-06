@@ -1,21 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, ListTodo } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 
 import { useCreateSubtask } from "../api/use-create-subtask";
 import { useGetSubtasks } from "../api/use-get-subtasks";
 import { SubtaskItem } from "./subtask-item";
+import { SubtaskStatus } from "../types";
 
 interface SubtasksListProps {
   workItemId: string;
   workspaceId: string;
+  members?: Array<{ $id: string; name: string }>;
 }
 
-export const SubtasksList = ({ workItemId, workspaceId }: SubtasksListProps) => {
+export const SubtasksList = ({ workItemId, workspaceId, members = [] }: SubtasksListProps) => {
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [isAdding, setIsAdding] = useState(false);
 
@@ -26,9 +29,22 @@ export const SubtasksList = ({ workItemId, workspaceId }: SubtasksListProps) => 
   const { mutate: createSubtask, isPending: isCreating } = useCreateSubtask();
 
   const subtasks = subtasksData?.documents || [];
-  const completedCount = subtasks.filter((st) => st.completed).length;
+  
+  // Calculate progress based on both completed and status
+  const completedCount = subtasks.filter((st) => 
+    st.completed || st.status === SubtaskStatus.DONE
+  ).length;
+  const inProgressCount = subtasks.filter((st) => 
+    st.status === SubtaskStatus.IN_PROGRESS
+  ).length;
   const totalCount = subtasks.length;
   const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+
+  // Calculate total estimated hours
+  const totalEstimatedHours = subtasks.reduce((acc, st) => acc + (st.estimatedHours || 0), 0);
+  const completedEstimatedHours = subtasks
+    .filter((st) => st.completed || st.status === SubtaskStatus.DONE)
+    .reduce((acc, st) => acc + (st.estimatedHours || 0), 0);
 
   const handleAddSubtask = () => {
     if (newSubtaskTitle.trim()) {
@@ -70,30 +86,40 @@ export const SubtasksList = ({ workItemId, workspaceId }: SubtasksListProps) => 
     <div className="space-y-4">
       {/* Progress bar */}
       {totalCount > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-2 p-3 bg-muted/30 rounded-lg">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">
-              {completedCount} of {totalCount} completed
-            </span>
-            <span className="text-muted-foreground">{Math.round(progress)}%</span>
+            <div className="flex items-center gap-2">
+              <ListTodo className="size-4 text-muted-foreground" />
+              <span className="font-medium">
+                {completedCount} of {totalCount} completed
+              </span>
+              {inProgressCount > 0 && (
+                <span className="text-muted-foreground">
+                  ({inProgressCount} in progress)
+                </span>
+              )}
+            </div>
+            <span className="text-muted-foreground font-medium">{Math.round(progress)}%</span>
           </div>
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+          <Progress value={progress} className="h-2" />
+          {totalEstimatedHours > 0 && (
+            <div className="text-xs text-muted-foreground">
+              Estimated: {completedEstimatedHours}h / {totalEstimatedHours}h
+            </div>
+          )}
         </div>
       )}
 
       {/* Subtasks list */}
-      <div className="space-y-1">
+      <div className="space-y-2">
         {subtasks.map((subtask) => (
           <SubtaskItem
             key={subtask.$id}
             subtask={subtask}
             workspaceId={workspaceId}
             workItemId={workItemId}
+            members={members}
+            showDetails={true}
           />
         ))}
       </div>

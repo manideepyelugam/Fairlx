@@ -195,7 +195,6 @@ export const RoleManagement = ({
     // For now, we'll just update the local state
     setEditingBuiltInRole(null);
     // TODO: Call API to persist changes
-    console.log('Saved built-in role permissions:', builtInRolePermissions);
   };
 
   const handleCancelBuiltInRoleEdit = () => {

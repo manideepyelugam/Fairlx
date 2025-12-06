@@ -11,7 +11,7 @@ export const useMoveTasksFromDisabledColumn = () => {
   const { mutate: bulkUpdateTasks } = useBulkUpdateTasks();
 
   const mutation = useMutation({
-    mutationFn: async ({ fromColumn, toColumn = TaskStatus.ASSIGNED }: { 
+    mutationFn: async ({ fromColumn, toColumn = TaskStatus.TODO }: { 
       fromColumn: TaskStatus; 
       toColumn?: TaskStatus;
     }) => {
@@ -58,7 +58,7 @@ export const useMoveTasksFromDisabledColumn = () => {
 
       return 0;
     },
-    onSuccess: (movedCount, { fromColumn, toColumn = TaskStatus.ASSIGNED }) => {
+    onSuccess: (movedCount, { fromColumn, toColumn = TaskStatus.TODO }) => {
       if (movedCount > 0) {
         toast.success(`Moved ${movedCount} task${movedCount === 1 ? '' : 's'} from ${fromColumn} to ${toColumn}`);
       }

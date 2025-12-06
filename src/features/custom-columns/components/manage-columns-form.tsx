@@ -170,9 +170,8 @@ export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
             }
           );
         });
-      } catch (error) {
+      } catch {
         // Error already counted
-        console.log(error);
       }
     }
 
@@ -196,9 +195,8 @@ export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
             }
           );
         });
-      } catch (error) {
+      } catch {
         // Error already counted
-        console.log(error);
       }
     }
 

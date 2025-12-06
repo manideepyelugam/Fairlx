@@ -490,7 +490,7 @@ const app = new Hono()
 
         return {
           taskId: task.$id,
-          taskName: task.name,
+          taskName: task.name || "Untitled Task",
           projectName: project?.name || "Unknown Project",
           estimatedHours,
           actualHours,

@@ -39,6 +39,10 @@ const statusConfig = {
     label: "Completed",
     color: "text-green-600",
   },
+  [SprintStatus.CANCELLED]: {
+    label: "Cancelled",
+    color: "text-red-600",
+  },
 };
 
 export const SprintOptionsMenu = ({

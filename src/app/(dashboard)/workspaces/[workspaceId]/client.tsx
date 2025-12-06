@@ -13,10 +13,7 @@ import { useGetTeams } from "@/features/teams/api/use-get-teams"
 import { ProjectAvatar } from "@/features/projects/components/project-avatar"
 import { useCreateProjectModal } from "@/features/projects/hooks/use-create-project-modal"
 import type { Project } from "@/features/projects/types"
-import { useGetTasks } from "@/features/tasks/api/use-get-tasks"
-import { useCreateTaskModal } from "@/features/tasks/hooks/use-create-task-modal"
-import type { Task } from "@/features/tasks/types"
-import { TaskStatus, TaskPriority } from "@/features/tasks/types"
+import { useGetWorkItems, useCreateWorkItemModal, WorkItemStatus, WorkItemPriority, type PopulatedWorkItem } from "@/features/sprints"
 import { useGetWorkspaceAnalytics } from "@/features/workspaces/api/use-get-workspace-analytics"
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id"
 import { useCurrentMember } from "@/features/members/hooks/use-current-member"
@@ -57,67 +54,67 @@ import {
 export const WorkspaceIdClient = () => {
   const workspaceId = useWorkspaceId()
   const { data: analytics, isLoading: isLoadingAnalytics } = useGetWorkspaceAnalytics({ workspaceId })
-  const { data: tasks, isLoading: isLoadingTasks } = useGetTasks({ workspaceId })
+  const { data: workItems, isLoading: isLoadingWorkItems } = useGetWorkItems({ workspaceId })
   const { data: projects, isLoading: isLoadingProjects } = useGetProjects({ workspaceId })
   const { data: members, isLoading: isLoadingMembers } = useGetMembers({ workspaceId })
   const { data: teams, isLoading: isLoadingTeams } = useGetTeams({ workspaceId })
 
-  const isLoading = isLoadingAnalytics || isLoadingTasks || isLoadingProjects || isLoadingMembers || isLoadingTeams
+  const isLoading = isLoadingAnalytics || isLoadingWorkItems || isLoadingProjects || isLoadingMembers || isLoadingTeams
 
-  // Calculate dynamic data from real tasks
+  // Calculate dynamic data from real work items
   const dynamicData = useMemo(() => {
-    if (!tasks?.documents || !members?.documents) {
+    if (!workItems?.documents || !members?.documents) {
       return {
         statusOverview: [],
         priorityDistribution: [],
         memberWorkload: [],
-        recentTasks: [],
-        dueSoonTasks: [],
+        recentWorkItems: [],
+        dueSoonWorkItems: [],
         completionRate: 0,
         flaggedCount: 0,
         contributionData: [],
       }
     }
 
-    const taskDocs = tasks.documents
+    const itemDocs = workItems.documents as PopulatedWorkItem[]
     const memberDocs = members.documents
 
     // Status overview for pie chart
     const statusCounts = {
-      completed: taskDocs.filter(t => t.status === TaskStatus.COMPLETED || t.status === TaskStatus.CLOSED).length,
-      inProgress: taskDocs.filter(t => t.status === TaskStatus.IN_PROGRESS).length,
-      assigned: taskDocs.filter(t => t.status === TaskStatus.ASSIGNED).length,
+      completed: itemDocs.filter(t => t.status === WorkItemStatus.DONE).length,
+      inProgress: itemDocs.filter(t => t.status === WorkItemStatus.IN_PROGRESS || t.status === WorkItemStatus.IN_REVIEW).length,
+      todo: itemDocs.filter(t => t.status === WorkItemStatus.TODO || t.status === WorkItemStatus.ASSIGNED).length,
     }
 
     const statusOverview = [
       { id: "completed", name: "Completed", value: statusCounts.completed, color: "#22c55e" },
       { id: "in-progress", name: "In Progress", value: statusCounts.inProgress, color: "#2663ec" },
-      { id: "assigned", name: "Assigned", value: statusCounts.assigned, color: "#93c5fd" },
+      { id: "todo", name: "To Do", value: statusCounts.todo, color: "#93c5fd" },
     ]
 
     // Completion rate
-    const completionRate = taskDocs.length > 0 
-      ? Math.round((statusCounts.completed / taskDocs.length) * 100) 
+    const completionRate = itemDocs.length > 0 
+      ? Math.round((statusCounts.completed / itemDocs.length) * 100) 
       : 0
 
     // Flagged count
-    const flaggedCount = taskDocs.filter(t => t.flagged === true).length
+    const flaggedCount = itemDocs.filter(t => t.flagged === true).length
 
     // Priority distribution for bar chart
     const priorityDistribution = [
-      { name: "URGENT", count: taskDocs.filter(t => t.priority === TaskPriority.URGENT).length, fill: "#ef4444" },
-      { name: "HIGH", count: taskDocs.filter(t => t.priority === TaskPriority.HIGH).length, fill: "#f97316" },
-      { name: "MEDIUM", count: taskDocs.filter(t => t.priority === TaskPriority.MEDIUM).length, fill: "#f59e0b" },
-      { name: "LOW", count: taskDocs.filter(t => t.priority === TaskPriority.LOW).length, fill: "#22c55e" },
+      { name: "URGENT", count: itemDocs.filter(t => t.priority === WorkItemPriority.URGENT).length, fill: "#ef4444" },
+      { name: "HIGH", count: itemDocs.filter(t => t.priority === WorkItemPriority.HIGH).length, fill: "#f97316" },
+      { name: "MEDIUM", count: itemDocs.filter(t => t.priority === WorkItemPriority.MEDIUM).length, fill: "#f59e0b" },
+      { name: "LOW", count: itemDocs.filter(t => t.priority === WorkItemPriority.LOW).length, fill: "#22c55e" },
     ]
 
     // Member workload
     const memberWorkload = memberDocs.map(member => {
-      const memberTasks = taskDocs.filter(t => 
-        t.assigneeId === member.$id || t.assigneeIds?.includes(member.$id)
+      const memberItems = itemDocs.filter(t => 
+        t.assigneeIds?.includes(member.$id)
       )
-      const completedTasks = memberTasks.filter(t => 
-        t.status === TaskStatus.COMPLETED || t.status === TaskStatus.CLOSED
+      const completedItems = memberItems.filter(t => 
+        t.status === WorkItemStatus.DONE
       ).length
 
       return {
@@ -125,80 +122,80 @@ export const WorkspaceIdClient = () => {
         name: member.name || member.email || "Unknown",
         avatar: (member.name || member.email || "U").substring(0, 2).toUpperCase(),
         imageUrl: member.profileImageUrl,
-        tasks: memberTasks.length,
-        completedTasks,
+        tasks: memberItems.length,
+        completedTasks: completedItems,
       }
     }).filter(m => m.tasks > 0).sort((a, b) => b.tasks - a.tasks).slice(0, 4)
 
-    // Contribution data - tasks completed per member (for GitHub-style graph)
+    // Contribution data - work items completed per member (for GitHub-style graph)
     const contributionData = memberDocs.map(member => {
-      const memberTasks = taskDocs.filter(t => 
-        t.assigneeId === member.$id || t.assigneeIds?.includes(member.$id)
+      const memberItems = itemDocs.filter(t => 
+        t.assigneeIds?.includes(member.$id)
       )
-      const completedTasks = memberTasks.filter(t => 
-        t.status === TaskStatus.COMPLETED || t.status === TaskStatus.CLOSED
+      const completedItems = memberItems.filter(t => 
+        t.status === WorkItemStatus.DONE
       ).length
 
       return {
         id: member.$id,
         name: member.name || member.email?.split('@')[0] || "Unknown",
         imageUrl: member.profileImageUrl,
-        completed: completedTasks,
-        total: memberTasks.length,
+        completed: completedItems,
+        total: memberItems.length,
       }
     }).filter(m => m.total > 0).sort((a, b) => b.completed - a.completed).slice(0, 6)
 
-    // Recent tasks
-    const recentTasks = [...taskDocs]
+    // Recent work items
+    const recentWorkItems = [...itemDocs]
       .sort((a, b) => new Date(b.$updatedAt).getTime() - new Date(a.$updatedAt).getTime())
       .slice(0, 5)
-      .map(task => {
-        const member = memberDocs.find(m => m.$id === task.assigneeId)
+      .map(item => {
+        const assignee = item.assignees?.[0]
         return {
-          id: task.$id,
-          title: task.name,
-          status: task.status === TaskStatus.COMPLETED || task.status === TaskStatus.CLOSED ? "Done" :
-                  task.status === TaskStatus.IN_PROGRESS ? "In Progress" : "To Do",
-          assignee: member?.name?.split(' ').map(n => n[0]).join('') || "N/A",
-          priority: task.priority || "MEDIUM",
-          projectName: task.project?.name,
+          id: item.$id,
+          title: item.title,
+          status: item.status === WorkItemStatus.DONE ? "Done" :
+                  item.status === WorkItemStatus.IN_PROGRESS || item.status === WorkItemStatus.IN_REVIEW ? "In Progress" : "To Do",
+          assignee: assignee?.name?.split(' ').map(n => n[0]).join('') || "N/A",
+          priority: item.priority || "MEDIUM",
+          projectId: item.projectId,
         }
       })
 
-    // Due soon tasks
+    // Due soon work items
     const now = new Date()
     const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-    const dueSoonTasks = taskDocs
-      .filter(task => {
-        if (!task.dueDate || task.status === TaskStatus.COMPLETED || task.status === TaskStatus.CLOSED) return false
-        const dueDate = new Date(task.dueDate)
+    const dueSoonWorkItems = itemDocs
+      .filter(item => {
+        if (!item.dueDate || item.status === WorkItemStatus.DONE) return false
+        const dueDate = new Date(item.dueDate)
         return dueDate >= now && dueDate <= weekFromNow
       })
-      .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+      .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
       .slice(0, 6)
       .map(t => ({
         id: t.$id,
-        title: t.name,
-        dueDate: new Date(t.dueDate),
+        title: t.title,
+        dueDate: new Date(t.dueDate!),
       }))
 
     return {
       statusOverview,
       priorityDistribution,
       memberWorkload,
-      recentTasks,
-      dueSoonTasks,
+      recentWorkItems,
+      dueSoonWorkItems,
       completionRate,
       flaggedCount,
       contributionData,
     }
-  }, [tasks, members])
+  }, [workItems, members])
 
   if (isLoading) {
     return <PageLoader />
   }
 
-  if (!analytics || !tasks || !projects || !members || !teams) {
+  if (!analytics || !workItems || !projects || !members || !teams) {
     return <PageError message="Failed to load workspace data." />
   }
 
@@ -209,8 +206,8 @@ export const WorkspaceIdClient = () => {
         <Card className="p-3">
           <div className="flex items-start justify-between">
             <div className="space-y-0.5">
-              <p className="text-xs text-muted-foreground">Total Tasks</p>
-              <p className="text-xl font-semibold">{analytics.taskCount}</p>
+              <p className="text-xs text-muted-foreground">Work Items</p>
+              <p className="text-xl font-semibold">{workItems.total}</p>
             </div>
             <div className="p-2 bg-blue-50 dark:bg-blue-950 rounded">
               <ListTodo className="h-4 w-4 text-[#2663ec]" />
@@ -362,8 +359,8 @@ export const WorkspaceIdClient = () => {
               <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {dynamicData.dueSoonTasks.length > 0 ? (
-                dynamicData.dueSoonTasks.map((alert) => (
+              {dynamicData.dueSoonWorkItems.length > 0 ? (
+                dynamicData.dueSoonWorkItems.map((alert) => (
                   <Link
                     key={alert.id}
                     href={`/workspaces/${workspaceId}/tasks/${alert.id}`}
@@ -392,8 +389,8 @@ export const WorkspaceIdClient = () => {
               <Clock className="h-3.5 w-3.5 text-muted-foreground" />
             </div>
             <div className="space-y-2">
-              {dynamicData.recentTasks.length > 0 ? (
-                dynamicData.recentTasks.map((task) => (
+              {dynamicData.recentWorkItems.length > 0 ? (
+                dynamicData.recentWorkItems.map((task) => (
                   <Link
                     key={task.id}
                     href={`/workspaces/${workspaceId}/tasks/${task.id}`}
@@ -564,9 +561,9 @@ export const WorkspaceIdClient = () => {
         )}
       </Card>
 
-      {/* Bottom Row - Tasks, Projects, Members */}
+      {/* Bottom Row - Work Items, Projects, Members */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <TaskList data={tasks.documents} total={tasks.total} />
+        <WorkItemList data={workItems.documents as PopulatedWorkItem[]} total={workItems.total} />
         <ProjectList data={projects.documents} total={projects.total} />
         <MemberList data={members.documents} total={members.total} />
       </div>
@@ -574,14 +571,14 @@ export const WorkspaceIdClient = () => {
   )
 }
 
-interface TaskListProps {
-  data: Task[]
+interface WorkItemListProps {
+  data: PopulatedWorkItem[]
   total: number
 }
 
-export const TaskList = ({ data, total }: TaskListProps) => {
+export const WorkItemList = ({ data, total }: WorkItemListProps) => {
   const workspaceId = useWorkspaceId()
-  const { open: createTask } = useCreateTaskModal()
+  const { open: createWorkItem } = useCreateWorkItemModal()
   const { isAdmin } = useCurrentMember({ workspaceId })
 
   return (
@@ -589,13 +586,13 @@ export const TaskList = ({ data, total }: TaskListProps) => {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <ListTodo className="h-3.5 w-3.5 text-muted-foreground" />
-          <h3 className="text-xs font-medium text-muted-foreground">Tasks ({total})</h3>
+          <h3 className="text-xs font-medium text-muted-foreground">Work Items ({total})</h3>
         </div>
         {isAdmin && (
           <Button
             variant="ghost"
             size="icon"
-            onClick={createTask}
+            onClick={() => createWorkItem()}
             className="h-6 w-6"
           >
             <PlusIcon className="size-3" />
@@ -603,21 +600,21 @@ export const TaskList = ({ data, total }: TaskListProps) => {
         )}
       </div>
       <div className="space-y-2">
-        {data.slice(0, 5).map((task) => (
+        {data.slice(0, 5).map((item) => (
           <Link
-            key={task.$id}
-            href={`/workspaces/${workspaceId}/tasks/${task.$id}`}
+            key={item.$id}
+            href={`/workspaces/${workspaceId}/projects/${item.projectId}/backlog?workItemId=${item.$id}`}
             className="flex items-center justify-between p-2 bg-secondary/10 rounded-md hover:bg-secondary/20 transition-colors"
           >
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium truncate">{task.name}</p>
+              <p className="text-xs font-medium truncate">{item.title}</p>
               <div className="flex items-center gap-1 mt-0.5 text-[11px] text-muted-foreground">
-                <span className="truncate">{task.project?.name}</span>
-                {task.dueDate && (
+                <span className="truncate">{item.key}</span>
+                {item.dueDate && (
                   <>
                     <span>•</span>
                     <CalendarIcon className="size-2.5" />
-                    <span>{formatDistanceToNow(new Date(task.dueDate))}</span>
+                    <span>{formatDistanceToNow(new Date(item.dueDate))}</span>
                   </>
                 )}
               </div>
@@ -625,7 +622,7 @@ export const TaskList = ({ data, total }: TaskListProps) => {
           </Link>
         ))}
         {data.length === 0 && (
-          <p className="text-xs text-muted-foreground text-center py-4">No tasks</p>
+          <p className="text-xs text-muted-foreground text-center py-4">No work items</p>
         )}
       </div>
       {data.length > 5 && (

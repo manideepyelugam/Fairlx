@@ -56,6 +56,10 @@ export const EditProjectForm = ({
     defaultValues: {
       ...initialValues,
       image: initialValues.imageUrl ?? "",
+      defaultSwimlane: 
+        initialValues.defaultSwimlane && ["type", "none", "assignee", "epic"].includes(initialValues.defaultSwimlane)
+          ? (initialValues.defaultSwimlane as "type" | "none" | "assignee" | "epic")
+          : undefined,
     },
   });
 
@@ -75,11 +79,18 @@ export const EditProjectForm = ({
   };
 
   const onSubmit = (values: z.infer<typeof updateProjectSchema>) => {
-    const finalValues = {
-      ...values,
-      image: values.image instanceof File ? values.image : "",
-      deadline: values.deadline ?? undefined, // Convert null to undefined
-    };
+    // Convert nullable fields to undefined and build final values object
+    const finalValues: Record<string, unknown> = {};
+    
+    Object.entries(values).forEach(([key, value]) => {
+      if (value === null) {
+        finalValues[key] = undefined;
+      } else if (key === "image") {
+        finalValues[key] = value instanceof File ? value : "";
+      } else {
+        finalValues[key] = value;
+      }
+    });
 
     mutate({ form: finalValues, param: { projectId: initialValues.$id } });
   };

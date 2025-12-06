@@ -65,7 +65,6 @@ async function sendEmailNotification({
     const user = await users.get(userId);
     
     if (!user.email) {
-      console.log('[sendEmailNotification] User has no email:', userId);
       return;
     }
 
@@ -82,6 +81,9 @@ async function sendEmailNotification({
 
     const taskUrl = `${process.env.NEXT_PUBLIC_APP_URL}/workspaces/${workspaceId}/tasks/${taskId}`;
     
+    // Get task name (use title as primary, fall back to name for compatibility)
+    const emailTaskName = task.title || task.name || "Untitled Task";
+    
     // Generate appropriate email template based on notification type
     let emailBody: string;
     
@@ -89,7 +91,7 @@ async function sendEmailNotification({
       case "task_assigned":
         emailBody = taskAssignedTemplate({
           assignerName: triggeredByName,
-          taskName: task.name,
+          taskName: emailTaskName,
           taskDescription: task.description || undefined,
           projectName,
           dueDate: task.dueDate,
@@ -101,7 +103,7 @@ async function sendEmailNotification({
       case "task_status_changed":
         emailBody = taskStatusChangedTemplate({
           updaterName: triggeredByName,
-          taskName: task.name,
+          taskName: emailTaskName,
           oldStatus: (metadata.oldStatus as string) || "UNKNOWN",
           newStatus: task.status,
           projectName,
@@ -112,7 +114,7 @@ async function sendEmailNotification({
       case "task_completed":
         emailBody = taskCompletedTemplate({
           completerName: triggeredByName,
-          taskName: task.name,
+          taskName: emailTaskName,
           taskDescription: task.description || undefined,
           projectName,
           completedAt: new Date().toISOString(),
@@ -123,7 +125,7 @@ async function sendEmailNotification({
       case "task_priority_changed":
         emailBody = taskPriorityChangedTemplate({
           updaterName: triggeredByName,
-          taskName: task.name,
+          taskName: emailTaskName,
           oldPriority: (metadata.oldPriority as string) || "MEDIUM",
           newPriority: task.priority || "MEDIUM",
           projectName,
@@ -134,9 +136,9 @@ async function sendEmailNotification({
       case "task_due_date_changed":
         emailBody = taskDueDateChangedTemplate({
           updaterName: triggeredByName,
-          taskName: task.name,
+          taskName: emailTaskName,
           oldDueDate: metadata.oldDueDate as string,
-          newDueDate: task.dueDate,
+          newDueDate: task.dueDate || "No date",
           projectName,
           taskUrl,
         });
@@ -146,7 +148,7 @@ async function sendEmailNotification({
       default:
         emailBody = taskUpdatedTemplate({
           updaterName: triggeredByName,
-          taskName: task.name,
+          taskName: emailTaskName,
           projectName,
           changesDescription: metadata.changesDescription as string,
           taskUrl,
@@ -164,8 +166,6 @@ async function sendEmailNotification({
       [], // CC
       [] // BCC
     );
-    
-    console.log('[sendEmailNotification] Email sent successfully to:', user.email);
   } catch (error) {
     console.error('[sendEmailNotification] Failed to send email:', error);
   }
@@ -252,11 +252,14 @@ export async function notifyTaskAssignees({
     // Use admin client to ensure we can create notifications for any user
     const { databases: adminDatabases } = await createAdminClient();
     
-    const assigneeIds = task.assigneeIds || (task.assigneeId ? [task.assigneeId] : []);
+    const assigneeIds = task.assigneeIds || [];
 
     if (assigneeIds.length === 0) {
       return;
     }
+
+    // Get task name (use title as primary, fall back to name for compatibility)
+    const taskName = task.title || task.name || "Untitled Task";
 
     // Create notification title and message based on type
     let title: string;
@@ -265,36 +268,36 @@ export async function notifyTaskAssignees({
     switch (notificationType) {
       case "task_assigned":
         title = "New Task Assigned";
-        message = `${triggeredByName} assigned you to "${task.name}"`;
+        message = `${triggeredByName} assigned you to "${taskName}"`;
         break;
       case "task_completed":
         title = "Task Completed";
-        message = `${triggeredByName} marked "${task.name}" as completed`;
+        message = `${triggeredByName} marked "${taskName}" as completed`;
         break;
       case "task_status_changed":
         title = "Task Status Changed";
-        message = `${triggeredByName} changed status of "${task.name}"`;
+        message = `${triggeredByName} changed status of "${taskName}"`;
         break;
       case "task_priority_changed":
         title = "Task Priority Changed";
-        message = `${triggeredByName} changed priority of "${task.name}"`;
+        message = `${triggeredByName} changed priority of "${taskName}"`;
         break;
       case "task_due_date_changed":
         title = "Due Date Changed";
-        message = `${triggeredByName} updated the due date for "${task.name}"`;
+        message = `${triggeredByName} updated the due date for "${taskName}"`;
         break;
       case "task_attachment_added":
         title = "Attachment Added";
-        message = `${triggeredByName} added an attachment to "${task.name}"`;
+        message = `${triggeredByName} added an attachment to "${taskName}"`;
         break;
       case "task_attachment_deleted":
         title = "Attachment Removed";
-        message = `${triggeredByName} removed an attachment from "${task.name}"`;
+        message = `${triggeredByName} removed an attachment from "${taskName}"`;
         break;
       case "task_updated":
       default:
         title = "Task Updated";
-        message = `${triggeredByName} updated "${task.name}"`;
+        message = `${triggeredByName} updated "${taskName}"`;
         break;
     }
 
@@ -302,17 +305,27 @@ export async function notifyTaskAssignees({
     const supportedTypes = ["task_assigned", "task_updated", "task_completed", "task_deleted", "task_comment"];
     const dbNotificationType = supportedTypes.includes(notificationType) ? notificationType : "task_updated";
 
-    // Create notifications for each assignee
-    const notificationPromises = assigneeIds.map(async (assigneeId: string) => {
+    // Fetch member documents to get actual user IDs
+    // assigneeIds are member document IDs, not user IDs
+    const members = await adminDatabases.listDocuments(
+      DATABASE_ID,
+      MEMBERS_ID,
+      [Query.equal("$id", assigneeIds)]
+    );
+
+    // Create notifications for each assignee's user ID
+    const notificationPromises = members.documents.map(async (member) => {
+      const userId = member.userId as string;
+      
       // Don't notify the user who made the change
-      if (assigneeId === triggeredByUserId) {
+      if (userId === triggeredByUserId) {
         return;
       }
       
       try {
         await createNotification({
           databases: adminDatabases,
-          userId: assigneeId,
+          userId,
           type: dbNotificationType,
           title,
           message,
@@ -320,7 +333,7 @@ export async function notifyTaskAssignees({
           workspaceId,
           triggeredBy: triggeredByUserId,
           metadata: {
-            taskName: task.name,
+            taskName,
             taskStatus: task.status,
             projectId: task.projectId,
             ...extraMetadata,
@@ -359,13 +372,6 @@ export async function notifyWorkspaceAdmins({
   metadata?: Record<string, unknown>;
 }): Promise<void> {
   try {
-    console.log('[notifyWorkspaceAdmins] Starting notification process', {
-      taskId: task.$id,
-      triggeredByUserId,
-      notificationType,
-      workspaceId
-    });
-
     // Use admin client to ensure we can create notifications for any user
     const { databases: adminDatabases } = await createAdminClient();
 
@@ -375,12 +381,12 @@ export async function notifyWorkspaceAdmins({
       Query.equal("role", "ADMIN"),
     ]);
 
-    console.log('[notifyWorkspaceAdmins] Found admin members:', members.documents.length);
-
     if (members.documents.length === 0) {
-      console.log('[notifyWorkspaceAdmins] No admin members found');
       return;
     }
+
+    // Get task name (use title as primary, fall back to name for compatibility)
+    const adminTaskName = task.title || task.name || "Untitled Task";
 
     let title: string;
     let message: string;
@@ -388,36 +394,36 @@ export async function notifyWorkspaceAdmins({
     switch (notificationType) {
       case "task_assigned":
         title = "New Task Created";
-        message = `${triggeredByName} created a new task "${task.name}"`;
+        message = `${triggeredByName} created a new task "${adminTaskName}"`;
         break;
       case "task_completed":
         title = "Task Completed";
-        message = `${triggeredByName} completed "${task.name}"`;
+        message = `${triggeredByName} completed "${adminTaskName}"`;
         break;
       case "task_status_changed":
         title = "Task Status Changed";
-        message = `${triggeredByName} changed status of "${task.name}"`;
+        message = `${triggeredByName} changed status of "${adminTaskName}"`;
         break;
       case "task_priority_changed":
         title = "Task Priority Changed";
-        message = `${triggeredByName} changed priority of "${task.name}"`;
+        message = `${triggeredByName} changed priority of "${adminTaskName}"`;
         break;
       case "task_due_date_changed":
         title = "Due Date Changed";
-        message = `${triggeredByName} updated the due date for "${task.name}"`;
+        message = `${triggeredByName} updated the due date for "${adminTaskName}"`;
         break;
       case "task_attachment_added":
         title = "Attachment Added";
-        message = `${triggeredByName} added an attachment to "${task.name}"`;
+        message = `${triggeredByName} added an attachment to "${adminTaskName}"`;
         break;
       case "task_attachment_deleted":
         title = "Attachment Removed";
-        message = `${triggeredByName} removed an attachment from "${task.name}"`;
+        message = `${triggeredByName} removed an attachment from "${adminTaskName}"`;
         break;
       case "task_updated":
       default:
         title = "Task Updated";
-        message = `${triggeredByName} updated "${task.name}"`;
+        message = `${triggeredByName} updated "${adminTaskName}"`;
         break;
     }
 
@@ -429,11 +435,8 @@ export async function notifyWorkspaceAdmins({
     const notificationPromises = members.documents.map(async (member: Models.Document) => {
       // Don't notify the user who made the change
       if (member.userId === triggeredByUserId) {
-        console.log('[notifyWorkspaceAdmins] Skipping notification for triggering user:', member.userId);
         return;
       }
-
-      console.log('[notifyWorkspaceAdmins] Creating notification for admin:', member.userId);
 
       try {
         await createNotification({
@@ -446,7 +449,7 @@ export async function notifyWorkspaceAdmins({
           workspaceId,
           triggeredBy: triggeredByUserId,
           metadata: {
-            taskName: task.name,
+            taskName: adminTaskName,
             taskStatus: task.status,
             projectId: task.projectId,
             ...extraMetadata,
@@ -454,14 +457,12 @@ export async function notifyWorkspaceAdmins({
           task,
           triggeredByName,
         });
-        console.log('[notifyWorkspaceAdmins] Notification created successfully for:', member.userId);
       } catch (error) {
         console.error('[notifyWorkspaceAdmins] Failed to create notification:', error);
       }
     });
 
     await Promise.all(notificationPromises);
-    console.log('[notifyWorkspaceAdmins] All notifications processed');
   } catch (error) {
     console.error('[notifyWorkspaceAdmins] Error in notification process:', error);
   }

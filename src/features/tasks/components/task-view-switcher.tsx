@@ -22,12 +22,76 @@ import { DataDashboard } from "./data-dashboard";
 import { TimelineView } from "@/features/timeline/components/timeline-view";
 import { MyBacklogView } from "@/features/personal-backlog/components/my-backlog-view";
 import EnhancedBacklogScreen from "@/features/sprints/components/enhanced-backlog-screen";
+import { ProjectSetupOverlay } from "@/features/sprints/components/project-setup-overlay";
+import { useGetWorkItems, useGetSprints, SprintStatus, WorkItemStatus, WorkItemPriority, PopulatedWorkItem, useBulkUpdateWorkItems } from "@/features/sprints";
 
-import { useGetTasks } from "../api/use-get-tasks";
 import { useCreateTaskModal } from "../hooks/use-create-task-modal";
 import { useTaskFilters } from "../hooks/use-task-filters";
-import { TaskStatus, TaskPriority } from "../types";
-import { useBulkUpdateTasks } from "../api/use-bulk-update-tasks";
+import { TaskStatus, TaskPriority, PopulatedTask } from "../types";
+
+// Map WorkItemStatus to TaskStatus for compatibility with existing components
+const workItemStatusToTaskStatus = (status: WorkItemStatus | string): TaskStatus => {
+  const statusMap: Record<WorkItemStatus, TaskStatus> = {
+    [WorkItemStatus.TODO]: TaskStatus.TODO,
+    [WorkItemStatus.ASSIGNED]: TaskStatus.ASSIGNED,
+    [WorkItemStatus.IN_PROGRESS]: TaskStatus.IN_PROGRESS,
+    [WorkItemStatus.IN_REVIEW]: TaskStatus.IN_REVIEW,
+    [WorkItemStatus.DONE]: TaskStatus.DONE,
+  };
+  return statusMap[status as WorkItemStatus] || TaskStatus.TODO;
+};
+
+// Map TaskStatus to WorkItemStatus for saving
+const taskStatusToWorkItemStatus = (status: TaskStatus | string): WorkItemStatus => {
+  const statusMap: Record<TaskStatus, WorkItemStatus> = {
+    [TaskStatus.TODO]: WorkItemStatus.TODO,
+    [TaskStatus.ASSIGNED]: WorkItemStatus.ASSIGNED,
+    [TaskStatus.IN_PROGRESS]: WorkItemStatus.IN_PROGRESS,
+    [TaskStatus.IN_REVIEW]: WorkItemStatus.IN_REVIEW,
+    [TaskStatus.DONE]: WorkItemStatus.DONE,
+  };
+  return statusMap[status as TaskStatus] || WorkItemStatus.TODO;
+};
+
+// Convert WorkItem to Task format for existing components
+const workItemToTask = (workItem: PopulatedWorkItem): PopulatedTask => {
+  return {
+    $id: workItem.$id,
+    $collectionId: workItem.$collectionId,
+    $databaseId: workItem.$databaseId,
+    $createdAt: workItem.$createdAt,
+    $updatedAt: workItem.$updatedAt,
+    $permissions: workItem.$permissions,
+    title: workItem.title,
+    name: workItem.title,
+    status: workItemStatusToTaskStatus(workItem.status),
+    workspaceId: workItem.workspaceId,
+    assigneeId: workItem.assigneeIds?.[0] || "",
+    assigneeIds: workItem.assigneeIds,
+    projectId: workItem.projectId,
+    position: workItem.position,
+    dueDate: workItem.dueDate || new Date().toISOString(),
+    endDate: workItem.dueDate,
+    description: workItem.description,
+    estimatedHours: workItem.estimatedHours,
+    priority: workItem.priority as unknown as TaskPriority,
+    labels: workItem.labels,
+    flagged: workItem.flagged,
+    // Populate assignees if available
+    assignees: workItem.assignees?.map(a => ({
+      $id: a.$id,
+      name: a.name,
+      email: a.email,
+      profileImageUrl: a.profileImageUrl,
+    })),
+    // Populate project if available
+    project: workItem.project ? {
+      $id: workItem.project.$id,
+      name: workItem.project.name,
+      imageUrl: workItem.project.imageUrl || "",
+    } : undefined,
+  };
+};
 
 interface TaskViewSwitcherProps {
   hideProjectFilter?: boolean;
@@ -40,10 +104,10 @@ export const TaskViewSwitcher = ({
 }: TaskViewSwitcherProps) => {
 
 
-  const [{ status, assigneeId, projectId, dueDate, search, priority, labels }] =
+  const [{ status, assigneeId, projectId, search, priority }] =
     useTaskFilters();
   const [view, setView] = useQueryState("task-view", { defaultValue: "dashboard" });
-  const { mutate: bulkUpdate } = useBulkUpdateTasks();
+  const { mutate: bulkUpdate } = useBulkUpdateWorkItems();
 
   const workspaceId = useWorkspaceId();
   const paramProjectId = useProjectId();
@@ -54,17 +118,50 @@ export const TaskViewSwitcher = ({
 
   // Determine the effective assigneeId - if showMyTasksOnly is true, use current member's ID
   const effectiveAssigneeId = showMyTasksOnly && currentMember ? currentMember.$id : assigneeId;
+  
+  // Get effective project ID
+  const effectiveProjectId = paramProjectId || projectId;
 
-  const { data: tasks, isLoading: isLoadingTasks } = useGetTasks({
+  // Use Work Items instead of Tasks - map status filter from TaskStatus to WorkItemStatus
+  const mappedStatus = status ? taskStatusToWorkItemStatus(status as TaskStatus) : undefined;
+
+  const { data: workItemsData, isLoading: isLoadingWorkItems } = useGetWorkItems({
     workspaceId,
-    projectId: paramProjectId || projectId,
-    assigneeId: effectiveAssigneeId,
-    status,
-    dueDate,
-    search: null, // Don't filter on server side
-    priority: priority as TaskPriority | null,
-    labels,
+    projectId: effectiveProjectId || undefined,
+    assigneeId: effectiveAssigneeId || undefined,
+    status: mappedStatus,
+    priority: priority && priority !== "null" ? priority as unknown as WorkItemPriority : undefined,
+    search: undefined, // Don't filter on server side, use client-side search
   });
+
+  // Get sprints for setup overlay check (only when viewing a project)
+  const { data: sprintsData } = useGetSprints({ 
+    workspaceId, 
+    projectId: effectiveProjectId || undefined 
+  });
+
+  // Convert work items to tasks format
+  const tasks = useMemo(() => {
+    if (!workItemsData?.documents) return undefined;
+    return {
+      documents: workItemsData.documents.map(workItemToTask),
+      total: workItemsData.total || workItemsData.documents.length,
+    };
+  }, [workItemsData]);
+
+  // Calculate setup state for Jira-like overlay
+  const setupState = useMemo(() => {
+    const workItems = workItemsData?.documents || [];
+    const sprints = sprintsData?.documents || [];
+    const activeSprint = sprints.find(s => s.status === SprintStatus.ACTIVE);
+    
+    return {
+      hasWorkItems: workItems.length > 0,
+      hasSprints: sprints.length > 0,
+      hasActiveSprint: !!activeSprint,
+      needsSetup: workItems.length === 0 || sprints.length === 0 || !activeSprint,
+    };
+  }, [workItemsData, sprintsData]);
 
   // Client-side filtering for search
   const filteredTasks = useMemo(() => {
@@ -76,7 +173,7 @@ export const TaskViewSwitcher = ({
     if (search) {
       const searchLower = search.toLowerCase();
       filtered = filtered.filter(task =>
-        task.name.toLowerCase().includes(searchLower) ||
+        (task.title || task.name || "").toLowerCase().includes(searchLower) ||
         (task.description && task.description.toLowerCase().includes(searchLower))
       );
     }
@@ -92,12 +189,20 @@ export const TaskViewSwitcher = ({
 
   const onKanbanChange = useCallback(
     (tasks: { $id: string; status: TaskStatus | string; position: number }[]) => {
-      bulkUpdate({ json: { tasks } });
+      // Convert TaskStatus back to WorkItemStatus for saving
+      const workItemUpdates = tasks.map(task => ({
+        $id: task.$id,
+        status: taskStatusToWorkItemStatus(task.status as TaskStatus),
+        position: task.position,
+      }));
+      bulkUpdate({ json: { workItems: workItemUpdates } });
     },
     [bulkUpdate]
   );
 
   const { open } = useCreateTaskModal();
+
+  const isLoadingTasks = isLoadingWorkItems;
 
 
   return (
@@ -136,7 +241,13 @@ export const TaskViewSwitcher = ({
             )}
           </TabsList>
           {isAdmin && (
-            <Button onClick={open} size="xs" className="w-full font-medium px-3 py-2 tracking-tight !bg-[#2663ec] lg:w-auto">
+            <Button 
+              onClick={open} 
+              size="xs" 
+              className="w-full font-medium px-3 py-2 tracking-tight !bg-[#2663ec] lg:w-auto disabled:opacity-50"
+              disabled={effectiveProjectId ? setupState.needsSetup : false}
+              title={effectiveProjectId && setupState.needsSetup ? "Complete project setup in Backlog first" : undefined}
+            >
               <PlusIcon className="size-3 " />
               Add Task
             </Button>
@@ -145,7 +256,11 @@ export const TaskViewSwitcher = ({
 
 
         {view !== "dashboard" && view !== "timeline" && view !== "backlog" && (
-          <DataFilters hideProjectFilter={hideProjectFilter} showMyTasksOnly={showMyTasksOnly} />
+          <DataFilters 
+            hideProjectFilter={hideProjectFilter} 
+            showMyTasksOnly={showMyTasksOnly} 
+            disableManageColumns={effectiveProjectId ? setupState.needsSetup : false}
+          />
         )}
 
 
@@ -159,30 +274,96 @@ export const TaskViewSwitcher = ({
               <DataDashboard tasks={filteredTasks?.documents} isLoading={isLoadingTasks} />
             </TabsContent>
             <TabsContent value="table" className="mt-0 p-4">
-              <DataTable
-                columns={createColumns(isAdmin, isAdmin)}
-                data={filteredTasks?.documents ?? []}
-              />
+              {effectiveProjectId && setupState.needsSetup ? (
+                <ProjectSetupOverlay
+                  workspaceId={workspaceId}
+                  projectId={effectiveProjectId}
+                  hasWorkItems={setupState.hasWorkItems}
+                  hasSprints={setupState.hasSprints}
+                  hasActiveSprint={setupState.hasActiveSprint}
+                  variant="table"
+                >
+                  <DataTable
+                    columns={createColumns(isAdmin, isAdmin)}
+                    data={filteredTasks?.documents ?? []}
+                  />
+                </ProjectSetupOverlay>
+              ) : (
+                <DataTable
+                  columns={createColumns(isAdmin, isAdmin)}
+                  data={filteredTasks?.documents ?? []}
+                />
+              )}
             </TabsContent>
             <TabsContent value="kanban" className="mt-0 p-4">
-              <EnhancedDataKanban
-                data={filteredTasks?.documents ?? []}
-                onChange={onKanbanChange}
-                canCreateTasks={isAdmin}
-                canEditTasks={isAdmin}
-                canDeleteTasks={isAdmin}
-                members={members?.documents ?? []}
-                projectId={paramProjectId || projectId || undefined}
-              />
+              {effectiveProjectId && setupState.needsSetup ? (
+                <ProjectSetupOverlay
+                  workspaceId={workspaceId}
+                  projectId={effectiveProjectId}
+                  hasWorkItems={setupState.hasWorkItems}
+                  hasSprints={setupState.hasSprints}
+                  hasActiveSprint={setupState.hasActiveSprint}
+                  variant="kanban"
+                >
+                  <EnhancedDataKanban
+                    data={filteredTasks?.documents ?? []}
+                    onChange={onKanbanChange}
+                    canCreateTasks={isAdmin}
+                    canEditTasks={isAdmin}
+                    canDeleteTasks={isAdmin}
+                    members={members?.documents ?? []}
+                    projectId={paramProjectId || projectId || undefined}
+                  />
+                </ProjectSetupOverlay>
+              ) : (
+                <EnhancedDataKanban
+                  data={filteredTasks?.documents ?? []}
+                  onChange={onKanbanChange}
+                  canCreateTasks={isAdmin}
+                  canEditTasks={isAdmin}
+                  canDeleteTasks={isAdmin}
+                  members={members?.documents ?? []}
+                  projectId={paramProjectId || projectId || undefined}
+                />
+              )}
             </TabsContent>
             <TabsContent value="calendar" className="mt-0 h-full p-4 pb-4">
-              <DataCalendar data={filteredTasks?.documents ?? []} />
+              {effectiveProjectId && setupState.needsSetup ? (
+                <ProjectSetupOverlay
+                  workspaceId={workspaceId}
+                  projectId={effectiveProjectId}
+                  hasWorkItems={setupState.hasWorkItems}
+                  hasSprints={setupState.hasSprints}
+                  hasActiveSprint={setupState.hasActiveSprint}
+                  variant="calendar"
+                >
+                  <DataCalendar data={filteredTasks?.documents ?? []} />
+                </ProjectSetupOverlay>
+              ) : (
+                <DataCalendar data={filteredTasks?.documents ?? []} />
+              )}
             </TabsContent>
             <TabsContent value="timeline" className="mt-0 h-full">
-              <TimelineView
-                workspaceId={workspaceId}
-                projectId={paramProjectId || projectId || undefined}
-              />
+              {effectiveProjectId && setupState.needsSetup ? (
+                <ProjectSetupOverlay
+                  workspaceId={workspaceId}
+                  projectId={effectiveProjectId}
+                  hasWorkItems={setupState.hasWorkItems}
+                  hasSprints={setupState.hasSprints}
+                  hasActiveSprint={setupState.hasActiveSprint}
+                  variant="timeline"
+                >
+                  <TimelineView
+                    workspaceId={workspaceId}
+                    projectId={paramProjectId || projectId || undefined}
+                  />
+                </ProjectSetupOverlay>
+              ) : (
+                <TimelineView
+                  workspaceId={workspaceId}
+                  projectId={paramProjectId || projectId || undefined}
+                />
+              )}
             </TabsContent>
             {paramProjectId && (
               <TabsContent value="backlog" className="mt-0 h-full">

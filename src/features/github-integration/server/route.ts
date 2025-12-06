@@ -91,8 +91,6 @@ const app = new Hono()
             for (const doc of oldDocs.documents) {
               await databases.deleteDocument(DATABASE_ID, CODE_DOCS_ID, doc.$id);
             }
-            
-            console.log(`Cleared ${oldDocs.total} old documentation entries for project ${projectId}`);
           }
           
           repository = await databases.updateDocument<GitHubRepository>(

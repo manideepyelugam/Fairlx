@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Navigation } from "./navigation";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 import { Projects } from "./projects";
+import { Spaces } from "./spaces";
 
 export const Sidebar = () => {
   return (
@@ -14,9 +15,10 @@ export const Sidebar = () => {
         </Link>
       </div>
       
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex flex-col flex-1 overflow-hidden overflow-y-auto">
         <Navigation />
         <Projects />
+        <Spaces />
       </div>
      
       <div className="flex-shrink-0">

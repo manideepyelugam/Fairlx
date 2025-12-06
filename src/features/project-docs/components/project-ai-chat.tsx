@@ -12,7 +12,6 @@ import {
   ListTodo, 
   Copy, 
   Check, 
-  Bot,
   X,
   Minimize2,
   Maximize2,

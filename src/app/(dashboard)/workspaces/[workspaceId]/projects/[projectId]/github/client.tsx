@@ -88,7 +88,6 @@ export const GitHubIntegrationClient = () => {
         return;
       }
 
-      console.log(`[CommitsCount] Commits updated event received`);
       loadCommitsCount();
     };
 
@@ -102,7 +101,6 @@ export const GitHubIntegrationClient = () => {
           return;
         }
 
-        console.log(`[CommitsCount] Broadcast channel event received`);
         loadCommitsCount();
       });
     }

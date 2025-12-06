@@ -150,11 +150,19 @@ export const ProjectIdSettingsClient = () => {
 
   // Handlers
   const onSubmit = (values: z.infer<typeof updateProjectSchema>) => {
-    const finalValues = {
-      ...values,
-      image: values.image instanceof File ? values.image : "",
-      deadline: values.deadline || undefined,
-    };
+    // Convert nullable fields to undefined and build final values object
+    const finalValues: Record<string, unknown> = {};
+    
+    Object.entries(values).forEach(([key, value]) => {
+      if (value === null) {
+        finalValues[key] = undefined;
+      } else if (key === "image") {
+        finalValues[key] = value instanceof File ? value : "";
+      } else {
+        finalValues[key] = value;
+      }
+    });
+
     updateProject({ form: finalValues, param: { projectId: project.$id } });
   };
 

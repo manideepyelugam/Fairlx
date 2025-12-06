@@ -163,7 +163,7 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails }
                   In Review
                 </SelectItem>
                 <SelectItem value={WorkItemStatus.DONE}>Done</SelectItem>
-                <SelectItem value={WorkItemStatus.BLOCKED}>Blocked</SelectItem>
+                <SelectItem value={WorkItemStatus.ASSIGNED}>Assigned</SelectItem>
               </SelectContent>
             </Select>
 

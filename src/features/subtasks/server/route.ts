@@ -60,7 +60,7 @@ const app = new Hono()
       const databases = c.get("databases");
       const user = c.get("user");
 
-      const { title, workItemId, workspaceId, completed } = c.req.valid("json");
+      const { title, workItemId, workspaceId, completed, assigneeId, status, dueDate, estimatedHours, priority, description } = c.req.valid("json");
 
       const member = await getMember({
         databases,
@@ -94,11 +94,17 @@ const app = new Hono()
         ID.unique(),
         {
           title,
+          description,
           workItemId,
           workspaceId,
           completed: completed || false,
           position: highestPosition + 1000,
           createdBy: user.$id,
+          assigneeId: assigneeId || null,
+          status: status || "TODO",
+          dueDate: dueDate || null,
+          estimatedHours: estimatedHours || null,
+          priority: priority || "MEDIUM",
         }
       );
 

@@ -21,6 +21,12 @@ import teams from "@/features/teams/server/route";
 import programs from "@/features/programs/server/route";
 import comments from "@/features/comments/api/route";
 import projectDocs from "@/features/project-docs/server/route";
+// New Jira-like features
+import spaces from "@/features/spaces/server/route";
+import workflows from "@/features/workflows/server/route";
+import customFields from "@/features/custom-fields/server/route";
+import workItemLinks from "@/features/work-item-links/server/route";
+import savedViews from "@/features/saved-views/server/route";
 
 const app = new Hono().basePath("/api");
 
@@ -45,7 +51,13 @@ const routes = app
   .route("/teams", teams)
   .route("/programs", programs)
   .route("/comments", comments)
-  .route("/project-docs", projectDocs);
+  .route("/project-docs", projectDocs)
+  // New Jira-like features
+  .route("/spaces", spaces)
+  .route("/workflows", workflows)
+  .route("/custom-fields", customFields)
+  .route("/work-item-links", workItemLinks)
+  .route("/saved-views", savedViews);
 
 export const GET = handle(app);
 export const POST = handle(app);

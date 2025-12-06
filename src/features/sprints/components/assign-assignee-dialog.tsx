@@ -79,7 +79,7 @@ export const AssignAssigneeDialog = ({
               </p>
             ) : (
               members.map((member) => {
-                const isSelected = selectedAssigneeIds.includes(member.userId);
+                const isSelected = selectedAssigneeIds.includes(member.$id);
                 return (
                   <div
                     key={member.$id}
@@ -87,11 +87,11 @@ export const AssignAssigneeDialog = ({
                       "flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors",
                       isSelected && "bg-muted border-primary"
                     )}
-                    onClick={() => handleToggleAssignee(member.userId)}
+                    onClick={() => handleToggleAssignee(member.$id)}
                   >
                     <Checkbox
                       checked={isSelected}
-                      onCheckedChange={() => handleToggleAssignee(member.userId)}
+                      onCheckedChange={() => handleToggleAssignee(member.$id)}
                       onClick={(e) => e.stopPropagation()}
                     />
                     <Avatar className="size-8">

@@ -31,7 +31,7 @@ const statusColors = {
   IN_PROGRESS: "bg-blue-100 text-blue-700",
   IN_REVIEW: "bg-purple-100 text-purple-700",
   DONE: "bg-green-100 text-green-700",
-  BLOCKED: "bg-red-100 text-red-700",
+  ASSIGNED: "bg-red-100 text-red-700",
 };
 
 export const EpicCard = ({

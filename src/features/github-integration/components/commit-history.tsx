@@ -248,7 +248,6 @@ export const CommitHistory = ({ projectId }: CommitHistoryProps) => {
         return;
       }
 
-      console.log(`[Cache] Commits update event detected, reloading commits`);
       refreshCommitsFromCache();
     };
 
@@ -262,7 +261,6 @@ export const CommitHistory = ({ projectId }: CommitHistoryProps) => {
           return;
         }
 
-        console.log(`[Cache] Broadcast channel update detected, reloading commits`);
         refreshCommitsFromCache();
       });
     }
@@ -274,7 +272,6 @@ export const CommitHistory = ({ projectId }: CommitHistoryProps) => {
   }, [projectId, refreshCommitsFromCache]);
 
   const handleFetch = () => {
-    console.log(`[GitHub API] User clicked Refetch - fetching commits...`);
     fetchCommits(
       {
         json: { projectId, limit: 500 },
@@ -304,7 +301,6 @@ export const CommitHistory = ({ projectId }: CommitHistoryProps) => {
               await saveCommitsToCache(projectId, sortCommitsByDate(optimizedCommits));
               clearLegacyCommits(projectId);
               notifyCommitsUpdated(projectId);
-              console.log(`[Cache] Saved ${optimizedCommits.length} commits to IndexedDB (optimized)`);
             } catch (error) {
               console.error('[Cache] Failed to save commits to IndexedDB:', error);
             }
