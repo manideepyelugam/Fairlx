@@ -78,7 +78,7 @@ jobs:
           port: 22
           source: "."
           target: "/var/www/scrumpty"
-          rm: true
+          overwrite: true
 
       - name: Deploy to Digital Ocean
         uses: appleboy/ssh-action@v1.0.0
