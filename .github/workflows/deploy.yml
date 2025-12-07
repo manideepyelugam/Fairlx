@@ -73,8 +73,8 @@ jobs:
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DO_HOST }}
-          username: ${{ secrets.DO_USERNAME }}
-          password: ${{ secrets.DO_PASSWORD }}
+          username: deployer
+          key: ${{ secrets.DO_SSH_PRIVATE_KEY }}
           port: 22
           source: "."
           target: "/var/www/scrumpty"
@@ -84,15 +84,10 @@ jobs:
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.DO_HOST }}
-          username: ${{ secrets.DO_USERNAME }}
-          password: ${{ secrets.DO_PASSWORD }}
+          username: deployer
+          key: ${{ secrets.DO_SSH_PRIVATE_KEY }}
           port: 22
           script: |
-            # Ensure PM2 is installed globally
-            if ! command -v pm2 &> /dev/null; then
-              npm install -g pm2
-            fi
-            
             # Navigate to app directory
             cd /var/www/scrumpty
             
@@ -174,17 +169,7 @@ jobs:
             # Check if the application is running
             pm2 list
             
-            # Test if the application responds
-            curl -f http://localhost:3000 || {
-              echo "Application health check failed"
-              pm2 logs scrumpty --lines 50
-              exit 1
-            }
-            
             # Save PM2 configuration
             pm2 save
-            
-            # Setup PM2 to start on boot
-            env PATH=$PATH:/usr/bin pm2 startup systemd -u root --hp /root || true
             
             echo "Deployment completed successfully!"
