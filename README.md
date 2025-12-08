@@ -1,21 +1,48 @@
-# 🚀 Fairlx - Modern Task Management for Growing Teams
+# 🚀 Scrumpty - Enterprise-Grade Agile Project Management
 
 <div align="center">
 
+<img src="public/Logo.png" alt="Scrumpty Logo" width="120" height="120" />
 
-<img src="public/Logo.png" alt="Fairlx Logo" width="120" height="120" />
+**The Complete Solution for Agile Teams at Scale**
 
-**Simplifying Task Management for Growing Teams**
-
-[![Built with Next.js](https://img.shields.io/badge/Built%20with-Next.js-000000?style=flat&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![Built with Next.js](https://img.shields.io/badge/Built%20with-Next.js%2014-000000?style=flat&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=flat&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![Appwrite](https://img.shields.io/badge/Appwrite-FD366E?style=flat&logo=appwrite&logoColor=white)](https://appwrite.io/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-*Empower your team with tools that simplify task management, improve coordination, and ensure nothing slips through the cracks as your business expands.*
+*A powerful project management platform for modern agile teams: workspaces, spaces, projects, teams, sprints, work items, workflows, custom fields, time tracking, docs, and integrations.*
 
-[🌐 Live Demo](#) | [📖 Documentation](#) | [🐛 Report Bug](https://github.com/yourusername/fairlx/issues)
+[📖 Documentation](#-documentation) | [🚀 Quick Start](#-quick-start) | [🐛 Report Bug](https://github.com/JaiVishalSingh/Scrumpty/issues) | [✨ Request Feature](https://github.com/JaiVishalSingh/Scrumpty/issues)
 
+</div>
+
+---
+
+## 📚 Documentation
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="25%">
+        <a href="#-quick-start"><h3>🚀 Quick Start</h3></a>
+        <p>Get up and running fast</p>
+      </td>
+      <td align="center" width="25%">
+        <a href="./APPWRITE_GUIDE.md"><h3>📊 Appwrite Guide</h3></a>
+        <p>Complete schema & setup</p>
+      </td>
+      <td align="center" width="25%">
+        <a href="./CONTRIBUTING.md"><h3>🤝 Contributing</h3></a>
+        <p>How to contribute</p>
+      </td>
+      <td align="center" width="25%">
+        <a href="./CODE_OF_CONDUCT.md"><h3>📜 Code of Conduct</h3></a>
+        <p>Community guidelines</p>
+      </td>
+    </tr>
+  </table>
 </div>
 
 ---
@@ -26,312 +53,282 @@
   <table>
     <tr>
       <td align="center" width="33%">
-        <h3>📋 Task Management</h3>
-        <p>Create, assign, and track tasks with powerful workflows and custom fields</p>
+        <h3>🏢 Multi-Workspace</h3>
+        <p>Organize workspaces, spaces, programs, teams, and projects</p>
       </td>
       <td align="center" width="33%">
-        <h3>👥 Team Collaboration</h3>
-        <p>Work together seamlessly with real-time updates and team workspaces</p>
+        <h3>📋 Work Items</h3>
+        <p>Stories, Tasks, Bugs, Epics with custom fields & workflows</p>
       </td>
       <td align="center" width="33%">
-        <h3>📊 Analytics</h3>
-        <p>Get insights into team performance and project progress with detailed reports</p>
+        <h3>🏃 Sprints & Boards</h3>
+        <p>Scrum, Kanban, or Hybrid with velocity and burndown</p>
       </td>
     </tr>
     <tr>
       <td align="center" width="33%">
-        <h3>📅 Timeline Views</h3>
-        <p>Visualize project timelines with calendar views and Gantt charts</p>
+        <h3>🔄 Custom Workflows</h3>
+        <p>Status flows, transitions, and rules per workspace/space/project</p>
       </td>
       <td align="center" width="33%">
-        <h3>🔒 Security</h3>
-        <p>Enterprise-grade security with role-based access control</p>
+        <h3>⏱️ Time Tracking</h3>
+        <p>Estimates vs actuals, timesheets, capacity insights</p>
       </td>
       <td align="center" width="33%">
-        <h3>⚡ Automation</h3>
-        <p>Automate repetitive tasks and workflows to save time</p>
+        <h3>📎 Files & Docs</h3>
+        <p>Attachments (50MB) and project docs (5GB) with previews</p>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" width="33%">
+        <h3>💬 Collaboration</h3>
+        <p>Threaded comments, @mentions, notifications</p>
+      </td>
+      <td align="center" width="33%">
+        <h3>🐙 GitHub Integration</h3>
+        <p>Repo links, commit sync, AI docs, code Q&A</p>
+      </td>
+      <td align="center" width="33%">
+        <h3>📊 Analytics</h3>
+        <p>Burndown, velocity, team performance, timelines</p>
       </td>
     </tr>
   </table>
 </div>
 
+---
+
+## 🌟 Why Scrumpty?
+
+- **Enterprise-ready**: Multi-workspace, programs, teams, permissions.
+- **Flexible workflows**: Workspace/space/project-level customization.
+- **Custom fields**: Text, numbers, selects, users, dates, currency, labels.
+- **Built-in time tracking**: Estimates vs actuals, timesheets, exports.
+- **Integration-ready**: GitHub, notifications, storage.
+- **Self-host friendly**: Appwrite backend; full data ownership.
+- **Modern stack**: Next.js 14, TypeScript, Tailwind, Appwrite.
+
+---
+
 ## 🛠️ Tech Stack
 
-**Frontend:**
-- **Next.js 14** - React framework with App Router
-- **TypeScript** - Type-safe JavaScript
-- **Tailwind CSS** - Utility-first CSS framework
-- **Radix UI** - Unstyled, accessible UI components
-- **Lucide React** - Beautiful icon library
-- **React Hook Form** - Performant forms with validation
-- **Zod** - Schema validation
-- **TanStack Query** - Data fetching and caching
+**Frontend**: Next.js 14 (App Router, RSC), TypeScript, Tailwind CSS, Radix UI, shadcn/ui, Lucide, React Hook Form, Zod, TanStack Query, React Big Calendar, Recharts, Next Themes, Sonner.
 
-**Backend & Database:**
-- **Appwrite** - Backend-as-a-Service platform
-- **Hono** - Lightweight web framework for API routes
-- **Server Actions** - Next.js server-side functions
+**Backend**: Appwrite (Auth, DB, Storage, Functions, Realtime), Hono for API routes, Next.js Server Actions.
 
-**UI/UX:**
-- **shadcn/ui** - Re-usable component library
-- **Sonner** - Toast notifications
-- **React Big Calendar** - Calendar component
-- **Recharts** - Chart library
-- **Next Themes** - Theme switching
+**Tooling**: ESLint, Prettier, TypeScript strict mode, Git.
 
-## 🚀 Getting Started
+---
+
+## 🚀 Quick Start
 
 ### Prerequisites
+- Node.js 18+ (npm/yarn/pnpm/bun)
+- Appwrite Cloud or self-hosted Appwrite
 
-- **Node.js** 18+ and **npm** (or **Bun** for faster package management)
-- **Appwrite** account and project setup
+### Install
+```bash
+git clone https://github.com/JaiVishalSingh/Scrumpty.git
+cd Scrumpty
+npm install  # or bun install
+```
 
-### Installation
+### Configure env
+Create `.env.local` with your values:
+```env
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
+NEXT_PUBLIC_APPWRITE_PROJECT=your_project_id
+NEXT_APPWRITE_KEY=your_api_key
+NEXT_PUBLIC_APPWRITE_DATABASE_ID=your_database_id
+NEXT_PUBLIC_APPWRITE_WORKSPACES_ID=workspaces
+NEXT_PUBLIC_APPWRITE_MEMBERS_ID=members
+NEXT_PUBLIC_APPWRITE_PROJECTS_ID=projects
+NEXT_PUBLIC_APPWRITE_TASKS_ID=tasks
+NEXT_PUBLIC_APPWRITE_SPRINTS_ID=sprints
+NEXT_PUBLIC_APPWRITE_WORK_ITEMS_ID=work_items
+NEXT_PUBLIC_APPWRITE_TIME_LOGS_ID=time_logs
+NEXT_PUBLIC_APPWRITE_PERSONAL_BACKLOG_ID=personal_backlog
+NEXT_PUBLIC_APPWRITE_CUSTOM_COLUMNS_ID=custom_columns
+NEXT_PUBLIC_APPWRITE_DEFAULT_COLUMN_SETTINGS_ID=default_column_settings
+NEXT_PUBLIC_APPWRITE_NOTIFICATIONS_ID=notifications
+NEXT_PUBLIC_APPWRITE_SUBTASKS_ID=subtasks
+NEXT_PUBLIC_APPWRITE_ATTACHMENTS_ID=attachments
+NEXT_PUBLIC_APPWRITE_COMMENTS_ID=comments
+NEXT_PUBLIC_APPWRITE_GITHUB_REPOS_ID=github_repos
+NEXT_PUBLIC_APPWRITE_CODE_DOCS_ID=code_docs
+NEXT_PUBLIC_APPWRITE_PROJECT_DOCS_ID=project_docs
+NEXT_PUBLIC_APPWRITE_TEAMS_ID=teams
+NEXT_PUBLIC_APPWRITE_TEAM_MEMBERS_ID=team_members
+NEXT_PUBLIC_APPWRITE_PROGRAMS_ID=programs
+NEXT_PUBLIC_APPWRITE_CUSTOM_ROLES_ID=custom_roles
+NEXT_PUBLIC_APPWRITE_SPACES_ID=spaces
+NEXT_PUBLIC_APPWRITE_SPACE_MEMBERS_ID=space_members
+NEXT_PUBLIC_APPWRITE_WORKFLOWS_ID=workflows
+NEXT_PUBLIC_APPWRITE_WORKFLOW_STATUSES_ID=workflow_statuses
+NEXT_PUBLIC_APPWRITE_WORKFLOW_TRANSITIONS_ID=workflow_transitions
+NEXT_PUBLIC_APPWRITE_IMAGES_BUCKET_ID=images
+NEXT_PUBLIC_APPWRITE_ATTACHMENTS_BUCKET_ID=attachments_bucket
+NEXT_PUBLIC_APPWRITE_PROJECT_DOCS_BUCKET_ID=project-docs
+NEXT_PUBLIC_APPWRITE_SMTP_PROVIDER_ID=your_smtp_provider_id
+NEXT_PUBLIC_APPWRITE_EMAIL_TOPIC_ID=your_email_topic_id
+```
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/fairlx.git
-   cd fairlx
-   ```
+> Full schema and bucket details: see [APPWRITE_GUIDE.md](./APPWRITE_GUIDE.md).
 
-2. **Install dependencies**
-   ```bash
-   # Using npm
-   npm install
-   
-   # Or using Bun (recommended)
-   bun install
-   ```
+### Run
+```bash
+npm run dev   # or bun dev
+# open http://localhost:3000
+```
 
-3. **Environment Setup**
-   
-   Create a `.env.local` file in the root directory:
-   ```env
-   # App Configuration
-   NEXT_PUBLIC_APP_URL=http://localhost:3000
-   
-   # Appwrite Configuration
-   NEXT_PUBLIC_APPWRITE_ENDPOINT=your_appwrite_endpoint
-   NEXT_PUBLIC_APPWRITE_PROJECT=your_project_id
-   NEXT_PUBLIC_APPWRITE_DATABASE_ID=your_database_id
-   NEXT_PUBLIC_APPWRITE_WORKSPACES_ID=your_workspaces_collection_id
-   NEXT_PUBLIC_APPWRITE_MEMBERS_ID=your_members_collection_id
-   NEXT_PUBLIC_APPWRITE_PROJECTS_ID=your_projects_collection_id
-   NEXT_PUBLIC_APPWRITE_TASKS_ID=your_tasks_collection_id
-   NEXT_PUBLIC_APPWRITE_IMAGES_BUCKET_ID=your_images_bucket_id
-   
-   # Server Key
-   NEXT_APPWRITE_KEY=your_appwrite_server_key
-   ```
-
-4. **Configure Email Verification (Important!)**
-   
-   For email verification to work, you need to configure SMTP in your Appwrite project:
-   
-   - Go to your Appwrite Console → Settings → SMTP
-   - Enable "Custom SMTP server"
-   - Configure your SMTP provider (Gmail, SendGrid, AWS SES, etc.)
-   - Test the configuration
-   
-   📋 **Detailed Setup Guide**: See [SMTP_CONFIGURATION_GUIDE.md](./SMTP_CONFIGURATION_GUIDE.md) for complete instructions.
-
-5. **Run the development server**
-   ```bash
-   npm run dev
-   # or
-   bun dev
-   ```
-
-5. **Open your browser**
-   
-   Navigate to `http://localhost:3000` to see the application in action!
+---
 
 ## 📁 Project Structure
 
 ```
-fairlx/
-├── public/                 # Static assets
-│   ├── Logo.png           # App logo
-│   ├── heroimg.jpg        # Landing page hero image
-│   └── grid-dots.svg      # Background pattern
+Scrumpty/
+├── public/                # Static assets
+├── docs/                  # Documentation
 ├── src/
-│   ├── app/               # Next.js App Router
-│   │   ├── (auth)/        # Authentication pages
-│   │   ├── (dashboard)/   # Main dashboard routes
-│   │   ├── (standalone)/  # Standalone pages
-│   │   └── api/           # API routes
-│   ├── components/        # Reusable UI components
-│   │   ├── ui/            # shadcn/ui components
-│   │   └── landing/       # Landing page components
-│   ├── features/          # Feature-based modules
-│   │   ├── auth/          # Authentication
-│   │   ├── workspaces/    # Workspace management
-│   │   ├── projects/      # Project management
-│   │   ├── tasks/         # Task management
-│   │   ├── members/       # Team member management
-│   │   └── github/        # GitHub integration
-│   ├── hooks/             # Custom React hooks
-│   ├── lib/               # Utility libraries
-│   └── config.ts          # Configuration constants
-├── components.json        # shadcn/ui configuration
-├── tailwind.config.ts     # Tailwind CSS configuration
-└── next.config.mjs        # Next.js configuration
+│   ├── app/               # Next.js App Router (auth, dashboard, api, oauth)
+│   ├── components/        # UI & shared components
+│   ├── features/          # Feature modules (workspaces, spaces, projects, tasks,
+│   │                      # sprints, teams, programs, workflows, custom-fields,
+│   │                      # time-tracking, comments, attachments, notifications,
+│   │                      # github-integration, project-docs, personal-backlog,
+│   │                      # subtasks, work-item-links, timeline, saved-views, audit-logs)
+│   ├── hooks/             # Reusable hooks
+│   ├── lib/               # Appwrite client, RPC, utils, session middleware
+│   ├── types/             # Shared types
+│   └── config.ts          # Environment config constants
+├── CODE_OF_CONDUCT.md
+├── CONTRIBUTING.md
+├── APPWRITE_GUIDE.md
+├── components.json
+├── tailwind.config.ts
+├── next.config.mjs
+├── tsconfig.json
+└── package.json
 ```
 
-## 🎯 Core Features
+---
 
-### 🏢 Workspace Management
-- Create and manage multiple workspaces
-- Invite team members with role-based permissions
-- Workspace analytics and insights
-- Custom workspace branding
+## 🎯 Core Features (Detail)
 
-### 📊 Project Organization
-- Create and organize projects within workspaces
-- Project-specific analytics
-- Custom project avatars and branding
-- Project timeline visualization
+- **Organization**: Workspaces → Spaces → Projects; Programs and Teams with custom roles/permissions.
+- **Boards**: Scrum, Kanban, Hybrid; WIP limits; swimlanes; sprint metrics.
+- **Workflows**: Custom statuses and transitions per scope; rules, allowed roles, auto-assign.
+- **Work Items**: Stories/Tasks/Bugs/Epics/Subtasks; labels; components; relationships (blocks, relates, duplicates, split, clone, parent/child, causes).
+- **Custom Fields**: Text, number, date/time, select/multi-select, user(s), checkbox, URL, email, currency, percentage, labels; scope to workspace/space/project.
+- **Time Tracking**: Estimates vs actuals; per-user timesheets; capacity/velocity; exports.
+- **Docs & Files**: Attachments up to 50MB; project docs up to 5GB with categories (PRD/FRD/spec/etc.).
+- **Comments**: Threaded, @mentions, edit flag, reply chains.
+- **Notifications**: Assignments, status/priority/due changes, comments, attachments.
+- **GitHub Integration**: Repo links, commit sync, generated docs, Q&A.
+- **Timeline & Calendar**: Gantt-style timelines, calendar for due dates/milestones.
+- **Analytics**: Burndown, velocity, workload, project progress, risk signals.
+- **Security**: RBAC, space visibility, file validation, email verification.
 
-### ✅ Task Management
-- Create, edit, and delete tasks
-- Assign tasks to team members
-- Set due dates and priorities
-- Drag-and-drop task reordering
-- Bulk task operations
-- Task status tracking (Todo, In Progress, Under Review, Completed)
-
-### 👥 Team Collaboration
-- User authentication and authorization
-- Role-based access control (Admin, Member)
-- Real-time updates
-- Team member management
-- Activity tracking
-
-### 📧 Email Verification System
-- **Secure Registration**: Email verification required for all new accounts
-- **SMTP Integration**: Custom SMTP server configuration via Appwrite
-- **Password Recovery**: Secure password reset with email verification
-- **Professional Templates**: Customizable email templates for all communications
-- **Resend Functionality**: Users can resend verification emails
-- **Security Features**: Token expiration, one-time use links, session protection
-
-### 📈 Analytics & Reporting
-- Workspace performance metrics
-- Project progress tracking
-- Task completion analytics
-- Team productivity insights
-- Visual charts and graphs
-
-## 🎨 UI/UX Features
-
-### 🌟 Modern Design
-- Clean, professional interface
-- Responsive design for all devices
-- Dark/light theme support
-- Smooth animations and transitions
-- Accessible components
-
-### 🎪 Landing Page
-- Hero section with compelling CTAs
-- Feature showcase
-- Pricing tiers
-- Professional footer
-- SEO optimized
-
-### 📱 Responsive Layout
-- Mobile-first design approach
-- Tablet and desktop optimizations
-- Touch-friendly interactions
-- Adaptive navigation
+---
 
 ## 🔧 Development
 
-### Available Scripts
-
+**Scripts**
 ```bash
-# Development
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run start        # Start production server
-npm run lint         # Run ESLint
-
-# Using Bun (faster alternative)
-bun dev             # Start development server
-bun run build       # Build for production
-bun start           # Start production server
+npm run dev      # dev server
+npm run build    # production build
+npm run start    # start production
+npm run lint     # lint
 ```
 
-### Code Quality
+**Guidelines**
+- TypeScript strict; explicit types.
+- Prefer Server Components; use client components only when needed.
+- Use Tailwind utilities and shadcn/ui primitives.
+- Validate inputs with Zod; keep components small and composable.
+- Run lint before pushing.
 
-- **TypeScript** for type safety
-- **ESLint** for code linting
-- **Prettier** formatting (via ESLint config)
-- Component-based architecture
-- Custom hooks for reusable logic
-- Server-side validation with Zod
+**Example**
+```typescript
+export async function getWorkspaceById(workspaceId: string) {
+  const { databases } = await createSessionClient();
+  return databases.getDocument(DATABASE_ID, WORKSPACES_ID, workspaceId);
+}
+```
+
+---
 
 ## 🚀 Deployment
 
-### Vercel (Recommended)
+**Vercel (recommended)**
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/JaiVishalSingh/Scrumpty)
 
-1. Push your code to GitHub
-2. Connect your repository to Vercel
-3. Configure environment variables
-4. Deploy automatically on every push
+1) Import repo to Vercel
+2) Set env vars (see `.env.local`)
+3) Deploy
 
-### Manual Deployment
-
-```bash
-# Build the application
-npm run build
-
-# Start the production server
-npm run start
+**Docker (example)**
+```dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+EXPOSE 3000
+CMD ["npm", "start"]
 ```
 
-## 🔒 Environment Variables
+---
 
-Make sure to set up all required environment variables for production:
+## 🗺️ Roadmap
 
-- `NEXT_PUBLIC_APP_URL` - Your production URL
-- `NEXT_PUBLIC_APPWRITE_*` - Appwrite configuration
-- `NEXT_APPWRITE_KEY` - Server-side Appwrite key
+**Completed**: Multi-workspace, Scrum/Kanban/Hybrid boards, custom workflows, custom fields, time tracking, teams/programs, work item links, GitHub integration, comments/attachments, notifications, timelines, analytics.
 
-## 🤝 Contributing
+**In Progress**: Advanced reporting dashboard, automation rules, webhooks, mobile app.
 
-We welcome contributions! Please follow these steps:
+**Planned**: Jira import/export, Slack/Discord/Teams integration, approvals, capacity planning, portfolio mgmt, AI insights, custom widgets, i18n, advanced search, bulk ops, 2FA.
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+---
 
-### Development Guidelines
+## 📊 Database Snapshot
 
-- Follow TypeScript best practices
-- Use existing UI components when possible
-- Write meaningful commit messages
-- Test your changes thoroughly
-- Update documentation as needed
+- **Collections**: 26 (workspaces, spaces, space_members, programs, teams, team_members, custom_roles, projects, members, tasks, work_items, sprints, workflows, workflow_statuses, workflow_transitions, custom_columns, default_column_settings, time_logs, subtasks, comments, attachments, notifications, personal_backlog, github_repos, code_docs, project_docs)
+- **Buckets**: 3 (images, attachments_bucket, project-docs)
 
-## 📝 License
+Full attribute list, types, required flags, lengths, and indexes: see [APPWRITE_GUIDE.md](./APPWRITE_GUIDE.md).
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+---
+
+## 🔐 Security
+
+- Email verification required (configure SMTP provider & topic in Appwrite).
+- RBAC via workspace/member roles and custom team roles.
+- Data encrypted at rest/in transit; secure sessions.
+- File validation on uploads; antivirus enabled on buckets (Appwrite settings).
+- Report vulnerabilities privately (not via public issues).
+
+---
 
 ## 🙏 Acknowledgments
 
-- **Vercel** for Next.js and hosting platform
-- **Appwrite** for backend infrastructure
-- **Radix UI** for accessible components
-- **shadcn/ui** for the component library
-- **Tailwind CSS** for styling utilities
+- [Vercel](https://vercel.com)
+- [Appwrite](https://appwrite.io)
+- [Radix UI](https://www.radix-ui.com)
+- [shadcn/ui](https://ui.shadcn.com)
+- [Tailwind CSS](https://tailwindcss.com)
+- [TanStack Query](https://tanstack.com/query)
+- [Hono](https://hono.dev)
 
+## 💬 Community & Support
+- Docs: [APPWRITE_GUIDE.md](./APPWRITE_GUIDE.md)
+- Issues: [Bugs](https://github.com/JaiVishalSingh/Scrumpty/issues/new?labels=bug) | [Features](https://github.com/JaiVishalSingh/Scrumpty/issues/new?labels=enhancement)
+- Discussions: [GitHub Discussions](https://github.com/JaiVishalSingh/Scrumpty/discussions)
+- Contact: support@scrumpty.com
 
 <div align="center">
 
-**Built with ❤️ by the Fairlx Team**
-
-[⭐ Star us on GitHub](https://github.com/yourusername/fairlx)
+**Built with ❤️ for Agile Teams** — ⭐ us if this helps!
 
 </div>

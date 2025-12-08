@@ -1,10 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { client } from "@/lib/rpc";
+import { QUERY_CONFIG } from "@/lib/query-config";
 
 export const useGetWorkspaces = () => {
   const query = useQuery({
     queryKey: ["workspaces"],
+    staleTime: QUERY_CONFIG.STATIC.staleTime,
+    gcTime: QUERY_CONFIG.STATIC.gcTime,
     queryFn: async () => {
       const response = await client.api.workspaces.$get();
 

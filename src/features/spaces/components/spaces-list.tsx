@@ -4,10 +4,12 @@ import { useRouter } from "next/navigation";
 import { Folder, Plus, ChevronRight, Globe, Lock } from "lucide-react";
 
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
+import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyStateWithGuide } from "@/components/empty-state-with-guide";
 
 import { useGetSpaces } from "../api/use-get-spaces";
 import { useCreateSpaceModal } from "../hooks/use-create-space-modal";
@@ -19,6 +21,7 @@ export const SpacesList = () => {
   const workspaceId = useWorkspaceId();
   const { open } = useCreateSpaceModal();
   const { data, isLoading } = useGetSpaces({ workspaceId });
+  const { isAdmin } = useCurrentMember({ workspaceId });
 
   const spaces = data?.documents ?? [];
 
@@ -55,17 +58,25 @@ export const SpacesList = () => {
       </CardHeader>
       <CardContent>
         {spaces.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <Folder className="size-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">No spaces yet</p>
-            <p className="text-sm text-muted-foreground mb-4">
-              Create a space to organize your projects
-            </p>
-            <Button onClick={open}>
-              <Plus className="size-4 mr-1" />
-              Create Space
-            </Button>
-          </div>
+          <EmptyStateWithGuide
+            icon={Folder}
+            title="No Spaces Yet"
+            description="Spaces help you organize related projects by department, team, or product. Each space gets a unique key (like 'ENG' or 'MKT') that prefixes all work items."
+            action={isAdmin ? {
+              label: "Create Your First Space",
+              onClick: open,
+            } : undefined}
+            guide={{
+              title: "Why use Spaces?",
+              steps: [
+                "Group related projects together (e.g., all Engineering projects)",
+                "Each space has a unique key for work item prefixes (ENG-123)",
+                "Control access with Public or Private visibility",
+                "Apply space-level workflows and settings",
+                "Better organization for growing teams"
+              ]
+            }}
+          />
         ) : (
           <div className="space-y-2">
             {spaces.map((space) => (
