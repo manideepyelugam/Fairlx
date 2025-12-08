@@ -7,15 +7,15 @@ import { useTeamPermissions } from "./use-team-permissions";
 import { PopulatedTeamMember } from "../types";
 
 interface UseCurrentTeamMemberProps {
-    teamId: string;
+    teamId?: string | null;
 }
 
 export const useCurrentTeamMember = ({ teamId }: UseCurrentTeamMemberProps) => {
     const { data: user } = useCurrent();
     const workspaceId = useWorkspaceId();
     const { isAdmin: isWorkspaceAdmin } = useCurrentMember({ workspaceId });
-    const { data: teamMembersData, isLoading: isLoadingMembers } = useGetTeamMembers({ teamId });
-    const { data: customRolesData, isLoading: isLoadingRoles } = useGetCustomRoles({ teamId });
+    const { data: teamMembersData, isLoading: isLoadingMembers } = useGetTeamMembers({ teamId: teamId || null });
+    const { data: customRolesData, isLoading: isLoadingRoles } = useGetCustomRoles({ teamId: teamId || undefined });
 
     const members = (teamMembersData?.documents || []) as PopulatedTeamMember[];
     const member = user && members.length > 0 ? members.find((m) => m.user.userId === user.$id) || null : null;

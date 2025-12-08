@@ -108,7 +108,7 @@ export const STATUS_COLORS: Record<WorkItemStatus, { bg: string; text: string; b
   [WorkItemStatus.IN_PROGRESS]: { bg: "bg-blue-50", text: "text-blue-700", border: "border-l-blue-500" },
   [WorkItemStatus.IN_REVIEW]: { bg: "bg-purple-50", text: "text-purple-700", border: "border-l-purple-500" },
   [WorkItemStatus.DONE]: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-l-emerald-500" },
-  [WorkItemStatus.BLOCKED]: { bg: "bg-rose-50", text: "text-rose-700", border: "border-l-rose-500" },
+  [WorkItemStatus.ASSIGNED]: { bg: "bg-rose-50", text: "text-rose-700", border: "border-l-rose-500" },
 };
 
 // Professional colors for different work item types

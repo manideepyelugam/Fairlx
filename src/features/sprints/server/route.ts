@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 
-import { DATABASE_ID, SPRINTS_ID, WORK_ITEMS_ID } from "@/config";
+import { DATABASE_ID, SPRINTS_ID, WORK_ITEMS_ID, MEMBERS_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
 
@@ -133,23 +133,52 @@ const app = new Hono()
       );
 
       // Populate assignees for work items
+      // First collect all unique assignee IDs (these are member document IDs)
+      const allAssigneeIds = new Set<string>();
+      workItems.documents.forEach((workItem) => {
+        if (workItem.assigneeIds && Array.isArray(workItem.assigneeIds)) {
+          workItem.assigneeIds.forEach(id => {
+            if (id && typeof id === 'string') {
+              allAssigneeIds.add(id);
+            }
+          });
+        }
+      });
+
+      // Fetch all members at once
+      const membersData = allAssigneeIds.size > 0
+        ? await databases.listDocuments(
+            DATABASE_ID,
+            MEMBERS_ID,
+            [Query.equal("$id", Array.from(allAssigneeIds))]
+          )
+        : { documents: [] };
+
+      // Build a map of member ID -> user data for quick lookup
+      const assigneeMap = new Map<string, { $id: string; name: string; email: string; profileImageUrl: string | null }>();
+      
+      await Promise.all(
+        membersData.documents.map(async (memberDoc) => {
+          try {
+            const userInfo = await users.get(memberDoc.userId);
+            assigneeMap.set(memberDoc.$id, {
+              $id: memberDoc.$id,
+              name: userInfo.name || userInfo.email,
+              email: userInfo.email,
+              profileImageUrl: userInfo.prefs?.profileImageUrl || null,
+            });
+          } catch {
+            // User not found - skip this member
+          }
+        })
+      );
+
       const populatedWorkItems = await Promise.all(
         workItems.documents.map(async (workItem) => {
-          const assignees = await Promise.all(
-            workItem.assigneeIds.map(async (assigneeId) => {
-              try {
-                const assignee = await users.get(assigneeId);
-                return {
-                  $id: assignee.$id,
-                  name: assignee.name,
-                  email: assignee.email,
-                  profileImageUrl: assignee.prefs?.profileImageUrl || null,
-                };
-              } catch {
-                return null;
-              }
-            })
-          );
+          // Get assignees from the pre-built map
+          const assignees = (workItem.assigneeIds || [])
+            .map(id => assigneeMap.get(id))
+            .filter((a): a is NonNullable<typeof a> => a !== null);
 
           // Get epic info if exists
           let epic = null;

@@ -10,14 +10,14 @@ import {
   PROJECT_DOCS_ID, 
   PROJECT_DOCS_BUCKET_ID, 
   PROJECTS_ID, 
-  TASKS_ID,
+  WORK_ITEMS_ID,
   MEMBERS_ID,
 } from "@/config";
 import { getMember } from "@/features/members/utils";
 import { Member } from "@/features/members/types";
 import { ProjectDocsAI } from "../lib/project-docs-ai";
 import { ProjectDocument } from "../types";
-import { Task, TaskStatus, TaskPriority } from "@/features/tasks/types";
+import { WorkItem, WorkItemStatus, WorkItemPriority } from "@/features/sprints/types";
 import { 
   ProjectAIContext, 
   DocumentContext, 
@@ -161,10 +161,10 @@ const app = new Hono()
           ]
         );
 
-        // Get project tasks
-        const tasksResponse = await databases.listDocuments<Task>(
+        // Get project work items (replaces tasks)
+        const workItemsResponse = await databases.listDocuments<WorkItem>(
           DATABASE_ID,
-          TASKS_ID,
+          WORK_ITEMS_ID,
           [
             Query.equal("projectId", projectId),
             Query.equal("workspaceId", workspaceId),
@@ -188,11 +188,13 @@ const app = new Hono()
           memberMap.set(m.$id, m);
         });
 
-        // Count tasks per assignee
+        // Count tasks per assignee (using work items)
         const tasksByAssignee: Record<string, number> = {};
-        tasksResponse.documents.forEach((task) => {
-          if (task.assigneeId) {
-            tasksByAssignee[task.assigneeId] = (tasksByAssignee[task.assigneeId] || 0) + 1;
+        workItemsResponse.documents.forEach((workItem) => {
+          if (workItem.assigneeIds && workItem.assigneeIds.length > 0) {
+            workItem.assigneeIds.forEach(assigneeId => {
+              tasksByAssignee[assigneeId] = (tasksByAssignee[assigneeId] || 0) + 1;
+            });
           }
         });
 
@@ -228,25 +230,25 @@ const app = new Hono()
           })
         );
 
-        // Process tasks with assignee names
-        const tasks: TaskContext[] = tasksResponse.documents.map((task) => {
+        // Process work items as tasks with assignee names
+        const tasks: TaskContext[] = workItemsResponse.documents.map((workItem) => {
           // Handle multiple assignees
-          const assigneeIds = task.assigneeIds || (task.assigneeId ? [task.assigneeId] : []);
+          const assigneeIds = workItem.assigneeIds || [];
           const assigneeNames = assigneeIds
             .map(id => memberMap.get(id))
             .filter(Boolean)
             .map(m => m!.name || m!.email || "Unknown");
           
           return {
-            id: task.$id,
-            name: task.name,
-            status: task.status,
-            priority: task.priority || undefined,
-            description: task.description || undefined,
-            assigneeId: task.assigneeId || assigneeIds[0] || undefined,
+            id: workItem.$id,
+            name: workItem.title,
+            status: workItem.status,
+            priority: workItem.priority || undefined,
+            description: workItem.description || undefined,
+            assigneeId: assigneeIds[0] || undefined,
             assigneeName: assigneeNames.length > 0 ? assigneeNames.join(", ") : undefined,
-            dueDate: task.dueDate || undefined,
-            labels: task.labels || undefined,
+            dueDate: workItem.dueDate || undefined,
+            labels: workItem.labels || undefined,
           };
         });
 
@@ -338,10 +340,10 @@ const app = new Hono()
           ]
         );
 
-        // Get project tasks
-        const tasksResponse = await databases.listDocuments<Task>(
+        // Get project work items
+        const workItemsResponse = await databases.listDocuments<WorkItem>(
           DATABASE_ID,
-          TASKS_ID,
+          WORK_ITEMS_ID,
           [
             Query.equal("projectId", projectId),
             Query.equal("workspaceId", workspaceId),
@@ -386,10 +388,10 @@ ${extractedText.slice(0, 5000)}
           })
         );
 
-        // Format tasks context with assignee names
-        const taskContexts = tasksResponse.documents.map((task) => {
+        // Format work items context with assignee names
+        const taskContexts = workItemsResponse.documents.map((workItem) => {
           // Handle multiple assignees
-          const assigneeIds = task.assigneeIds || (task.assigneeId ? [task.assigneeId] : []);
+          const assigneeIds = workItem.assigneeIds || [];
           const assigneeNames = assigneeIds
             .map(id => memberMap.get(id))
             .filter(Boolean)
@@ -397,20 +399,17 @@ ${extractedText.slice(0, 5000)}
           const assigneeDisplay = assigneeNames.length > 0 ? assigneeNames.join(", ") : "Unassigned";
           
           // Format due date
-          const dueDateDisplay = task.dueDate 
-            ? new Date(task.dueDate).toLocaleDateString() 
+          const dueDateDisplay = workItem.dueDate 
+            ? new Date(workItem.dueDate).toLocaleDateString() 
             : "No due date";
-          const endDateDisplay = task.endDate 
-            ? new Date(task.endDate).toLocaleDateString() 
-            : null;
           
-          return `- **${task.name}** [${task.status}] ${task.priority ? `(${task.priority})` : ""} | Assigned to: ${assigneeDisplay} | Due: ${dueDateDisplay}${endDateDisplay ? ` | End: ${endDateDisplay}` : ""} | Labels: ${task.labels?.join(", ") || "None"} | Est. Hours: ${task.estimatedHours || "Not set"} - ${task.description?.slice(0, 200) || "No description"}`;
+          return `- **${workItem.title}** [${workItem.status}] ${workItem.priority ? `(${workItem.priority})` : ""} | Assigned to: ${assigneeDisplay} | Due: ${dueDateDisplay} | Labels: ${workItem.labels?.join(", ") || "None"} | Est. Hours: ${workItem.estimatedHours || "Not set"} - ${workItem.description?.slice(0, 200) || "No description"}`;
         }).join("\n");
 
         // Format members context
         const memberContexts = membersResponse.documents.map((m) => {
-          const taskCount = tasksResponse.documents.filter(t => 
-            t.assigneeIds?.includes(m.$id) || t.assigneeId === m.$id
+          const taskCount = workItemsResponse.documents.filter(w => 
+            w.assigneeIds?.includes(m.$id)
           ).length;
           return `- **${m.name || m.email || "Unknown"}** (${m.role}) - ${taskCount} task(s) assigned`;
         }).join("\n");
@@ -425,7 +424,7 @@ ${extractedText.slice(0, 5000)}
 
 ## Project Statistics
 - **Total Documents:** ${docsResponse.documents.length}
-- **Total Tasks:** ${tasksResponse.documents.length}
+- **Total Tasks:** ${workItemsResponse.documents.length}
 - **Team Members:** ${membersResponse.documents.length}
 - **Document Categories:** ${[...new Set(docsResponse.documents.map(d => d.category))].join(", ") || "None"}
 
@@ -463,7 +462,7 @@ Provide a comprehensive, helpful answer:`;
           timestamp: new Date().toISOString(),
           contextUsed: {
             documentsCount: docsResponse.documents.length,
-            tasksCount: tasksResponse.documents.length,
+            tasksCount: workItemsResponse.documents.length,
             membersCount: membersResponse.documents.length,
             categories: [...new Set(docsResponse.documents.map(d => d.category))],
           },
@@ -527,10 +526,10 @@ Provide a comprehensive, helpful answer:`;
           ]
         );
 
-        // Get existing tasks for context
-        const tasksResponse = await databases.listDocuments<Task>(
+        // Get existing work items for context
+        const workItemsResponse = await databases.listDocuments<WorkItem>(
           DATABASE_ID,
-          TASKS_ID,
+          WORK_ITEMS_ID,
           [
             Query.equal("projectId", projectId),
             Query.equal("workspaceId", workspaceId),
@@ -543,34 +542,35 @@ Provide a comprehensive, helpful answer:`;
           `- ${m.name || m.email} (ID: ${m.$id}, Role: ${m.role})`
         ).join("\n");
 
-        // Format existing tasks for context (including their labels)
+        // Format existing work items for context (including their labels)
         const existingLabels = new Set<string>();
-        const tasksList = tasksResponse.documents.map(t => {
-          if (t.labels) {
-            t.labels.forEach(l => existingLabels.add(l));
+        const tasksList = workItemsResponse.documents.map(w => {
+          if (w.labels) {
+            w.labels.forEach(l => existingLabels.add(l));
           }
-          return `- ${t.name} [${t.status}] ${t.priority ? `(${t.priority})` : ""} ${t.labels?.length ? `Labels: ${t.labels.join(", ")}` : ""}`;
+          return `- ${w.title} [${w.status}] ${w.priority ? `(${w.priority})` : ""} ${w.labels?.length ? `Labels: ${w.labels.join(", ")}` : ""}`;
         }).join("\n");
 
         const existingLabelsList = Array.from(existingLabels).join(", ");
 
         // Build prompt for AI
-        const aiPrompt = `You are a task creation assistant for project "${project.name}". Based on the user's request, generate task details in JSON format.
+        const aiPrompt = `You are a work item creation assistant for project "${project.name}". Based on the user's request, generate work item details in JSON format.
 
 ## Available Team Members
 ${membersList || "No members found"}
 
-## Existing Tasks (for context)
-${tasksList || "No existing tasks"}
+## Existing Work Items (for context)
+${tasksList || "No existing work items"}
 
 ## Existing Labels in Project
 ${existingLabelsList || "No existing labels"}
 
-## Valid Task Statuses
-- ASSIGNED
+## Valid Work Item Statuses
+- TODO
 - IN_PROGRESS
-- COMPLETED
-- CLOSED
+- IN_REVIEW
+- DONE
+- BLOCKED
 
 ## Valid Priorities
 - LOW
@@ -591,25 +591,25 @@ ${prompt}
 
 Generate a JSON object with the following structure (only include fields that are relevant):
 {
-  "name": "Task name (required, be specific and actionable)",
-  "description": "Detailed task description",
-  "status": "ASSIGNED",
+  "name": "Work item title (required, be specific and actionable)",
+  "description": "Detailed work item description",
+  "status": "TODO",
   "priority": "MEDIUM",
   "dueDate": "YYYY-MM-DD (if mentioned or can be inferred)",
   "endDate": "YYYY-MM-DD (if mentioned)",
   "assigneeIds": ["member-id-1"] (only if specific assignee mentioned by name),
-  "labels": ["label1", "label2"] (ALWAYS suggest 1-3 relevant labels based on task type/category),
+  "labels": ["label1", "label2"] (ALWAYS suggest 1-3 relevant labels based on work item type/category),
   "estimatedHours": 4 (if time estimate is mentioned)
 }
 
 IMPORTANT: 
 - Return ONLY valid JSON, no markdown code blocks
 - Use actual member IDs from the list above for assigneeIds (only if user mentions a specific person)
-- Make the task name clear and actionable
-- ALWAYS generate relevant labels based on the task type (e.g., "bug" for bugs, "feature" for features, "frontend"/"backend" for technical tasks)
+- Make the work item title clear and actionable
+- ALWAYS generate relevant labels based on the work item type (e.g., "bug" for bugs, "feature" for features, "frontend"/"backend" for technical tasks)
 - Prefer existing labels from the project when applicable
 - If dates are mentioned like "tomorrow" or "next week", calculate the actual date from today (${new Date().toISOString().split('T')[0]})
-- Default status to "ASSIGNED" if not specified
+- Default status to "TODO" if not specified
 - Default priority to "MEDIUM" if not specified`;
 
         const aiResponse = await projectDocsAI.answerProjectQuestion(aiPrompt);
@@ -634,12 +634,12 @@ IMPORTANT:
           
           // Validate required field
           if (!taskData.name) {
-            throw new Error("Task name is required");
+            throw new Error("Work item title is required");
           }
 
           // Set defaults
-          taskData.status = taskData.status || TaskStatus.ASSIGNED;
-          taskData.priority = taskData.priority || TaskPriority.MEDIUM;
+          taskData.status = taskData.status || WorkItemStatus.TODO;
+          taskData.priority = taskData.priority || WorkItemPriority.MEDIUM;
         } catch (parseError) {
           console.error("Failed to parse AI response:", parseError, aiResponse);
           return c.json({
@@ -652,15 +652,15 @@ IMPORTANT:
           } satisfies AITaskResponse);
         }
 
-        // If autoExecute is true, create the task directly
+        // If autoExecute is true, create the work item directly
         if (autoExecute) {
           try {
-            // Get highest position for the new task
-            const highestPositionTask = await databases.listDocuments(
+            // Get highest position for the new work item
+            const highestPositionWorkItem = await databases.listDocuments(
               DATABASE_ID,
-              TASKS_ID,
+              WORK_ITEMS_ID,
               [
-                Query.equal("status", taskData.status || TaskStatus.ASSIGNED),
+                Query.equal("status", taskData.status || WorkItemStatus.TODO),
                 Query.equal("workspaceId", workspaceId),
                 Query.orderDesc("position"),
                 Query.limit(1),
@@ -668,22 +668,21 @@ IMPORTANT:
             );
 
             const newPosition =
-              highestPositionTask.documents.length > 0
-                ? (highestPositionTask.documents[0] as Task).position + 1000
+              highestPositionWorkItem.documents.length > 0
+                ? (highestPositionWorkItem.documents[0] as WorkItem).position + 1000
                 : 1000;
 
-            const task = await databases.createDocument(
+            const workItem = await databases.createDocument(
               DATABASE_ID,
-              TASKS_ID,
+              WORK_ITEMS_ID,
               ID.unique(),
               {
-                name: taskData.name,
+                title: taskData.name,
                 description: taskData.description || "",
                 status: taskData.status,
                 priority: taskData.priority,
                 dueDate: taskData.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
                 endDate: taskData.endDate || undefined,
-                assigneeId: taskData.assigneeIds?.[0] || "",
                 assigneeIds: taskData.assigneeIds || [],
                 labels: taskData.labels || [],
                 estimatedHours: taskData.estimatedHours,
@@ -701,15 +700,15 @@ IMPORTANT:
                 executed: true,
                 result: {
                   success: true,
-                  taskId: task.$id,
-                  message: `Task "${taskData.name}" created successfully`,
+                  taskId: workItem.$id,
+                  message: `Work item "${taskData.name}" created successfully`,
                 },
               },
-              message: `✅ Task "${taskData.name}" has been created successfully!`,
+              message: `✅ Work item "${taskData.name}" has been created successfully!`,
               task: {
-                id: task.$id,
-                name: task.name as string,
-                status: task.status as string,
+                id: workItem.$id,
+                name: workItem.title as string,
+                status: workItem.status as string,
               },
             } satisfies AITaskResponse);
           } catch (createError) {
@@ -803,10 +802,10 @@ IMPORTANT:
           return c.json({ error: "Unauthorized" }, 401);
         }
 
-        // Get the existing task
-        const existingTask = await databases.getDocument<Task>(
+        // Get the existing work item
+        const existingTask = await databases.getDocument<WorkItem>(
           DATABASE_ID,
-          TASKS_ID,
+          WORK_ITEMS_ID,
           taskId
         );
 
@@ -839,26 +838,28 @@ IMPORTANT:
         ).join("\n");
 
         // Build prompt for AI
-        const aiPrompt = `You are a task update assistant. Based on the user's request, generate the updated task fields in JSON format.
+        const aiPrompt = `You are a work item update assistant. Based on the user's request, generate the updated work item fields in JSON format.
 
-## Current Task Details
-- Name: ${existingTask.name}
+## Current Work Item Details
+- Name: ${existingTask.title}
 - Description: ${existingTask.description || "No description"}
 - Status: ${existingTask.status}
 - Priority: ${existingTask.priority || "Not set"}
 - Due Date: ${existingTask.dueDate || "Not set"}
 - End Date: ${existingTask.endDate || "Not set"}
-- Assignees: ${existingTask.assigneeIds?.join(", ") || existingTask.assigneeId || "Unassigned"}
+- Assignees: ${existingTask.assigneeIds?.join(", ") || "Unassigned"}
 - Labels: ${existingTask.labels?.join(", ") || "None"}
 - Estimated Hours: ${existingTask.estimatedHours || "Not set"}
 
 ## Available Team Members
 ${membersList || "No members found"}
 
-## Valid Task Statuses
-- ASSIGNED
+## Valid Work Item Statuses
+- TODO
 - IN_PROGRESS
-- COMPLETED
+- IN_REVIEW
+- DONE
+- BLOCKED
 - CLOSED
 
 ## Valid Priorities
@@ -939,7 +940,7 @@ IMPORTANT:
           try {
             const updatePayload: Record<string, unknown> = {};
             
-            if (updateData.name !== undefined) updatePayload.name = updateData.name;
+            if (updateData.name !== undefined) updatePayload.title = updateData.name;
             if (updateData.description !== undefined) updatePayload.description = updateData.description;
             if (updateData.status !== undefined) updatePayload.status = updateData.status;
             if (updateData.priority !== undefined) updatePayload.priority = updateData.priority;
@@ -950,12 +951,11 @@ IMPORTANT:
             
             if (updateData.assigneeIds && updateData.assigneeIds.length > 0) {
               updatePayload.assigneeIds = updateData.assigneeIds;
-              updatePayload.assigneeId = updateData.assigneeIds[0];
             }
 
-            const updatedTask = await databases.updateDocument(
+            const updatedWorkItem = await databases.updateDocument(
               DATABASE_ID,
-              TASKS_ID,
+              WORK_ITEMS_ID,
               taskId,
               updatePayload
             );
@@ -971,19 +971,19 @@ IMPORTANT:
                 executed: true,
                 result: {
                   success: true,
-                  taskId: updatedTask.$id,
-                  message: `Task updated: ${changedFields}`,
+                  taskId: updatedWorkItem.$id,
+                  message: `Work item updated: ${changedFields}`,
                 },
               },
-              message: `✅ Task "${existingTask.name}" has been updated successfully! Changed: ${changedFields}`,
+              message: `✅ Work item "${existingTask.title}" has been updated successfully! Changed: ${changedFields}`,
               task: {
-                id: updatedTask.$id,
-                name: updatedTask.name as string,
-                status: updatedTask.status as string,
+                id: updatedWorkItem.$id,
+                name: updatedWorkItem.title as string,
+                status: updatedWorkItem.status as string,
               },
             } satisfies AITaskResponse);
           } catch (updateError) {
-            console.error("Failed to update task:", updateError);
+            console.error("Failed to update work item:", updateError);
             return c.json({
               success: false,
               action: {
@@ -1032,10 +1032,10 @@ IMPORTANT:
           })
         ));
 
-        // Get existing labels from project tasks for suggestions
-        const projectTasksResponse = await databases.listDocuments<Task>(
+        // Get existing labels from project work items for suggestions
+        const projectWorkItemsResponse = await databases.listDocuments<WorkItem>(
           DATABASE_ID,
-          TASKS_ID,
+          WORK_ITEMS_ID,
           [
             Query.equal("projectId", projectId),
             Query.limit(100),
@@ -1043,7 +1043,7 @@ IMPORTANT:
         );
         
         const existingProjectLabels = new Set<string>();
-        projectTasksResponse.documents.forEach(t => {
+        projectWorkItemsResponse.documents.forEach(t => {
           if (t.labels) {
             t.labels.forEach(l => existingProjectLabels.add(l));
           }
@@ -1056,16 +1056,16 @@ IMPORTANT:
           "bug", "feature", "enhancement", "frontend", "backend", "documentation"
         ])).slice(0, 15);
 
-        // Merge existing task data with the proposed updates
-        // This ensures the preview card shows the full task state
+        // Merge existing work item data with the proposed updates
+        // This ensures the preview card shows the full work item state
         const mergedTaskData: AITaskData = {
-          name: updateData.name || existingTask.name,
+          name: updateData.name || existingTask.title,
           description: updateData.description !== undefined ? updateData.description : (existingTask.description || ""),
           status: updateData.status || existingTask.status,
           priority: updateData.priority || existingTask.priority,
           dueDate: updateData.dueDate || existingTask.dueDate,
           endDate: updateData.endDate || existingTask.endDate,
-          assigneeIds: updateData.assigneeIds || existingTask.assigneeIds || (existingTask.assigneeId ? [existingTask.assigneeId] : []),
+          assigneeIds: updateData.assigneeIds || existingTask.assigneeIds || [],
           labels: updateData.labels || existingTask.labels || [],
           estimatedHours: updateData.estimatedHours !== undefined ? updateData.estimatedHours : existingTask.estimatedHours,
         };
@@ -1079,14 +1079,14 @@ IMPORTANT:
             suggestions,
             executed: false,
           },
-          message: `I've prepared updates for task "${existingTask.name}". Review the changes and click "Apply Updates" to save.`,
+          message: `I've prepared updates for work item "${existingTask.title}". Review the changes and click "Apply Updates" to save.`,
           availableMembers,
           suggestedLabels,
         } satisfies AITaskResponse);
       } catch (error) {
-        console.error("Error updating task via AI:", error);
+        console.error("Error updating work item via AI:", error);
         return c.json({ 
-          error: error instanceof Error ? error.message : "Failed to process task update" 
+          error: error instanceof Error ? error.message : "Failed to process work item update" 
         }, 500);
       }
     }
@@ -1115,19 +1115,19 @@ IMPORTANT:
 
         // If taskId is provided, this is an update
         if (taskId) {
-          const existingTask = await databases.getDocument<Task>(
+          const existingWorkItem = await databases.getDocument<WorkItem>(
             DATABASE_ID,
-            TASKS_ID,
+            WORK_ITEMS_ID,
             taskId
           );
 
-          if (existingTask.workspaceId !== workspaceId || existingTask.projectId !== projectId) {
-            return c.json({ error: "Task not found in this project" }, 404);
+          if (existingWorkItem.workspaceId !== workspaceId || existingWorkItem.projectId !== projectId) {
+            return c.json({ error: "Work item not found in this project" }, 404);
           }
 
           const updatePayload: Record<string, unknown> = {};
           
-          if (taskData.name !== undefined) updatePayload.name = taskData.name;
+          if (taskData.name !== undefined) updatePayload.title = taskData.name;
           if (taskData.description !== undefined) updatePayload.description = taskData.description;
           if (taskData.status !== undefined) updatePayload.status = taskData.status;
           if (taskData.priority !== undefined) updatePayload.priority = taskData.priority;
@@ -1138,12 +1138,11 @@ IMPORTANT:
           
           if (taskData.assigneeIds && taskData.assigneeIds.length > 0) {
             updatePayload.assigneeIds = taskData.assigneeIds;
-            updatePayload.assigneeId = taskData.assigneeIds[0];
           }
 
-          const updatedTask = await databases.updateDocument(
+          const updatedWorkItem = await databases.updateDocument(
             DATABASE_ID,
-            TASKS_ID,
+            WORK_ITEMS_ID,
             taskId,
             updatePayload
           );
@@ -1157,29 +1156,29 @@ IMPORTANT:
               executed: true,
               result: {
                 success: true,
-                taskId: updatedTask.$id,
-                message: `Task "${updatedTask.name}" updated successfully`,
+                taskId: updatedWorkItem.$id,
+                message: `Work item "${updatedWorkItem.title}" updated successfully`,
               },
             },
-            message: `✅ Task "${updatedTask.name}" has been updated!`,
+            message: `✅ Work item "${updatedWorkItem.title}" has been updated!`,
             task: {
-              id: updatedTask.$id,
-              name: updatedTask.name as string,
-              status: updatedTask.status as string,
+              id: updatedWorkItem.$id,
+              name: updatedWorkItem.title as string,
+              status: updatedWorkItem.status as string,
             },
           } satisfies AITaskResponse);
         }
 
         // This is a create operation - name is required
         if (!taskData.name) {
-          return c.json({ error: "Task name is required for creating a task" }, 400);
+          return c.json({ error: "Work item title is required for creating a work item" }, 400);
         }
 
-        const highestPositionTask = await databases.listDocuments(
+        const highestPositionWorkItem = await databases.listDocuments(
           DATABASE_ID,
-          TASKS_ID,
+          WORK_ITEMS_ID,
           [
-            Query.equal("status", taskData.status || TaskStatus.ASSIGNED),
+            Query.equal("status", taskData.status || WorkItemStatus.TODO),
             Query.equal("workspaceId", workspaceId),
             Query.orderDesc("position"),
             Query.limit(1),
@@ -1187,22 +1186,21 @@ IMPORTANT:
         );
 
         const newPosition =
-          highestPositionTask.documents.length > 0
-            ? (highestPositionTask.documents[0] as Task).position + 1000
+          highestPositionWorkItem.documents.length > 0
+            ? (highestPositionWorkItem.documents[0] as WorkItem).position + 1000
             : 1000;
 
-        const task = await databases.createDocument(
+        const workItem = await databases.createDocument(
           DATABASE_ID,
-          TASKS_ID,
+          WORK_ITEMS_ID,
           ID.unique(),
           {
-            name: taskData.name,
+            title: taskData.name,
             description: taskData.description || "",
-            status: taskData.status || TaskStatus.ASSIGNED,
-            priority: taskData.priority || TaskPriority.MEDIUM,
+            status: taskData.status || WorkItemStatus.TODO,
+            priority: taskData.priority || WorkItemPriority.MEDIUM,
             dueDate: taskData.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Default to 1 week from now
             endDate: taskData.endDate || undefined,
-            assigneeId: taskData.assigneeIds?.[0] || "",
             assigneeIds: taskData.assigneeIds || [],
             labels: taskData.labels || [],
             estimatedHours: taskData.estimatedHours,
@@ -1220,21 +1218,21 @@ IMPORTANT:
             executed: true,
             result: {
               success: true,
-              taskId: task.$id,
-              message: `Task "${taskData.name}" created successfully`,
+              taskId: workItem.$id,
+              message: `Work item "${taskData.name}" created successfully`,
             },
           },
-          message: `✅ Task "${taskData.name}" has been created!`,
+          message: `✅ Work item "${taskData.name}" has been created!`,
           task: {
-            id: task.$id,
-            name: task.name as string,
-            status: task.status as string,
+            id: workItem.$id,
+            name: workItem.title as string,
+            status: workItem.status as string,
           },
         } satisfies AITaskResponse);
       } catch (error) {
-        console.error("Error executing task suggestion:", error);
+        console.error("Error executing work item operation:", error);
         return c.json({ 
-          error: error instanceof Error ? error.message : "Failed to execute task operation" 
+          error: error instanceof Error ? error.message : "Failed to execute work item operation" 
         }, 500);
       }
     }

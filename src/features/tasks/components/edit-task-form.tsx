@@ -67,6 +67,8 @@ export const EditTaskForm = ({
     resolver: zodResolver(updateTaskSchema),
     defaultValues: {
       ...initialValues,
+      // Use title or name for compatibility with workItems collection
+      name: initialValues.name || initialValues.title,
       dueDate: initialValues.dueDate
         ? new Date(initialValues.dueDate)
         : undefined,

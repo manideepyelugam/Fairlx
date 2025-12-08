@@ -23,8 +23,6 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
     initialData.prefs?.profileImageUrl ?? null
   );
 
-  console.log("[Profile Client] Initial Data:", initialData);
-
   const { mutate: updateProfile, isPending: isUpdating } = useUpdateProfile();
   const { mutate: uploadImage, isPending: isUploading } = useUploadProfileImage();
 

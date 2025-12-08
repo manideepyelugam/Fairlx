@@ -389,7 +389,7 @@ function TaskBar({
   // Use different visual treatment based on status
   const isDone = item.status === "DONE";
   const isInProgress = item.status === "IN_PROGRESS";
-  const isBlocked = item.status === "BLOCKED";
+  const isAssigned = item.status === "ASSIGNED";
 
   return (
     <Tooltip>
@@ -401,7 +401,7 @@ function TaskBar({
             typeStyle.border,
             isSelected && "ring-2 ring-blue-500 ring-offset-1 z-10",
             isDone && "opacity-70",
-            isBlocked && "border-l-rose-500 border-dashed",
+            isAssigned && "border-l-rose-500 border-dashed",
             "hover:shadow-lg hover:z-20 hover:scale-[1.02]"
           )}
           style={{

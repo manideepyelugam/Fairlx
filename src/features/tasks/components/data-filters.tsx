@@ -29,9 +29,10 @@ import { useManageColumnsModal } from "@/features/custom-columns/hooks/use-manag
 interface DataFiltersProps {
   hideProjectFilter?: boolean;
   showMyTasksOnly?: boolean; // New prop to hide assignee filter in My Tasks
+  disableManageColumns?: boolean; // Disable when project setup is needed
 }
 
-export const DataFilters = ({ hideProjectFilter, showMyTasksOnly }: DataFiltersProps) => {
+export const DataFilters = ({ hideProjectFilter, showMyTasksOnly, disableManageColumns }: DataFiltersProps) => {
   const workspaceId = useWorkspaceId();
   const currentProjectId = useProjectId();
 
@@ -132,17 +133,20 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly }: DataFiltersP
         <SelectContent >
           <SelectItem value="all" className="text-xs">All statuses</SelectItem>
           <SelectSeparator />
+          <SelectItem value={TaskStatus.TODO}>
+            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.TODO]}To Do</div>
+          </SelectItem>
           <SelectItem value={TaskStatus.ASSIGNED}>
             <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.ASSIGNED]}Assigned</div>
           </SelectItem>
           <SelectItem value={TaskStatus.IN_PROGRESS}>
             <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.IN_PROGRESS]}In Progress</div>
           </SelectItem>
-          <SelectItem value={TaskStatus.COMPLETED}>
-            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.COMPLETED]}Completed</div>
+          <SelectItem value={TaskStatus.IN_REVIEW}>
+            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.IN_REVIEW]}In Review</div>
           </SelectItem>
-          <SelectItem value={TaskStatus.CLOSED}>
-            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.CLOSED]}Closed</div>
+          <SelectItem value={TaskStatus.DONE}>
+            <div className="flex items-center text-xs gap-x-2">{statusIconMap[TaskStatus.DONE]}Done</div>
           </SelectItem>
 
           {customColumnOptions && customColumnOptions.length > 0 && (
@@ -278,7 +282,9 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly }: DataFiltersP
         variant="outline"
         size="sm"
         onClick={openManageModal}
-        className="h-8 text-xs lg:ml-auto bg-black text-white hover:bg-gray-800 hover:text-white"
+        disabled={disableManageColumns}
+        title={disableManageColumns ? "Complete project setup in Backlog first" : undefined}
+        className="h-8 text-xs lg:ml-auto bg-black text-white hover:bg-gray-800 hover:text-white disabled:opacity-50"
       >
         <Settings2Icon className="size-4 mr-2" />
         Manage Columns

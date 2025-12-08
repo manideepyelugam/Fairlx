@@ -82,7 +82,6 @@ export const useLinkRepository = () => {
               await saveCommitsToCache(data.projectId, optimizedCommits);
               clearLegacyCommits(data.projectId);
               notifyCommitsUpdated(data.projectId);
-              console.log(`[Cache] Saved ${optimizedCommits.length} commits to IndexedDB (optimized)`);
             } catch (error) {
               console.error('[Cache] Failed to save commits to IndexedDB:', error);
             }

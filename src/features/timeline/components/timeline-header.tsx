@@ -226,7 +226,7 @@ export function TimelineHeader({
             <SelectItem value={WorkItemStatus.IN_PROGRESS}>In Progress</SelectItem>
             <SelectItem value={WorkItemStatus.IN_REVIEW}>In Review</SelectItem>
             <SelectItem value={WorkItemStatus.DONE}>Done</SelectItem>
-            <SelectItem value={WorkItemStatus.BLOCKED}>Blocked</SelectItem>
+            <SelectItem value={WorkItemStatus.ASSIGNED}>Assigned</SelectItem>
           </SelectContent>
         </Select>
 

@@ -20,7 +20,13 @@ interface EnhancedTimelineProps {
 
 type ViewType = "week" | "month" | "quarter";
 
-const statusConfig = {
+const statusConfig: Record<string, { color: string; lightColor: string; borderColor: string; textColor: string }> = {
+  [TaskStatus.TODO]: { 
+    color: "bg-gray-500", 
+    lightColor: "bg-gray-100", 
+    borderColor: "border-gray-200",
+    textColor: "text-gray-700"
+  },
   [TaskStatus.ASSIGNED]: { 
     color: "bg-red-500", 
     lightColor: "bg-red-100", 
@@ -33,13 +39,13 @@ const statusConfig = {
     borderColor: "border-yellow-200",
     textColor: "text-yellow-700"
   },
-  [TaskStatus.COMPLETED]: { 
+  [TaskStatus.IN_REVIEW]: { 
     color: "bg-blue-500", 
     lightColor: "bg-blue-100", 
     borderColor: "border-blue-200",
     textColor: "text-blue-700"
   },
-  [TaskStatus.CLOSED]: { 
+  [TaskStatus.DONE]: { 
     color: "bg-emerald-500", 
     lightColor: "bg-emerald-100", 
     borderColor: "border-emerald-200",
@@ -105,7 +111,7 @@ export const EnhancedTimeline = ({ data }: EnhancedTimelineProps) => {
 
   const processedTasks = useMemo(() => {
     return data.map(task => {
-      const taskStart = startOfDay(parseISO(task.dueDate));
+      const taskStart = startOfDay(parseISO(task.dueDate || new Date().toISOString()));
       const taskEnd = task.endDate ? startOfDay(parseISO(task.endDate)) : taskStart;
       
       // Calculate position and width

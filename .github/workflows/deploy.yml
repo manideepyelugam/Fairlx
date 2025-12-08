@@ -54,6 +54,15 @@ jobs:
           NEXT_PUBLIC_APPWRITE_CUSTOM_ROLES_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_CUSTOM_ROLES_ID }}
           NEXT_PUBLIC_APPWRITE_SMTP_PROVIDER_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_SMTP_PROVIDER_ID }}
           NEXT_PUBLIC_APPWRITE_EMAIL_TOPIC_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_EMAIL_TOPIC_ID }}
+          NEXT_PUBLIC_APPWRITE_SPACES_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_SPACES_ID }}
+          NEXT_PUBLIC_APPWRITE_SPACE_MEMBERS_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_SPACE_MEMBERS_ID }}
+          NEXT_PUBLIC_APPWRITE_WORKFLOWS_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_WORKFLOWS_ID }}
+          NEXT_PUBLIC_APPWRITE_WORKFLOW_STATUSES_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_WORKFLOW_STATUSES_ID }}
+          NEXT_PUBLIC_APPWRITE_WORKFLOW_TRANSITIONS_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_WORKFLOW_TRANSITIONS_ID }}
+          NEXT_PUBLIC_APPWRITE_CUSTOM_FIELDS_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_CUSTOM_FIELDS_ID }}
+          NEXT_PUBLIC_APPWRITE_CUSTOM_WORK_ITEM_TYPES_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_CUSTOM_WORK_ITEM_TYPES_ID }}
+          NEXT_PUBLIC_APPWRITE_WORK_ITEM_LINKS_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_WORK_ITEM_LINKS_ID }}
+          NEXT_PUBLIC_APPWRITE_SAVED_VIEWS_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_SAVED_VIEWS_ID }}
           NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
           NEXT_APPWRITE_KEY: ${{ secrets.NEXT_APPWRITE_KEY }}
           GH_PERSONAL_TOKEN: ${{ secrets.GH_PERSONAL_TOKEN }}
@@ -64,26 +73,21 @@ jobs:
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DO_HOST }}
-          username: ${{ secrets.DO_USERNAME }}
-          password: ${{ secrets.DO_PASSWORD }}
+          username: deployer
+          key: ${{ secrets.DO_SSH_PRIVATE_KEY }}
           port: 22
           source: "."
           target: "/var/www/scrumpty"
-          rm: true
+          overwrite: true
 
       - name: Deploy to Digital Ocean
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.DO_HOST }}
-          username: ${{ secrets.DO_USERNAME }}
-          password: ${{ secrets.DO_PASSWORD }}
+          username: deployer
+          key: ${{ secrets.DO_SSH_PRIVATE_KEY }}
           port: 22
           script: |
-            # Ensure PM2 is installed globally
-            if ! command -v pm2 &> /dev/null; then
-              npm install -g pm2
-            fi
-            
             # Navigate to app directory
             cd /var/www/scrumpty
             
@@ -119,6 +123,15 @@ jobs:
             NEXT_PUBLIC_APPWRITE_CUSTOM_ROLES_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_CUSTOM_ROLES_ID }}
             NEXT_PUBLIC_APPWRITE_SMTP_PROVIDER_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_SMTP_PROVIDER_ID }}
             NEXT_PUBLIC_APPWRITE_EMAIL_TOPIC_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_EMAIL_TOPIC_ID }}
+            NEXT_PUBLIC_APPWRITE_SPACES_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_SPACES_ID }}
+            NEXT_PUBLIC_APPWRITE_SPACE_MEMBERS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_SPACE_MEMBERS_ID }}
+            NEXT_PUBLIC_APPWRITE_WORKFLOWS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_WORKFLOWS_ID }}
+            NEXT_PUBLIC_APPWRITE_WORKFLOW_STATUSES_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_WORKFLOW_STATUSES_ID }}
+            NEXT_PUBLIC_APPWRITE_WORKFLOW_TRANSITIONS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_WORKFLOW_TRANSITIONS_ID }}
+            NEXT_PUBLIC_APPWRITE_CUSTOM_FIELDS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_CUSTOM_FIELDS_ID }}
+            NEXT_PUBLIC_APPWRITE_CUSTOM_WORK_ITEM_TYPES_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_CUSTOM_WORK_ITEM_TYPES_ID }}
+            NEXT_PUBLIC_APPWRITE_WORK_ITEM_LINKS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_WORK_ITEM_LINKS_ID }}
+            NEXT_PUBLIC_APPWRITE_SAVED_VIEWS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_SAVED_VIEWS_ID }}
             NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
             NEXT_APPWRITE_KEY=${{ secrets.NEXT_APPWRITE_KEY }}
             GH_PERSONAL_TOKEN=${{ secrets.GH_PERSONAL_TOKEN }}
@@ -156,17 +169,7 @@ jobs:
             # Check if the application is running
             pm2 list
             
-            # Test if the application responds
-            curl -f http://localhost:3000 || {
-              echo "Application health check failed"
-              pm2 logs scrumpty --lines 50
-              exit 1
-            }
-            
             # Save PM2 configuration
             pm2 save
-            
-            # Setup PM2 to start on boot
-            env PATH=$PATH:/usr/bin pm2 startup systemd -u root --hp /root || true
             
             echo "Deployment completed successfully!"

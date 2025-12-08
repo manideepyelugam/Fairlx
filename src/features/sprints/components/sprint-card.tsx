@@ -26,6 +26,7 @@ const statusBadgeStyles = {
   [SprintStatus.PLANNED]: "bg-gray-100 text-gray-600",
   [SprintStatus.ACTIVE]: "bg-blue-50 text-blue-600",
   [SprintStatus.COMPLETED]: "bg-green-50 text-green-600",
+  [SprintStatus.CANCELLED]: "bg-red-50 text-red-600",
 };
 
 export const SprintCard = ({

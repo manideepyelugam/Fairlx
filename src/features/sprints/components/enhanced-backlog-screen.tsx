@@ -439,12 +439,18 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                 onChange={(e) => setEditingSprintName(e.target.value)}
                                 onBlur={() => handleRenameSprint(sprint.$id, editingSprintName)}
                                 onKeyDown={(e) => {
-                                  if (e.key === "Enter") handleRenameSprint(sprint.$id, editingSprintName);
+                                  e.stopPropagation();
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    handleRenameSprint(sprint.$id, editingSprintName);
+                                  }
                                   if (e.key === "Escape") {
                                     setEditingSprintId(null);
                                     setEditingSprintName("");
                                   }
                                 }}
+                                onClick={(e) => e.stopPropagation()}
+                                onMouseDown={(e) => e.stopPropagation()}
                                 className="h-7 w-48 text-sm font-semibold"
                                 autoFocus
                               />
@@ -636,7 +642,9 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                           </SelectTrigger>
                                           <SelectContent>
                                             <SelectItem value={WorkItemStatus.TODO}>To Do</SelectItem>
+                                            <SelectItem value={WorkItemStatus.ASSIGNED}>Assigned</SelectItem>
                                             <SelectItem value={WorkItemStatus.IN_PROGRESS}>In Progress</SelectItem>
+                                            <SelectItem value={WorkItemStatus.IN_REVIEW}>In Review</SelectItem>
                                             <SelectItem value={WorkItemStatus.DONE}>Done</SelectItem>
                                           </SelectContent>
                                         </Select>
@@ -710,7 +718,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                           <SelectContent>
                                             <SelectItem value="unassigned">Unassigned</SelectItem>
                                             {membersData?.documents?.map((member) => (
-                                              <SelectItem key={member.$id} value={member.userId}>
+                                              <SelectItem key={member.$id} value={member.$id}>
                                                 <div className="flex items-center gap-2">
                                                   <Avatar className="size-4">
                                                     <AvatarFallback className="text-[10px]">
@@ -910,7 +918,9 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                     </SelectTrigger>
                                     <SelectContent>
                                       <SelectItem value={WorkItemStatus.TODO}>To Do</SelectItem>
+                                      <SelectItem value={WorkItemStatus.ASSIGNED}>Assigned</SelectItem>
                                       <SelectItem value={WorkItemStatus.IN_PROGRESS}>In Progress</SelectItem>
+                                      <SelectItem value={WorkItemStatus.IN_REVIEW}>In Review</SelectItem>
                                       <SelectItem value={WorkItemStatus.DONE}>Done</SelectItem>
                                     </SelectContent>
                                   </Select>
@@ -984,7 +994,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                     <SelectContent>
                                       <SelectItem value="unassigned">Unassigned</SelectItem>
                                       {membersData?.documents?.map((member) => (
-                                        <SelectItem key={member.$id} value={member.userId}>
+                                        <SelectItem key={member.$id} value={member.$id}>
                                           <div className="flex items-center gap-2">
                                             <Avatar className="size-4">
                                               <AvatarFallback className="text-[10px]">
@@ -1129,7 +1139,9 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value={WorkItemStatus.TODO}>To Do</SelectItem>
+                          <SelectItem value={WorkItemStatus.ASSIGNED}>Assigned</SelectItem>
                           <SelectItem value={WorkItemStatus.IN_PROGRESS}>In Progress</SelectItem>
+                          <SelectItem value={WorkItemStatus.IN_REVIEW}>In Review</SelectItem>
                           <SelectItem value={WorkItemStatus.DONE}>Done</SelectItem>
                         </SelectContent>
                       </Select>

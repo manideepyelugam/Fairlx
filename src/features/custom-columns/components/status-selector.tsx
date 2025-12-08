@@ -47,14 +47,17 @@ export const allIcons = {
 };
 
 export const statusIconMap: Record<TaskStatus, React.ReactNode> = {
-  [TaskStatus.ASSIGNED]: <CircleIcon className="size-[18px] text-red-400" />,
+  [TaskStatus.TODO]: <CircleIcon className="size-[18px] text-gray-400" />,
+  [TaskStatus.ASSIGNED]: (
+    <CircleIcon className="size-[18px] text-red-400" />
+  ),
   [TaskStatus.IN_PROGRESS]: (
     <CircleDotDashedIcon className="size-[18px] text-yellow-400" />
   ),
-  [TaskStatus.COMPLETED]: (
+  [TaskStatus.IN_REVIEW]: (
     <CircleDotIcon className="size-[18px] text-blue-400" />
   ),
-  [TaskStatus.CLOSED]: (
+  [TaskStatus.DONE]: (
     <CircleCheckIcon className="size-[18px] text-emerald-400" />
   ),
 };

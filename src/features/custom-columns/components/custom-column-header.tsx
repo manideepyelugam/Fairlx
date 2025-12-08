@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useConfirm } from "@/hooks/use-confirm";
 
-import { useCreateTaskModal } from "@/features/tasks/hooks/use-create-task-modal";
+import { useCreateWorkItemModal } from "@/features/sprints/hooks/use-create-work-item-modal";
 import { useDeleteCustomColumn } from "../api/use-delete-custom-column";
 
 import { CustomColumn } from "../types";
@@ -60,7 +60,7 @@ export const CustomColumnHeader = ({
   onSortByDueDate,
   sortDirection = 'asc',
 }: CustomColumnHeaderProps) => {
-  const { open } = useCreateTaskModal();
+  const { open } = useCreateWorkItemModal();
   const { mutate: deleteCustomColumn } = useDeleteCustomColumn();
   const [ConfirmDialog, confirm] = useConfirm(
     "Delete Column",
@@ -93,7 +93,7 @@ export const CustomColumnHeader = ({
           <h2 className="text-sm font-semibold text-gray-700">{customColumn.name}</h2>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={open} variant="ghost" size="icon" className="h-6 w-6 hover:bg-gray-100">
+          <Button onClick={() => open()} variant="ghost" size="icon" className="h-6 w-6 hover:bg-gray-100">
             <PlusIcon className="h-4 w-4 text-gray-500" />
           </Button>
           <DropdownMenu>

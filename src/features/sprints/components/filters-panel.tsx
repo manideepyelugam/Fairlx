@@ -139,7 +139,7 @@ export const FiltersPanel = ({
                 <SelectItem className="text-xs" value={WorkItemStatus.IN_PROGRESS}>In Progress</SelectItem>
                 <SelectItem className="text-xs" value={WorkItemStatus.IN_REVIEW}>In Review</SelectItem>
                 <SelectItem className="text-xs" value={WorkItemStatus.DONE}>Done</SelectItem>
-                <SelectItem className="text-xs" value={WorkItemStatus.BLOCKED}>Blocked</SelectItem>
+                <SelectItem className="text-xs" value={WorkItemStatus.ASSIGNED}>Assigned</SelectItem>
               </SelectContent>
             </Select>
           </div>

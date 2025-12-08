@@ -83,15 +83,34 @@ export const EnhancedDataKanban = ({
     "outline"
   );
 
+  // Check if TODO column should be visible (only when tasks are TODO or unassigned)
+  const shouldShowTodoColumn = useMemo(() => {
+    if (!Array.isArray(data) || data.length === 0) return false;
+    
+    return data.some(task => 
+      task.status === TaskStatus.TODO || 
+      !task.assigneeIds || 
+      task.assigneeIds.length === 0
+    );
+  }, [data]);
+
   // Combine enabled default boards with custom columns (safe when loading)
   const allColumns = useMemo(() => {
     const columns: ColumnData[] = [
-      ...getEnabledColumns.map(col => ({
-        id: col.id,
-        type: "default" as const,
-        status: col.id,
-        position: col.position || 0
-      })),
+      ...getEnabledColumns
+        .filter(col => {
+          // Only show TODO column when there are TODO or unassigned tasks
+          if (col.id === TaskStatus.TODO) {
+            return shouldShowTodoColumn;
+          }
+          return true;
+        })
+        .map(col => ({
+          id: col.id,
+          type: "default" as const,
+          status: col.id,
+          position: col.position || 0
+        })),
       ...(customColumns?.documents || []).map(col => ({
         id: col.$id,
         type: "custom" as const,
@@ -102,7 +121,7 @@ export const EnhancedDataKanban = ({
 
     // Sort by position
     return columns.sort((a, b) => a.position - b.position);
-  }, [getEnabledColumns, customColumns?.documents]);
+  }, [getEnabledColumns, customColumns?.documents, shouldShowTodoColumn]);
 
   const [tasks, setTasks] = useState<TasksState>({});
   const [orderedColumns, setOrderedColumns] = useState<ColumnData[]>([]);
@@ -127,10 +146,10 @@ export const EnhancedDataKanban = ({
       newTasks[col.id] = [];
     });
 
-    // Ensure ASSIGNED exists as fallback (if it's enabled)
-    const assignedColumn = orderedColumns.find(col => col.id === TaskStatus.ASSIGNED);
-    if (!newTasks[TaskStatus.ASSIGNED] && assignedColumn) {
-      newTasks[TaskStatus.ASSIGNED] = [];
+    // Ensure TODO exists as fallback (if it's enabled)
+    const todoColumn = orderedColumns.find(col => col.id === TaskStatus.TODO);
+    if (!newTasks[TaskStatus.TODO] && todoColumn) {
+      newTasks[TaskStatus.TODO] = [];
     }
 
     // Process data with safety check
@@ -142,11 +161,11 @@ export const EnhancedDataKanban = ({
         if (newTasks[taskStatus]) {
           newTasks[taskStatus].push(task);
         } else {
-          // Task is in a disabled/non-existent column, move to ASSIGNED if available
-          if (newTasks[TaskStatus.ASSIGNED]) {
-            newTasks[TaskStatus.ASSIGNED].push(task);
+          // Task is in a disabled/non-existent column, move to TODO if available
+          if (newTasks[TaskStatus.TODO]) {
+            newTasks[TaskStatus.TODO].push(task);
           } else {
-            // If ASSIGNED is also disabled, move to first available enabled column
+            // If TODO is also disabled, move to first available enabled column
             const firstEnabledColumn = Object.keys(newTasks)[0];
             if (firstEnabledColumn) {
               newTasks[firstEnabledColumn].push(task);

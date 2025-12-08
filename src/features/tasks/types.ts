@@ -1,10 +1,12 @@
 import { Models } from "node-appwrite";
 
+// TaskStatus - Standard kanban statuses
 export enum TaskStatus {
+  TODO = "TODO",
   ASSIGNED = "ASSIGNED",
   IN_PROGRESS = "IN_PROGRESS",
-  COMPLETED = "COMPLETED",
-  CLOSED = "CLOSED",
+  IN_REVIEW = "IN_REVIEW",
+  DONE = "DONE",
 }
 
 export enum TaskPriority {
@@ -14,24 +16,35 @@ export enum TaskPriority {
   URGENT = "URGENT",
 }
 
+// Task type is now mapped to WorkItem collection
+// Using 'title' as the primary field, 'name' as alias for backward compatibility
 export type Task = Models.Document & {
-  name: string;
+  title: string;           // Primary field (WorkItem uses this)
+  name?: string;           // Deprecated: alias for backward compatibility (computed)
+  key?: string;            // WorkItem key like "PROJ-123"
+  type?: string;           // WorkItem type
   status: TaskStatus | string; // Allow custom column IDs as status
   workspaceId: string;
-  assigneeId: string; // Keep for backward compatibility
-  assigneeIds?: string[]; // Multiple individual assignees
+  assigneeId?: string;     // Deprecated: use assigneeIds instead
+  assigneeIds: string[];   // Primary field for assignees
   assignedTeamId?: string; // Single team assignment
   assignedTeamIds?: string[]; // Multiple team assignments
   projectId: string;
+  spaceId?: string;        // Space reference
+  sprintId?: string | null;
   position: number;
-  dueDate: string;
+  dueDate?: string;
+  startDate?: string;
   endDate?: string;
   description?: string | null;
   estimatedHours?: number;
+  remainingHours?: number;
   priority?: TaskPriority;
   labels?: string[];
   flagged?: boolean;
-  commentCount?: number; // Number of comments on this task
+  commentCount?: number;   // Number of comments on this task
+  storyPoints?: number;    // Story points for agile
+  reporterId?: string;     // Who created the item
 };
 
 export type TaskAssignee = {

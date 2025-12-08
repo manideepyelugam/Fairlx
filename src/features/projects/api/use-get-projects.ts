@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { client } from "@/lib/rpc";
+import { QUERY_CONFIG } from "@/lib/query-config";
 
 interface UseGetProjectsProps {
   // Optional so we can safely use the hook in layouts / sidebars that may
@@ -12,6 +13,8 @@ export const useGetProjects = ({ workspaceId }: UseGetProjectsProps) => {
   const query = useQuery({
     queryKey: ["projects", workspaceId],
     enabled: !!workspaceId, // prevent 400 (Bad Request) when workspaceId is missing
+    staleTime: QUERY_CONFIG.STATIC.staleTime,
+    gcTime: QUERY_CONFIG.STATIC.gcTime,
     queryFn: async () => {
       if (!workspaceId) return null; // Should never run when disabled, but defensive
 

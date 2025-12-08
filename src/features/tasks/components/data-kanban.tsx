@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
 import {
   DragDropContext,
   Droppable,
@@ -18,10 +18,11 @@ import { useBulkUpdateTasks } from "../api/use-bulk-update-tasks";
 import { useCreateTaskModal } from "../hooks/use-create-task-modal";
 
 const boards: TaskStatus[] = [
+  TaskStatus.TODO,
   TaskStatus.ASSIGNED,
   TaskStatus.IN_PROGRESS,
-  TaskStatus.COMPLETED,
-  TaskStatus.CLOSED,
+  TaskStatus.IN_REVIEW,
+  TaskStatus.DONE,
 ];
 
 type TasksState = {
@@ -51,10 +52,11 @@ export const DataKanban = ({
 }: DataKanbanProps) => {
   const [tasks, setTasks] = useState<TasksState>(() => {
     const initialTasks: TasksState = {
+      [TaskStatus.TODO]: [],
       [TaskStatus.ASSIGNED]: [],
       [TaskStatus.IN_PROGRESS]: [],
-      [TaskStatus.COMPLETED]: [],
-      [TaskStatus.CLOSED]: [],
+      [TaskStatus.IN_REVIEW]: [],
+      [TaskStatus.DONE]: [],
     };
 
     data.forEach((task) => {
@@ -75,23 +77,43 @@ export const DataKanban = ({
 
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
-  const [columnsOrder] = useState<TaskStatus[]>(boards);
   const [sortDirections, setSortDirections] = useState<Record<TaskStatus, 'asc' | 'desc'>>({
+    [TaskStatus.TODO]: 'asc',
     [TaskStatus.ASSIGNED]: 'asc',
     [TaskStatus.IN_PROGRESS]: 'asc',
-    [TaskStatus.COMPLETED]: 'asc',
-    [TaskStatus.CLOSED]: 'asc',
+    [TaskStatus.IN_REVIEW]: 'asc',
+    [TaskStatus.DONE]: 'asc',
   });
 
   const { mutate: bulkUpdateTasks } = useBulkUpdateTasks();
   const { open: openCreateTask } = useCreateTaskModal();
 
+  // Check if TODO column should be visible (only when tasks are TODO or unassigned)
+  const shouldShowTodoColumn = useMemo(() => {
+    return data.some(task => 
+      task.status === TaskStatus.TODO || 
+      !task.assigneeIds || 
+      task.assigneeIds.length === 0
+    );
+  }, [data]);
+
+  // Filter columns based on visibility rules
+  const visibleBoards = useMemo(() => {
+    return boards.filter(board => {
+      if (board === TaskStatus.TODO) {
+        return shouldShowTodoColumn;
+      }
+      return true;
+    });
+  }, [shouldShowTodoColumn]);
+
   useEffect(() => {
     const newTasks: TasksState = {
+      [TaskStatus.TODO]: [],
       [TaskStatus.ASSIGNED]: [],
       [TaskStatus.IN_PROGRESS]: [],
-      [TaskStatus.COMPLETED]: [],
-      [TaskStatus.CLOSED]: [],
+      [TaskStatus.IN_REVIEW]: [],
+      [TaskStatus.DONE]: [],
     };
 
     data.forEach((task) => {
@@ -355,7 +377,7 @@ export const DataKanban = ({
 
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="flex overflow-x-auto gap-4 pb-4">
-          {columnsOrder.map((board) => {
+          {visibleBoards.map((board) => {
             const selectedInColumn = tasks[board].filter(task =>
               selectedTasks.has(task.$id)
             ).length;

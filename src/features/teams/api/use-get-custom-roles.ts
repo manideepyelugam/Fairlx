@@ -2,15 +2,16 @@ import { useQuery } from "@tanstack/react-query";
 import { client } from "@/lib/rpc";
 
 interface UseGetCustomRolesProps {
-  teamId: string;
+  teamId?: string;
 }
 
 export const useGetCustomRoles = ({ teamId }: UseGetCustomRolesProps) => {
   const query = useQuery({
     queryKey: ["custom-roles", teamId],
+    enabled: !!teamId,
     queryFn: async () => {
       const response = await client.api.teams[":teamId"]["custom-roles"].$get({
-        param: { teamId },
+        param: { teamId: teamId! },
       });
 
       if (!response.ok) {

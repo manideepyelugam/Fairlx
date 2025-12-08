@@ -13,10 +13,11 @@ export interface DefaultColumn {
 }
 
 const DEFAULT_COLUMNS_CONFIG: Omit<DefaultColumn, 'isEnabled' | 'position'>[] = [
+  { id: TaskStatus.TODO, name: "To Do" },
   { id: TaskStatus.ASSIGNED, name: "Assigned" },
   { id: TaskStatus.IN_PROGRESS, name: "In Progress" },
-  { id: TaskStatus.COMPLETED, name: "Completed" },
-  { id: TaskStatus.CLOSED, name: "Closed" },
+  { id: TaskStatus.IN_REVIEW, name: "In Review" },
+  { id: TaskStatus.DONE, name: "Done" },
 ];
 
 export const useDefaultColumns = (workspaceId: string, projectId?: string) => {

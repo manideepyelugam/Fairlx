@@ -15,6 +15,7 @@ import { TaskTimeLogs } from "@/features/time-tracking/components/task-time-logs
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { TaskAttachments } from "@/features/attachments/components/task-attachments";
 import { TaskComments } from "@/features/comments/components/task-comments";
+import { WorkItemLinksSection } from "@/features/work-item-links/components/work-item-links-section";
 import { Button } from "@/components/ui/button";
 import { useCurrent } from "@/features/auth/api/use-current";
 import { useCurrentTeamMember } from "@/features/teams/hooks/use-current-team-member";
@@ -118,8 +119,7 @@ export const TaskDetailsModalWrapper = () => {
 
               {/* Connected Work Items Section */}
               <div className="px-6 py-4 border-b">
-                <h3 className="font-semibold mb-2">Connected work items</h3>
-                <button className="text-sm text-gray-600">Add connected work item</button>
+                <WorkItemLinksSection workItemId={data.$id} />
               </div>
 
               {/* Activity Section */}

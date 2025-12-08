@@ -39,7 +39,7 @@ export const DatePicker = React.forwardRef<
     ref
   ) => {
     return (
-    <Popover>
+    <Popover modal={true}>
       <PopoverTrigger asChild>
         <Button
           ref={ref}
@@ -56,7 +56,7 @@ export const DatePicker = React.forwardRef<
           {value ? format(value, "PPP") : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
+      <PopoverContent className="w-auto p-0 z-[200]">
         <Calendar
           mode="single"
           selected={value ?? undefined}

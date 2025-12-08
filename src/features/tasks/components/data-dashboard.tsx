@@ -38,14 +38,14 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
   // Calculate analytics from real tasks data
   const analytics = useMemo(() => {
     const totalTasks = tasks.length;
-    const completedTasks = tasks.filter(t => t.status === TaskStatus.COMPLETED || t.status === TaskStatus.CLOSED).length;
+    const completedTasks = tasks.filter(t => t.status === TaskStatus.DONE).length;
     const inProgressTasks = tasks.filter(t => t.status === TaskStatus.IN_PROGRESS).length;
     const flaggedTasks = tasks.filter(t => t.flagged === true).length;
     const now = new Date();
     const overdueTasks = tasks.filter(t => {
       if (!t.dueDate) return false;
       const dueDate = new Date(t.dueDate);
-      return dueDate < now && t.status !== TaskStatus.COMPLETED && t.status !== TaskStatus.CLOSED;
+      return dueDate < now && t.status !== TaskStatus.DONE;
     }).length;
 
     return {
@@ -59,15 +59,18 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
 
   // Calculate status overview from real data
   const statusOverview = useMemo(() => {
+    const todo = tasks.filter(t => t.status === TaskStatus.TODO).length;
     const assigned = tasks.filter(t => t.status === TaskStatus.ASSIGNED).length;
     const inProgress = tasks.filter(t => t.status === TaskStatus.IN_PROGRESS).length;
-    const completed = tasks.filter(t => t.status === TaskStatus.COMPLETED).length;
-    const closed = tasks.filter(t => t.status === TaskStatus.CLOSED).length;
+    const inReview = tasks.filter(t => t.status === TaskStatus.IN_REVIEW).length;
+    const done = tasks.filter(t => t.status === TaskStatus.DONE).length;
 
     return [
-      { id: "status-1", name: "Completed", value: completed + closed, color: "#22c55e" },
+      { id: "status-1", name: "Done", value: done, color: "#22c55e" },
       { id: "status-2", name: "In Progress", value: inProgress, color: "#2663ec" },
-      { id: "status-3", name: "Assigned", value: assigned, color: "#93c5fd" },
+      { id: "status-3", name: "To Do", value: todo, color: "#93c5fd" },
+      { id: "status-4", name: "In Review", value: inReview, color: "#f59e0b" },
+      { id: "status-5", name: "Assigned", value: assigned, color: "#ef4444" },
     ];
   }, [tasks]);
 
@@ -78,7 +81,7 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
         t.assigneeId === member.$id || t.assigneeIds?.includes(member.$id)
       );
       const completedTasks = memberTasks.filter(t => 
-        t.status === TaskStatus.COMPLETED || t.status === TaskStatus.CLOSED
+        t.status === TaskStatus.DONE
       ).length;
 
       return {
@@ -100,16 +103,16 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
 
     return tasks
       .filter(t => {
-        if (!t.dueDate || t.status === TaskStatus.COMPLETED || t.status === TaskStatus.CLOSED) return false;
+        if (!t.dueDate || t.status === TaskStatus.DONE) return false;
         const dueDate = new Date(t.dueDate);
         return dueDate >= now && dueDate <= nextWeek;
       })
-      .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+      .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
       .slice(0, 6)
       .map(t => ({
         id: t.$id,
         title: t.name,
-        dueDate: new Date(t.dueDate),
+        dueDate: new Date(t.dueDate!),
       }));
   }, [tasks]);
 
@@ -121,9 +124,11 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
         const member = members.find(m => m.$id === task.assigneeId);
         return {
           id: task.$id,
-          title: task.name,
-          status: task.status === TaskStatus.COMPLETED || task.status === TaskStatus.CLOSED ? "Done" :
-                  task.status === TaskStatus.IN_PROGRESS ? "In Progress" : "To Do",
+          title: task.name || task.title,
+          status: task.status === TaskStatus.DONE ? "Done" :
+                  task.status === TaskStatus.IN_PROGRESS ? "In Progress" :
+                  task.status === TaskStatus.IN_REVIEW ? "In Review" :
+                  task.status === TaskStatus.ASSIGNED ? "Assigned" : "To Do",
           assignee: member?.name?.split(' ').map(n => n[0]).join('') + '.' || "N/A",
           priority: task.priority || "Medium",
         };

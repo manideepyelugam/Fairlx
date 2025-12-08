@@ -42,11 +42,11 @@ export const useDeleteCustomColumn = (props?: UseDeleteCustomColumnProps) => {
           }
         });
 
-        // Move tasks to ASSIGNED
+        // Move tasks to TODO
         if (tasksToMove.length > 0) {
           const updates = tasksToMove.map(taskId => ({
             $id: taskId,
-            status: TaskStatus.ASSIGNED,
+            status: TaskStatus.TODO,
           }));
 
           try {

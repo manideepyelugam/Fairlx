@@ -109,7 +109,7 @@ export function TimelineDetailsPanel({
                 In Review
               </SelectItem>
               <SelectItem value={WorkItemStatus.DONE}>Done</SelectItem>
-              <SelectItem value={WorkItemStatus.BLOCKED}>Blocked</SelectItem>
+              <SelectItem value={WorkItemStatus.ASSIGNED}>Assigned</SelectItem>
             </SelectContent>
           </Select>
         </div>

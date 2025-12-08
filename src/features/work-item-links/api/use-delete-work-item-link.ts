@@ -1,0 +1,48 @@
+import { toast } from "sonner";
+
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { InferRequestType, InferResponseType } from "hono";
+
+import { client } from "@/lib/rpc";
+
+type ResponseType = InferResponseType<(typeof client.api)["work-item-links"][":linkId"]["$delete"], 200>;
+type RequestType = InferRequestType<(typeof client.api)["work-item-links"][":linkId"]["$delete"]>;
+
+interface UseDeleteWorkItemLinkOptions {
+  sourceWorkItemId?: string;
+  targetWorkItemId?: string;
+}
+
+export const useDeleteWorkItemLink = (options?: UseDeleteWorkItemLinkOptions) => {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation<ResponseType, Error, RequestType>({
+    mutationFn: async ({ param, query }) => {
+      const response = await client.api["work-item-links"][":linkId"].$delete({
+        param,
+        query,
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete link.");
+      }
+
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast.success("Link deleted.");
+      if (options?.sourceWorkItemId) {
+        queryClient.invalidateQueries({ queryKey: ["work-item-links", options.sourceWorkItemId] });
+      }
+      if (options?.targetWorkItemId) {
+        queryClient.invalidateQueries({ queryKey: ["work-item-links", options.targetWorkItemId] });
+      }
+      queryClient.invalidateQueries({ queryKey: ["work-item-links"] });
+    },
+    onError: () => {
+      toast.error("Failed to delete link.");
+    },
+  });
+
+  return mutation;
+};

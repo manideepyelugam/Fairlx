@@ -20,18 +20,20 @@ interface TimelineGanttProps {
 
 type ViewType = "week" | "month" | "quarter";
 
-const statusColorMap: Record<TaskStatus, string> = {
+const statusColorMap: Record<string, string> = {
+  [TaskStatus.TODO]: "bg-gray-500",
   [TaskStatus.ASSIGNED]: "bg-red-500",
   [TaskStatus.IN_PROGRESS]: "bg-yellow-500",
-  [TaskStatus.COMPLETED]: "bg-blue-500",
-  [TaskStatus.CLOSED]: "bg-emerald-500",
+  [TaskStatus.IN_REVIEW]: "bg-blue-500",
+  [TaskStatus.DONE]: "bg-emerald-500",
 };
 
-const statusBorderMap: Record<TaskStatus, string> = {
+const statusBorderMap: Record<string, string> = {
+  [TaskStatus.TODO]: "border-gray-200",
   [TaskStatus.ASSIGNED]: "border-red-200",
   [TaskStatus.IN_PROGRESS]: "border-yellow-200",
-  [TaskStatus.COMPLETED]: "border-blue-200",
-  [TaskStatus.CLOSED]: "border-emerald-200",
+  [TaskStatus.IN_REVIEW]: "border-blue-200",
+  [TaskStatus.DONE]: "border-emerald-200",
 };
 
 export const TimelineGantt = ({ data }: TimelineGanttProps) => {
@@ -90,9 +92,11 @@ export const TimelineGantt = ({ data }: TimelineGanttProps) => {
   }, [startDate, endDate, viewType]);
 
   const processedTasks = useMemo(() => {
-    return data.map(task => {
-      const taskStart = startOfDay(parseISO(task.dueDate));
-      const taskEnd = task.endDate ? startOfDay(parseISO(task.endDate)) : taskStart;
+    return data
+      .filter(task => task.dueDate)
+      .map(task => {
+        const taskStart = startOfDay(parseISO(task.dueDate!));
+        const taskEnd = task.endDate ? startOfDay(parseISO(task.endDate)) : taskStart;
       
       // Calculate position and width
       const startOffset = Math.max(0, differenceInDays(taskStart, startDate));

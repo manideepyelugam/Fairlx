@@ -105,14 +105,8 @@ const app = new Hono()
       }
 
       if (assigneeId) {
-        // Since Appwrite doesn't support OR queries directly in the native client,
-        // we'll handle both assigneeId (legacy) and assigneeIds (new) by using separate queries
-        // and merging results, or filtering client-side. For now, we'll query by assigneeIds
-        // and handle legacy assigneeId in post-processing.
-        query.push(Query.or([
-          Query.equal("assigneeId", assigneeId), // Legacy field
-          Query.contains("assigneeIds", assigneeId) // New array field
-        ]));
+        // Filter by assigneeIds array field only (assigneeId singular field doesn't exist)
+        query.push(Query.contains("assigneeIds", assigneeId));
       }
 
       if (dueDate) {
@@ -145,14 +139,16 @@ const app = new Hono()
 
       const projectIds = [...new Set(tasks.documents.map((task) => task.projectId).filter(Boolean))];
       
-      // Collect all assignee IDs from both single assignee and multiple assignees
+      // Collect all assignee IDs - ensure we handle both array and non-array cases
       const allAssigneeIds = new Set<string>();
       tasks.documents.forEach((task) => {
-        if (task.assigneeId) {
-          allAssigneeIds.add(task.assigneeId);
-        }
-        if (task.assigneeIds && task.assigneeIds.length > 0) {
-          task.assigneeIds.forEach(id => allAssigneeIds.add(id));
+        const ids = task.assigneeIds;
+        if (Array.isArray(ids) && ids.length > 0) {
+          ids.forEach(id => {
+            if (id && typeof id === 'string') {
+              allAssigneeIds.add(id);
+            }
+          });
         }
       });
 
@@ -200,12 +196,13 @@ const app = new Hono()
             const user = await users.get(member.userId);
             const prefs = user.prefs as { profileImageUrl?: string | null } | undefined;
 
-            return {
+            const result = {
               ...member,
               name: user.name || user.email,
               email: user.email,
               profileImageUrl: prefs?.profileImageUrl ?? null,
             };
+            return result;
           } catch {
             // User not found - skip this member
             return null;
@@ -218,18 +215,20 @@ const app = new Hono()
           (project) => project.$id === task.projectId
         );
 
-        // Handle single assignee (backward compatibility)
-        const assignee = assignees.find(
-          (assignee) => assignee.$id === task.assigneeId
-        );
+        // Get first assignee for backward compatibility
+        const firstAssigneeId = task.assigneeIds?.[0];
+        const assignee = firstAssigneeId 
+          ? assignees.find((a) => a.$id === firstAssigneeId)
+          : undefined;
 
         // Handle multiple assignees
         const taskAssignees = task.assigneeIds
-          ? assignees.filter((assignee) => task.assigneeIds!.includes(assignee.$id))
-          : assignee ? [assignee] : [];
+          ? assignees.filter((a) => task.assigneeIds!.includes(a.$id))
+          : [];
 
         return {
           ...task,
+          name: task.title, // Add name as alias for title for backward compatibility
           project,
           assignee, // Keep for backward compatibility
           assignees: taskAssignees, // New field for multiple assignees
@@ -247,7 +246,8 @@ const app = new Hono()
     async (c) => {
       const user = c.get("user");
       const databases = c.get("databases");
-      const { name, status, workspaceId, projectId, dueDate, assigneeIds, description, estimatedHours, endDate, priority, labels } =
+      // Note: endDate is in schema but not in database - we extract it to avoid errors
+      const { name, status, workspaceId, projectId, dueDate, assigneeIds, description, estimatedHours, priority, labels } =
         c.req.valid("json");
 
       const member = await getMember({
@@ -258,6 +258,31 @@ const app = new Hono()
 
       if (!member) {
         return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      // Check for an active sprint in this project to auto-assign
+      const { SPRINTS_ID } = await import("@/config");
+      const { SprintStatus } = await import("@/features/sprints/types");
+      
+      let targetSprintId: string | null = null;
+      
+      try {
+        const activeSprints = await databases.listDocuments(
+          DATABASE_ID,
+          SPRINTS_ID,
+          [
+            Query.equal("projectId", projectId),
+            Query.equal("status", SprintStatus.ACTIVE),
+            Query.limit(1),
+          ]
+        );
+        
+        if (activeSprints.documents.length > 0) {
+          targetSprintId = activeSprints.documents[0].$id;
+        }
+      } catch (error) {
+        // If sprint collection doesn't exist or error occurs, continue without sprint assignment
+        console.log("Could not check for active sprints:", error);
       }
 
       const highestPositionTask = await databases.listDocuments(
@@ -276,24 +301,45 @@ const app = new Hono()
           ? highestPositionTask.documents[0].position + 1000
           : 1000;
 
+      // Get next key number for this project
+      const existingItems = await databases.listDocuments(
+        DATABASE_ID,
+        TASKS_ID,
+        [Query.equal("projectId", projectId)]
+      );
+      
+      // Get project for key prefix
+      const project = await databases.getDocument<Project>(
+        DATABASE_ID,
+        PROJECTS_ID,
+        projectId
+      );
+      
+      const projectKey = project.name.substring(0, 3).toUpperCase();
+      const keyNumber = existingItems.total + 1;
+      const key = `${projectKey}-${keyNumber}`;
+
       const task = await databases.createDocument(
         DATABASE_ID,
         TASKS_ID,
         ID.unique(),
         {
-          name,
+          title: name, // Use title for workItems collection (name is passed from form but stored as title)
+          type: "TASK", // Default type for tasks
+          key,
           status,
           workspaceId,
           projectId,
-          dueDate,
-          assigneeId: assigneeIds?.[0] || "", // Keep backward compatibility - use first assignee as primary
-          assigneeIds,
+          dueDate: dueDate || null,
+          assigneeIds: assigneeIds || [],
           position: newPosition,
-          description,
-          estimatedHours,
-          endDate,
-          priority,
-          labels,
+          description: description || null,
+          estimatedHours: estimatedHours || null,
+          priority: priority || "MEDIUM", // Default to MEDIUM if not provided (required field)
+          labels: labels || [],
+          flagged: false,
+          lastModifiedBy: user.$id,
+          sprintId: targetSprintId, // Auto-assign to active sprint if available
         }
       ) as Task;
 
@@ -330,7 +376,8 @@ const app = new Hono()
     async (c) => {
       const user = c.get("user");
       const databases = c.get("databases");
-      const { name, status, projectId, dueDate, assigneeIds, description, estimatedHours, endDate, priority, labels, flagged } =
+      // Note: endDate is in schema but not in database - we ignore it
+      const { name, status, projectId, dueDate, assigneeIds, description, estimatedHours, priority, labels, flagged } =
         c.req.valid("json");
 
       const { taskId } = c.req.param();
@@ -354,29 +401,31 @@ const app = new Hono()
       const updateData: Record<string, unknown> = {};
       
       // Only include fields that are provided
-      if (name !== undefined) updateData.name = name;
+      // Note: form sends 'name' but collection uses 'title'
+      if (name !== undefined) {
+        updateData.title = name;
+      }
       if (status !== undefined) updateData.status = status;
       if (projectId !== undefined) updateData.projectId = projectId;
       if (dueDate !== undefined) updateData.dueDate = dueDate;
       if (description !== undefined) updateData.description = description;
       if (estimatedHours !== undefined) updateData.estimatedHours = estimatedHours;
-      if (endDate !== undefined) updateData.endDate = endDate;
+      // Note: endDate column doesn't exist in workItems collection, so we skip it
       if (priority !== undefined) updateData.priority = priority;
       if (labels !== undefined) updateData.labels = labels;
       if (flagged !== undefined) updateData.flagged = flagged;
 
       // Track if assignees changed for notification purposes
-      const oldAssigneeIds = existingTask.assigneeIds || (existingTask.assigneeId ? [existingTask.assigneeId] : []);
+      const oldAssigneeIds = existingTask.assigneeIds || [];
       const newAssigneeIds = assigneeIds || [];
-      const assigneesChanged = assigneeIds && (
+      const assigneesChanged = assigneeIds !== undefined && (
         oldAssigneeIds.length !== newAssigneeIds.length ||
         !oldAssigneeIds.every(id => newAssigneeIds.includes(id))
       );
 
-      // Handle assignees - update both single assignee and multiple assignees
-      if (assigneeIds && assigneeIds.length > 0) {
+      // Handle assignees - always update if provided (even if empty array to clear assignees)
+      if (assigneeIds !== undefined) {
         updateData.assigneeIds = assigneeIds;
-        updateData.assigneeId = assigneeIds[0]; // Keep backward compatibility
       }
 
       // Ensure we have at least some data to update
@@ -484,11 +533,8 @@ const app = new Hono()
       task.projectId
     );
 
-    // Collect all assignee IDs from both single assignee and multiple assignees
+    // Collect all assignee IDs
     const allAssigneeIds = new Set<string>();
-    if (task.assigneeId) {
-      allAssigneeIds.add(task.assigneeId);
-    }
     if (task.assigneeIds && task.assigneeIds.length > 0) {
       task.assigneeIds.forEach(id => allAssigneeIds.add(id));
     }
@@ -497,7 +543,7 @@ const app = new Hono()
     const members = await databases.listDocuments(
       DATABASE_ID,
       MEMBERS_ID,
-      allAssigneeIds.size > 0 ? [Query.contains("$id", Array.from(allAssigneeIds))] : []
+      allAssigneeIds.size > 0 ? [Query.equal("$id", Array.from(allAssigneeIds))] : []
     );
 
     const assignees = await Promise.all(
@@ -514,19 +560,21 @@ const app = new Hono()
       })
     );
 
-    // Handle single assignee (backward compatibility)
-    const assignee = assignees.find(
-      (assignee) => assignee.$id === task.assigneeId
-    );
+    // Get first assignee for backward compatibility
+    const firstAssigneeId = task.assigneeIds?.[0];
+    const assignee = firstAssigneeId 
+      ? assignees.find((a) => a.$id === firstAssigneeId)
+      : undefined;
 
     // Handle multiple assignees
     const taskAssignees = task.assigneeIds
-      ? assignees.filter((assignee) => task.assigneeIds!.includes(assignee.$id))
-      : assignee ? [assignee] : [];
+      ? assignees.filter((a) => task.assigneeIds!.includes(a.$id))
+      : [];
 
     return c.json({
       data: {
         ...task,
+        name: task.title, // Add name as alias for title for backward compatibility
         project,
         assignee, // Keep for backward compatibility
         assignees: taskAssignees, // New field for multiple assignees
@@ -595,7 +643,7 @@ const app = new Hono()
 
       const updatedTasks = await Promise.all(
         tasks.map(async (task) => {
-          const { $id, status, position, assigneeId, assigneeIds } = task;
+          const { $id, status, position, assigneeIds } = task;
           
           // Get existing task to compare status
           const existingTask = await databases.getDocument<Task>(DATABASE_ID, TASKS_ID, $id);
@@ -605,13 +653,9 @@ const app = new Hono()
           if (status !== undefined) updateData.status = status;
           if (position !== undefined) updateData.position = position;
           
-          // Handle assignees - prioritize assigneeIds over assigneeId
+          // Handle assignees
           if (assigneeIds !== undefined && assigneeIds.length > 0) {
             updateData.assigneeIds = assigneeIds;
-            updateData.assigneeId = assigneeIds[0]; // Keep backward compatibility
-          } else if (assigneeId !== undefined) {
-            updateData.assigneeId = assigneeId;
-            updateData.assigneeIds = [assigneeId]; // Convert single to array
           }
           
           // Add lastModifiedBy to track who made the update (for audit logs)

@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
 interface TaskDateProps {
-  value: string;
+  value: string | undefined;
   className?: string;
 }
 
