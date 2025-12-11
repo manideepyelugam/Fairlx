@@ -15,6 +15,7 @@ import { CreateWorkflowModal } from "@/features/workflows/components/create-work
 import { CreateLinkModal } from "@/features/work-item-links/components/create-link-modal";
 import { CreateTaskModal } from "@/features/tasks/components/create-task-modal";
 import { EditTaskModal } from "@/features/tasks/components/edit-task-modal";
+import { TaskDetailsModalWrapper } from "@/features/tasks/components/task-details-modal-wrapper";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 
 import { Navbar } from "@/components/navbar";
@@ -37,6 +38,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <CreateWorkItemModal />
       <CreateTaskModal />
       <EditTaskModal />
+      <TaskDetailsModalWrapper />
       <CreateCustomColumnModalWrapper />
       <ManageColumnsModalWrapper />
       <CreateTeamModal />
