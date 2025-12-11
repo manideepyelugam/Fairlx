@@ -41,6 +41,7 @@ const app = new Hono()
 
       const {
         name,
+        key,
         description,
         workspaceId,
         spaceId,
@@ -66,12 +67,12 @@ const app = new Hono()
         ID.unique(),
         {
           name,
+          key,
           description: description || null,
           workspaceId,
           spaceId: spaceId || null,
           projectId: projectId || null,
           isDefault: isDefault || false,
-          isSystem: false,
         }
       );
 

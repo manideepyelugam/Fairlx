@@ -4,6 +4,8 @@ import { StatusCategory } from "./types";
 // Create a new workflow
 export const createWorkflowSchema = z.object({
   name: z.string().trim().min(1, "Workflow name is required").max(100),
+  key: z.string().trim().min(1, "Workflow key is required").max(50).toUpperCase()
+    .regex(/^[A-Z][A-Z0-9_]*$/, "Key must start with a letter and contain only letters, numbers, and underscores"),
   description: z.string().trim().max(500).optional(),
   workspaceId: z.string().min(1),
   spaceId: z.string().optional(),

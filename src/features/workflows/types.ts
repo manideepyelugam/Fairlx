@@ -1,21 +1,24 @@
 import { Models } from "node-appwrite";
 
-// Workflow status category for grouping
+// Workflow status category - matches TaskStatus for consistency
 export enum StatusCategory {
   TODO = "TODO",
+  ASSIGNED = "ASSIGNED",
   IN_PROGRESS = "IN_PROGRESS",
+  IN_REVIEW = "IN_REVIEW",
   DONE = "DONE",
 }
 
 // Workflow - defines the status flow for a project/space
 export type Workflow = Models.Document & {
   name: string;
+  key: string;                    // Unique key like "SOFTWARE_DEV", "KANBAN"
   description?: string | null;
   workspaceId: string;
   spaceId?: string | null;        // If null, it's a workspace-level workflow
   projectId?: string | null;      // If set, project-specific workflow
   isDefault: boolean;             // Is this the default workflow for its scope
-  isSystem: boolean;              // System workflows can't be deleted
+  isArchived: boolean;            // Archived workflows are hidden but not deleted
 };
 
 // Workflow Status - individual status in a workflow
@@ -63,11 +66,13 @@ export type PopulatedWorkflow = Workflow & {
 // Default workflow templates
 export const DEFAULT_SOFTWARE_WORKFLOW = {
   name: "Software Development",
+  key: "SOFTWARE_DEV",
   statuses: [
     { name: "To Do", key: "TODO", category: StatusCategory.TODO, color: "#6B7280", position: 0, isInitial: true, isFinal: false },
-    { name: "In Progress", key: "IN_PROGRESS", category: StatusCategory.IN_PROGRESS, color: "#3B82F6", position: 1, isInitial: false, isFinal: false },
-    { name: "In Review", key: "IN_REVIEW", category: StatusCategory.IN_PROGRESS, color: "#8B5CF6", position: 2, isInitial: false, isFinal: false },
-    { name: "Done", key: "DONE", category: StatusCategory.DONE, color: "#10B981", position: 3, isInitial: false, isFinal: true },
+    { name: "Assigned", key: "ASSIGNED", category: StatusCategory.ASSIGNED, color: "#F59E0B", position: 1, isInitial: false, isFinal: false },
+    { name: "In Progress", key: "IN_PROGRESS", category: StatusCategory.IN_PROGRESS, color: "#3B82F6", position: 2, isInitial: false, isFinal: false },
+    { name: "In Review", key: "IN_REVIEW", category: StatusCategory.IN_REVIEW, color: "#8B5CF6", position: 3, isInitial: false, isFinal: false },
+    { name: "Done", key: "DONE", category: StatusCategory.DONE, color: "#10B981", position: 4, isInitial: false, isFinal: true },
   ],
   transitions: [
     { from: "TODO", to: "IN_PROGRESS" },
@@ -81,11 +86,13 @@ export const DEFAULT_SOFTWARE_WORKFLOW = {
 
 export const DEFAULT_KANBAN_WORKFLOW = {
   name: "Simple Kanban",
+  key: "KANBAN",
   statuses: [
     { name: "Backlog", key: "BACKLOG", category: StatusCategory.TODO, color: "#6B7280", position: 0, isInitial: true, isFinal: false },
     { name: "To Do", key: "TODO", category: StatusCategory.TODO, color: "#F59E0B", position: 1, isInitial: false, isFinal: false },
     { name: "In Progress", key: "IN_PROGRESS", category: StatusCategory.IN_PROGRESS, color: "#3B82F6", position: 2, isInitial: false, isFinal: false },
-    { name: "Done", key: "DONE", category: StatusCategory.DONE, color: "#10B981", position: 3, isInitial: false, isFinal: true },
+    { name: "In Review", key: "IN_REVIEW", category: StatusCategory.IN_REVIEW, color: "#8B5CF6", position: 3, isInitial: false, isFinal: false },
+    { name: "Done", key: "DONE", category: StatusCategory.DONE, color: "#10B981", position: 4, isInitial: false, isFinal: true },
   ],
   // Kanban allows all transitions (more flexible)
   transitions: "ALL",
@@ -93,6 +100,7 @@ export const DEFAULT_KANBAN_WORKFLOW = {
 
 export const DEFAULT_BUG_TRACKING_WORKFLOW = {
   name: "Bug Tracking",
+  key: "BUG_TRACKING",
   statuses: [
     { name: "Open", key: "OPEN", category: StatusCategory.TODO, color: "#EF4444", position: 0, isInitial: true, isFinal: false },
     { name: "Confirmed", key: "CONFIRMED", category: StatusCategory.TODO, color: "#F59E0B", position: 1, isInitial: false, isFinal: false },
