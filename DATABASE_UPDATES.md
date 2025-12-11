@@ -155,3 +155,75 @@ After adding these attributes, verify by:
 - **JSON Storage**: Appwrite doesn't have native JSON type, so `enabledFeatures` is stored as a string. The app handles parsing.
 - **Indexes**: Adding indexes is non-destructive and can be done anytime
 - **Migration**: No data migration needed since all fields are optional with sensible defaults
+
+---
+
+## 🚨 CRITICAL: Missing Workflow Transition Attributes
+
+### 📊 Collection: `workflow_transitions`
+
+**Current Attributes in Database:**
+- ✅ workflowId (string, 36, required)
+- ✅ fromStatusId (string, 36, required)
+- ✅ toStatusId (string, 36, required)
+- ✅ name (string, 128, optional)
+- ✅ allowedRoles (string[], 500, optional)
+
+**Missing Attributes (MUST ADD):**
+
+1. **description**
+   - Type: `string`
+   - Size: 500
+   - Required: No
+   - Description: Description of the transition
+
+2. **requiredFields**
+   - Type: `string[]` (array)
+   - Size: 100 per element
+   - Required: No
+   - Description: Fields that must be filled to perform this transition
+
+3. **autoAssign**
+   - Type: `boolean`
+   - Required: No
+   - Default: `false`
+   - Description: Whether to auto-assign the task to current user on transition
+
+### 🔧 How to Add These Attributes
+
+#### Step 1: Add `description` Attribute
+1. Go to Appwrite Console → Databases → Your Database → `workflow_transitions` collection
+2. Click "Create Attribute"
+3. Select "String"
+4. Fill in:
+   - **Attribute Key**: `description`
+   - **Size**: 500
+   - **Required**: No
+5. Click "Create"
+
+#### Step 2: Add `requiredFields` Attribute
+1. In the same `workflow_transitions` collection
+2. Click "Create Attribute"
+3. Select "String"
+4. Check "Array"
+5. Fill in:
+   - **Attribute Key**: `requiredFields`
+   - **Size**: 100
+   - **Required**: No
+6. Click "Create"
+
+#### Step 3: Add `autoAssign` Attribute
+1. In the same `workflow_transitions` collection
+2. Click "Create Attribute"
+3. Select "Boolean"
+4. Fill in:
+   - **Attribute Key**: `autoAssign`
+   - **Required**: No
+   - **Default**: false
+5. Click "Create"
+
+### ⚠️ Current Status
+- The code is currently trying to use these attributes but they don't exist in the database
+- This is causing "Invalid document structure: Unknown attribute" errors
+- The code has been temporarily patched to remove references to missing attributes
+- **ACTION REQUIRED**: Add these attributes to the database immediately
