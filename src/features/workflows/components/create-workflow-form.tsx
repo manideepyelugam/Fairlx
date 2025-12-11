@@ -56,8 +56,10 @@ interface CreateWorkflowFormProps {
 }
 
 const STATUS_CATEGORY_COLORS: Record<StatusCategory, string> = {
-  [StatusCategory.TODO]: "#94a3b8",
+  [StatusCategory.TODO]: "#6b7280",
+  [StatusCategory.ASSIGNED]: "#f59e0b",
   [StatusCategory.IN_PROGRESS]: "#3b82f6",
+  [StatusCategory.IN_REVIEW]: "#8b5cf6",
   [StatusCategory.DONE]: "#22c55e",
 };
 
@@ -77,6 +79,7 @@ export const CreateWorkflowForm = ({ onCancel, workspaceId: propWorkspaceId, spa
     resolver: zodResolver(createWorkflowSchema.omit({ workspaceId: true })),
     defaultValues: {
       name: "",
+      key: "",
       description: "",
       isDefault: false,
     },
@@ -165,8 +168,45 @@ export const CreateWorkflowForm = ({ onCancel, workspaceId: propWorkspaceId, spa
                       <Input 
                         placeholder="e.g., Software Development, Bug Tracking" 
                         {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          // Auto-generate key from name
+                          if (!form.getValues("key")) {
+                            const generatedKey = e.target.value
+                              .toUpperCase()
+                              .replace(/[^A-Z0-9]/g, "_")
+                              .replace(/_{2,}/g, "_")
+                              .substring(0, 50);
+                            form.setValue("key", generatedKey);
+                          }
+                        }}
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="key"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Workflow Key</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="e.g., SOFTWARE_DEV, BUG_TRACKING" 
+                        {...field}
+                        className="font-mono"
+                        onChange={(e) => {
+                          const value = e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, "_");
+                          field.onChange(value);
+                        }}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Unique identifier (auto-generated from name). Letters, numbers, and underscores only.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -245,7 +285,9 @@ export const CreateWorkflowForm = ({ onCancel, workspaceId: propWorkspaceId, spa
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value={StatusCategory.TODO}>To Do</SelectItem>
+                          <SelectItem value={StatusCategory.ASSIGNED}>Assigned</SelectItem>
                           <SelectItem value={StatusCategory.IN_PROGRESS}>In Progress</SelectItem>
+                          <SelectItem value={StatusCategory.IN_REVIEW}>In Review</SelectItem>
                           <SelectItem value={StatusCategory.DONE}>Done</SelectItem>
                         </SelectContent>
                       </Select>
