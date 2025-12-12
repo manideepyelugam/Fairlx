@@ -6,9 +6,10 @@ import {
   MoreHorizontal,
   Pencil,
   Trash2,
-  MessageSquare,
   Check,
   X,
+  Reply,
+  AtSign,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -112,115 +113,131 @@ export const CommentItem = ({
   return (
     <>
       <DeleteDialog />
-      <div className={cn("group", isReply && "ml-8 mt-3")}>
+      <div className={cn("group", isReply && "ml-10 mt-3")}>
         <div className="flex gap-3">
           <Avatar className="h-8 w-8 shrink-0">
             <AvatarImage
               src={comment.author?.profileImageUrl || undefined}
               alt={comment.author?.name || "User"}
             />
-            <AvatarFallback className="text-xs bg-primary/10">
+            <AvatarFallback className="text-xs bg-emerald-500 text-white">
               {authorInitials}
             </AvatarFallback>
           </Avatar>
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium text-sm">
-                  {comment.author?.name || "Unknown User"}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(comment.$createdAt), {
-                    addSuffix: true,
-                  })}
-                  {comment.isEdited && (
-                    <span className="ml-1 text-muted-foreground">(edited)</span>
-                  )}
-                </span>
-              </div>
+            <div className="bg-gray-100 rounded-lg px-4 py-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-medium text-sm text-gray-900">
+                    {comment.author?.name || "Unknown User"}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {formatDistanceToNow(new Date(comment.$createdAt), {
+                      addSuffix: true,
+                    })}
+                    {comment.isEdited && (
+                      <span className="ml-1 text-gray-400">(edited)</span>
+                    )}
+                  </span>
+                </div>
 
-              {(canEdit || canDelete) && !isEditing && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
+                {!isEditing && (
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {!isReply && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-gray-400 hover:text-gray-600"
+                        onClick={() => setIsReplying(!isReplying)}
+                      >
+                        <Reply className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="h-7 w-7 text-gray-400 hover:text-gray-600"
                     >
-                      <MoreHorizontal className="h-4 w-4" />
+                      <Check className="h-3.5 w-3.5" />
                     </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {canEdit && (
-                      <DropdownMenuItem onClick={() => setIsEditing(true)}>
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-gray-400 hover:text-gray-600"
+                    >
+                      <AtSign className="h-3.5 w-3.5" />
+                    </Button>
+                    {(canEdit || canDelete) && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-gray-400 hover:text-gray-600"
+                          >
+                            <MoreHorizontal className="h-3.5 w-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {canEdit && (
+                            <DropdownMenuItem onClick={() => setIsEditing(true)}>
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                          )}
+                          {canDelete && (
+                            <DropdownMenuItem
+                              onClick={handleDelete}
+                              disabled={isDeleting}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
-                    {canDelete && (
-                      <DropdownMenuItem
-                        onClick={handleDelete}
-                        disabled={isDeleting}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
-
-            {isEditing ? (
-              <div className="mt-2 space-y-2">
-                <Textarea
-                  value={editContent}
-                  onChange={(e) => setEditContent(e.target.value)}
-                  className="min-h-[80px] resize-none"
-                  disabled={isUpdating}
-                />
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    onClick={handleEdit}
-                    disabled={isUpdating || !editContent.trim()}
-                  >
-                    <Check className="h-4 w-4 mr-1" />
-                    Save
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleCancelEdit}
-                    disabled={isUpdating}
-                  >
-                    <X className="h-4 w-4 mr-1" />
-                    Cancel
-                  </Button>
-                </div>
+                  </div>
+                )}
               </div>
-            ) : (
-              <>
+
+              {isEditing ? (
+                <div className="mt-2 space-y-2">
+                  <Textarea
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    className="min-h-[80px] resize-none"
+                    disabled={isUpdating}
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={handleEdit}
+                      disabled={isUpdating || !editContent.trim()}
+                    >
+                      <Check className="h-4 w-4 mr-1" />
+                      Save
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleCancelEdit}
+                      disabled={isUpdating}
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
                 <CommentContent
                   content={comment.content}
                   workspaceId={workspaceId}
                 />
-
-                {!isReply && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 mt-1 text-xs text-muted-foreground hover:text-foreground"
-                    onClick={() => setIsReplying(!isReplying)}
-                  >
-                    <MessageSquare className="h-3 w-3 mr-1" />
-                    Reply
-                  </Button>
-                )}
-              </>
-            )}
+              )}
+            </div>
 
             {/* Replies */}
             {comment.replies && comment.replies.length > 0 && (
@@ -241,7 +258,7 @@ export const CommentItem = ({
 
             {/* Reply Input */}
             {isReplying && (
-              <div className="mt-3 ml-8">
+              <div className="mt-3 ml-10">
                 <CommentInput
                   taskId={taskId}
                   workspaceId={workspaceId}

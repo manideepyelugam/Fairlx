@@ -164,18 +164,40 @@ export const Breadcrumb = () => {
       }
     }
   } else if (sectionType === "tasks") {
-    breadcrumbs.push({
-      label: "Tasks",
-      href: `/workspaces/${workspaceId}/tasks`,
-      isClickable: true,
-    });
-    
-    if (task && itemId) {
+    // For individual task pages, show the project path instead of "Tasks"
+    if (task && itemId && task.project) {
+      breadcrumbs.push({
+        label: "Projects",
+        href: `/workspaces/${workspaceId}/projects`,
+        isClickable: false,
+      });
+      
+      breadcrumbs.push({
+        label: task.project.name,
+        href: `/workspaces/${workspaceId}/projects/${task.projectId}`,
+        isClickable: true,
+      });
+      
       breadcrumbs.push({
         label: task.name,
         href: `/workspaces/${workspaceId}/tasks/${itemId}`,
         isClickable: true,
       });
+    } else {
+      // Fallback for tasks list page or tasks without project
+      breadcrumbs.push({
+        label: "Tasks",
+        href: `/workspaces/${workspaceId}/tasks`,
+        isClickable: true,
+      });
+      
+      if (task && itemId) {
+        breadcrumbs.push({
+          label: task.name,
+          href: `/workspaces/${workspaceId}/tasks/${itemId}`,
+          isClickable: true,
+        });
+      }
     }
   } else if (sectionType === "teams") {
     breadcrumbs.push({
