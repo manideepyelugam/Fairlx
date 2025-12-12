@@ -1,6 +1,7 @@
 "use client";
 
 import { GitBranch, Plus, ChevronRight, Settings } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 
@@ -18,11 +19,27 @@ interface WorkflowsListProps {
 }
 
 export const WorkflowsList = ({ spaceId, projectId }: WorkflowsListProps) => {
+  const router = useRouter();
   const workspaceId = useWorkspaceId();
   const { open } = useCreateWorkflowModal();
   const { data, isLoading } = useGetWorkflows({ workspaceId, spaceId, projectId });
 
   const workflows = data?.documents ?? [];
+
+  const handleWorkflowClick = (workflowId: string) => {
+    if (spaceId) {
+      router.push(`/workspaces/${workspaceId}/spaces/${spaceId}/workflows/${workflowId}`);
+    } else if (projectId) {
+      router.push(`/workspaces/${workspaceId}/projects/${projectId}/workflows/${workflowId}`);
+    } else {
+      router.push(`/workspaces/${workspaceId}/workflows/${workflowId}`);
+    }
+  };
+
+  const handleSettingsClick = (e: React.MouseEvent, workflowId: string) => {
+    e.stopPropagation();
+    handleWorkflowClick(workflowId);
+  };
 
   if (isLoading) {
     return (
@@ -69,6 +86,7 @@ export const WorkflowsList = ({ spaceId, projectId }: WorkflowsListProps) => {
             {workflows.map((workflow) => (
               <div
                 key={workflow.$id}
+                onClick={() => handleWorkflowClick(workflow.$id)}
                 className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent cursor-pointer transition-colors"
               >
                 <div className="flex items-center gap-3">
@@ -97,7 +115,11 @@ export const WorkflowsList = ({ spaceId, projectId }: WorkflowsListProps) => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon">
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={(e) => handleSettingsClick(e, workflow.$id)}
+                  >
                     <Settings className="size-4" />
                   </Button>
                   <ChevronRight className="size-4 text-muted-foreground" />

@@ -25,7 +25,7 @@ const app = new Hono()
       const storage = c.get("storage");
       const user = c.get("user");
 
-      const { name, description, deadline, image, workspaceId } = c.req.valid("form");
+      const { name, description, deadline, image, workspaceId, spaceId } = c.req.valid("form");
 
       const member = await getMember({
         databases,
@@ -66,6 +66,7 @@ const app = new Hono()
           deadline: deadline || undefined,
           imageUrl: uploadedImageUrl,
           workspaceId,
+          spaceId: spaceId || null,
         }
       );
 

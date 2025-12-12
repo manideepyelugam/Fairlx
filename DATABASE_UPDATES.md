@@ -22,9 +22,31 @@ Based on the new features implemented (Query Optimization, UI Mode, Enhanced Onb
    - Description: JSON object storing enabled features
    - Example value: `{"spaces":true,"programs":true,"teams":true,"customFields":true,"workflows":true,"timeTracking":true}`
 
+### � Collection: `projects`
+
+**New Attributes to Add:**
+
+1. **spaceId** ⭐ IMPORTANT
+   - Type: `string`
+   - Required: No
+   - Size: 36 characters
+   - Default: (leave empty/null)
+   - Description: Links the project to a space. Projects without a spaceId are not assigned to any space.
+
 ### 🔧 How to Add These Attributes in Appwrite Console
 
-#### Step 1: Add `uiMode` Attribute
+#### Step 1: Add `spaceId` to Projects Collection ⭐ REQUIRED
+1. Go to Appwrite Console → Databases → Your Database → `projects` collection
+2. Click "Create Attribute"
+3. Select "String"
+4. Fill in:
+   - **Attribute Key**: `spaceId`
+   - **Size**: 36
+   - **Required**: No
+   - **Default**: (leave empty)
+5. Click "Create"
+
+#### Step 2: Add `uiMode` Attribute to Workspaces
 1. Go to Appwrite Console → Databases → Your Database → `workspaces` collection
 2. Click "Create Attribute"
 3. Select "Enum"
@@ -38,7 +60,7 @@ Based on the new features implemented (Query Optimization, UI Mode, Enhanced Onb
    - **Default**: `ADVANCED`
 5. Click "Create"
 
-#### Step 2: Add `enabledFeatures` Attribute
+#### Step 3: Add `enabledFeatures` Attribute to Workspaces
 1. In the same `workspaces` collection
 2. Click "Create Attribute"
 3. Select "String"
