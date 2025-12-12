@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { Handle, Position, type Node } from "@xyflow/react";
+import { Handle, Position } from "@xyflow/react";
 import { Circle, CheckCircle, Clock, Edit, Trash2, Play, Flag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";

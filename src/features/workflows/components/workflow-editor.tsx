@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useMemo, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import {
   ReactFlow,
   Controls,
@@ -9,22 +9,17 @@ import {
   Panel,
   useNodesState,
   useEdgesState,
-  addEdge,
   Connection,
   BackgroundVariant,
   Node,
   Edge,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Plus, Save, Undo, Redo, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Tooltip,
-  TooltipContent,
   TooltipProvider,
-  TooltipTrigger,
 } from "@/components/ui/tooltip";
 
 import { StatusNode } from "./status-node";
@@ -35,19 +30,19 @@ import {
   WorkflowStatus,
   WorkflowTransition,
   StatusNodeData,
-  TransitionEdgeData,
-  StatusCategory,
   convertStatusesToNodes,
   convertTransitionsToEdges,
 } from "../types";
 
 // Custom node and edge types
-const nodeTypes = {
-  statusNode: StatusNode as any,
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const nodeTypes: Record<string, any> = {
+  statusNode: StatusNode,
 };
 
-const edgeTypes = {
-  transitionEdge: TransitionEdge as any,
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const edgeTypes: Record<string, any> = {
+  transitionEdge: TransitionEdge,
 };
 
 interface WorkflowEditorProps {
@@ -81,7 +76,6 @@ export const WorkflowEditor = ({
   const [editingStatusId, setEditingStatusId] = useState<string | null>(null);
   const [editingTransitionId, setEditingTransitionId] = useState<string | null>(null);
   const [isCreatingStatus, setIsCreatingStatus] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -116,7 +110,9 @@ export const WorkflowEditor = ({
       (id) => setEditingTransitionId(id),
       handleTransitionDelete
     );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setNodes(newNodes as any);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setEdges(newEdges as any);
   }, [statuses, transitions, setNodes, setEdges, handleStatusDelete, handleTransitionDelete]);
 

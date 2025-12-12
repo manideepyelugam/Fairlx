@@ -57,9 +57,7 @@ interface CreateWorkflowFormProps {
 
 const STATUS_CATEGORY_COLORS: Record<StatusCategory, string> = {
   [StatusCategory.TODO]: "#6b7280",
-  [StatusCategory.ASSIGNED]: "#f59e0b",
   [StatusCategory.IN_PROGRESS]: "#3b82f6",
-  [StatusCategory.IN_REVIEW]: "#8b5cf6",
   [StatusCategory.DONE]: "#22c55e",
 };
 
@@ -285,9 +283,7 @@ export const CreateWorkflowForm = ({ onCancel, workspaceId: propWorkspaceId, spa
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value={StatusCategory.TODO}>To Do</SelectItem>
-                          <SelectItem value={StatusCategory.ASSIGNED}>Assigned</SelectItem>
                           <SelectItem value={StatusCategory.IN_PROGRESS}>In Progress</SelectItem>
-                          <SelectItem value={StatusCategory.IN_REVIEW}>In Review</SelectItem>
                           <SelectItem value={StatusCategory.DONE}>Done</SelectItem>
                         </SelectContent>
                       </Select>

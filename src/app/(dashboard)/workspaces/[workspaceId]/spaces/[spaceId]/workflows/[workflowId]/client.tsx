@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useMemo, useEffect, useRef } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -17,7 +17,6 @@ import {
   Panel,
   useNodesState,
   useEdgesState,
-  useReactFlow,
   ReactFlowProvider,
   Connection,
   Node,
@@ -49,18 +48,22 @@ import {
   StatusNodeData,
   convertStatusesToNodes,
   convertTransitionsToEdges,
+  StatusNode as StatusNodeType,
+  TransitionEdge as TransitionEdgeType,
 } from "@/features/workflows/types";
 import { StatusNode } from "@/features/workflows/components/status-node";
 import { TransitionEdge } from "@/features/workflows/components/transition-edge";
 import { StatusEditDialog } from "@/features/workflows/components/status-edit-dialog";
 import { TransitionEditDialog } from "@/features/workflows/components/transition-edit-dialog";
 
-const nodeTypes = {
-  statusNode: StatusNode as any,
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const nodeTypes: Record<string, any> = {
+  statusNode: StatusNode,
 };
 
-const edgeTypes = {
-  transitionEdge: TransitionEdge as any,
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const edgeTypes: Record<string, any> = {
+  transitionEdge: TransitionEdge,
 };
 
 // Inner component that uses ReactFlow hooks
@@ -106,8 +109,8 @@ const WorkflowEditor = () => {
   const [editingTransition, setEditingTransition] = useState<WorkflowTransition | null>(null);
   const [zoomLevel, setZoomLevel] = useState(100);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState<StatusNodeData>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<StatusNodeType>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<TransitionEdgeType>([]);
 
   // Use refs to avoid dependency issues in callbacks
   const workflowRef = useRef(workflow);
@@ -156,6 +159,7 @@ const WorkflowEditor = () => {
   // Convert workflow data to React Flow nodes and edges
   useEffect(() => {
     if (workflow?.statuses) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setNodes(convertStatusesToNodes(workflow.statuses, handleNodeEdit, handleNodeDelete) as any);
     }
     if (workflow?.transitions) {
@@ -199,7 +203,7 @@ const WorkflowEditor = () => {
 
   // Handle node position change (drag)
   const onNodeDragStop = useCallback(
-    async (_: any, node: Node<StatusNodeData>) => {
+    async (_event: React.MouseEvent, node: Node<StatusNodeData>) => {
       try {
         await updateStatus({
           param: { workflowId, statusId: node.id },
@@ -225,6 +229,7 @@ const WorkflowEditor = () => {
     if (editingStatus) {
       await updateStatus({
         param: { workflowId, statusId: editingStatus.$id },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         json: data as any,
       });
     } else {
@@ -239,6 +244,7 @@ const WorkflowEditor = () => {
           ...data,
           positionX,
           positionY,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any,
       });
     }
@@ -251,6 +257,7 @@ const WorkflowEditor = () => {
     if (editingTransition) {
       await updateTransition({
         param: { workflowId, transitionId: editingTransition.$id },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         json: data as any,
       });
     }
@@ -435,8 +442,9 @@ const WorkflowEditor = () => {
         open={statusDialogOpen}
         onOpenChange={setStatusDialogOpen}
         status={editingStatus}
+        workflowId={workflowId}
+        existingKeys={workflow?.statuses?.map((s: WorkflowStatus) => s.key) || []}
         onSave={handleSaveStatus}
-        onDelete={editingStatus ? () => handleNodeDelete(editingStatus.$id) : undefined}
       />
 
       <TransitionEditDialog

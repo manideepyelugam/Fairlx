@@ -572,7 +572,7 @@ export const TaskHistory = ({ task, workspaceId, currentUserId, isAdmin = false 
     requestAnimationFrame(() => {
       try {
         containerRef.current!.scrollTop = containerRef.current!.scrollHeight;
-      } catch (e) {
+      } catch {
         // ignore
       }
     });

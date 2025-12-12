@@ -46,7 +46,8 @@ interface TaskAttachmentsProps {
 
 const getFileIcon = (mimeType: string) => {
   if (mimeType.startsWith("image/")) {
-    return <Image  alt-text="Image file icon" className="size-4 text-purple-500" />;
+    // eslint-disable-next-line jsx-a11y/alt-text -- This is a lucide-react icon, not an img element
+    return <Image className="size-4 text-purple-500" />;
   }
   if (mimeType.includes("pdf")) {
     return <FileText className="size-4 text-red-500" />;

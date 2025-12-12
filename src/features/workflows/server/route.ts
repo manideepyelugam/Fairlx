@@ -164,21 +164,44 @@ const app = new Hono()
         }
 
         // Create transitions
-        for (const transitionDef of template.transitions) {
-          const fromId = statusIdMap[transitionDef.from];
-          const toId = statusIdMap[transitionDef.to];
-          if (fromId && toId) {
-            await databases.createDocument<WorkflowTransition>(
-              DATABASE_ID,
-              WORKFLOW_TRANSITIONS_ID,
-              ID.unique(),
-              {
-                workflowId: workflow.$id,
-                fromStatusId: fromId,
-                toStatusId: toId,
-                autoAssign: false,
+        if (template.transitions === "ALL") {
+          // Create transitions between all status pairs
+          const statusKeys = Object.keys(statusIdMap);
+          for (const fromKey of statusKeys) {
+            for (const toKey of statusKeys) {
+              if (fromKey !== toKey) {
+                await databases.createDocument<WorkflowTransition>(
+                  DATABASE_ID,
+                  WORKFLOW_TRANSITIONS_ID,
+                  ID.unique(),
+                  {
+                    workflowId: workflow.$id,
+                    fromStatusId: statusIdMap[fromKey],
+                    toStatusId: statusIdMap[toKey],
+                    autoAssign: false,
+                  }
+                );
               }
-            );
+            }
+          }
+        } else {
+          // Create transitions from template
+          for (const transitionDef of template.transitions) {
+            const fromId = statusIdMap[transitionDef.from];
+            const toId = statusIdMap[transitionDef.to];
+            if (fromId && toId) {
+              await databases.createDocument<WorkflowTransition>(
+                DATABASE_ID,
+                WORKFLOW_TRANSITIONS_ID,
+                ID.unique(),
+                {
+                  workflowId: workflow.$id,
+                  fromStatusId: fromId,
+                  toStatusId: toId,
+                  autoAssign: false,
+                }
+              );
+            }
           }
         }
       }

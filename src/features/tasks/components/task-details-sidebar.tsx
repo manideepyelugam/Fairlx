@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { useGetMembers } from "@/features/members/api/use-get-members";
+import { Member } from "@/features/members/types";
 // import { useGetProjects } from "@/features/projects/api/use-get-projects";
 import { useUpdateTask } from "../api/use-update-task";
 import { PopulatedTask, TaskStatus, TaskPriority } from "../types";
@@ -142,7 +143,7 @@ export const TaskDetailsSidebar = ({
   const [assigneeSearch, setAssigneeSearch] = useState("");
   const [labelSearch, setLabelSearch] = useState("");
 
-  const handleUpdateTask = (updates: Record<string, any>) => {
+  const handleUpdateTask = (updates: Record<string, string | string[] | null | undefined>) => {
     updateTask(
       { param: { taskId: task.$id }, json: updates },
       {
@@ -201,7 +202,7 @@ export const TaskDetailsSidebar = ({
     s.label.toLowerCase().includes(statusSearch.toLowerCase())
   );
 
-  const filteredMembers = members?.documents?.filter((m: any) =>
+  const filteredMembers = members?.documents?.filter((m: Member) =>
     m.name?.toLowerCase().includes(assigneeSearch.toLowerCase())
   );
 
@@ -361,7 +362,7 @@ export const TaskDetailsSidebar = ({
               </button>
 
               {/* Members list */}
-              {filteredMembers?.map((member: any, index: number) => (
+              {filteredMembers?.map((member: Member, index: number) => (
                 <button
                   key={member.$id}
                   onClick={() => handleAssigneeChange(member.$id)}
@@ -369,11 +370,11 @@ export const TaskDetailsSidebar = ({
                 >
                   <div className="flex items-center gap-2">
                     <MemberAvatar
-                      name={member.name}
+                      name={member.name || "Unknown"}
                       imageUrl={member.profileImageUrl}
                       className="size-5"
                     />
-                    <span className="text-xs tracking-normal">{member.name}</span>
+                    <span className="text-xs tracking-normal">{member.name || "Unknown"}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     {currentAssignee?.$id === member.$id && <Check className="size-4 text-gray-600" />}

@@ -657,7 +657,7 @@ export const ProjectList = ({ data, total }: ProjectListProps) => {
           <Button
             variant="ghost"
             size="icon"
-            onClick={createProject}
+            onClick={() => createProject()}
             className="h-6 w-6"
           >
             <PlusIcon className="size-3" />

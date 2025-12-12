@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -36,6 +36,7 @@ import { useGetTask } from "../api/use-get-task";
 import { useTaskPreviewModal } from "../hooks/use-task-preview-modal";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useGetComments } from "@/features/comments/hooks/use-get-comments";
+import { PopulatedComment } from "@/features/comments/types";
 import { TaskStatus, TaskPriority, PopulatedTask } from "../types";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 
@@ -276,7 +277,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
 
               {recentComments.length > 0 ? (
                 <div className="space-y-3">
-                  {recentComments.map((comment: any) => {
+                  {recentComments.map((comment: PopulatedComment) => {
                     const initials = comment.author?.name
                       ? comment.author.name.split(" ").map((n: string) => n[0]).join("").toUpperCase().substring(0, 2)
                       : "??";
@@ -500,9 +501,9 @@ export const TaskPreviewModalWrapper = () => {
 };
 
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     close();
-  };
+  }, [close]);
 
   const handleAttachmentPreview = (attachment: Attachment) => {
     setPreviewAttachment(attachment);
@@ -531,7 +532,7 @@ export const TaskPreviewModalWrapper = () => {
     };
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [isOpen]);
+  }, [isOpen, handleClose]);
 
   if (!isOpen) return null;
 
@@ -611,6 +612,7 @@ export const TaskPreviewModalWrapper = () => {
                     {previewAttachment.mimeType.startsWith("image/") ? (
                       // Image preview
                       // Use the preview endpoint
+                      // eslint-disable-next-line @next/next/no-img-element -- Dynamic preview URL not compatible with Next.js Image
                       <img
                         src={`/api/attachments/${previewAttachment.$id}/preview?workspaceId=${workspaceId}`}
                         alt={previewAttachment.name}

@@ -7,7 +7,7 @@ import {
   getBezierPath,
   type Position,
 } from "@xyflow/react";
-import { Edit, Trash2, X, ArrowRight } from "lucide-react";
+import { Edit, Trash2, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
