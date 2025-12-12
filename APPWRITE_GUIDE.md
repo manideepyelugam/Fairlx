@@ -157,33 +157,38 @@ Below are the collections implied by the codebase. Use `string` for text, `integ
 
 ### workflows
 - name **(req, string, 160)**
-- description **(string, 2000)**
+- key **(req, string, 50)**
+- description **(string, 1000)**
 - workspaceId **(req, string, 64)**
 - spaceId **(string, 64)**
 - projectId **(string, 64)**
-- isDefault **(req, boolean)**
-- isSystem **(req, boolean)**
+- initialStatusId **(string, 64)**
+- isDefault **(boolean, default: false)**
+- isSystem **(boolean, default: false)**
+- isArchived **(boolean, default: false)**
 
 ### workflow_statuses
 - workflowId **(req, string, 64)**
-- name **(req, string, 120)**
-- key **(req, string, 64)**
-- category **(req, enum: TODO|IN_PROGRESS|DONE)**
-- color **(req, string, 16)**
+- name **(req, string, 128)**
+- key **(req, string, 50)**
+- category **(req, enum: TODO|ASSIGNED|IN_PROGRESS|IN_REVIEW|DONE)**
+- color **(string, 7)** (hex color)
 - description **(string, 500)**
 - position **(req, integer)**
-- isInitial **(req, boolean)**
-- isFinal **(req, boolean)**
+- positionX **(integer, default: 0)** (for visual editor)
+- positionY **(integer, default: 0)** (for visual editor)
+- isInitial **(boolean, default: false)**
+- isFinal **(boolean, default: false)**
 
 ### workflow_transitions
 - workflowId **(req, string, 64)**
 - fromStatusId **(req, string, 64)**
 - toStatusId **(req, string, 64)**
-- name **(string, 160)**
+- name **(string, 128)**
 - description **(string, 500)**
-- requiredFields **(string[])**
-- allowedRoles **(string[])**
-- autoAssign **(boolean)**
+- requiredFields **(string[], size: 100)**
+- allowedRoles **(string[], size: 500)**
+- autoAssign **(boolean, default: false)**
 
 ### custom_columns (custom fields definitions)
 - name **(req, string, 160)**
