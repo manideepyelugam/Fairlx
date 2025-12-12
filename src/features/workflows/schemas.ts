@@ -31,6 +31,8 @@ export const createWorkflowStatusSchema = z.object({
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color"),
   description: z.string().trim().max(200).optional(),
   position: z.number().min(0).optional(),
+  positionX: z.number().default(0),
+  positionY: z.number().default(0),
   isInitial: z.boolean().default(false),
   isFinal: z.boolean().default(false),
 });
@@ -42,6 +44,8 @@ export const updateWorkflowStatusSchema = z.object({
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color").optional(),
   description: z.string().trim().max(200).optional().nullable(),
   position: z.number().min(0).optional(),
+  positionX: z.number().optional(),
+  positionY: z.number().optional(),
   isInitial: z.boolean().optional(),
   isFinal: z.boolean().optional(),
 });
