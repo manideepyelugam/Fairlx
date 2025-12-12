@@ -9,6 +9,7 @@ import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
+import { useGetSpaces } from "@/features/spaces/api/use-get-spaces";
 
 import { cn } from "@/lib/utils";
 import { DottedSeparator } from "@/components/dotted-separator";
@@ -23,21 +24,31 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { createProjectSchema } from "../schemas";
 import { useCreateProject } from "../api/use-create-project";
 
 interface CreateProjectFormProps {
   onCancel?: () => void;
+  initialSpaceId?: string;
 }
 
-export const CreateProjectForm = ({ onCancel }: CreateProjectFormProps) => {
+export const CreateProjectForm = ({ onCancel, initialSpaceId }: CreateProjectFormProps) => {
   const workspaceId = useWorkspaceId();
   const router = useRouter();
   const { mutate, isPending } = useCreateProject();
+  const { data: spacesData } = useGetSpaces({ workspaceId });
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -47,6 +58,7 @@ export const CreateProjectForm = ({ onCancel }: CreateProjectFormProps) => {
       name: "",
       description: "",
       deadline: "",
+      spaceId: initialSpaceId || null,
     },
   });
 
@@ -55,6 +67,7 @@ export const CreateProjectForm = ({ onCancel }: CreateProjectFormProps) => {
       ...values,
       workspaceId,
       image: values.image instanceof File ? values.image : "",
+      spaceId: values.spaceId || null,
     };
 
     mutate(
@@ -74,6 +87,8 @@ export const CreateProjectForm = ({ onCancel }: CreateProjectFormProps) => {
       form.setValue("image", file);
     }
   };
+
+  const spaces = spacesData?.documents || [];
 
   return (
     <Card className="w-full h-full border-none shadow-none">
@@ -98,6 +113,44 @@ export const CreateProjectForm = ({ onCancel }: CreateProjectFormProps) => {
                     <FormControl>
                       <Input placeholder="Enter project name" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="spaceId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Space (Optional)</FormLabel>
+                    <Select
+                      onValueChange={(value) => field.onChange(value === "none" ? null : value)}
+                      value={field.value || "none"}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a space" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">No Space</SelectItem>
+                        {spaces.map((space) => (
+                          <SelectItem key={space.$id} value={space.$id}>
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="size-3 rounded"
+                                style={{ backgroundColor: space.color || "#6366f1" }}
+                              />
+                              <span>{space.name}</span>
+                              <span className="text-xs text-muted-foreground">({space.key})</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Assign this project to a space to organize related work
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

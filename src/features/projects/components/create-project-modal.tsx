@@ -7,7 +7,7 @@ import { CreateProjectForm } from "./create-project-form";
 import { useCreateProjectModal } from "../hooks/use-create-project-modal";
 
 export const CreateProjectModal = () => {
-  const { isOpen, setIsOpen, close } = useCreateProjectModal();
+  const { isOpen, setIsOpen, close, spaceId } = useCreateProjectModal();
 
   const handleOpenChange = (next: boolean) => {
     if (next === isOpen) return;
@@ -15,7 +15,7 @@ export const CreateProjectModal = () => {
   };
   return (
     <ResponsiveModal open={isOpen} onOpenChange={handleOpenChange}>
-      <CreateProjectForm onCancel={close} />
+      <CreateProjectForm onCancel={close} initialSpaceId={spaceId || undefined} />
     </ResponsiveModal>
   );
 };

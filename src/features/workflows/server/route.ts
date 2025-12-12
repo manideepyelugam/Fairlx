@@ -20,6 +20,7 @@ import {
   createWorkflowStatusSchema,
   updateWorkflowStatusSchema,
   createWorkflowTransitionSchema,
+  updateWorkflowTransitionSchema,
 } from "../schemas";
 import {
   Workflow,
@@ -105,6 +106,8 @@ const app = new Hono()
               color: status.color,
               description: status.description,
               position: status.position,
+              positionX: status.positionX || 0,
+              positionY: status.positionY || 0,
               isInitial: status.isInitial,
               isFinal: status.isFinal,
             }
@@ -151,6 +154,8 @@ const app = new Hono()
               category: statusDef.category,
               color: statusDef.color,
               position: statusDef.position,
+              positionX: statusDef.positionX || (statusDef.position * 250),
+              positionY: statusDef.positionY || 100,
               isInitial: statusDef.isInitial,
               isFinal: statusDef.isFinal,
             }
@@ -452,6 +457,8 @@ const app = new Hono()
           color: statusData.color,
           description: statusData.description || null,
           position,
+          positionX: statusData.positionX || 0,
+          positionY: statusData.positionY || 0,
           isInitial: statusData.isInitial || false,
           isFinal: statusData.isFinal || false,
         }
@@ -684,6 +691,49 @@ const app = new Hono()
 
     return c.json({ data: transitions });
   })
+
+  // Update a transition
+  .patch(
+    "/:workflowId/transitions/:transitionId",
+    sessionMiddleware,
+    zValidator("json", updateWorkflowTransitionSchema),
+    async (c) => {
+      const databases = c.get("databases");
+      const user = c.get("user");
+      const { workflowId, transitionId } = c.req.param();
+
+      const updates = c.req.valid("json");
+
+      const workflow = await databases.getDocument<Workflow>(
+        DATABASE_ID,
+        WORKFLOWS_ID,
+        workflowId
+      );
+
+      if (workflow.isSystem) {
+        return c.json({ error: "Cannot modify system workflows" }, 400);
+      }
+
+      const member = await getMember({
+        databases,
+        workspaceId: workflow.workspaceId,
+        userId: user.$id,
+      });
+
+      if (!member || member.role !== MemberRole.ADMIN) {
+        return c.json({ error: "Only admins can update transitions" }, 403);
+      }
+
+      const updatedTransition = await databases.updateDocument<WorkflowTransition>(
+        DATABASE_ID,
+        WORKFLOW_TRANSITIONS_ID,
+        transitionId,
+        updates
+      );
+
+      return c.json({ data: updatedTransition });
+    }
+  )
 
   // Delete a transition
   .delete("/:workflowId/transitions/:transitionId", sessionMiddleware, async (c) => {
