@@ -20,6 +20,7 @@ import {
   createWorkflowStatusSchema,
   updateWorkflowStatusSchema,
   createWorkflowTransitionSchema,
+  updateWorkflowTransitionSchema,
 } from "../schemas";
 import {
   Workflow,
@@ -41,6 +42,7 @@ const app = new Hono()
 
       const {
         name,
+        key,
         description,
         workspaceId,
         spaceId,
@@ -66,12 +68,12 @@ const app = new Hono()
         ID.unique(),
         {
           name,
+          key,
           description: description || null,
           workspaceId,
           spaceId: spaceId || null,
           projectId: projectId || null,
           isDefault: isDefault || false,
-          isSystem: false,
         }
       );
 
@@ -104,6 +106,8 @@ const app = new Hono()
               color: status.color,
               description: status.description,
               position: status.position,
+              positionX: status.positionX || 0,
+              positionY: status.positionY || 0,
               isInitial: status.isInitial,
               isFinal: status.isFinal,
             }
@@ -150,6 +154,8 @@ const app = new Hono()
               category: statusDef.category,
               color: statusDef.color,
               position: statusDef.position,
+              positionX: statusDef.positionX || (statusDef.position * 250),
+              positionY: statusDef.positionY || 100,
               isInitial: statusDef.isInitial,
               isFinal: statusDef.isFinal,
             }
@@ -158,21 +164,44 @@ const app = new Hono()
         }
 
         // Create transitions
-        for (const transitionDef of template.transitions) {
-          const fromId = statusIdMap[transitionDef.from];
-          const toId = statusIdMap[transitionDef.to];
-          if (fromId && toId) {
-            await databases.createDocument<WorkflowTransition>(
-              DATABASE_ID,
-              WORKFLOW_TRANSITIONS_ID,
-              ID.unique(),
-              {
-                workflowId: workflow.$id,
-                fromStatusId: fromId,
-                toStatusId: toId,
-                autoAssign: false,
+        if (template.transitions === "ALL") {
+          // Create transitions between all status pairs
+          const statusKeys = Object.keys(statusIdMap);
+          for (const fromKey of statusKeys) {
+            for (const toKey of statusKeys) {
+              if (fromKey !== toKey) {
+                await databases.createDocument<WorkflowTransition>(
+                  DATABASE_ID,
+                  WORKFLOW_TRANSITIONS_ID,
+                  ID.unique(),
+                  {
+                    workflowId: workflow.$id,
+                    fromStatusId: statusIdMap[fromKey],
+                    toStatusId: statusIdMap[toKey],
+                    autoAssign: false,
+                  }
+                );
               }
-            );
+            }
+          }
+        } else {
+          // Create transitions from template
+          for (const transitionDef of template.transitions) {
+            const fromId = statusIdMap[transitionDef.from];
+            const toId = statusIdMap[transitionDef.to];
+            if (fromId && toId) {
+              await databases.createDocument<WorkflowTransition>(
+                DATABASE_ID,
+                WORKFLOW_TRANSITIONS_ID,
+                ID.unique(),
+                {
+                  workflowId: workflow.$id,
+                  fromStatusId: fromId,
+                  toStatusId: toId,
+                  autoAssign: false,
+                }
+              );
+            }
           }
         }
       }
@@ -451,6 +480,8 @@ const app = new Hono()
           color: statusData.color,
           description: statusData.description || null,
           position,
+          positionX: statusData.positionX || 0,
+          positionY: statusData.positionY || 0,
           isInitial: statusData.isInitial || false,
           isFinal: statusData.isFinal || false,
         }
@@ -683,6 +714,49 @@ const app = new Hono()
 
     return c.json({ data: transitions });
   })
+
+  // Update a transition
+  .patch(
+    "/:workflowId/transitions/:transitionId",
+    sessionMiddleware,
+    zValidator("json", updateWorkflowTransitionSchema),
+    async (c) => {
+      const databases = c.get("databases");
+      const user = c.get("user");
+      const { workflowId, transitionId } = c.req.param();
+
+      const updates = c.req.valid("json");
+
+      const workflow = await databases.getDocument<Workflow>(
+        DATABASE_ID,
+        WORKFLOWS_ID,
+        workflowId
+      );
+
+      if (workflow.isSystem) {
+        return c.json({ error: "Cannot modify system workflows" }, 400);
+      }
+
+      const member = await getMember({
+        databases,
+        workspaceId: workflow.workspaceId,
+        userId: user.$id,
+      });
+
+      if (!member || member.role !== MemberRole.ADMIN) {
+        return c.json({ error: "Only admins can update transitions" }, 403);
+      }
+
+      const updatedTransition = await databases.updateDocument<WorkflowTransition>(
+        DATABASE_ID,
+        WORKFLOW_TRANSITIONS_ID,
+        transitionId,
+        updates
+      );
+
+      return c.json({ data: updatedTransition });
+    }
+  )
 
   // Delete a transition
   .delete("/:workflowId/transitions/:transitionId", sessionMiddleware, async (c) => {

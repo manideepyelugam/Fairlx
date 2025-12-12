@@ -2,15 +2,6 @@ import { useState } from "react";
 import { Clock, Trash2, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 
@@ -45,113 +36,91 @@ export const TaskTimeLogs = ({ taskId, taskName, workspaceId }: TaskTimeLogsProp
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Time Logs
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {[...Array(3)].map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full" />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-3">
+        {[...Array(3)].map((_, i) => (
+          <Skeleton key={i} className="h-20 w-full" />
+        ))}
+      </div>
     );
   }
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Time Logs
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary">
-                Total: {totalHours.toFixed(2)} hours
-              </Badge>
-              <Button
-                size="sm"
-                onClick={() => setIsCreateModalOpen(true)}
+      <div className="space-y-4">
+        {/* Header with Total and Log Button */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="text-sm">
+              Total: {totalHours.toFixed(2)} hours
+            </Badge>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => setIsCreateModalOpen(true)}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Log Time
+          </Button>
+        </div>
+
+        {/* Time Logs List */}
+        {!timeLogs?.documents || timeLogs.documents.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <Clock className="h-12 w-12 mx-auto mb-4 opacity-30" />
+            <p className="text-sm mb-4">No time logs recorded yet.</p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCreateModalOpen(true)}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Log Your First Entry
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {timeLogs.documents.map((log) => (
+              <div
+                key={log.$id}
+                className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Log Time
-              </Button>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {!timeLogs?.documents || timeLogs.documents.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No time logs found for this task.</p>
-              <Button
-                variant="outline"
-                className="mt-4"
-                onClick={() => setIsCreateModalOpen(true)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Log Your First Entry
-              </Button>
-            </div>
-          ) : (
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Hours</TableHead>
-                    <TableHead>Time Period</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>User</TableHead>
-                    <TableHead className="w-24">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {timeLogs.documents.map((log) => (
-                    <TableRow key={log.$id}>
-                      <TableCell className="font-medium">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center gap-3">
+                      <span className="font-medium text-sm">
                         {format(parseISO(log.date), "MMM d, yyyy")}
-                      </TableCell>
-                      <TableCell>{log.hours}</TableCell>
-                      <TableCell>
-                        {log.startTime && log.endTime 
-                          ? `${log.startTime} - ${log.endTime}`
-                          : "Not specified"
-                        }
-                      </TableCell>
-                      <TableCell className="max-w-xs truncate">
-                        {log.description}
-                      </TableCell>
-                      <TableCell>
-                        {(log as { user?: { name: string } }).user?.name || "Unknown User"}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeleteTimeLog(log.$id)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                      </span>
+                      <Badge variant="outline" className="text-xs">
+                        {log.hours}h
+                      </Badge>
+                      {log.startTime && log.endTime && (
+                        <span className="text-xs text-gray-500">
+                          {log.startTime} - {log.endTime}
+                        </span>
+                      )}
+                    </div>
+                    {log.description && (
+                      <p className="text-sm text-gray-600">{log.description}</p>
+                    )}
+                    <p className="text-xs text-gray-400">
+                      Logged by {(log as { user?: { name: string } }).user?.name || "Unknown User"}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteTimeLog(log.$id)}
+                    className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       <CreateTimeLogModal
         isOpen={isCreateModalOpen}

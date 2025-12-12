@@ -12,6 +12,7 @@ export const createProjectSchema = z.object({
     ])
     .optional(),
   workspaceId: z.string(),
+  spaceId: z.string().optional().nullable(),
 });
 
 export const updateProjectSchema = z.object({

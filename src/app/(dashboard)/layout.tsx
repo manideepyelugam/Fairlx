@@ -15,6 +15,8 @@ import { CreateWorkflowModal } from "@/features/workflows/components/create-work
 import { CreateLinkModal } from "@/features/work-item-links/components/create-link-modal";
 import { CreateTaskModal } from "@/features/tasks/components/create-task-modal";
 import { EditTaskModal } from "@/features/tasks/components/edit-task-modal";
+import { TaskDetailsModalWrapper } from "@/features/tasks/components/task-details-modal-wrapper";
+import { TaskPreviewModalWrapper } from "@/features/tasks/components/task-preview-modal";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 
 import { Navbar } from "@/components/navbar";
@@ -29,6 +31,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const pathname = usePathname();
   const isProfilePage = pathname === "/profile" || pathname.startsWith("/profile/");
   const workspaceId = useWorkspaceId();
+  const isTaskDetailPage = /^\/workspaces\/[^\/]+\/tasks\/[^\/]+$/.test(pathname || "");
 
   return (
     <div className="min-h-screen">
@@ -37,6 +40,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <CreateWorkItemModal />
       <CreateTaskModal />
       <EditTaskModal />
+      <TaskDetailsModalWrapper />
+      <TaskPreviewModalWrapper />
       <CreateCustomColumnModalWrapper />
       <ManageColumnsModalWrapper />
       <CreateTeamModal />
@@ -59,7 +64,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           <Navbar />
           <div className="flex-1 overflow-y-scroll">
             <div className="mx-auto max-w-screen-2xl">
-              <main className="py-8 px-6 flex flex-col overflow-y-scroll">
+              <main className={`${isTaskDetailPage ? "py-0 px-0" : "py-8 px-6"} flex flex-col overflow-y-scroll`}>
                 {children}
               </main>
             </div>

@@ -43,7 +43,7 @@ export const Projects = () => {
         <p className="text-[13px] tracking-normal font-medium pl-2 text-primary">Projects</p>
         {isAdmin && (
           <RiAddCircleFill
-            onClick={open}
+            onClick={() => open()}
             className="size-5 text-neutral-500 cursor-pointer hover:opacity-75 transition"
           />
         )}

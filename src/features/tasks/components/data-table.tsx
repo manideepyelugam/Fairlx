@@ -24,7 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { useTaskDetailsModal } from "@/features/tasks/hooks/use-task-details-modal";
+import { useTaskPreviewModal } from "../hooks/use-task-preview-modal";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -39,7 +39,7 @@ export function DataTable<TData, TValue>({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   );
-  const { open } = useTaskDetailsModal();
+  const { open: openPreview } = useTaskPreviewModal();
 
   const table = useReactTable({
     data,
@@ -88,7 +88,7 @@ export function DataTable<TData, TValue>({
                   onClick={() => {
                     const taskId = (row.original as { $id?: string })?.$id;
                     if (taskId) {
-                      open(taskId);
+                      openPreview(taskId);
                     }
                   }}
                 >

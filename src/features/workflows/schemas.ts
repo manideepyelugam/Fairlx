@@ -4,6 +4,8 @@ import { StatusCategory } from "./types";
 // Create a new workflow
 export const createWorkflowSchema = z.object({
   name: z.string().trim().min(1, "Workflow name is required").max(100),
+  key: z.string().trim().min(1, "Workflow key is required").max(50).toUpperCase()
+    .regex(/^[A-Z][A-Z0-9_]*$/, "Key must start with a letter and contain only letters, numbers, and underscores"),
   description: z.string().trim().max(500).optional(),
   workspaceId: z.string().min(1),
   spaceId: z.string().optional(),
@@ -29,6 +31,8 @@ export const createWorkflowStatusSchema = z.object({
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color"),
   description: z.string().trim().max(200).optional(),
   position: z.number().min(0).optional(),
+  positionX: z.number().default(0),
+  positionY: z.number().default(0),
   isInitial: z.boolean().default(false),
   isFinal: z.boolean().default(false),
 });
@@ -40,6 +44,8 @@ export const updateWorkflowStatusSchema = z.object({
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color").optional(),
   description: z.string().trim().max(200).optional().nullable(),
   position: z.number().min(0).optional(),
+  positionX: z.number().optional(),
+  positionY: z.number().optional(),
   isInitial: z.boolean().optional(),
   isFinal: z.boolean().optional(),
 });

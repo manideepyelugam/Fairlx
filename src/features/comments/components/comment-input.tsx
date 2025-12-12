@@ -18,7 +18,7 @@ export const CommentInput = ({
   taskId,
   workspaceId,
   parentId,
-  placeholder = "Write a comment... Use @ to mention someone",
+  placeholder = "Leave a comment...",
   onSuccess,
   autoFocus = false,
 }: CommentInputProps) => {

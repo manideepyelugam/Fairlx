@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { PencilIcon, XIcon } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
-import { DottedSeparator } from "@/components/dotted-separator";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import { useDebounce } from "@/hooks/use-debounce";
 
 import { useUpdateTask } from "../api/use-update-task";
 import { Task } from "../types";
@@ -14,67 +14,85 @@ interface TaskDescriptionProps {
 }
 
 export const TaskDescription = ({ task, canEdit = true }: TaskDescriptionProps) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [value, setValue] = useState(task.description);
+  const [value, setValue] = useState(task.description || "");
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const { mutate, isPending } = useUpdateTask();
+  const { mutate: updateTask } = useUpdateTask();
 
-  const handleSave = () => {
-    mutate(
-      { json: { description: value }, param: { taskId: task.$id } },
-      {
-        onSuccess: () => {
-          setIsEditing(false);
-        },
-      }
-    );
+  const debouncedValue = useDebounce(value, 1000);
+
+  // Auto-save when debounced value changes
+  useEffect(() => {
+    if (hasChanges && debouncedValue !== task.description) {
+      setIsSaving(true);
+      updateTask(
+        { json: { description: debouncedValue }, param: { taskId: task.$id } },
+        {
+          onSuccess: () => {
+            setIsSaving(false);
+            setHasChanges(false);
+          },
+          onError: () => {
+            setIsSaving(false);
+            toast.error("Failed to save description");
+          },
+        }
+      );
+    }
+  }, [debouncedValue, hasChanges, task.$id, task.description, updateTask]);
+
+  // Update value when task.description changes externally
+  useEffect(() => {
+    if (!hasChanges) {
+      setValue(task.description || "");
+    }
+  }, [task.description, hasChanges]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (!canEdit) return;
+    setValue(e.target.value);
+    setHasChanges(true);
+    autoResize(e.target);
   };
 
+  // Auto-resize textarea
+  const autoResize = (textarea: HTMLTextAreaElement) => {
+    textarea.style.height = "auto";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  };
+
+  // Initial auto-resize
+  useEffect(() => {
+    if (textareaRef.current) {
+      autoResize(textareaRef.current);
+    }
+  }, [value]);
+
   return (
-    <div className="p-4 border rounded-lg">
-      <div className="flex items-center justify-between">
-        <p className="text-lg font-semibold">Overview</p>
-        {canEdit && (
-          <Button
-            onClick={() => setIsEditing((prev) => !prev)}
-            size="sm"
-            variant="secondary"
-          >
-            {isEditing ? (
-              <XIcon className="size-4 mr-2" />
-            ) : (
-              <PencilIcon className="size-4 mr-2" />
-            )}
-            {isEditing ? "Cancel" : "Edit"}
-          </Button>
-        )}
-      </div>
-      <DottedSeparator className="my-4" />
-      {isEditing ? (
-        <div className="flex flex-col gap-y-4">
-          <Textarea
-            placeholder="Add a description..."
-            value={value || ""}
-            rows={4}
-            onChange={(e) => setValue(e.target.value)}
-            disabled={isPending}
-          />
-          <Button
-            size="sm"
-            className="w-fit ml-auto"
-            onClick={handleSave}
-            disabled={isPending}
-          >
-            {isPending ? "Saving..." : "Save Changes"}
-          </Button>
-        </div>
-      ) : (
-        <div>
-          {task.description || (
-            <span className="text-muted-foreground">No description</span>
-          )}
+    <div className="relative ">
+      {/* Status indicator */}
+      {isSaving && (
+        <div className="absolute -top-6 right-0 flex items-center gap-1 text-xs text-gray-400">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          <span>Saving...</span>
         </div>
       )}
+
+      <textarea
+        ref={textareaRef}
+        value={value}
+        onChange={handleChange}
+        placeholder="Add description..."
+        disabled={!canEdit}
+        className={cn(
+          "w-full resize-none border-0 bg-transparent text-sm text-gray-700 placeholder:text-gray-400",
+          "focus:outline-none focus:ring-0 min-h-[60px] p-0",
+          !canEdit && "cursor-default"
+        )}
+        rows={3}
+      />
     </div>
   );
 };

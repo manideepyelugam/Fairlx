@@ -6,7 +6,7 @@ import { PriorityBadge } from "./PriorityBadge";
 import { AssigneeAvatarGroup } from "./assignee-avatar-group";
 
 import { PopulatedTask } from "../types";
-import { useTaskDetailsModal } from "../hooks/use-task-details-modal";
+import { useTaskPreviewModal } from "../hooks/use-task-preview-modal";
 
 interface KanbanCardProps {
     task: PopulatedTask;
@@ -24,7 +24,7 @@ export const KanbanCard = ({
     canEdit = false,
     canDelete = false
 }: KanbanCardProps) => {
-    const { open } = useTaskDetailsModal();
+    const { open: openPreview } = useTaskPreviewModal();
 
     const assignees = task.assignees?.length
         ? task.assignees
@@ -33,7 +33,7 @@ export const KanbanCard = ({
             : [];
 
     const handleCardClick = () => {
-        open(task.$id);
+        openPreview(task.$id);
     };
 
     return (

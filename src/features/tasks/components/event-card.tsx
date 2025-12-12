@@ -7,11 +7,11 @@ import { ProjectAvatar } from "@/features/projects/components/project-avatar";
 import { Project } from "@/features/projects/types";
 
 import { TaskStatus } from "../types";
+import { useTaskPreviewModal } from "../hooks/use-task-preview-modal";
 import {
   AssigneeAvatarGroup,
   AssigneeLike,
 } from "./assignee-avatar-group";
-import { useTaskDetailsModal } from "../hooks/use-task-details-modal";
 
 interface EventCardProps {
   title: string;
@@ -40,7 +40,7 @@ export const EventCard = ({
   id,
   isMilestone = false,
 }: EventCardProps) => {
-  const { open } = useTaskDetailsModal();
+  const { open: openPreview } = useTaskPreviewModal();
 
   const combinedAssignees: (
     | AssigneeLike
@@ -64,7 +64,7 @@ export const EventCard = ({
 
   const onClick = (e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation();
-    open(id);
+    openPreview(id);
   };
 
   return (
