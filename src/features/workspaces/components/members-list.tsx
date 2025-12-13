@@ -289,7 +289,26 @@ export const MembersList = () => {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       )}
-                      {!isCurrentUserAdmin && isCurrentUser && (
+                      {!isCurrentUserAdmin && isCurrentUser && data?.documents.length > 1 && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="size-9 shrink-0">
+                              <MoreVerticalIcon className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent side="bottom" align="end" className="w-56">
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteMember(member.$id)}
+                              disabled={isDeletingMember}
+                              className="cursor-pointer text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="size-4 mr-2" />
+                              <span>Leave Workspace</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                      {!isCurrentUserAdmin && isCurrentUser && data?.documents.length === 1 && (
                         <Badge variant="secondary" className="shrink-0">
                           <Shield className="size-3 mr-1" />
                           Your Profile
