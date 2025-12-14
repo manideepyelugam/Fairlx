@@ -24,6 +24,7 @@ import {
   CheckCircle2,
   AlertCircle,
   ListTodo,
+  Copy,
 } from "lucide-react";
 
 import { PageError } from "@/components/page-error";
@@ -76,7 +77,7 @@ import {
 } from "@/components/ui/tooltip";
 
 import { useGetProject } from "@/features/projects/api/use-get-project";
-import { useUpdateProject } from "@/features/projects/api/use-update-project";
+import { useUpdateProject, UpdateProjectRequest } from "@/features/projects/api/use-update-project";
 import { useDeleteProject } from "@/features/projects/api/use-delete-project";
 import { useGetProjectAnalytics } from "@/features/projects/api/use-get-project-analytics";
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
@@ -86,6 +87,10 @@ import { useUnassignProjectFromTeam } from "@/features/projects/api/use-unassign
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { updateProjectSchema } from "@/features/projects/schemas";
+import { WorkTypesSettings } from "@/features/projects/components/work-types-settings";
+import { PrioritySettings } from "@/features/projects/components/priority-settings";
+import { LabelSettings } from "@/features/projects/components/label-settings";
+import { CopySettingsDialog } from "@/features/projects/components/copy-settings-dialog";
 
 export const ProjectIdSettingsClient = () => {
   const router = useRouter();
@@ -93,6 +98,7 @@ export const ProjectIdSettingsClient = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<string>("");
   const [activeTab, setActiveTab] = useState("general");
+  const [isCopySettingsOpen, setIsCopySettingsOpen] = useState(false);
 
   // Data fetching
   const { data: project, isLoading: isLoadingProject } = useGetProject({ projectId });
@@ -121,16 +127,22 @@ export const ProjectIdSettingsClient = () => {
       description: project?.description || "",
       deadline: project?.deadline || "",
       image: project?.imageUrl || "",
+      customWorkItemTypes: project?.customWorkItemTypes || [],
+      customPriorities: project?.customPriorities || [],
+      customLabels: project?.customLabels || [],
     },
   });
 
   // Update form when project data loads
-  if (project && form.getValues("name") !== project.name) {
+  if (project && form.getValues("name") !== project.name && !isUpdating) {
     form.reset({
       name: project.name,
       description: project.description || "",
       deadline: project.deadline || "",
       image: project.imageUrl || "",
+      customWorkItemTypes: project.customWorkItemTypes || [],
+      customPriorities: project.customPriorities || [],
+      customLabels: project.customLabels || [],
     });
   }
 
@@ -152,18 +164,21 @@ export const ProjectIdSettingsClient = () => {
   const onSubmit = (values: z.infer<typeof updateProjectSchema>) => {
     // Convert nullable fields to undefined and build final values object
     const finalValues: Record<string, unknown> = {};
-    
+
     Object.entries(values).forEach(([key, value]) => {
       if (value === null) {
         finalValues[key] = undefined;
       } else if (key === "image") {
         finalValues[key] = value instanceof File ? value : "";
+      } else if (key === "customWorkItemTypes" || key === "customPriorities" || key === "customLabels") {
+        // Stringify arrays for FormData
+        finalValues[key] = JSON.stringify(value);
       } else {
         finalValues[key] = value;
       }
     });
 
-    updateProject({ form: finalValues, param: { projectId: project.$id } });
+    updateProject({ form: finalValues as unknown as UpdateProjectRequest["form"], param: { projectId: project.$id } });
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -272,7 +287,24 @@ export const ProjectIdSettingsClient = () => {
                 Danger Zone
               </TabsTrigger>
             )}
+            <Separator orientation="vertical" className="h-6" />
+            <TabsTrigger value="types" className="gap-2">
+              Work Types
+            </TabsTrigger>
+            <TabsTrigger value="priorities" className="gap-2">
+              Priorities
+            </TabsTrigger>
+            <TabsTrigger value="labels" className="gap-2">
+              Labels
+            </TabsTrigger>
           </TabsList>
+
+          <CopySettingsDialog
+            open={isCopySettingsOpen}
+            onOpenChange={setIsCopySettingsOpen}
+            currentProjectId={project.$id}
+            workspaceId={project.workspaceId}
+          />
 
           {/* General Settings Tab */}
           <TabsContent value="general" className="space-y-6">
@@ -282,9 +314,15 @@ export const ProjectIdSettingsClient = () => {
                   <FolderKanban className="size-5" />
                   Project Details
                 </CardTitle>
-                <CardDescription>
-                  Update your project information and branding
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <CardDescription>
+                    Update your project information and branding
+                  </CardDescription>
+                  <Button variant="outline" size="sm" onClick={() => setIsCopySettingsOpen(true)}>
+                    <Copy className="size-3.5 mr-2" />
+                    Copy Settings
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <Form {...form}>
@@ -790,6 +828,120 @@ export const ProjectIdSettingsClient = () => {
               </Card>
             </TabsContent>
           )}
+
+          {/* Work Types Tab */}
+          <TabsContent value="types" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Work Item Types</CardTitle>
+                <CardDescription>Customize the types of work items available in this project</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                    <FormField
+                      control={form.control}
+                      name="customWorkItemTypes"
+                      render={({ field }) => (
+                        <WorkTypesSettings
+                          types={field.value || []}
+                          onChange={field.onChange}
+                        />
+                      )}
+                    />
+                    <div className="flex justify-end">
+                      <Button type="submit" disabled={isUpdating}>
+                        {isUpdating ? (
+                          <>
+                            <Loader className="size-4 mr-2 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          "Save Changes"
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Priorities Tab */}
+          <TabsContent value="priorities" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Priorities</CardTitle>
+                <CardDescription>Define custom priorities and their order</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                    <FormField
+                      control={form.control}
+                      name="customPriorities"
+                      render={({ field }) => (
+                        <PrioritySettings
+                          priorities={field.value || []}
+                          onChange={field.onChange}
+                        />
+                      )}
+                    />
+                    <div className="flex justify-end">
+                      <Button type="submit" disabled={isUpdating}>
+                        {isUpdating ? (
+                          <>
+                            <Loader className="size-4 mr-2 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          "Save Changes"
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Labels Tab */}
+          <TabsContent value="labels" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Labels</CardTitle>
+                <CardDescription>Manage custom labels for this project</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                    <FormField
+                      control={form.control}
+                      name="customLabels"
+                      render={({ field }) => (
+                        <LabelSettings
+                          labels={field.value || []}
+                          onChange={field.onChange}
+                        />
+                      )}
+                    />
+                    <div className="flex justify-end">
+                      <Button type="submit" disabled={isUpdating}>
+                        {isUpdating ? (
+                          <>
+                            <Loader className="size-4 mr-2 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          "Save Changes"
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
     </div>

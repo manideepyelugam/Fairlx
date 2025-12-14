@@ -319,8 +319,9 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
                 <Separator />
                 <SelectItem className="text-xs" value={BacklogItemType.TASK}>Task</SelectItem>
                 <SelectItem className="text-xs" value={BacklogItemType.BUG}>Bug</SelectItem>
-                <SelectItem className="text-xs" value={BacklogItemType.IDEA}>Idea</SelectItem>
-                <SelectItem className="text-xs" value={BacklogItemType.IMPROVEMENT}>Improvement</SelectItem>
+                <SelectItem className="text-xs" value={BacklogItemType.STORY}>Story</SelectItem>
+                <SelectItem className="text-xs" value={BacklogItemType.EPIC}>Epic</SelectItem>
+                <SelectItem className="text-xs" value={BacklogItemType.SUBTASK}>Subtask</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -505,7 +506,7 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
                               variant="ghost"
                               className="w-full text-xs bg-white border border-gray-200 shadow-sm justify-start text-gray-500  mt-2" >
                               <PlusIcon className="h-4 w-4 " />
-                              Add Task
+                              Add Work Item
                             </Button>
                           )}
                         </div>

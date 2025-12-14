@@ -16,6 +16,7 @@ import { BulkActionsToolbar } from "./bulk-actions-toolbar";
 import { Task, TaskStatus } from "../types";
 import { useBulkUpdateTasks } from "../api/use-bulk-update-tasks";
 import { useCreateTaskModal } from "../hooks/use-create-task-modal";
+import { useGetProject } from "@/features/projects/api/use-get-project";
 
 const boards: TaskStatus[] = [
   TaskStatus.TODO,
@@ -90,9 +91,9 @@ export const DataKanban = ({
 
   // Check if TODO column should be visible (only when tasks are TODO or unassigned)
   const shouldShowTodoColumn = useMemo(() => {
-    return data.some(task => 
-      task.status === TaskStatus.TODO || 
-      !task.assigneeIds || 
+    return data.some(task =>
+      task.status === TaskStatus.TODO ||
+      !task.assigneeIds ||
       task.assigneeIds.length === 0
     );
   }, [data]);
@@ -106,6 +107,9 @@ export const DataKanban = ({
       return true;
     });
   }, [shouldShowTodoColumn]);
+
+  // Fetch project settings to pass custom options to cards
+  const { data: project } = useGetProject({ projectId, enabled: !!projectId });
 
   useEffect(() => {
     const newTasks: TasksState = {
@@ -426,6 +430,7 @@ export const DataKanban = ({
                                 showSelection={selectionMode}
                                 canEdit={canEditTasks}
                                 canDelete={canDeleteTasks}
+                                project={project ?? undefined}
                               />
                             </div>
                           )}
@@ -440,7 +445,7 @@ export const DataKanban = ({
                           className="w-full justify-start text-gray-500 hover:text-gray-700 hover:bg-gray-100 mt-2"
                         >
                           <PlusIcon className="h-4 w-4 mr-2" />
-                          Add Task
+                          Add Work Item
                         </Button>
                       )}
                     </div>

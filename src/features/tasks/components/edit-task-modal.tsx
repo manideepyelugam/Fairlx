@@ -14,7 +14,7 @@ export const EditTaskModal = () => {
     <Dialog open={!!taskId} onOpenChange={close}>
       <DialogContent className="max-w-lg w-full max-h-[85vh] overflow-y-auto p-0 border-none">
         <VisuallyHidden>
-          <DialogTitle>Edit Task</DialogTitle>
+          <DialogTitle>Edit Work Item</DialogTitle>
         </VisuallyHidden>
         {taskId && <EditTaskFormWrapper id={taskId} onCancel={close} />}
       </DialogContent>

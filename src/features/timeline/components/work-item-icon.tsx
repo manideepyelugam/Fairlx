@@ -1,12 +1,36 @@
-import { Layers, FileText, CheckSquare, Bug, ArrowRight } from "lucide-react";
+import { Layers, FileText, CheckSquare, Bug, ArrowRight, Bookmark, Clipboard, Target, Zap } from "lucide-react";
 import { WorkItemType } from "@/features/sprints/types";
+import { Project } from "@/features/projects/types";
 
 interface WorkItemIconProps {
-  type: WorkItemType;
+  type: WorkItemType | string;
   className?: string;
+  project?: Project;
 }
 
-export function WorkItemIcon({ type, className = "h-4 w-4" }: WorkItemIconProps) {
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string, style?: React.CSSProperties }>> = {
+  "check-square": CheckSquare,
+  "bookmark": Bookmark,
+  "bug": Bug,
+  "clipboard": Clipboard,
+  "file-text": FileText,
+  "target": Target,
+  "zap": Zap,
+  "layers": Layers,
+  "arrow-right": ArrowRight
+};
+
+export function WorkItemIcon({ type, className = "h-4 w-4", project }: WorkItemIconProps) {
+  // Check for custom type definition first
+  if (project?.customWorkItemTypes) {
+    const customType = project.customWorkItemTypes.find((t: { key: string }) => t.key === type);
+    if (customType) {
+      const IconComponent = ICON_MAP[customType.icon] || CheckSquare;
+      return <IconComponent className={className} style={{ color: customType.color }} />;
+    }
+  }
+
+  // Fallback to default enum behavior
   switch (type) {
     case WorkItemType.EPIC:
       return <Layers className={className} style={{ color: "#8B5CF6" }} />;

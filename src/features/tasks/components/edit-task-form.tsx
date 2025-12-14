@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -41,6 +41,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { AssigneeMultiSelect } from "./assignee-multi-select";
 import { CreateTaskAttachmentUpload } from "@/features/attachments/components/create-task-attachment-upload";
 
+import { useGetProject } from "@/features/projects/api/use-get-project";
+import { TypeSelector } from "./type-selector";
+
 interface EditTaskFormProps {
   onCancel?: () => void;
   projectOptions: { id: string; name: string; imageUrl: string }[];
@@ -57,17 +60,10 @@ export const EditTaskForm = ({
   const { mutate, isPending } = useUpdateTask();
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
 
-  // Mock available labels - in a real app, this would come from an API
-  const availableLabels = [
-    "frontend", "backend", "bug", "feature", "urgent", "documentation",
-    "testing", "design", "security", "performance", "api", "ui/ux"
-  ];
-
   const form = useForm<z.infer<typeof updateTaskSchema>>({
     resolver: zodResolver(updateTaskSchema),
     defaultValues: {
       ...initialValues,
-      // Use title or name for compatibility with workItems collection
       name: initialValues.name || initialValues.title,
       dueDate: initialValues.dueDate
         ? new Date(initialValues.dueDate)
@@ -80,6 +76,26 @@ export const EditTaskForm = ({
       flagged: initialValues.flagged ?? false,
     },
   });
+
+  const selectedProjectId = form.watch("projectId");
+  const { data: project } = useGetProject({ projectId: selectedProjectId });
+
+  const customWorkItemTypes = useMemo(() => project?.customWorkItemTypes || [], [project]);
+  const customPriorities = useMemo(() => project?.customPriorities || [], [project]);
+  const customLabels = useMemo(() => project?.customLabels || [], [project]);
+
+  // Use custom labels if available
+  const availableLabels = useMemo(() => {
+    const defaultLabels = [
+      "frontend", "backend", "bug", "feature", "urgent", "documentation",
+      "testing", "design", "security", "performance", "api", "ui/ux"
+    ];
+    // Unique merge
+    if (!customLabels.length) return defaultLabels;
+
+    const customLabelNames = customLabels.map((l: { name: string }) => l.name);
+    return Array.from(new Set([...defaultLabels, ...customLabelNames]));
+  }, [customLabels]);
 
   const onSubmit = (values: z.infer<typeof updateTaskSchema>) => {
     mutate(
@@ -99,7 +115,7 @@ export const EditTaskForm = ({
   return (
     <Card className="w-full h-full border-none shadow-none">
       <CardHeader className="flex p-7">
-        <CardTitle className="text-xl font-bold">Edit the task</CardTitle>
+        <CardTitle className="text-xl font-bold">Edit the work item</CardTitle>
       </CardHeader>
       <div className="px-7">
         <DottedSeparator />
@@ -113,9 +129,28 @@ export const EditTaskForm = ({
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Task Name</FormLabel>
+                    <FormLabel>Work Item Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter task name" {...field} />
+                      <Input placeholder="Enter work item name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Work Item Type</FormLabel>
+                    <FormControl>
+                      <TypeSelector
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        placeholder="Select type"
+                        customTypes={customWorkItemTypes}
+                        project={project ?? undefined}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -251,6 +286,7 @@ export const EditTaskForm = ({
                         value={field.value}
                         onValueChange={field.onChange}
                         placeholder="Select priority"
+                        customPriorities={customPriorities}
                       />
                     </FormControl>
                     <FormMessage />
@@ -283,7 +319,7 @@ export const EditTaskForm = ({
                     <FormLabel>Description (Optional)</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Enter task description..."
+                        placeholder="Enter work item description..."
                         className="resize-none"
                         rows={4}
                         value={field.value ?? ""}
@@ -307,10 +343,10 @@ export const EditTaskForm = ({
                     </FormControl>
                     <div className="space-y-1 leading-none">
                       <FormLabel>
-                        Flag this task
+                        Flag this work item
                       </FormLabel>
                       <p className="text-xs text-muted-foreground">
-                        Mark this task as flagged for quick identification
+                        Mark this work item as flagged for quick identification
                       </p>
                     </div>
                   </FormItem>

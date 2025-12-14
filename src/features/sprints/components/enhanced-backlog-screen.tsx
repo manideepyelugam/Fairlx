@@ -51,6 +51,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
 
 import { useGetSprints } from "../api/use-get-sprints";
 import { useGetWorkItems } from "../api/use-get-work-items";
@@ -62,12 +63,16 @@ import { useDeleteSprint } from "../api/use-delete-sprint";
 import { useDeleteWorkItem } from "../api/use-delete-work-item";
 import { useGetEpics } from "../api/use-get-epics";
 import { useGetMembers } from "@/features/members/api/use-get-members";
+import { useBulkMoveWorkItems } from "../api/use-bulk-move-work-items";
+import { useBulkDeleteWorkItems } from "../api/use-bulk-delete-work-items";
 import { SprintStatus, WorkItemStatus, WorkItemPriority, WorkItemType } from "../types";
 import type { PopulatedWorkItem } from "../types";
 import { UpdateSprintDatesDialog } from "./update-sprint-dates-dialog";
 import { SubtasksList } from "@/features/subtasks/components";
 import { SprintSettingsSheet } from "./sprint-settings-sheet";
 import { CreateEpicDialog } from "./create-epic-dialog";
+import { WorkItemIcon } from "@/features/timeline/components/work-item-icon";
+import { useGetProject } from "@/features/projects/api/use-get-project";
 
 interface EnhancedBacklogScreenProps {
   workspaceId: string;
@@ -75,6 +80,7 @@ interface EnhancedBacklogScreenProps {
 }
 
 export default function EnhancedBacklogScreen({ workspaceId, projectId }: EnhancedBacklogScreenProps) {
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [selectedItem, setSelectedItem] = useState<PopulatedWorkItem | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [expandedSprints, setExpandedSprints] = useState<string[]>([]);
@@ -82,6 +88,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   const [isCreatingInSprint, setIsCreatingInSprint] = useState<string | null>(null);
   const [isCreatingInBacklog, setIsCreatingInBacklog] = useState(false);
   const [newItemTitle, setNewItemTitle] = useState("");
+  const [newItemType, setNewItemType] = useState<WorkItemType>(WorkItemType.TASK);
   const [editingSprintId, setEditingSprintId] = useState<string | null>(null);
   const [editingSprintName, setEditingSprintName] = useState("");
   const [editingWorkItemId, setEditingWorkItemId] = useState<string | null>(null);
@@ -95,12 +102,38 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   const { data: workItemsData } = useGetWorkItems({ workspaceId, projectId });
   const { data: epicsData } = useGetEpics({ workspaceId, projectId });
   const { data: membersData } = useGetMembers({ workspaceId });
+  const { data: project } = useGetProject({ projectId }); // Fetch project settings
+
   const { mutate: createSprint, isPending: isCreatingSprint } = useCreateSprint();
   const { mutate: updateSprint } = useUpdateSprint();
   const { mutate: updateWorkItem } = useUpdateWorkItem();
   const { mutate: createWorkItem } = useCreateWorkItem();
   const { mutate: deleteSprint } = useDeleteSprint();
   const { mutate: deleteWorkItem } = useDeleteWorkItem();
+  const { mutate: bulkMoveWorkItems } = useBulkMoveWorkItems();
+  const { mutate: bulkDeleteWorkItems } = useBulkDeleteWorkItems();
+
+  const customWorkItemTypes = project?.customWorkItemTypes || [];
+  const customPriorities = project?.customPriorities || [];
+
+  const defaultWorkItemTypes = [
+    { key: WorkItemType.TASK, label: "Task" },
+    { key: WorkItemType.STORY, label: "Story" },
+    { key: WorkItemType.BUG, label: "Bug" },
+  ];
+  const allWorkItemTypes = [...defaultWorkItemTypes, ...customWorkItemTypes];
+
+  const defaultPriorities = [
+    { key: WorkItemPriority.LOW, label: "Low" },
+    { key: WorkItemPriority.MEDIUM, label: "Medium" },
+    { key: WorkItemPriority.HIGH, label: "High" },
+    { key: WorkItemPriority.URGENT, label: "Urgent" },
+  ];
+  const allPriorities = [...defaultPriorities, ...customPriorities];
+  // For status we might need custom columns, or check if project has them. 
+  // Assuming useGetCustomColumns is better, or we can use project settings if they are stored there.
+  // But StatusSelector handles it. 
+  // For the dropdowns here, let's use the project's custom definitions if available.
 
   // Organize data
   const sprints = useMemo(() => {
@@ -135,6 +168,66 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
       inProgress: items.filter((item) => item.status === WorkItemStatus.IN_PROGRESS).length,
       done: items.filter((item) => item.status === WorkItemStatus.DONE).length,
     };
+  };
+
+  // Multi-select Handlers
+  const toggleSelection = (itemId: string) => {
+    setSelectedItemIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
+  };
+
+  /* Unused selection helpers
+  const selectAll = (itemIds: string[]) => {
+    setSelectedItemIds((prev) => {
+      const newSet = new Set(prev);
+      itemIds.forEach(id => newSet.add(id));
+      return newSet;
+    });
+  };
+
+  const deselectAll = (itemIds: string[]) => {
+    setSelectedItemIds((prev) => {
+      const newSet = new Set(prev);
+      itemIds.forEach(id => newSet.delete(id));
+      return newSet;
+    });
+  };
+  */
+
+  const clearSelection = () => {
+    setSelectedItemIds(new Set());
+  };
+
+
+  // Bulk Actions
+  const handleBulkMove = (sprintId: string | null) => {
+    if (selectedItemIds.size === 0) return;
+
+    bulkMoveWorkItems({
+      workItemIds: Array.from(selectedItemIds),
+      sprintId,
+    }, {
+      onSuccess: () => clearSelection()
+    });
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedItemIds.size === 0) return;
+
+    if (confirm(`Are you sure you want to delete ${selectedItemIds.size} items?`)) {
+      bulkDeleteWorkItems({
+        workItemIds: Array.from(selectedItemIds),
+      }, {
+        onSuccess: () => clearSelection()
+      });
+    }
   };
 
   // Handlers
@@ -242,7 +335,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
       workspaceId,
       projectId,
       title: newItemTitle,
-      type: WorkItemType.TASK,
+      type: newItemType,
       status: WorkItemStatus.TODO,
       priority: WorkItemPriority.MEDIUM,
       sprintId: sprintId || null,
@@ -251,6 +344,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     }, {
       onSuccess: () => {
         setNewItemTitle("");
+        setNewItemType(WorkItemType.TASK);
         setIsCreatingInSprint(null);
         setIsCreatingInBacklog(false);
       }
@@ -398,6 +492,54 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
             </div>
           </div>
         </div>
+
+        {/* Bulk Actions Toolbar */}
+        {selectedItemIds.size > 0 && (
+          <div className="sticky top-[73px] z-20 bg-blue-50 border-b border-blue-100 px-4 py-2 flex items-center justify-between animate-in slide-in-from-top-2">
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium text-blue-900">
+                {selectedItemIds.size} selected
+              </span>
+              <div className="h-4 w-px bg-blue-200" />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearSelection}
+                className="text-blue-700 hover:text-blue-900 hover:bg-blue-100"
+              >
+                Cancel
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="bg-white border-blue-200 text-blue-700 hover:bg-blue-50">
+                    Move to...
+                    <ChevronDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleBulkMove(null)}>
+                    Backlog
+                  </DropdownMenuItem>
+                  {sprints.map(sprint => (
+                    <DropdownMenuItem key={sprint.$id} onClick={() => handleBulkMove(sprint.$id)}>
+                      {sprint.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBulkDelete}
+                className="bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 hover:border-red-300 shadow-none"
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         <div className="px-4 py-4">
@@ -578,13 +720,29 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                       ref={provided.innerRef}
                                       {...provided.draggableProps}
                                       {...provided.dragHandleProps}
-                                      className={`px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors ${snapshot.isDragging ? "shadow-lg rounded-lg border border-gray-200 bg-white" : ""
-                                        }`}
+                                      className={`px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors group ${snapshot.isDragging ? "shadow-lg rounded-lg border border-gray-200 bg-white" : ""
+                                        } ${selectedItemIds.has(item.$id) ? "bg-blue-50 hover:bg-blue-50" : ""}`}
                                       onClick={() => handleWorkItemClick(item)}
                                     >
                                       <div className="flex items-center gap-4">
-                                        <GripVertical className="size-4 text-gray-400 flex-shrink-0" />
-                                        <span className="font-mono text-xs text-gray-500 w-20 flex-shrink-0">{item.key}</span>
+                                        <div className="flex items-center gap-3">
+                                          <div
+                                            className="flex items-center justify-center relative"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            <div className={`transition-opacity ${selectedItemIds.size > 0 || selectedItemIds.has(item.$id) ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+                                              <Checkbox
+                                                checked={selectedItemIds.has(item.$id)}
+                                                onCheckedChange={() => toggleSelection(item.$id)}
+                                              />
+                                            </div>
+                                            <GripVertical className={`size-4 text-gray-400 flex-shrink-0 absolute ${selectedItemIds.size > 0 || selectedItemIds.has(item.$id) ? "opacity-0 pointer-events-none" : "opacity-100 group-hover:opacity-0"}`} />
+                                          </div>
+
+                                          <WorkItemIcon type={item.type} project={project ?? undefined} className="size-4 flex-shrink-0" />
+
+                                          <span className="font-mono text-xs text-gray-500 w-20 flex-shrink-0">{item.key}</span>
+                                        </div>
 
                                         {editingWorkItemId === item.$id ? (
                                           <Input
@@ -661,10 +819,11 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                             <SelectValue />
                                           </SelectTrigger>
                                           <SelectContent>
-                                            <SelectItem value={WorkItemPriority.LOW}>Low</SelectItem>
-                                            <SelectItem value={WorkItemPriority.MEDIUM}>Medium</SelectItem>
-                                            <SelectItem value={WorkItemPriority.HIGH}>High</SelectItem>
-                                            <SelectItem value={WorkItemPriority.URGENT}>Urgent</SelectItem>
+                                            {allPriorities.map((p) => (
+                                              <SelectItem key={p.key} value={p.key}>
+                                                {p.label}
+                                              </SelectItem>
+                                            ))}
                                           </SelectContent>
                                         </Select>
 
@@ -743,7 +902,36 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                           {isCreatingInSprint === sprint.$id ? (
                             <div className="px-4 py-3 border-t border-gray-100">
                               <div className="flex items-center gap-4">
-                                <Plus className="size-4 text-gray-400 flex-shrink-0" />
+                                {/* Work Item Type Selector */}
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 px-3 gap-2 flex-shrink-0"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <WorkItemIcon type={newItemType} project={project ?? undefined} className="size-4" />
+                                      <span className="text-xs capitalize">
+                                        {newItemType.toLowerCase()}
+                                      </span>
+                                      <ChevronDown className="size-3 text-gray-400" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="start">
+                                    {allWorkItemTypes.map((type) => (
+                                      <DropdownMenuItem
+                                        key={type.key}
+                                        onClick={() => setNewItemType(type.key as WorkItemType)}
+                                        className="gap-2"
+                                      >
+                                        <WorkItemIcon type={type.key as WorkItemType} project={project ?? undefined} className="size-4" />
+                                        <span>{type.label}</span>
+                                      </DropdownMenuItem>
+                                    ))}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+
                                 <Input
                                   value={newItemTitle}
                                   onChange={(e) => setNewItemTitle(e.target.value)}
@@ -854,13 +1042,29 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
-                                className={`px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors ${snapshot.isDragging ? "shadow-lg rounded-lg border border-gray-200 bg-white" : ""
-                                  }`}
+                                className={`px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors group ${snapshot.isDragging ? "shadow-lg rounded-lg border border-gray-200 bg-white" : ""
+                                  } ${selectedItemIds.has(item.$id) ? "bg-blue-50 hover:bg-blue-50" : ""}`}
                                 onClick={() => handleWorkItemClick(item)}
                               >
                                 <div className="flex items-center gap-4">
-                                  <GripVertical className="size-4 text-gray-400 flex-shrink-0" />
-                                  <span className="font-mono text-xs text-gray-500 w-20 flex-shrink-0">{item.key}</span>
+                                  <div className="flex items-center gap-3">
+                                    <div
+                                      className="flex items-center justify-center"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <div className={`transition-opacity ${selectedItemIds.size > 0 || selectedItemIds.has(item.$id) ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+                                        <Checkbox
+                                          checked={selectedItemIds.has(item.$id)}
+                                          onCheckedChange={() => toggleSelection(item.$id)}
+                                        />
+                                      </div>
+                                      <GripVertical className={`size-4 text-gray-400 flex-shrink-0 absolute ${selectedItemIds.size > 0 || selectedItemIds.has(item.$id) ? "opacity-0 pointer-events-none" : "opacity-100 group-hover:opacity-0"}`} />
+                                    </div>
+
+                                    <WorkItemIcon type={item.type} project={project ?? undefined} className="size-4 flex-shrink-0" />
+
+                                    <span className="font-mono text-xs text-gray-500 w-20 flex-shrink-0">{item.key}</span>
+                                  </div>
 
                                   {editingWorkItemId === item.$id ? (
                                     <Input
@@ -937,10 +1141,11 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value={WorkItemPriority.LOW}>Low</SelectItem>
-                                      <SelectItem value={WorkItemPriority.MEDIUM}>Medium</SelectItem>
-                                      <SelectItem value={WorkItemPriority.HIGH}>High</SelectItem>
-                                      <SelectItem value={WorkItemPriority.URGENT}>Urgent</SelectItem>
+                                      {allPriorities.map((p) => (
+                                        <SelectItem key={p.key} value={p.key}>
+                                          {p.label}
+                                        </SelectItem>
+                                      ))}
                                     </SelectContent>
                                   </Select>
 
@@ -1042,7 +1247,36 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                     {isCreatingInBacklog ? (
                       <div className="px-4 py-3 border-t border-gray-100">
                         <div className="flex items-center gap-4">
-                          <Plus className="size-4 text-gray-400 flex-shrink-0" />
+                          {/* Work Item Type Selector */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 px-3 gap-2 flex-shrink-0"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <WorkItemIcon type={newItemType} project={project ?? undefined} className="size-4" />
+                                <span className="text-xs capitalize">
+                                  {newItemType.toLowerCase()}
+                                </span>
+                                <ChevronDown className="size-3 text-gray-400" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                              {allWorkItemTypes.map((type) => (
+                                <DropdownMenuItem
+                                  key={type.key}
+                                  onClick={() => setNewItemType(type.key as WorkItemType)}
+                                  className="gap-2"
+                                >
+                                  <WorkItemIcon type={type.key as WorkItemType} project={project ?? undefined} className="size-4" />
+                                  <span>{type.label}</span>
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+
                           <Input
                             value={newItemTitle}
                             onChange={(e) => setNewItemTitle(e.target.value)}
@@ -1167,10 +1401,11 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value={WorkItemPriority.LOW}>Low</SelectItem>
-                          <SelectItem value={WorkItemPriority.MEDIUM}>Medium</SelectItem>
-                          <SelectItem value={WorkItemPriority.HIGH}>High</SelectItem>
-                          <SelectItem value={WorkItemPriority.URGENT}>Urgent</SelectItem>
+                          {allPriorities.map((p) => (
+                            <SelectItem key={p.key} value={p.key}>
+                              {p.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>

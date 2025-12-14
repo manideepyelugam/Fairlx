@@ -118,7 +118,7 @@ export const TaskViewSwitcher = ({
 
   // Determine the effective assigneeId - if showMyTasksOnly is true, use current member's ID
   const effectiveAssigneeId = showMyTasksOnly && currentMember ? currentMember.$id : assigneeId;
-  
+
   // Get effective project ID
   const effectiveProjectId = paramProjectId || projectId;
 
@@ -135,9 +135,9 @@ export const TaskViewSwitcher = ({
   });
 
   // Get sprints for setup overlay check (only when viewing a project)
-  const { data: sprintsData } = useGetSprints({ 
-    workspaceId, 
-    projectId: effectiveProjectId || undefined 
+  const { data: sprintsData } = useGetSprints({
+    workspaceId,
+    projectId: effectiveProjectId || undefined
   });
 
   // Convert work items to tasks format
@@ -154,7 +154,7 @@ export const TaskViewSwitcher = ({
     const workItems = workItemsData?.documents || [];
     const sprints = sprintsData?.documents || [];
     const activeSprint = sprints.find(s => s.status === SprintStatus.ACTIVE);
-    
+
     return {
       hasWorkItems: workItems.length > 0,
       hasSprints: sprints.length > 0,
@@ -241,24 +241,24 @@ export const TaskViewSwitcher = ({
             )}
           </TabsList>
           {isAdmin && (
-            <Button 
-              onClick={open} 
-              size="xs" 
+            <Button
+              onClick={open}
+              size="xs"
               className="w-full font-medium px-3 py-2 tracking-tight !bg-[#2663ec] lg:w-auto disabled:opacity-50"
               disabled={effectiveProjectId ? setupState.needsSetup : false}
               title={effectiveProjectId && setupState.needsSetup ? "Complete project setup in Backlog first" : undefined}
             >
               <PlusIcon className="size-3 " />
-              Add Task
+              Add Work Item
             </Button>
           )}
         </div>
 
 
         {view !== "dashboard" && view !== "timeline" && view !== "backlog" && (
-          <DataFilters 
-            hideProjectFilter={hideProjectFilter} 
-            showMyTasksOnly={showMyTasksOnly} 
+          <DataFilters
+            hideProjectFilter={hideProjectFilter}
+            showMyTasksOnly={showMyTasksOnly}
             disableManageColumns={effectiveProjectId ? setupState.needsSetup : false}
           />
         )}

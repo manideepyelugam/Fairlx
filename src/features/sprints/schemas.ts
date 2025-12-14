@@ -45,11 +45,12 @@ export const updateSprintSchema = z.object({
 );
 
 // Work Item Schemas
+// Work Item Schemas
 export const createWorkItemSchema = z.object({
   title: z.string().trim().min(1, "Title is required"),
-  type: z.nativeEnum(WorkItemType).default(WorkItemType.STORY),
-  status: z.nativeEnum(WorkItemStatus).default(WorkItemStatus.TODO),
-  priority: z.nativeEnum(WorkItemPriority).default(WorkItemPriority.MEDIUM),
+  type: z.union([z.nativeEnum(WorkItemType), z.string()]).default(WorkItemType.STORY),
+  status: z.union([z.nativeEnum(WorkItemStatus), z.string()]).default(WorkItemStatus.TODO),
+  priority: z.union([z.nativeEnum(WorkItemPriority), z.string()]).default(WorkItemPriority.MEDIUM),
   storyPoints: z.number().min(0).max(100).optional(),
   workspaceId: z.string().trim().min(1, "Required"),
   projectId: z.string().trim().min(1, "Required"),
@@ -73,9 +74,9 @@ export const createWorkItemSchema = z.object({
 
 export const updateWorkItemSchema = z.object({
   title: z.string().trim().min(1, "Title is required").optional(),
-  type: z.nativeEnum(WorkItemType).optional(),
-  status: z.nativeEnum(WorkItemStatus).optional(),
-  priority: z.nativeEnum(WorkItemPriority).optional(),
+  type: z.union([z.nativeEnum(WorkItemType), z.string()]).optional(),
+  status: z.union([z.nativeEnum(WorkItemStatus), z.string()]).optional(),
+  priority: z.union([z.nativeEnum(WorkItemPriority), z.string()]).optional(),
   storyPoints: z.number().min(0).max(100).optional().nullable(),
   sprintId: z.string().trim().optional().nullable(),
   epicId: z.string().trim().optional().nullable(),
