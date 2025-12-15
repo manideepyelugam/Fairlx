@@ -16,7 +16,9 @@ import {
   Link as LinkIcon,
   Send,
   Users,
-  CheckCircle2
+  CheckCircle2,
+  Star,
+  Loader2
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -30,6 +32,10 @@ import { MemberRole } from "@/features/members/types";
 import { useGetWorkspace } from "@/features/workspaces/api/use-get-workspace";
 import { useResetInviteCode } from "@/features/workspaces/api/use-reset-invite-code";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
+import { useGetSpaces } from "@/features/spaces/api/use-get-spaces";
+import { useAddSpaceMember } from "@/features/spaces/api/use-add-space-member";
+import { SpaceRole } from "@/features/spaces/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { useConfirm } from "@/hooks/use-confirm";
 import { Button } from "@/components/ui/button";
@@ -58,6 +64,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export const MembersList = () => {
   const workspaceId = useWorkspaceId();
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [spaceMasterDialogOpen, setSpaceMasterDialogOpen] = useState(false);
+  const [selectedMemberForMaster, setSelectedMemberForMaster] = useState<{ id: string; name: string } | null>(null);
+  const [selectedSpaceId, setSelectedSpaceId] = useState<string>("");
   const [ConfirmDialog, confirm] = useConfirm(
     "Remove member",
     "This member will be removed from the workspace.",
@@ -71,10 +80,12 @@ export const MembersList = () => {
 
   const { data } = useGetMembers({ workspaceId });
   const { data: workspace } = useGetWorkspace({ workspaceId });
+  const { data: spacesData } = useGetSpaces({ workspaceId });
   const { member: currentMember, isAdmin: isCurrentUserAdmin } = useCurrentMember({ workspaceId });
   const { mutate: deleteMember, isPending: isDeletingMember } = useDeleteMember();
   const { mutate: updateMember, isPending: isUpdatingMember } = useUpdateMember();
   const { mutate: resetInviteCode, isPending: isResettingInviteCode } = useResetInviteCode();
+  const { mutate: addSpaceMember, isPending: isAddingSpaceMember } = useAddSpaceMember();
 
   const handleUpdateMember = (memberId: string, role: MemberRole) => {
     updateMember({ json: { role }, param: { memberId } });
@@ -101,6 +112,30 @@ export const MembersList = () => {
     if (!ok) return;
 
     resetInviteCode({ param: { workspaceId } });
+  };
+
+  const handleOpenSpaceMasterDialog = (memberId: string, memberName: string) => {
+    setSelectedMemberForMaster({ id: memberId, name: memberName });
+    setSelectedSpaceId("");
+    setSpaceMasterDialogOpen(true);
+  };
+
+  const handleSetAsMaster = () => {
+    if (!selectedMemberForMaster || !selectedSpaceId) return;
+
+    addSpaceMember(
+      {
+        param: { spaceId: selectedSpaceId },
+        json: { memberId: selectedMemberForMaster.id, role: SpaceRole.ADMIN },
+      },
+      {
+        onSuccess: () => {
+          setSpaceMasterDialogOpen(false);
+          setSelectedMemberForMaster(null);
+          setSelectedSpaceId("");
+        },
+      }
+    );
   };
 
   const fullInviteLink = workspace
@@ -139,6 +174,65 @@ export const MembersList = () => {
     <div className="space-y-4">
       <ConfirmDialog />
       <ResetDialog />
+
+      {/* Space Master Dialog */}
+      <Dialog open={spaceMasterDialogOpen} onOpenChange={setSpaceMasterDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Star className="size-5 text-purple-600" />
+              Set as Space Master
+            </DialogTitle>
+            <DialogDescription>
+              Assign <span className="font-medium">{selectedMemberForMaster?.name}</span> as a master of a space. Space masters have full control over space settings.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Select Space</label>
+              <Select value={selectedSpaceId} onValueChange={setSelectedSpaceId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a space..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {spacesData?.documents?.map((space) => (
+                    <SelectItem key={space.$id} value={space.$id}>
+                      <div className="flex items-center gap-2">
+                        {space.color && (
+                          <div 
+                            className="size-3 rounded-full" 
+                            style={{ backgroundColor: space.color }}
+                          />
+                        )}
+                        <span>{space.name}</span>
+                        <span className="text-xs text-muted-foreground">({space.key})</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {spacesData?.documents?.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-2">
+                No spaces available. Create a space first.
+              </p>
+            )}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setSpaceMasterDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSetAsMaster} 
+              disabled={!selectedSpaceId || isAddingSpaceMember}
+              className="gap-2 bg-purple-600 hover:bg-purple-700"
+            >
+              {isAddingSpaceMember && <Loader2 className="size-4 animate-spin" />}
+              Set as Master
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Header Section */}
       <div className="flex items-center gap-3">
@@ -277,6 +371,13 @@ export const MembersList = () => {
                                 <span>Set as Member</span>
                               </DropdownMenuItem>
                             )}
+                            <DropdownMenuItem
+                              onClick={() => handleOpenSpaceMasterDialog(member.$id, displayName)}
+                              className="cursor-pointer"
+                            >
+                              <Star className="size-4 mr-2 text-purple-600" />
+                              <span>Set as Space Master</span>
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               onClick={() => handleDeleteMember(member.$id)}

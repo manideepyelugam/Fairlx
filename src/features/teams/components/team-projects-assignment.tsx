@@ -53,9 +53,19 @@ export const TeamProjectsAssignment = ({
   );
 
   // Get projects that are available to assign (not already assigned to this team)
-  const availableProjects = projects.filter(
-    (project) => !project.assignedTeamIds?.includes(team.$id)
-  );
+  // If team belongs to a space, only show projects from that space
+  // If team has no space, show all projects
+  const availableProjects = projects.filter((project) => {
+    const notAssigned = !project.assignedTeamIds?.includes(team.$id);
+    
+    if (!team.spaceId) {
+      // Team has no space - show all unassigned projects
+      return notAssigned;
+    }
+    
+    // Team belongs to a space - only show projects from the same space
+    return notAssigned && project.spaceId === team.spaceId;
+  });
 
   const handleAssignProject = () => {
     if (!selectedProjectId) return;
@@ -97,8 +107,12 @@ export const TeamProjectsAssignment = ({
                 <TooltipContent side="right" className="max-w-xs">
                   <p className="text-sm">
                     Assign projects to this team. Team members will be able to
-                    view and work on these projects. Projects can be assigned to
-                    multiple teams.
+                    view and work on these projects. 
+                    {team.spaceId && (
+                      <span className="block mt-2 font-medium text-indigo-600">
+                        Note: Only projects from the same space as this team are available for assignment.
+                      </span>
+                    )}
                   </p>
                 </TooltipContent>
               </Tooltip>

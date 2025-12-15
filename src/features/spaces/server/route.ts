@@ -695,6 +695,66 @@ const app = new Hono()
     );
 
     return c.json({ data: { memberId } });
-  });
+  })
+
+  // Get current user's role in a space
+  .get(
+    "/member-role",
+    sessionMiddleware,
+    zValidator("query", z.object({ spaceId: z.string(), workspaceId: z.string() })),
+    async (c) => {
+      const databases = c.get("databases");
+      const user = c.get("user");
+
+      const { spaceId, workspaceId } = c.req.valid("query");
+
+      // Check workspace membership
+      const member = await getMember({
+        databases,
+        workspaceId,
+        userId: user.$id,
+      });
+
+      if (!member) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      // Workspace admins are automatically space masters
+      if (member.role === MemberRole.ADMIN) {
+        return c.json({ data: { role: SpaceRole.ADMIN, isMaster: true, isWorkspaceAdmin: true } });
+      }
+
+      // Check space membership
+      const spaceMembership = await databases.listDocuments<SpaceMember>(
+        DATABASE_ID,
+        SPACE_MEMBERS_ID,
+        [Query.equal("spaceId", spaceId), Query.equal("userId", user.$id)]
+      );
+
+      if (spaceMembership.total === 0) {
+        // User is not a member of this space - check if space is public
+        const space = await databases.getDocument<Space>(
+          DATABASE_ID,
+          SPACES_ID,
+          spaceId
+        );
+
+        if (space.visibility === SpaceVisibility.PUBLIC) {
+          return c.json({ data: { role: SpaceRole.VIEWER, isMaster: false, isWorkspaceAdmin: false } });
+        }
+
+        return c.json({ data: { role: null, isMaster: false, isWorkspaceAdmin: false } });
+      }
+
+      const spaceRole = spaceMembership.documents[0].role;
+      return c.json({ 
+        data: { 
+          role: spaceRole, 
+          isMaster: spaceRole === SpaceRole.ADMIN,
+          isWorkspaceAdmin: false 
+        } 
+      });
+    }
+  );
 
 export default app;

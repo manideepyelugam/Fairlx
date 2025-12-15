@@ -8,14 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,6 +36,7 @@ import { useRouter } from "next/navigation";
 import { useGetTeams } from "@/features/teams/api/use-get-teams";
 import { useGetTeamProjects } from "@/features/teams/api/use-get-team-projects";
 import { useDeleteTeam } from "@/features/teams/api/use-delete-team";
+import { useGetSpaces } from "@/features/spaces/api/use-get-spaces";
 import { useCreateTeamModal } from "@/features/teams/hooks/use-create-team-modal";
 import { useEditTeamModal } from "@/features/teams/hooks/use-edit-team-modal";
 import { useTeamId } from "@/features/teams/hooks/use-team-id";
@@ -364,6 +365,7 @@ export const TeamsClient = () => {
                         </div>
                       </div>
                       <div className="flex-1 min-w-0 space-y-1.5">
+                        <SpaceLabel spaceId={team.spaceId} />
                         <h3 className="font-semibold text-base truncate">
                           {team.name}
                         </h3>
@@ -499,6 +501,42 @@ export const TeamsClient = () => {
         </div>
       )}
     </div>
+  );
+};
+
+// Component to show space label/ribbon
+interface SpaceLabelProps {
+  spaceId?: string | null;
+}
+
+const SpaceLabel = ({ spaceId }: SpaceLabelProps) => {
+  const workspaceId = useWorkspaceId();
+  const { data: spacesData } = useGetSpaces({ workspaceId });
+  const spaces = spacesData?.documents || [];
+
+  if (!spaceId) return null;
+
+  const space = spaces.find(s => s.$id === spaceId);
+  if (!space) return null;
+
+  return (
+    <TooltipProvider delayDuration={100}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="mb-1 inline-block">
+            <Badge 
+              variant="outline" 
+              className="text-[9px] px-1.5 py-0 h-4 font-medium bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200 text-indigo-700 cursor-help"
+            >
+              {space.key || space.name}
+            </Badge>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="max-w-xs">
+          <p className="text-xs">This team belongs to <strong>{space.name}</strong> space. Only projects from this space can be assigned to this team.</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };
 

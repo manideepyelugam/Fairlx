@@ -316,11 +316,17 @@ const app = new Hono()
           }
         }
 
-        // Update the team
+        // Update the team - destructure spaceId to handle null separately
+        const { spaceId: updateSpaceId, ...restUpdates } = updates;
         const updateData: Partial<Team> & { lastModifiedBy: string } = {
-          ...updates,
+          ...restUpdates,
           lastModifiedBy: user.$id,
         };
+
+        // Handle spaceId - convert null to undefined
+        if (updateSpaceId !== undefined) {
+          updateData.spaceId = updateSpaceId === null ? undefined : updateSpaceId;
+        }
         
         // Handle empty imageUrl
         if ("imageUrl" in updates) {
