@@ -200,6 +200,7 @@ const app = new Hono()
         description,
         deadline,
         image,
+        spaceId,
         customWorkItemTypes,
         customPriorities,
         customLabels
@@ -256,6 +257,11 @@ const app = new Hono()
       // Only update deadline if it was provided (null to clear it)
       if (deadline !== undefined) {
         updateData.deadline = deadline || null;
+      }
+
+      // Only update spaceId if it was provided (null to remove from space)
+      if (spaceId !== undefined) {
+        updateData.spaceId = spaceId || null;
       }
 
       // Update custom definitions if provided
