@@ -38,7 +38,7 @@ export const TaskActions = ({
   const { open } = useEditTaskModal();
 
   const [ConfirmDialog, confirm] = useConfirm(
-    "Delete Task",
+    "Delete Work Item",
     "This action cannot be undone.",
     "destructive"
   );
@@ -78,7 +78,7 @@ export const TaskActions = ({
             className="font-medium p-[10px]"
           >
             <ExternalLink className="size-4 mr-2 stroke-2" />
-            Task Details
+            Work Item Details
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={onOpenProject}
@@ -95,7 +95,7 @@ export const TaskActions = ({
               className="font-medium p-[10px]"
             >
               <PencilIcon className="size-4 mr-2 stroke-2" />
-              Edit Task
+              Edit Work Item
             </DropdownMenuItem>
           )}
           <DropdownMenuItem
@@ -104,7 +104,7 @@ export const TaskActions = ({
             className="font-medium p-[10px]"
           >
             <FlagIcon className={`size-4 mr-2 stroke-2 ${flagged ? 'fill-red-500 text-red-500' : ''}`} />
-            {flagged ? 'Unflag Task' : 'Flag Task'}
+            {flagged ? 'Unflag Work Item' : 'Flag Work Item'}
           </DropdownMenuItem>
           {canDelete && (
             <DropdownMenuItem
@@ -113,7 +113,7 @@ export const TaskActions = ({
               className="text-amber-700 focus:text-amber-700 font-medium p-[10px]"
             >
               <TrashIcon className="size-4 mr-2 stroke-2" />
-              Delete Task
+              Delete Work Item
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>

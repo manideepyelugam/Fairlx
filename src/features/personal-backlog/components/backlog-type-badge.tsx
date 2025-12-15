@@ -9,15 +9,21 @@ interface BacklogTypeBadgeProps {
 }
 
 const typeStyles: Record<BacklogItemType, { color: string; icon: string }> = {
-  TASK: { color: "bg-blue-100 text-blue-700 border-blue-200", icon: "📋" },
-  BUG: { color: "bg-red-100 text-red-700 border-red-200", icon: "🐛" },
-  IDEA: { color: "bg-purple-100 text-purple-700 border-purple-200", icon: "💡" },
-  IMPROVEMENT: { color: "bg-green-100 text-green-700 border-green-200", icon: "🚀" },
+  STORY: { color: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: "📄" }, // Story
+  BUG: { color: "bg-red-100 text-red-700 border-red-200", icon: "🐛" }, // Bug
+  TASK: { color: "bg-blue-100 text-blue-700 border-blue-200", icon: "📋" }, // Task
+  EPIC: { color: "bg-purple-100 text-purple-700 border-purple-200", icon: "👑" }, // Epic
+  SUBTASK: { color: "bg-gray-100 text-gray-700 border-gray-200", icon: "➡️" }, // Subtask
+  IDEA: { color: "bg-yellow-100 text-yellow-700 border-yellow-200", icon: "💡" }, // Idea
+  IMPROVEMENT: { color: "bg-indigo-100 text-indigo-700 border-indigo-200", icon: "🚀" }, // Improvement
 };
 
 const typeLabels: Record<BacklogItemType, string> = {
-  TASK: "Task",
+  STORY: "Story",
   BUG: "Bug",
+  TASK: "Task",
+  EPIC: "Epic",
+  SUBTASK: "Subtask",
   IDEA: "Idea",
   IMPROVEMENT: "Improvement",
 };

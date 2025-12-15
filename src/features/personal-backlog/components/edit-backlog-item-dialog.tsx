@@ -219,11 +219,14 @@ export const EditBacklogItemDialog = ({
                         <SelectItem value={BacklogItemType.BUG}>
                           🐛 Bug
                         </SelectItem>
-                        <SelectItem value={BacklogItemType.IDEA}>
-                          💡 Idea
+                        <SelectItem value={BacklogItemType.STORY}>
+                          📄 Story
                         </SelectItem>
-                        <SelectItem value={BacklogItemType.IMPROVEMENT}>
-                          🚀 Improvement
+                        <SelectItem value={BacklogItemType.EPIC}>
+                          👑 Epic
+                        </SelectItem>
+                        <SelectItem value={BacklogItemType.SUBTASK}>
+                          ➡️ Subtask
                         </SelectItem>
                       </SelectContent>
                     </Select>

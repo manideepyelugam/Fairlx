@@ -86,10 +86,10 @@ export const EnhancedDataKanban = ({
   // Check if TODO column should be visible (only when tasks are TODO or unassigned)
   const shouldShowTodoColumn = useMemo(() => {
     if (!Array.isArray(data) || data.length === 0) return false;
-    
-    return data.some(task => 
-      task.status === TaskStatus.TODO || 
-      !task.assigneeIds || 
+
+    return data.some(task =>
+      task.status === TaskStatus.TODO ||
+      !task.assigneeIds ||
       task.assigneeIds.length === 0
     );
   }, [data]);
@@ -568,7 +568,7 @@ export const EnhancedDataKanban = ({
                                     className="w-full text-xs bg-white border border-gray-200 shadow-sm justify-start text-gray-500  mt-2"
                                   >
                                     <PlusIcon className="h-4 w-4 " />
-                                    Add Task
+                                    Add Work Item
                                   </Button>
                                 )}
                               </div>

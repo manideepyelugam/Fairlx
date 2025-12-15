@@ -110,14 +110,14 @@ export const KanbanColumnHeader = ({
         )}
         {icon}
         <h2 className="text-sm font-semibold text-gray-700">{snakeCaseToTitleCase(board)}</h2>
-        
+
         {/* Task count with WIP limit indicator */}
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex items-center gap-1">
-                <Badge 
-                  variant={isOverWipLimit ? "destructive" : isAtWipLimit ? "secondary" : "outline"} 
+                <Badge
+                  variant={isOverWipLimit ? "destructive" : isAtWipLimit ? "secondary" : "outline"}
                   className={cn(
                     "text-xs px-1.5 py-0 h-5",
                     isOverWipLimit && "animate-pulse"
@@ -137,9 +137,9 @@ export const KanbanColumnHeader = ({
               {wipLimit !== undefined && wipLimit > 0 ? (
                 <div className="text-xs">
                   <div className="font-medium">
-                    {isOverWipLimit 
-                      ? `⚠️ Over WIP limit by ${taskCount - wipLimit}` 
-                      : isAtWipLimit 
+                    {isOverWipLimit
+                      ? `⚠️ Over WIP limit by ${taskCount - wipLimit}`
+                      : isAtWipLimit
                         ? "At WIP limit"
                         : `${wipLimit - taskCount} slots remaining`
                     }
@@ -149,18 +149,18 @@ export const KanbanColumnHeader = ({
                   </div>
                 </div>
               ) : (
-                <span>{taskCount} tasks</span>
+                <span>{taskCount} work items</span>
               )}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </div>
-      
+
       {/* WIP Progress bar (only show if limit is set) */}
       {wipLimit !== undefined && wipLimit > 0 && (
         <div className="flex-1 mx-3 max-w-[60px]">
           <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-            <div 
+            <div
               className={cn(
                 "h-full transition-all",
                 isOverWipLimit ? "bg-red-500" : isAtWipLimit ? "bg-yellow-500" : "bg-green-500"
@@ -176,10 +176,10 @@ export const KanbanColumnHeader = ({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button 
-                  onClick={open} 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  onClick={open}
+                  variant="ghost"
+                  size="icon"
                   className={cn(
                     "h-6 w-6 hover:bg-gray-100",
                     isOverWipLimit && "opacity-50"
@@ -191,7 +191,7 @@ export const KanbanColumnHeader = ({
               </TooltipTrigger>
               {isOverWipLimit && (
                 <TooltipContent>
-                  <span className="text-xs">Cannot add tasks - WIP limit exceeded</span>
+                  <span className="text-xs">Cannot add work items - WIP limit exceeded</span>
                 </TooltipContent>
               )}
             </Tooltip>

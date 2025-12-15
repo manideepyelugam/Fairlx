@@ -101,105 +101,108 @@ export const LabelSelector = React.forwardRef<
     },
     ref
   ) => {
-  const [open, setOpen] = React.useState(false);
-  const [newLabel, setNewLabel] = React.useState("");
-  const [searchTerm, setSearchTerm] = React.useState("");
+    const [open, setOpen] = React.useState(false);
+    const [newLabel, setNewLabel] = React.useState("");
+    const [searchTerm, setSearchTerm] = React.useState("");
 
-  const addLabel = (label: string) => {
-    if (label && !selectedLabels.includes(label)) {
-      onLabelsChange([...selectedLabels, label]);
-    }
-  };
+    const addLabel = (label: string) => {
+      if (label && !selectedLabels.includes(label)) {
+        onLabelsChange([...selectedLabels, label]);
+      }
+    };
 
-  const removeLabel = (label: string) => {
-    onLabelsChange(selectedLabels.filter((l) => l !== label));
-  };
+    const removeLabel = (label: string) => {
+      onLabelsChange(selectedLabels.filter((l) => l !== label));
+    };
 
-  const handleCreateLabel = () => {
-    if (newLabel.trim()) {
-      addLabel(newLabel.trim());
-      setNewLabel("");
-      setOpen(false);
-    }
-  };
+    const handleCreateLabel = () => {
+      if (newLabel.trim()) {
+        addLabel(newLabel.trim());
+        setNewLabel("");
+        setOpen(false);
+      }
+    };
 
-  const filteredLabels = availableLabels.filter(
-    (label) =>
-      !selectedLabels.includes(label) &&
-      label.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    // Deduplicate available labels
+    const uniqueAvailableLabels = Array.from(new Set(availableLabels));
 
-  return (
-    <div className={cn("space-y-2", wrapperClassName)}>
-      {selectedLabels.length > 0 && (
-        <LabelsDisplay labels={selectedLabels} onRemove={removeLabel} />
-      )}
-      
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            ref={ref}
-            variant={variant}
-            role="combobox"
-            aria-expanded={open}
-            className={cn("h-8 justify-start", className)}
-            disabled={disabled}
-            {...buttonProps}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            {placeholder}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-80 p-2">
-          <div className="space-y-2">
-            <Input
-              placeholder="Search or create label..."
-              value={newLabel}
-              onChange={(e) => {
-                setNewLabel(e.target.value);
-                setSearchTerm(e.target.value);
-              }}
-            />
-            
-            {newLabel.trim() && !filteredLabels.includes(newLabel.trim()) && (
-              <Button
-                onClick={handleCreateLabel}
-                className="w-full justify-start"
-                variant="ghost"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Create &quot;{newLabel.trim()}&quot;
-              </Button>
-            )}
+    const filteredLabels = uniqueAvailableLabels.filter(
+      (label) =>
+        !selectedLabels.includes(label) &&
+        label.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
-            <div className="max-h-40 overflow-y-auto space-y-1">
-              {filteredLabels.map((label) => (
-                <button
-                  key={label}
-                  onClick={() => {
-                    addLabel(label);
-                    setOpen(false);
-                    setNewLabel("");
-                    setSearchTerm("");
-                  }}
-                  className="w-full text-left px-2 py-1 hover:bg-muted rounded text-sm"
+    return (
+      <div className={cn("space-y-2", wrapperClassName)}>
+        {selectedLabels.length > 0 && (
+          <LabelsDisplay labels={selectedLabels} onRemove={removeLabel} />
+        )}
+
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              ref={ref}
+              variant={variant}
+              role="combobox"
+              aria-expanded={open}
+              className={cn("h-8 justify-start", className)}
+              disabled={disabled}
+              {...buttonProps}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              {placeholder}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80 p-2">
+            <div className="space-y-2">
+              <Input
+                placeholder="Search or create label..."
+                value={newLabel}
+                onChange={(e) => {
+                  setNewLabel(e.target.value);
+                  setSearchTerm(e.target.value);
+                }}
+              />
+
+              {newLabel.trim() && !filteredLabels.includes(newLabel.trim()) && (
+                <Button
+                  onClick={handleCreateLabel}
+                  className="w-full justify-start"
+                  variant="ghost"
                 >
-                  {label}
-                </button>
-              ))}
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create &quot;{newLabel.trim()}&quot;
+                </Button>
+              )}
+
+              <div className="max-h-100 overflow-y-auto space-y-1">
+                {filteredLabels.map((label) => (
+                  <button
+                    key={label}
+                    onClick={() => {
+                      addLabel(label);
+                      setOpen(false);
+                      setNewLabel("");
+                      setSearchTerm("");
+                    }}
+                    className="w-full text-left px-2 py-1 hover:bg-muted rounded text-sm"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {filteredLabels.length === 0 && !newLabel.trim() && (
+                <p className="text-sm text-muted-foreground text-center py-2">
+                  No labels found
+                </p>
+              )}
             </div>
-            
-            {filteredLabels.length === 0 && !newLabel.trim() && (
-              <p className="text-sm text-muted-foreground text-center py-2">
-                No labels found
-              </p>
-            )}
-          </div>
-        </PopoverContent>
-      </Popover>
-    </div>
-  );
-});
+          </PopoverContent>
+        </Popover>
+      </div>
+    );
+  });
 
 LabelSelector.displayName = "LabelSelector";
 

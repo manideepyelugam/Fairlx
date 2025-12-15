@@ -1,8 +1,9 @@
 import { CalendarIcon, MoreHorizontalIcon, FlagIcon, MessageCircle } from "lucide-react";
+import { Project } from "@/features/projects/types";
 
 import { TaskActions } from "./task-actions";
 import { LabelBadge } from "./LabelBadge";
-import { PriorityBadge } from "./PriorityBadge";
+import { PriorityBadge } from "./priority-selector";
 import { AssigneeAvatarGroup } from "./assignee-avatar-group";
 
 import { PopulatedTask } from "../types";
@@ -15,6 +16,7 @@ interface KanbanCardProps {
     showSelection?: boolean;
     canEdit?: boolean;
     canDelete?: boolean;
+    project?: Project;
 }
 
 export const KanbanCard = ({
@@ -22,7 +24,8 @@ export const KanbanCard = ({
     isSelected = false,
     showSelection = false,
     canEdit = false,
-    canDelete = false
+    canDelete = false,
+    project
 }: KanbanCardProps) => {
     const { open: openPreview } = useTaskPreviewModal();
 
@@ -35,6 +38,9 @@ export const KanbanCard = ({
     const handleCardClick = () => {
         openPreview(task.$id);
     };
+
+    const customPriority = project?.customPriorities?.find(p => p.key === task.priority);
+    const customLabels = project?.customLabels || [];
 
     return (
         <div
@@ -58,13 +64,25 @@ export const KanbanCard = ({
                 <div className="flex-1 flex w-full justify-between ">
 
                     <div className="flex gap-2">
-                        {task.priority && <PriorityBadge priority={task.priority} />}
+                        {task.priority && (
+                            <PriorityBadge
+                                priority={task.priority}
+                                color={customPriority?.color}
+                            />
+                        )}
 
                         {task.labels && task.labels.length > 0 && (
                             <div className="flex flex-wrap gap-1 ">
-                                {task.labels.slice(0, 2).map((label, index) => (
-                                    <LabelBadge key={index} label={label} />
-                                ))}
+                                {task.labels.slice(0, 2).map((label, index) => {
+                                    const customLabel = customLabels.find(l => l.name === label);
+                                    return (
+                                        <LabelBadge
+                                            key={index}
+                                            label={label}
+                                            color={customLabel?.color}
+                                        />
+                                    );
+                                })}
 
                             </div>
                         )}

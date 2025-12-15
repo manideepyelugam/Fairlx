@@ -22,24 +22,24 @@ export enum TeamPermission {
   EDIT_TASKS = "EDIT_TASKS",
   DELETE_TASKS = "DELETE_TASKS",
   ASSIGN_TASKS = "ASSIGN_TASKS",
-  
+
   // Sprint Management
   VIEW_SPRINTS = "VIEW_SPRINTS",
   CREATE_SPRINTS = "CREATE_SPRINTS",
   EDIT_SPRINTS = "EDIT_SPRINTS",
   DELETE_SPRINTS = "DELETE_SPRINTS",
-  
+
   // Member Management
   VIEW_MEMBERS = "VIEW_MEMBERS",
   ADD_MEMBERS = "ADD_MEMBERS",
   REMOVE_MEMBERS = "REMOVE_MEMBERS",
   CHANGE_MEMBER_ROLES = "CHANGE_MEMBER_ROLES",
-  
+
   // Team Settings
   EDIT_TEAM_SETTINGS = "EDIT_TEAM_SETTINGS",
   DELETE_TEAM = "DELETE_TEAM",
   MANAGE_ROLES = "MANAGE_ROLES",
-  
+
   // Reports & Analytics
   VIEW_REPORTS = "VIEW_REPORTS",
   EXPORT_DATA = "EXPORT_DATA",
@@ -50,11 +50,11 @@ export const PERMISSION_CATEGORIES = {
   TASKS: {
     label: "Task Management",
     permissions: [
-      { key: TeamPermission.VIEW_TASKS, label: "View Tasks", description: "View all team tasks" },
-      { key: TeamPermission.CREATE_TASKS, label: "Create Tasks", description: "Create new tasks" },
-      { key: TeamPermission.EDIT_TASKS, label: "Edit Tasks", description: "Edit existing tasks" },
-      { key: TeamPermission.DELETE_TASKS, label: "Delete Tasks", description: "Delete tasks" },
-      { key: TeamPermission.ASSIGN_TASKS, label: "Assign Tasks", description: "Assign tasks to members" },
+      { key: TeamPermission.VIEW_TASKS, label: "View Work Items", description: "View all team tasks" },
+      { key: TeamPermission.CREATE_TASKS, label: "Create Work Items", description: "Create new tasks" },
+      { key: TeamPermission.EDIT_TASKS, label: "Edit Work Items", description: "Edit existing tasks" },
+      { key: TeamPermission.DELETE_TASKS, label: "Delete Work Items", description: "Delete tasks" },
+      { key: TeamPermission.ASSIGN_TASKS, label: "Assign Work Items", description: "Assign tasks to members" },
     ],
   },
   SPRINTS: {

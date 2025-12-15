@@ -4,6 +4,7 @@ import { TaskStatus, TaskPriority } from "./types";
 
 const baseTaskSchema = z.object({
   name: z.string().trim().min(1, "Required"),
+  type: z.string().optional(), // work item type key
   status: z.union([z.nativeEnum(TaskStatus), z.string()]).refine(
     (value) => Object.values(TaskStatus).includes(value as TaskStatus) || typeof value === "string",
     { message: "Invalid status" }
@@ -24,7 +25,7 @@ const baseTaskSchema = z.object({
       return isNaN(num) ? undefined : num;
     })
     .optional(),
-  priority: z.nativeEnum(TaskPriority).optional(),
+  priority: z.union([z.nativeEnum(TaskPriority), z.string()]).optional(),
   labels: z.array(z.string()).optional(),
   flagged: z.boolean().optional(),
 });
