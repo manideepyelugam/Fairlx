@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Settings, User, FolderKanban, Users2, Calendar, Clock as ClockIcon, Activity } from "lucide-react";
+import { Settings, User, FolderKanban, Users2, Calendar, Clock as ClockIcon, Activity, Shield } from "lucide-react";
 import Link from "next/link";
 import {
   GoCheckCircle,
@@ -70,6 +70,12 @@ const routes = [
     href: "/members",
     icon: User,
     activeIcon: User,
+  },
+  {
+    label: "Roles",
+    href: "/settings/roles",
+    icon: Shield,
+    activeIcon: Shield,
   },
 ];
 

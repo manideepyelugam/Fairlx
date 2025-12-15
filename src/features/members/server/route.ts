@@ -6,6 +6,7 @@ import { zValidator } from "@hono/zod-validator";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
 import { DATABASE_ID, MEMBERS_ID } from "@/config";
+import { getPermissions } from "@/lib/rbac";
 
 import { getMember } from "../utils";
 import { Member, MemberRole } from "../types";
@@ -58,6 +59,30 @@ const app = new Hono()
       return c.json({ data: { ...members, documents: populatedMembers } });
     }
   )
+  .get(
+    "/current",
+    sessionMiddleware,
+    zValidator("query", z.object({ workspaceId: z.string() })),
+    async (c) => {
+      const user = c.get("user");
+      const databases = c.get("databases");
+      const { workspaceId } = c.req.valid("query");
+
+      const member = await getMember({
+        databases,
+        workspaceId,
+        userId: user.$id,
+      });
+
+      if (!member) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      const permissions = await getPermissions(databases, workspaceId, user.$id);
+
+      return c.json({ data: { ...member, permissions } });
+    }
+  )
   .delete("/:memberId", sessionMiddleware, async (c) => {
     const { memberId } = c.req.param();
     const user = c.get("user");
@@ -100,7 +125,7 @@ const app = new Hono()
   .patch(
     "/:memberId",
     sessionMiddleware,
-    zValidator("json", z.object({ role: z.nativeEnum(MemberRole) })),
+    zValidator("json", z.object({ role: z.union([z.nativeEnum(MemberRole), z.string()]) })),
     async (c) => {
       const { memberId } = c.req.param();
       const { role } = c.req.valid("json");

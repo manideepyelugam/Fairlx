@@ -11,6 +11,8 @@ import { useGetSprints } from "../api/use-get-sprints";
 import { SprintCard } from "./sprint-card";
 import { CreateSprintDialog } from "./create-sprint-dialog";
 import { SprintStatus } from "../types";
+import { usePermission } from "@/hooks/use-permission";
+import { PERMISSIONS } from "@/lib/permissions";
 
 interface SprintBoardProps {
   workspaceId: string;
@@ -20,6 +22,7 @@ interface SprintBoardProps {
 export const SprintBoard = ({ workspaceId, projectId }: SprintBoardProps) => {
   const router = useRouter();
   const [createSprintOpen, setCreateSprintOpen] = useState(false);
+  const { can } = usePermission();
 
   const { data: sprintsData, isLoading: sprintsLoading } = useGetSprints({
     workspaceId,
@@ -62,13 +65,15 @@ export const SprintBoard = ({ workspaceId, projectId }: SprintBoardProps) => {
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => setCreateSprintOpen(true)}
-          className=" text-white border bg-blue-600 border-gray-300 hover:bg-blue-700"
-        >
-          <Plus className="size-4 mr-2" />
-          New Sprint
-        </Button>
+        {can(PERMISSIONS.SPRINT_CREATE) && (
+          <Button
+            onClick={() => setCreateSprintOpen(true)}
+            className=" text-white border bg-blue-600 border-gray-300 hover:bg-blue-700"
+          >
+            <Plus className="size-4 mr-2" />
+            New Sprint
+          </Button>
+        )}
       </div>
 
       {/* Tabs for different views */}

@@ -40,6 +40,8 @@ import { useUpdateSprint } from "../api/use-update-sprint";
 import { useDeleteSprint } from "../api/use-delete-sprint";
 import { Sprint, SprintStatus } from "../types";
 import { useConfirm } from "@/hooks/use-confirm";
+import { PERMISSIONS } from "@/lib/permissions";
+import { usePermission } from "@/hooks/use-permission";
 
 const formSchema = z.object({
     name: z.string().min(1, "Sprint name is required"),
@@ -64,6 +66,7 @@ export const SprintSettingsSheet = ({
 }: SprintSettingsSheetProps) => {
     const { mutate: updateSprint, isPending: isUpdating } = useUpdateSprint();
     const { mutate: deleteSprint, isPending: isDeleting } = useDeleteSprint();
+    const { can } = usePermission();
 
     const [DeleteDialog, confirmDelete] = useConfirm(
         "Delete Sprint",
@@ -290,22 +293,26 @@ export const SprintSettingsSheet = ({
                                 />
 
                                 <div className="flex items-center justify-between pt-4">
-                                    <Button
-                                        type="button"
-                                        variant="destructive"
-                                        size="sm"
-                                        disabled={isDeleting || isUpdating}
-                                        onClick={handleDelete}
-                                    >
-                                        {isDeleting ? (
-                                            <>
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                Deleting...
-                                            </>
-                                        ) : (
-                                            "Delete Sprint"
-                                        )}
-                                    </Button>
+                                    {can(PERMISSIONS.SPRINT_DELETE) ? (
+                                        <Button
+                                            type="button"
+                                            variant="destructive"
+                                            size="sm"
+                                            disabled={isDeleting || isUpdating}
+                                            onClick={handleDelete}
+                                        >
+                                            {isDeleting ? (
+                                                <>
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                    Deleting...
+                                                </>
+                                            ) : (
+                                                "Delete Sprint"
+                                            )}
+                                        </Button>
+                                    ) : (
+                                        <div /> // Spacer if delete button is hidden
+                                    )}
                                     <div className="flex gap-2">
                                         <Button
                                             type="button"
@@ -315,16 +322,18 @@ export const SprintSettingsSheet = ({
                                         >
                                             Cancel
                                         </Button>
-                                        <Button type="submit" disabled={isUpdating}>
-                                            {isUpdating ? (
-                                                <>
-                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                    Saving...
-                                                </>
-                                            ) : (
-                                                "Save Changes"
-                                            )}
-                                        </Button>
+                                        {can(PERMISSIONS.SPRINT_UPDATE) && (
+                                            <Button type="submit" disabled={isUpdating}>
+                                                {isUpdating ? (
+                                                    <>
+                                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                        Saving...
+                                                    </>
+                                                ) : (
+                                                    "Save Changes"
+                                                )}
+                                            </Button>
+                                        )}
                                     </div>
                                 </div>
                             </form>

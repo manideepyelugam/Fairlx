@@ -34,6 +34,7 @@ import { useResetInviteCode } from "@/features/workspaces/api/use-reset-invite-c
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { useGetSpaces } from "@/features/spaces/api/use-get-spaces";
 import { useAddSpaceMember } from "@/features/spaces/api/use-add-space-member";
+import { useGetRoles } from "@/features/roles/api/use-get-roles";
 import { SpaceRole } from "@/features/spaces/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -81,13 +82,14 @@ export const MembersList = () => {
   const { data } = useGetMembers({ workspaceId });
   const { data: workspace } = useGetWorkspace({ workspaceId });
   const { data: spacesData } = useGetSpaces({ workspaceId });
+  const { data: customRoles } = useGetRoles({ workspaceId });
   const { member: currentMember, isAdmin: isCurrentUserAdmin } = useCurrentMember({ workspaceId });
   const { mutate: deleteMember, isPending: isDeletingMember } = useDeleteMember();
   const { mutate: updateMember, isPending: isUpdatingMember } = useUpdateMember();
   const { mutate: resetInviteCode, isPending: isResettingInviteCode } = useResetInviteCode();
   const { mutate: addSpaceMember, isPending: isAddingSpaceMember } = useAddSpaceMember();
 
-  const handleUpdateMember = (memberId: string, role: MemberRole) => {
+  const handleUpdateMember = (memberId: string, role: MemberRole | string) => {
     updateMember({ json: { role }, param: { memberId } });
   };
 
@@ -168,7 +170,7 @@ export const MembersList = () => {
   };
 
   const adminCount = data?.documents.filter(m => m.role === MemberRole.ADMIN).length || 0;
-  const memberCount = data?.documents.filter(m => m.role === MemberRole.MEMBER).length || 0;
+  const memberCount = data?.documents.filter(m => m.role !== MemberRole.ADMIN).length || 0;
 
   return (
     <div className="space-y-4">
@@ -199,8 +201,8 @@ export const MembersList = () => {
                     <SelectItem key={space.$id} value={space.$id}>
                       <div className="flex items-center gap-2">
                         {space.color && (
-                          <div 
-                            className="size-3 rounded-full" 
+                          <div
+                            className="size-3 rounded-full"
                             style={{ backgroundColor: space.color }}
                           />
                         )}
@@ -222,8 +224,8 @@ export const MembersList = () => {
             <Button variant="outline" onClick={() => setSpaceMasterDialogOpen(false)}>
               Cancel
             </Button>
-            <Button 
-              onClick={handleSetAsMaster} 
+            <Button
+              onClick={handleSetAsMaster}
               disabled={!selectedSpaceId || isAddingSpaceMember}
               className="gap-2 bg-purple-600 hover:bg-purple-700"
             >
@@ -333,6 +335,12 @@ export const MembersList = () => {
                               Admin
                             </Badge>
                           )}
+                          {!isAdmin && member.role !== MemberRole.MEMBER && (
+                            <Badge variant="outline" className="bg-purple-500/10 text-purple-700 border-purple-500/20 font-medium">
+                              <Shield className="size-3 mr-1" />
+                              {member.role}
+                            </Badge>
+                          )}
                           {isCurrentUser && (
                             <Badge variant="outline" className="bg-blue-500/10 text-blue-700 border-blue-500/20 text-xs">
                               You
@@ -361,15 +369,21 @@ export const MembersList = () => {
                                 <span>Set as Administrator</span>
                               </DropdownMenuItem>
                             )}
-                            {isAdmin && (
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel className="text-xs text-muted-foreground p-2">Custom Roles</DropdownMenuLabel>
+                            {customRoles?.documents.map((role: any) => (
                               <DropdownMenuItem
-                                onClick={() => handleUpdateMember(member.$id, MemberRole.MEMBER)}
+                                key={role.$id}
+                                onClick={() => handleUpdateMember(member.$id, role.name)}
                                 disabled={isUpdatingMember}
                                 className="cursor-pointer"
                               >
-                                <UserCog className="size-4 mr-2 text-blue-600" />
-                                <span>Set as Member</span>
+                                <Shield className="size-4 mr-2 text-purple-600" />
+                                <span>Set as {role.name}</span>
                               </DropdownMenuItem>
+                            ))}
+                            {(!customRoles?.documents || customRoles.documents.length === 0) && (
+                              <div className="text-xs text-muted-foreground p-2">No custom roles</div>
                             )}
                             <DropdownMenuItem
                               onClick={() => handleOpenSpaceMasterDialog(member.$id, displayName)}

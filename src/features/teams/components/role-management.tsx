@@ -18,12 +18,10 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { 
-  TeamPermission, 
-  PERMISSION_CATEGORIES, 
+import {
+  TeamPermission,
+  PERMISSION_CATEGORIES,
   CustomRole,
-  DEFAULT_ROLE_PERMISSIONS,
-  TeamMemberRole 
 } from "../types";
 import { useConfirm } from "@/hooks/use-confirm";
 
@@ -61,9 +59,7 @@ export const RoleManagement = ({
   const [selectedPermissions, setSelectedPermissions] = useState<TeamPermission[]>([]);
   const [isDefault, setIsDefault] = useState(false);
   const [expandedRoles, setExpandedRoles] = useState<Set<string>>(new Set());
-  const [expandedBuiltInRoles, setExpandedBuiltInRoles] = useState<Set<string>>(new Set());
-  const [editingBuiltInRole, setEditingBuiltInRole] = useState<TeamMemberRole | null>(null);
-  const [builtInRolePermissions, setBuiltInRolePermissions] = useState<Record<TeamMemberRole, TeamPermission[]>>(DEFAULT_ROLE_PERMISSIONS);
+
 
   const [ConfirmDialog, confirm] = useConfirm(
     "Delete Role",
@@ -154,279 +150,14 @@ export const RoleManagement = ({
     });
   };
 
-  const toggleBuiltInRoleExpanded = (roleKey: string) => {
-    setExpandedBuiltInRoles((prev) => {
-      const next = new Set(prev);
-      if (next.has(roleKey)) {
-        next.delete(roleKey);
-      } else {
-        next.add(roleKey);
-      }
-      return next;
-    });
-  };
 
-  const handleEditBuiltInRole = (role: TeamMemberRole) => {
-    // Ensure the built-in role card is expanded when entering edit mode
-    const key = role === TeamMemberRole.LEAD ? "LEAD" : "MEMBER";
-    setExpandedBuiltInRoles((prev) => {
-      const next = new Set(prev);
-      next.add(key);
-      return next;
-    });
-    setEditingBuiltInRole(role);
-  };
-
-  const handleToggleBuiltInPermission = (role: TeamMemberRole, permission: TeamPermission) => {
-    setBuiltInRolePermissions((prev) => {
-      const currentPermissions = prev[role] || [];
-      const newPermissions = currentPermissions.includes(permission)
-        ? currentPermissions.filter((p) => p !== permission)
-        : [...currentPermissions, permission];
-      return {
-        ...prev,
-        [role]: newPermissions,
-      };
-    });
-  };
-
-  const handleSaveBuiltInRole = () => {
-    // This would typically call an API to save the permissions
-    // For now, we'll just update the local state
-    setEditingBuiltInRole(null);
-    // TODO: Call API to persist changes
-  };
-
-  const handleCancelBuiltInRoleEdit = () => {
-    setBuiltInRolePermissions(DEFAULT_ROLE_PERMISSIONS);
-    setEditingBuiltInRole(null);
-  };
 
   return (
     <>
       <ConfirmDialog />
-      
+
       <div className="space-y-4">
-        {/* Built-in Roles (Read-only) */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base">Built-in Roles</CardTitle>
-                <CardDescription className="text-xs">
-                  Default roles with predefined permissions
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {/* Team Lead */}
-            <div className="border rounded-lg overflow-hidden">
-              <div className="flex items-start justify-between p-3 hover:bg-muted/30 transition-colors">
-                <div className="flex-1 flex items-start gap-2 cursor-pointer" onClick={() => toggleBuiltInRoleExpanded('LEAD')}>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-6 shrink-0 mt-0.5"
-                  >
-                    {expandedBuiltInRoles.has('LEAD') ? (
-                      <ChevronDown className="size-3.5" />
-                    ) : (
-                      <ChevronRight className="size-3.5" />
-                    )}
-                  </Button>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="default" className="gap-1">
-                        <Shield className="size-3" />
-                        Team Lead
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        {builtInRolePermissions[TeamMemberRole.LEAD].length} Permissions
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Full access to all team features and settings
-                    </p>
-                  </div>
-                </div>
-              </div>
-              {expandedBuiltInRoles.has('LEAD') && (
-                <div className="px-3 pb-3 space-y-2 bg-muted/20">
-                  <Separator className="mb-2" />
-                  {editingBuiltInRole === TeamMemberRole.LEAD ? (
-                    <div className="space-y-3">
-                      {Object.entries(PERMISSION_CATEGORIES).map(([key, category]) => {
-                        const cat = category as typeof PERMISSION_CATEGORIES[keyof typeof PERMISSION_CATEGORIES];
-                        return (
-                          <div key={key} className="space-y-2">
-                            <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-                              <Shield className="size-3" />
-                              {cat.label}
-                            </h4>
-                            <div className="pl-5 space-y-2">
-                              {cat.permissions.map((permission) => (
-                                <div key={permission.key} className="flex items-start gap-2">
-                                  <Checkbox
-                                    id={`lead-${permission.key}`}
-                                    checked={builtInRolePermissions[TeamMemberRole.LEAD].includes(permission.key)}
-                                    onCheckedChange={() => handleToggleBuiltInPermission(TeamMemberRole.LEAD, permission.key)}
-                                  />
-                                  <label htmlFor={`lead-${permission.key}`} className="text-xs cursor-pointer flex-1">
-                                    <div className="font-medium">{permission.label}</div>
-                                    <div className="text-muted-foreground">{permission.description}</div>
-                                  </label>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                      <div className="flex items-center gap-2 pt-2">
-                        <Button size="sm" onClick={handleSaveBuiltInRole}>
-                          <Save className="size-3.5 mr-1.5" />
-                          Save Changes
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={handleCancelBuiltInRoleEdit}>
-                          <X className="size-3.5 mr-1.5" />
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    Object.entries(PERMISSION_CATEGORIES).map(([key, category]) => {
-                      const cat = category as typeof PERMISSION_CATEGORIES[keyof typeof PERMISSION_CATEGORIES];
-                      return (
-                        <div key={key} className="space-y-1">
-                          <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-                            <Shield className="size-3" />
-                            {cat.label}
-                          </h4>
-                          <div className="pl-5 space-y-1">
-                            {cat.permissions.map((permission) => (
-                              <div key={permission.key} className="text-xs text-muted-foreground">
-                                • {permission.label}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              )}
-            </div>
 
-            {/* Team Member */}
-            <div className="border rounded-lg overflow-hidden">
-              <div className="flex items-start justify-between p-3 hover:bg-muted/30 transition-colors">
-                <div className="flex-1 flex items-start gap-2 cursor-pointer" onClick={() => toggleBuiltInRoleExpanded('MEMBER')}>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-6 shrink-0 mt-0.5"
-                  >
-                    {expandedBuiltInRoles.has('MEMBER') ? (
-                      <ChevronDown className="size-3.5" />
-                    ) : (
-                      <ChevronRight className="size-3.5" />
-                    )}
-                  </Button>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="secondary">Team Member</Badge>
-                      <span className="text-xs text-muted-foreground">
-                        {builtInRolePermissions[TeamMemberRole.MEMBER].length} Permissions
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Basic permissions for viewing and creating tasks
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-7 shrink-0"
-                  onClick={() => handleEditBuiltInRole(TeamMemberRole.MEMBER)}
-                >
-                  <Edit2 className="size-3.5" />
-                </Button>
-              </div>
-              {expandedBuiltInRoles.has('MEMBER') && (
-                <div className="px-3 pb-3 space-y-2 bg-muted/20">
-                  <Separator className="mb-2" />
-                  {editingBuiltInRole === TeamMemberRole.MEMBER ? (
-                    <div className="space-y-3">
-                      {Object.entries(PERMISSION_CATEGORIES).map(([key, category]) => {
-                        const cat = category as typeof PERMISSION_CATEGORIES[keyof typeof PERMISSION_CATEGORIES];
-                        return (
-                          <div key={key} className="space-y-2">
-                            <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-                              <Shield className="size-3" />
-                              {cat.label}
-                            </h4>
-                            <div className="pl-5 space-y-2">
-                              {cat.permissions.map((permission) => (
-                                <div key={permission.key} className="flex items-start gap-2">
-                                  <Checkbox
-                                    id={`member-${permission.key}`}
-                                    checked={builtInRolePermissions[TeamMemberRole.MEMBER].includes(permission.key)}
-                                    onCheckedChange={() => handleToggleBuiltInPermission(TeamMemberRole.MEMBER, permission.key)}
-                                  />
-                                  <label htmlFor={`member-${permission.key}`} className="text-xs cursor-pointer flex-1">
-                                    <div className="font-medium">{permission.label}</div>
-                                    <div className="text-muted-foreground">{permission.description}</div>
-                                  </label>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                      <div className="flex items-center gap-2 pt-2">
-                        <Button size="sm" onClick={handleSaveBuiltInRole}>
-                          <Save className="size-3.5 mr-1.5" />
-                          Save Changes
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={handleCancelBuiltInRoleEdit}>
-                          <X className="size-3.5 mr-1.5" />
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    Object.entries(PERMISSION_CATEGORIES).map(([key, category]) => {
-                      const cat = category as typeof PERMISSION_CATEGORIES[keyof typeof PERMISSION_CATEGORIES];
-                      const memberPermissions = builtInRolePermissions[TeamMemberRole.MEMBER];
-                      const categoryPermissions = cat.permissions.filter((p) =>
-                        memberPermissions.includes(p.key)
-                      );
-
-                      if (categoryPermissions.length === 0) return null;
-
-                      return (
-                        <div key={key} className="space-y-1">
-                          <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-                            <Shield className="size-3" />
-                            {cat.label}
-                          </h4>
-                          <div className="pl-5 space-y-1">
-                            {categoryPermissions.map((permission) => (
-                              <div key={permission.key} className="text-xs text-muted-foreground">
-                                • {permission.label}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Custom Roles */}
         <Card>
@@ -517,17 +248,17 @@ export const RoleManagement = ({
                           </Button>
                         </div>
                       </div>
-                      
+
                       {/* Expanded Permissions View */}
                       {isExpanded && (
                         <div className="px-3 pb-3 pt-0 border-t bg-muted/20">
                           <div className="space-y-2 mt-3">
                             {Object.entries(PERMISSION_CATEGORIES).map(([key, category]) => {
-                              const categoryPerms = category.permissions.filter(p => 
+                              const categoryPerms = category.permissions.filter(p =>
                                 role.permissions.includes(p.key)
                               );
                               if (categoryPerms.length === 0) return null;
-                              
+
                               return (
                                 <div key={key} className="space-y-1">
                                   <div className="text-xs font-medium text-muted-foreground">
@@ -596,9 +327,8 @@ export const RoleManagement = ({
                       key={color.value}
                       type="button"
                       onClick={() => setRoleColor(color.value)}
-                      className={`size-8 rounded-full ${color.class} ${
-                        roleColor === color.value ? "ring-2 ring-offset-2 ring-primary" : ""
-                      }`}
+                      className={`size-8 rounded-full ${color.class} ${roleColor === color.value ? "ring-2 ring-offset-2 ring-primary" : ""
+                        }`}
                       title={color.label}
                     />
                   ))}
