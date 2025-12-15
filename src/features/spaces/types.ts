@@ -33,10 +33,92 @@ export type Space = Models.Document & {
 
 // Space member with role
 export enum SpaceRole {
-  ADMIN = "ADMIN",       // Full control over space settings
+  ADMIN = "ADMIN",       // Full control over space settings - designated as "MASTER"
   MEMBER = "MEMBER",     // Can create/edit work items
   VIEWER = "VIEWER",     // Read-only access
 }
+
+// Space Admin Permissions - MASTER has all permissions
+export enum SpacePermission {
+  // Space Management
+  EDIT_SPACE_SETTINGS = "EDIT_SPACE_SETTINGS",
+  DELETE_SPACE = "DELETE_SPACE",
+  MANAGE_SPACE_MEMBERS = "MANAGE_SPACE_MEMBERS",
+  
+  // Team Management within Space
+  CREATE_TEAMS = "CREATE_TEAMS",
+  DELETE_TEAMS = "DELETE_TEAMS",
+  MANAGE_TEAM_SETTINGS = "MANAGE_TEAM_SETTINGS",
+  ASSIGN_TEAMS = "ASSIGN_TEAMS",
+  
+  // Project Management within Space
+  CREATE_PROJECTS = "CREATE_PROJECTS",
+  DELETE_PROJECTS = "DELETE_PROJECTS",
+  MANAGE_PROJECT_SETTINGS = "MANAGE_PROJECT_SETTINGS",
+  ASSIGN_PROJECTS = "ASSIGN_PROJECTS",
+  
+  // Work Item Management
+  CREATE_WORK_ITEMS = "CREATE_WORK_ITEMS",
+  EDIT_WORK_ITEMS = "EDIT_WORK_ITEMS",
+  DELETE_WORK_ITEMS = "DELETE_WORK_ITEMS",
+  ASSIGN_WORK_ITEMS = "ASSIGN_WORK_ITEMS",
+  
+  // View Permissions
+  VIEW_SPACE = "VIEW_SPACE",
+  VIEW_TEAMS = "VIEW_TEAMS",
+  VIEW_PROJECTS = "VIEW_PROJECTS",
+  VIEW_WORK_ITEMS = "VIEW_WORK_ITEMS",
+  VIEW_ANALYTICS = "VIEW_ANALYTICS",
+}
+
+// Default permissions for space roles
+export const DEFAULT_SPACE_PERMISSIONS: Record<SpaceRole, SpacePermission[]> = {
+  [SpaceRole.ADMIN]: Object.values(SpacePermission), // MASTER - All permissions
+  [SpaceRole.MEMBER]: [
+    SpacePermission.VIEW_SPACE,
+    SpacePermission.VIEW_TEAMS,
+    SpacePermission.VIEW_PROJECTS,
+    SpacePermission.VIEW_WORK_ITEMS,
+    SpacePermission.CREATE_WORK_ITEMS,
+    SpacePermission.EDIT_WORK_ITEMS,
+  ],
+  [SpaceRole.VIEWER]: [
+    SpacePermission.VIEW_SPACE,
+    SpacePermission.VIEW_TEAMS,
+    SpacePermission.VIEW_PROJECTS,
+    SpacePermission.VIEW_WORK_ITEMS,
+  ],
+};
+
+// Get display name for space role
+export const getSpaceRoleDisplay = (role: SpaceRole): { label: string; description: string; color: string } => {
+  switch (role) {
+    case SpaceRole.ADMIN:
+      return {
+        label: "Master",
+        description: "Full control over space, teams, and projects",
+        color: "from-amber-500 to-orange-600",
+      };
+    case SpaceRole.MEMBER:
+      return {
+        label: "Member",
+        description: "Can create and edit work items",
+        color: "from-blue-500 to-indigo-600",
+      };
+    case SpaceRole.VIEWER:
+      return {
+        label: "Viewer",
+        description: "Read-only access to space content",
+        color: "from-slate-400 to-slate-600",
+      };
+    default:
+      return {
+        label: "Unknown",
+        description: "Unknown role",
+        color: "from-gray-400 to-gray-600",
+      };
+  }
+};
 
 export type SpaceMember = Models.Document & {
   spaceId: string;
@@ -50,6 +132,7 @@ export type SpaceMember = Models.Document & {
 export type PopulatedSpace = Space & {
   memberCount?: number;
   projectCount?: number;
+  teamCount?: number;
   owner?: {
     $id: string;
     name: string;

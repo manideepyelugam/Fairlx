@@ -43,6 +43,10 @@ const app = new Hono()
       // Build query filters
       const queryFilters: string[] = [Query.equal("workspaceId", filters.workspaceId)];
 
+      if (filters.spaceId) {
+        queryFilters.push(Query.equal("spaceId", filters.spaceId));
+      }
+
       if (filters.programId) {
         queryFilters.push(Query.equal("programId", filters.programId));
       }
@@ -194,6 +198,7 @@ const app = new Hono()
         name: data.name,
         description: data.description && data.description.trim() !== "" ? data.description : undefined,
         workspaceId: data.workspaceId,
+        spaceId: (data.spaceId === null || data.spaceId === "" || data.spaceId === "null") ? null : data.spaceId,
         programId: data.programId || undefined,
         teamLeadId: data.teamLeadId || undefined,
         imageUrl: data.imageUrl && data.imageUrl.trim() !== "" ? data.imageUrl : undefined,
@@ -311,11 +316,17 @@ const app = new Hono()
           }
         }
 
-        // Update the team
+        // Update the team - destructure spaceId to handle null separately
+        const { spaceId: updateSpaceId, ...restUpdates } = updates;
         const updateData: Partial<Team> & { lastModifiedBy: string } = {
-          ...updates,
+          ...restUpdates,
           lastModifiedBy: user.$id,
         };
+
+        // Handle spaceId - convert null to undefined
+        if (updateSpaceId !== undefined) {
+          updateData.spaceId = updateSpaceId === null ? undefined : updateSpaceId;
+        }
         
         // Handle empty imageUrl
         if ("imageUrl" in updates) {
