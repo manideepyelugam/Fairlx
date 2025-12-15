@@ -7,6 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -28,6 +34,7 @@ import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useRouter } from "next/navigation";
 import { useGetTeams } from "@/features/teams/api/use-get-teams";
 import { useDeleteTeam } from "@/features/teams/api/use-delete-team";
+import { useGetSpaces } from "@/features/spaces/api/use-get-spaces";
 import { useCreateTeamModal } from "@/features/teams/hooks/use-create-team-modal";
 import { useEditTeamModal } from "@/features/teams/hooks/use-edit-team-modal";
 import { useTeamId } from "@/features/teams/hooks/use-team-id";
@@ -40,12 +47,6 @@ import { useGetTeamMembers } from "@/features/teams/api/use-get-team-members";
 import { useGetTeamProjects } from "@/features/teams/api/use-get-team-projects";
 import { FirstTeamInfoDialog } from "@/features/teams/components/first-team-info-dialog";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 const getVisibilityColor = (visibility: TeamVisibility) => {
   switch (visibility) {
@@ -405,6 +406,7 @@ export const TeamsClient = () => {
                         )}
                       </Avatar>
                       <div className="flex-1 min-w-0">
+                        <SpaceLabel spaceId={team.spaceId} />
                         <h3 className="font-semibold text-sm truncate mb-1">
                           {team.name}
                         </h3>
@@ -591,6 +593,42 @@ const TeamProjectName = ({ teamId }: TeamProjectNameProps) => {
         </span>
       )}
     </div>
+  );
+};
+
+// Component to show space label/ribbon
+interface SpaceLabelProps {
+  spaceId?: string | null;
+}
+
+const SpaceLabel = ({ spaceId }: SpaceLabelProps) => {
+  const workspaceId = useWorkspaceId();
+  const { data: spacesData } = useGetSpaces({ workspaceId });
+  const spaces = spacesData?.documents || [];
+
+  if (!spaceId) return null;
+
+  const space = spaces.find(s => s.$id === spaceId);
+  if (!space) return null;
+
+  return (
+    <TooltipProvider delayDuration={100}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="mb-1.5 inline-block">
+            <Badge 
+              variant="outline" 
+              className="text-[9px] px-1.5 py-0 h-4 font-medium bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200 text-indigo-700 cursor-help"
+            >
+              {space.key || space.name}
+            </Badge>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="max-w-xs">
+          <p className="text-xs">This team belongs to <strong>{space.name}</strong> space. Only projects from this space can be assigned to this team.</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };
 

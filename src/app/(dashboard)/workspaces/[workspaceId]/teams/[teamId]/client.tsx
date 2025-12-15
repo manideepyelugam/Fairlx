@@ -562,7 +562,18 @@ export const TeamIdClient = ({ teamId }: TeamIdClientProps) => {
               const assignedProjects = teamProjectsData?.documents || [];
               const assignedProjectIds = assignedProjects.map((p) => p.$id);
               const availableProjects = allProjects.filter(
-                (project) => !assignedProjectIds.includes(project.$id)
+                (project) => {
+                  // Don't show already assigned projects
+                  if (assignedProjectIds.includes(project.$id)) return false;
+                  
+                  // If team belongs to a space, only show projects from that space
+                  if (team?.spaceId) {
+                    return project.spaceId === team.spaceId;
+                  }
+                  
+                  // If team doesn't belong to a space, show all projects
+                  return true;
+                }
               );
 
               if (availableProjects.length === 0) {

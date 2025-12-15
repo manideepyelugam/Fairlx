@@ -59,7 +59,7 @@ const config: Config = {
   		},
   		backgroundImage: {
   			'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-  		}
+  		},
   	}
   },
   plugins: [require("tailwindcss-animate")],
