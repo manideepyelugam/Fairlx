@@ -7,8 +7,7 @@ import { sessionMiddleware } from "@/lib/session-middleware";
 import { DATABASE_ID, CUSTOM_ROLES_ID } from "@/config";
 import { MemberRole } from "@/features/members/types";
 import { getMember } from "@/features/members/utils";
-import { can } from "@/lib/rbac";
-import { PERMISSIONS } from "@/lib/permissions";
+
 
 // Zod schema for role creation/update
 // We call it "roleName" in DB, but let's expose as "name" in API for cleaner usage?
@@ -66,7 +65,7 @@ const app = new Hono()
                 userId: user.$id,
             });
 
-            if (!member || member.role !== MemberRole.ADMIN && member.role !== MemberRole.OWNER) {
+            if (!member || member.role !== MemberRole.ADMIN) {
                 // Alternatively use can() check if we add a permission for role management
                 // if (!(await can(databases, workspaceId, user.$id, PERMISSIONS.WORKSPACE_UPDATE))) ...
                 return c.json({ error: "Unauthorized" }, 401);
@@ -113,7 +112,7 @@ const app = new Hono()
                 userId: user.$id,
             });
 
-            if (!member || (member.role !== MemberRole.ADMIN && member.role !== MemberRole.OWNER)) {
+            if (!member || member.role !== MemberRole.ADMIN) {
                 return c.json({ error: "Unauthorized" }, 401);
             }
 
@@ -152,7 +151,7 @@ const app = new Hono()
                 userId: user.$id,
             });
 
-            if (!member || (member.role !== MemberRole.ADMIN && member.role !== MemberRole.OWNER)) {
+            if (!member || member.role !== MemberRole.ADMIN) {
                 return c.json({ error: "Unauthorized" }, 401);
             }
 

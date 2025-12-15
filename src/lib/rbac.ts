@@ -1,6 +1,6 @@
 import { Databases, Query } from "node-appwrite";
 import { getMember } from "@/features/members/utils";
-import { MemberRole } from "@/features/members/types";
+
 import { PERMISSIONS, ROLE_PERMISSIONS, Role } from "./permissions";
 import { DATABASE_ID, CUSTOM_ROLES_ID } from "@/config";
 
@@ -53,7 +53,7 @@ export async function getPermissions(
                 const customRole = roleDocs.documents[0];
                 return customRole.permissions || [];
             }
-        } catch (_dbError) {
+        } catch {
             // console.warn("Custom role check failed, falling back to defaults:", dbError);
         }
 

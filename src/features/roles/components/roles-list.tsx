@@ -20,11 +20,13 @@ import { useState } from "react";
 import { RoleEditorModal } from "./role-editor-modal";
 import { useConfirm } from "@/hooks/use-confirm";
 
+import { CustomRole } from "@/features/teams/types";
+
 export const RolesList = () => {
     const workspaceId = useWorkspaceId();
     const queryClient = useQueryClient();
     const [editorOpen, setEditorOpen] = useState(false);
-    const [editingRole, setEditingRole] = useState<any>(null); // Type this properly later
+    const [editingRole, setEditingRole] = useState<CustomRole | null>(null);
 
     const [ConfirmDeleteDialog, confirmDelete] = useConfirm(
         "Delete Role",
@@ -44,7 +46,7 @@ export const RolesList = () => {
             }
 
             const { data } = await response.json();
-            return data;
+            return data as { documents: CustomRole[], total: number };
         },
     });
 
@@ -107,7 +109,7 @@ export const RolesList = () => {
         }
     };
 
-    const handleDelete = async (role: any) => {
+    const handleDelete = async (role: CustomRole) => {
         const ok = await confirmDelete();
         if (ok) {
             deleteMutation.mutate(role.$id);
@@ -119,7 +121,7 @@ export const RolesList = () => {
         setEditorOpen(true);
     };
 
-    const openEdit = (role: any) => {
+    const openEdit = (role: CustomRole) => {
         setEditingRole(role);
         setEditorOpen(true);
     };
@@ -181,7 +183,7 @@ export const RolesList = () => {
                                         </TableCell>
                                     </TableRow>
                                 )}
-                                {roles?.documents.map((role: any) => (
+                                {roles?.documents.map((role: CustomRole) => (
                                     <TableRow key={role.$id}>
                                         <TableCell className="font-medium">
                                             {role.name}

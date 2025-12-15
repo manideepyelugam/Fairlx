@@ -6,7 +6,7 @@ import {
   MoreVerticalIcon,
   CopyIcon,
   Shield,
-  UserCog,
+
   Trash2,
   Crown,
   Mail,
@@ -37,6 +37,7 @@ import { useAddSpaceMember } from "@/features/spaces/api/use-add-space-member";
 import { useGetRoles } from "@/features/roles/api/use-get-roles";
 import { SpaceRole } from "@/features/spaces/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CustomRole } from "@/features/teams/types";
 
 import { useConfirm } from "@/hooks/use-confirm";
 import { Button } from "@/components/ui/button";
@@ -371,17 +372,20 @@ export const MembersList = () => {
                             )}
                             <DropdownMenuSeparator />
                             <DropdownMenuLabel className="text-xs text-muted-foreground p-2">Custom Roles</DropdownMenuLabel>
-                            {customRoles?.documents.map((role: any) => (
-                              <DropdownMenuItem
-                                key={role.$id}
-                                onClick={() => handleUpdateMember(member.$id, role.name)}
-                                disabled={isUpdatingMember}
-                                className="cursor-pointer"
-                              >
-                                <Shield className="size-4 mr-2 text-purple-600" />
-                                <span>Set as {role.name}</span>
-                              </DropdownMenuItem>
-                            ))}
+                            {customRoles?.documents.map((role) => {
+                              const customRole = role as unknown as CustomRole;
+                              return (
+                                <DropdownMenuItem
+                                  key={customRole.$id}
+                                  onClick={() => handleUpdateMember(member.$id, customRole.name)}
+                                  disabled={isUpdatingMember}
+                                  className="cursor-pointer"
+                                >
+                                  <Shield className="size-4 mr-2 text-purple-600" />
+                                  <span>Set as {customRole.name}</span>
+                                </DropdownMenuItem>
+                              )
+                            })}
                             {(!customRoles?.documents || customRoles.documents.length === 0) && (
                               <div className="text-xs text-muted-foreground p-2">No custom roles</div>
                             )}

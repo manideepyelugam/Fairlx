@@ -61,7 +61,6 @@ import { usePermission } from "@/hooks/use-permission";
 import { useUpdateSprint } from "../api/use-update-sprint";
 import { useUpdateWorkItem } from "../api/use-update-work-item";
 import { useCreateWorkItem } from "../api/use-create-work-item";
-import { useCurrentMember } from "@/features/members/api/use-current-member";
 import { useDeleteSprint } from "../api/use-delete-sprint";
 import { useDeleteWorkItem } from "../api/use-delete-work-item";
 import { useGetEpics } from "../api/use-get-epics";
@@ -103,7 +102,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
 
 
   const { can } = usePermission();
-  const { data: member } = useCurrentMember({ workspaceId }) as { data: any };
+
 
   // API Hooks
   const { data: sprintsData } = useGetSprints({ workspaceId, projectId });
@@ -248,7 +247,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
       name: `${projectKey} Sprint ${sprintNumber}`,
       status: SprintStatus.PLANNED,
     }, {
-      onSuccess: (data: any) => {
+      onSuccess: (data) => {
         // Auto-expand the newly created sprint
         setExpandedSprints(prev => [...prev, data.data.$id]);
       }
