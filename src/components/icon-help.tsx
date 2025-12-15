@@ -19,7 +19,7 @@ export const IconHelp = ({ content, side = "top", children, className }: IconHel
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger className={className}>{children}</TooltipTrigger>
+        <TooltipTrigger asChild className={className}>{children}</TooltipTrigger>
         <TooltipContent className="text-[11px] px-2.5 py-1 shadow-sm border" side={side}>{content}</TooltipContent>
       </Tooltip>
     </TooltipProvider>

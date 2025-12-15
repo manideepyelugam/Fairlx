@@ -2,8 +2,8 @@
 
 import { z } from "zod";
 import Image from "next/image";
-import { ArrowLeftIcon, ImageIcon } from "lucide-react";
-import { useRef } from "react";
+import { ArrowLeftIcon, ImageIcon, Copy } from "lucide-react";
+import { useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
@@ -22,12 +22,17 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { updateProjectSchema } from "../schemas";
 import { Project } from "../types";
 import { useUpdateProject } from "../api/use-update-project";
 import { useConfirm } from "@/hooks/use-confirm";
 import { useDeleteProject } from "../api/use-delete-project";
+import { WorkTypesSettings } from "./work-types-settings";
+import { PrioritySettings } from "./priority-settings";
+import { LabelSettings } from "./label-settings";
+import { CopySettingsDialog } from "./copy-settings-dialog";
 
 interface EditProjectFormProps {
   onCancel?: () => void;
@@ -44,10 +49,17 @@ export const EditProjectForm = ({
     useDeleteProject();
 
   const [DeleteDialog, confirmDelete] = useConfirm(
-    "Delete Workspace",
-    "This action cannot be undone.",
+    "Delete Project",
+    "This action cannot be undone. All data will be lost.",
     "destructive"
   );
+
+  const [isCopySettingsOpen, setIsCopySettingsOpen] = useState(false);
+
+  // Placeholder for copy settings dialog - in real imp would be a modal
+  const handleCopySettings = () => {
+    setIsCopySettingsOpen(true);
+  }
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -56,10 +68,13 @@ export const EditProjectForm = ({
     defaultValues: {
       ...initialValues,
       image: initialValues.imageUrl ?? "",
-      defaultSwimlane: 
+      defaultSwimlane:
         initialValues.defaultSwimlane && ["type", "none", "assignee", "epic"].includes(initialValues.defaultSwimlane)
           ? (initialValues.defaultSwimlane as "type" | "none" | "assignee" | "epic")
           : undefined,
+      customWorkItemTypes: initialValues.customWorkItemTypes || [],
+      customPriorities: initialValues.customPriorities || [],
+      customLabels: initialValues.customLabels || [],
     },
   });
 
@@ -81,7 +96,7 @@ export const EditProjectForm = ({
   const onSubmit = (values: z.infer<typeof updateProjectSchema>) => {
     // Convert nullable fields to undefined and build final values object
     const finalValues: Record<string, unknown> = {};
-    
+
     Object.entries(values).forEach(([key, value]) => {
       if (value === null) {
         finalValues[key] = undefined;
@@ -105,6 +120,12 @@ export const EditProjectForm = ({
   return (
     <div className="flex flex-col gap-y-4">
       <DeleteDialog />
+      <CopySettingsDialog
+        open={isCopySettingsOpen}
+        onOpenChange={setIsCopySettingsOpen}
+        currentProjectId={initialValues.$id}
+        workspaceId={initialValues.workspaceId}
+      />
       <Card className="w-full h-full border-none shadow-none">
         <CardHeader className="flex flex-row items-center gap-x-4 p-7 space-y-0">
           <Button
@@ -114,16 +135,16 @@ export const EditProjectForm = ({
               onCancel
                 ? onCancel
                 : () =>
-                    router.push(
-                      `/workspaces/${initialValues.workspaceId}/projects/${initialValues.$id}`
-                    )
+                  router.push(
+                    `/workspaces/${initialValues.workspaceId}/projects/${initialValues.$id}`
+                  )
             }
           >
             <ArrowLeftIcon className="size-4" />
             Back
           </Button>
           <CardTitle className="text-xl font-bold">
-            {initialValues.name}
+            Project Settings: {initialValues.name}
           </CardTitle>
         </CardHeader>
         <div className="px-7">
@@ -132,93 +153,151 @@ export const EditProjectForm = ({
         <CardContent className="p-7">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
-              <div className="flex flex-col gap-y-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Project Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter project name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="image"
-                  render={({ field }) => (
-                    <div className="flex flex-col gap-y-2">
-                      <div className="flex items-center gap-x-5">
-                        {field.value ? (
-                          <div className="size-[72px] relative rounded-md overflow-hidden">
-                            <Image
-                              src={
-                                field.value instanceof File
-                                  ? URL.createObjectURL(field.value)
-                                  : field.value
-                              }
-                              alt="Logo"
-                              fill
-                              className="object-cover"
-                            />
+              <Tabs defaultValue="general" className="w-full">
+                <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent mb-6">
+                  <TabsTrigger value="general" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3">General</TabsTrigger>
+                  <TabsTrigger value="types" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3">Work Types</TabsTrigger>
+                  <TabsTrigger value="priorities" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3">Priorities</TabsTrigger>
+                  <TabsTrigger value="labels" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3">Labels</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="general" className="space-y-6">
+                  <div className="flex justify-end">
+                    <Button type="button" variant="outline" size="sm" onClick={handleCopySettings}>
+                      <Copy className="size-3.5 mr-2" />
+                      Copy Settings from Project...
+                    </Button>
+                  </div>
+
+                  <div className="flex flex-col gap-y-4">
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Project Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter project name" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="image"
+                      render={({ field }) => (
+                        <div className="flex flex-col gap-y-2">
+                          <div className="flex items-center gap-x-5">
+                            {field.value ? (
+                              <div className="size-[72px] relative rounded-md overflow-hidden">
+                                <Image
+                                  src={
+                                    field.value instanceof File
+                                      ? URL.createObjectURL(field.value)
+                                      : field.value
+                                  }
+                                  alt="Logo"
+                                  fill
+                                  className="object-cover"
+                                />
+                              </div>
+                            ) : (
+                              <Avatar className="size-[72px]">
+                                <AvatarFallback>
+                                  <ImageIcon className="size-[36px] text-neutral-400" />
+                                </AvatarFallback>
+                              </Avatar>
+                            )}
+                            <div className="flex flex-col">
+                              <p className="text-sm">Project Icon</p>
+                              <p className="text-sm text-muted-foreground">
+                                JPG, PNG, SVG or JPEG, max 1MB
+                              </p>
+                              <input
+                                className="hidden"
+                                accept=".jpg, .png, .jpeg, .svg"
+                                type="file"
+                                ref={inputRef}
+                                onChange={handleImageChange}
+                                disabled={isPending}
+                              />
+                              {field.value ? (
+                                <Button
+                                  variant="destructive"
+                                  type="button"
+                                  disabled={isPending}
+                                  size="xs"
+                                  className="w-fit mt-2"
+                                  onClick={() => {
+                                    field.onChange(null);
+                                    if (inputRef.current) {
+                                      inputRef.current.value = "";
+                                    }
+                                  }}
+                                >
+                                  Remove Image
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="teritary"
+                                  type="button"
+                                  disabled={isPending}
+                                  size="xs"
+                                  className="w-fit mt-2"
+                                  onClick={() => inputRef.current?.click()}
+                                >
+                                  Upload Image
+                                </Button>
+                              )}
+                            </div>
                           </div>
-                        ) : (
-                          <Avatar className="size-[72px]">
-                            <AvatarFallback>
-                              <ImageIcon className="size-[36px] text-neutral-400" />
-                            </AvatarFallback>
-                          </Avatar>
-                        )}
-                        <div className="flex flex-col">
-                          <p className="text-sm">Project Icon</p>
-                          <p className="text-sm text-muted-foreground">
-                            JPG, PNG, SVG or JPEG, max 1MB
-                          </p>
-                          <input
-                            className="hidden"
-                            accept=".jpg, .png, .jpeg, .svg"
-                            type="file"
-                            ref={inputRef}
-                            onChange={handleImageChange}
-                            disabled={isPending}
-                          />
-                          {field.value ? (
-                            <Button
-                              variant="destructive"
-                              type="button"
-                              disabled={isPending}
-                              size="xs"
-                              className="w-fit mt-2"
-                              onClick={() => {
-                                field.onChange(null);
-                                if (inputRef.current) {
-                                  inputRef.current.value = "";
-                                }
-                              }}
-                            >
-                              Remove Image
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="teritary"
-                              type="button"
-                              disabled={isPending}
-                              size="xs"
-                              className="w-fit mt-2"
-                              onClick={() => inputRef.current?.click()}
-                            >
-                              Upload Image
-                            </Button>
-                          )}
                         </div>
-                      </div>
-                    </div>
-                  )}
-                />
-              </div>
+                      )}
+                    />
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="types">
+                  <FormField
+                    control={form.control}
+                    name="customWorkItemTypes"
+                    render={({ field }) => (
+                      <WorkTypesSettings
+                        types={field.value || []}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
+                </TabsContent>
+
+                <TabsContent value="priorities">
+                  <FormField
+                    control={form.control}
+                    name="customPriorities"
+                    render={({ field }) => (
+                      <PrioritySettings
+                        priorities={field.value || []}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
+                </TabsContent>
+
+                <TabsContent value="labels">
+                  <FormField
+                    control={form.control}
+                    name="customLabels"
+                    render={({ field }) => (
+                      <LabelSettings
+                        labels={field.value || []}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
+                </TabsContent>
+              </Tabs>
+
               <DottedSeparator className="py-7" />
               <div className="flex items-center justify-between">
                 <Button
@@ -239,12 +318,14 @@ export const EditProjectForm = ({
           </Form>
         </CardContent>
       </Card>
-      <Card className="w-full h-full border-none shadow-none">
+
+      {/* Moved Danger Zone to its own card outside the main form card, always visible at bottom */}
+      <Card className="w-full h-full border-none shadow-none bg-red-50/50">
         <CardContent className="p-7">
           <div className="flex flex-col">
-            <h3 className="font-bold">Danger Zone</h3>
+            <h3 className="font-bold text-red-600">Danger Zone</h3>
             <p className="text-sm text-muted-foreground">
-              Deleting a project is a irreversible and will remove all
+              Deleting a project is irreversible and will remove all
               associated data.
             </p>
             <DottedSeparator className="py-7" />

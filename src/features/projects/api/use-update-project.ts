@@ -8,14 +8,14 @@ type ResponseType = InferResponseType<
   (typeof client.api.projects)[":projectId"]["$patch"],
   200
 >;
-type RequestType = InferRequestType<
+export type UpdateProjectRequest = InferRequestType<
   (typeof client.api.projects)[":projectId"]["$patch"]
 >;
 
 export const useUpdateProject = () => {
   const queryClient = useQueryClient();
 
-  const mutation = useMutation<ResponseType, Error, RequestType>({
+  const mutation = useMutation<ResponseType, Error, UpdateProjectRequest>({
     mutationFn: async ({ form, param }) => {
       const response = await client.api.projects[":projectId"].$patch({
         form,

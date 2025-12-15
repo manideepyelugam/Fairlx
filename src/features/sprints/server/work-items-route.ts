@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 
-import { DATABASE_ID, WORK_ITEMS_ID, PROJECTS_ID, MEMBERS_ID, SPRINTS_ID } from "@/config";
+import { DATABASE_ID, WORK_ITEMS_ID, PROJECTS_ID, MEMBERS_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
 
@@ -23,8 +23,6 @@ import {
   WorkItemStatus,
   WorkItemPriority,
   PopulatedWorkItem,
-  Sprint,
-  SprintStatus,
 } from "../types";
 
 // Generate unique work item key
@@ -58,7 +56,7 @@ async function generateWorkItemKey(
   // Extract key numbers and find the highest one
   let highestNumber = 0;
   const keyPattern = new RegExp(`^${prefix}-(\\d+)$`);
-  
+
   for (const item of workItems.documents) {
     const match = item.key.match(keyPattern);
     if (match) {
@@ -89,9 +87,9 @@ const app = new Hono()
         workspaceId: z.string(),
         projectId: z.string().optional(),
         sprintId: z.string().optional().nullable(),
-        type: z.nativeEnum(WorkItemType).optional(),
-        status: z.nativeEnum(WorkItemStatus).optional(),
-        priority: z.nativeEnum(WorkItemPriority).optional(),
+        type: z.union([z.nativeEnum(WorkItemType), z.string()]).optional(),
+        status: z.union([z.nativeEnum(WorkItemStatus), z.string()]).optional(),
+        priority: z.union([z.nativeEnum(WorkItemPriority), z.string()]).optional(),
         assigneeId: z.string().optional(),
         epicId: z.string().optional().nullable(),
         parentId: z.string().optional().nullable(),
@@ -207,17 +205,17 @@ const app = new Hono()
       });
 
       // Fetch all members at once (assigneeIds are member document IDs)
-      const membersData = allAssigneeIds.size > 0 
+      const membersData = allAssigneeIds.size > 0
         ? await databases.listDocuments(
-            DATABASE_ID,
-            MEMBERS_ID,
-            [Query.equal("$id", Array.from(allAssigneeIds))]
-          )
+          DATABASE_ID,
+          MEMBERS_ID,
+          [Query.equal("$id", Array.from(allAssigneeIds))]
+        )
         : { documents: [] };
 
       // Build a map of member ID -> user data for quick lookup
       const assigneeMap = new Map<string, { $id: string; name: string; email: string; profileImageUrl: string | null }>();
-      
+
       await Promise.all(
         membersData.documents.map(async (member) => {
           try {
@@ -402,10 +400,10 @@ const app = new Hono()
       // Populate assignees - assigneeIds are member document IDs
       const membersData = workItem.assigneeIds && workItem.assigneeIds.length > 0
         ? await databases.listDocuments(
-            DATABASE_ID,
-            MEMBERS_ID,
-            [Query.equal("$id", workItem.assigneeIds)]
-          )
+          DATABASE_ID,
+          MEMBERS_ID,
+          [Query.equal("$id", workItem.assigneeIds)]
+        )
         : { documents: [] };
 
       const assignees = (await Promise.all(
@@ -501,27 +499,10 @@ const app = new Hono()
       }
 
       // Determine the target sprint:
-      // 1. If sprintId is explicitly provided, use it
-      // 2. If no sprintId provided, check for an active sprint in this project
-      // 3. If no active sprint, leave as backlog (null sprintId)
-      let targetSprintId = data.sprintId;
-      
-      if (!targetSprintId) {
-        // Check for an active sprint in this project
-        const activeSprints = await databases.listDocuments<Sprint>(
-          DATABASE_ID,
-          SPRINTS_ID,
-          [
-            Query.equal("projectId", data.projectId),
-            Query.equal("status", SprintStatus.ACTIVE),
-            Query.limit(1),
-          ]
-        );
-        
-        if (activeSprints.documents.length > 0) {
-          targetSprintId = activeSprints.documents[0].$id;
-        }
-      }
+      // If sprintId is explicitly provided, use it. Otherwise, leave as null (backlog).
+      // We explicitly REMOVED the auto-assignment to active sprint logic here to ensure
+      // items created in the Backlog section stay in the Backlog.
+      const targetSprintId = data.sprintId || null;
 
       // Get the highest position
       const queryFilters = [
@@ -552,11 +533,11 @@ const app = new Hono()
 
       while (!workItem && attempts < maxAttempts) {
         attempts++;
-        
+
         try {
           // Generate unique key
           const key = await generateWorkItemKey(databases, data.projectId);
-          
+
           workItem = await databases.createDocument<WorkItem>(
             DATABASE_ID,
             WORK_ITEMS_ID,
@@ -566,17 +547,17 @@ const app = new Hono()
               key,
               position: highestPosition + 1000,
               dueDate: data.dueDate?.toISOString(),
-              sprintId: targetSprintId || null, // Use the determined target sprint (active sprint or null for backlog)
+              sprintId: targetSprintId,
             }
           );
         } catch (error: unknown) {
           // If it's a conflict error (duplicate key) and we haven't exceeded max attempts, retry
-          const isConflictError = 
-            error && 
-            typeof error === 'object' && 
-            (('code' in error && error.code === 409) || 
-             ('type' in error && (error as { type?: string }).type === 'document_already_exists'));
-          
+          const isConflictError =
+            error &&
+            typeof error === 'object' &&
+            (('code' in error && error.code === 409) ||
+              ('type' in error && (error as { type?: string }).type === 'document_already_exists'));
+
           if (isConflictError && attempts < maxAttempts) {
             // Wait a bit before retrying to reduce collision chance
             await new Promise(resolve => setTimeout(resolve, 100 * attempts));
@@ -680,6 +661,74 @@ const app = new Hono()
       await databases.deleteDocument(DATABASE_ID, WORK_ITEMS_ID, workItemId);
 
       return c.json({ data: { $id: workItem.$id } });
+    }
+  )
+  // Bulk delete work items
+  .post(
+    "/bulk-delete",
+    sessionMiddleware,
+    zValidator(
+      "json",
+      z.object({
+        workItemIds: z.array(z.string()),
+      })
+    ),
+    async (c) => {
+      const databases = c.get("databases");
+      const user = c.get("user");
+
+      const { workItemIds } = c.req.valid("json");
+
+      if (workItemIds.length === 0) {
+        return c.json({ data: { count: 0 } });
+      }
+
+      // Verify user has access to the first work item (assume same workspace)
+      const firstWorkItem = await databases.getDocument<WorkItem>(
+        DATABASE_ID,
+        WORK_ITEMS_ID,
+        workItemIds[0]
+      );
+
+      const member = await getMember({
+        databases,
+        workspaceId: firstWorkItem.workspaceId,
+        userId: user.$id,
+      });
+
+      if (!member) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      // Delete items and their children
+      // We'll do this in parallel chunks to avoid overwhelming the server if many items
+      const deleteItem = async (id: string) => {
+        try {
+          // Find children first
+          const children = await databases.listDocuments(
+            DATABASE_ID,
+            WORK_ITEMS_ID,
+            [Query.equal("parentId", id)]
+          );
+
+          // Delete children
+          await Promise.all(
+            children.documents.map(child =>
+              databases.deleteDocument(DATABASE_ID, WORK_ITEMS_ID, child.$id)
+            )
+          );
+
+          // Delete the item itself
+          await databases.deleteDocument(DATABASE_ID, WORK_ITEMS_ID, id);
+        } catch (error) {
+          console.error(`Failed to delete item ${id}`, error);
+          // Continue with other items
+        }
+      };
+
+      await Promise.all(workItemIds.map(deleteItem));
+
+      return c.json({ data: { count: workItemIds.length } });
     }
   )
   // Bulk move work items to a sprint

@@ -1,9 +1,12 @@
 import { Models } from "node-appwrite";
 
 export enum BacklogItemType {
-  TASK = "TASK",
-  IDEA = "IDEA",
+  STORY = "STORY",
   BUG = "BUG",
+  TASK = "TASK",
+  EPIC = "EPIC",
+  SUBTASK = "SUBTASK",
+  IDEA = "IDEA",
   IMPROVEMENT = "IMPROVEMENT",
 }
 

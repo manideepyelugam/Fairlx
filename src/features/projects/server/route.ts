@@ -1,7 +1,7 @@
 import { zValidator } from "@hono/zod-validator";
 import { endOfMonth, startOfMonth, subMonths } from "date-fns";
 import { Hono } from "hono";
-import { ID, Query } from "node-appwrite";
+import { ID, Query, Models } from "node-appwrite";
 import { z } from "zod";
 
 import { getMember } from "@/features/members/utils";
@@ -14,6 +14,24 @@ import { createProjectSchema, updateProjectSchema } from "../schemas";
 import { Project } from "../types";
 import { MemberRole } from "@/features/members/types";
 import { TeamMember } from "@/features/teams/types";
+
+// Helper to parse JSON strings from Appwrite
+const transformProject = (project: Models.Document): Project => {
+  const raw = project as unknown as Record<string, unknown>;
+
+  return {
+    ...(project as unknown as Project),
+    customWorkItemTypes: typeof raw.customWorkItemTypes === 'string'
+      ? JSON.parse(raw.customWorkItemTypes)
+      : (raw.customWorkItemTypes as Project["customWorkItemTypes"]) || [],
+    customPriorities: typeof raw.customPriorities === 'string'
+      ? JSON.parse(raw.customPriorities)
+      : (raw.customPriorities as Project["customPriorities"]) || [],
+    customLabels: typeof raw.customLabels === 'string'
+      ? JSON.parse(raw.customLabels)
+      : (raw.customLabels as Project["customLabels"]) || [],
+  };
+};
 
 const app = new Hono()
   .post(
@@ -70,7 +88,7 @@ const app = new Hono()
         }
       );
 
-      return c.json({ data: project });
+      return c.json({ data: transformProject(project) });
     }
   )
   .get(
@@ -105,7 +123,12 @@ const app = new Hono()
 
       // If user is admin, return all projects
       if (member.role === MemberRole.ADMIN) {
-        return c.json({ data: allProjects });
+        return c.json({
+          data: {
+            ...allProjects,
+            documents: allProjects.documents.map(transformProject)
+          }
+        });
       }
 
       // Get user's team memberships
@@ -133,7 +156,7 @@ const app = new Hono()
 
       return c.json({
         data: {
-          documents: filteredProjects,
+          documents: filteredProjects.map(transformProject),
           total: filteredProjects.length,
         },
       });
@@ -160,7 +183,7 @@ const app = new Hono()
       return c.json({ error: "Unauthorized" }, 401);
     }
 
-    return c.json({ data: project });
+    return c.json({ data: transformProject(project) });
   })
   .patch(
     "/:projectId",
@@ -172,7 +195,15 @@ const app = new Hono()
       const user = c.get("user");
 
       const { projectId } = c.req.param();
-      const { name, description, deadline, image } = c.req.valid("form");
+      const {
+        name,
+        description,
+        deadline,
+        image,
+        customWorkItemTypes,
+        customPriorities,
+        customLabels
+      } = c.req.valid("form");
 
       const existingProject = await databases.getDocument<Project>(
         DATABASE_ID,
@@ -211,12 +242,12 @@ const app = new Hono()
         uploadedImageUrl = image;
       }
 
-      const updateData: Record<string, unknown> = { 
-        name, 
+      const updateData: Record<string, unknown> = {
+        name,
         imageUrl: uploadedImageUrl,
         lastModifiedBy: user.$id,
       };
-      
+
       // Only update description if it was provided (even if empty string to clear it)
       if (description !== undefined) {
         updateData.description = description || null;
@@ -227,6 +258,17 @@ const app = new Hono()
         updateData.deadline = deadline || null;
       }
 
+      // Update custom definitions if provided
+      if (customWorkItemTypes !== undefined) {
+        updateData.customWorkItemTypes = JSON.stringify(customWorkItemTypes);
+      }
+      if (customPriorities !== undefined) {
+        updateData.customPriorities = JSON.stringify(customPriorities);
+      }
+      if (customLabels !== undefined) {
+        updateData.customLabels = JSON.stringify(customLabels);
+      }
+
       const project = await databases.updateDocument(
         DATABASE_ID,
         PROJECTS_ID,
@@ -234,7 +276,7 @@ const app = new Hono()
         updateData
       );
 
-      return c.json({ data: project });
+      return c.json({ data: transformProject(project) });
     }
   )
   .delete("/:projectId", sessionMiddleware, async (c) => {
@@ -510,7 +552,7 @@ const app = new Hono()
         }
       );
 
-      return c.json({ data: updatedProject });
+      return c.json({ data: transformProject(updatedProject) });
     }
   )
   .delete(
@@ -556,7 +598,79 @@ const app = new Hono()
         }
       );
 
-      return c.json({ data: updatedProject });
+      return c.json({ data: transformProject(updatedProject) });
+    }
+  )
+  .post(
+    "/:projectId/copy-settings",
+    sessionMiddleware,
+    zValidator("json", z.object({ sourceProjectId: z.string() })),
+    async (c) => {
+      const user = c.get("user");
+      const databases = c.get("databases");
+      const { projectId } = c.req.param();
+      const { sourceProjectId } = c.req.valid("json");
+
+      const targetProject = await databases.getDocument<Project>(
+        DATABASE_ID,
+        PROJECTS_ID,
+        projectId
+      );
+
+      const member = await getMember({
+        databases,
+        workspaceId: targetProject.workspaceId,
+        userId: user.$id,
+      });
+
+      if (!member) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      if (member.role !== MemberRole.ADMIN) {
+        return c.json({ error: "Only admins can update project settings" }, 403);
+      }
+
+      const sourceProject = await databases.getDocument<Project>(
+        DATABASE_ID,
+        PROJECTS_ID,
+        sourceProjectId
+      );
+
+      if (!sourceProject) {
+        return c.json({ error: "Source project not found" }, 404);
+      }
+
+      // Check access to source project (must be in same workspace for now)
+      if (sourceProject.workspaceId !== targetProject.workspaceId) {
+        // Could expand to check membership in source workspace if cross-workspace copy allowed
+        return c.json({ error: "Cannot copy from project in different workspace" }, 400);
+      }
+
+      // Update target project with settings from source project
+      const updateData: Record<string, unknown> = {};
+
+      // Apply transformProject to sourceProject to ensure custom fields are parsed
+      const transformedSourceProject = transformProject(sourceProject);
+
+      if (transformedSourceProject.customWorkItemTypes) {
+        updateData.customWorkItemTypes = JSON.stringify(transformedSourceProject.customWorkItemTypes);
+      }
+      if (transformedSourceProject.customPriorities) {
+        updateData.customPriorities = JSON.stringify(transformedSourceProject.customPriorities);
+      }
+      if (transformedSourceProject.customLabels) {
+        updateData.customLabels = JSON.stringify(transformedSourceProject.customLabels);
+      }
+
+      const updatedProject = await databases.updateDocument(
+        DATABASE_ID,
+        PROJECTS_ID,
+        projectId,
+        updateData
+      );
+
+      return c.json({ data: transformProject(updatedProject) });
     }
   );
 
