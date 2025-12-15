@@ -12,6 +12,7 @@ import {
   SPACES_ID,
   SPACE_MEMBERS_ID,
   PROJECTS_ID,
+  TEAMS_ID,
 } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 
@@ -30,6 +31,7 @@ import {
   PopulatedSpace,
 } from "../types";
 import { Project } from "@/features/projects/types";
+import { Team } from "@/features/teams/types";
 
 const app = new Hono()
   // Create a new space
@@ -180,7 +182,7 @@ const app = new Hono()
 
       // If admin, return all spaces
       if (member.role === MemberRole.ADMIN) {
-        // Get project counts for each space
+        // Get project counts and team counts for each space
         const populatedSpaces: PopulatedSpace[] = await Promise.all(
           allSpaces.documents.map(async (space) => {
             const projects = await databases.listDocuments<Project>(
@@ -195,10 +197,17 @@ const app = new Hono()
               [Query.equal("spaceId", space.$id)]
             );
 
+            const teams = await databases.listDocuments<Team>(
+              DATABASE_ID,
+              TEAMS_ID,
+              [Query.equal("spaceId", space.$id)]
+            );
+
             return {
               ...space,
               projectCount: projects.total,
               memberCount: members.total,
+              teamCount: teams.total,
             };
           })
         );
@@ -229,9 +238,16 @@ const app = new Hono()
             [Query.equal("spaceId", space.$id)]
           );
 
+          const teams = await databases.listDocuments<Team>(
+            DATABASE_ID,
+            TEAMS_ID,
+            [Query.equal("spaceId", space.$id)]
+          );
+
           return {
             ...space,
             projectCount: projects.total,
+            teamCount: teams.total,
           };
         })
       );
@@ -275,7 +291,7 @@ const app = new Hono()
       }
     }
 
-    // Get project and member counts
+    // Get project, member, and team counts
     const projects = await databases.listDocuments<Project>(
       DATABASE_ID,
       PROJECTS_ID,
@@ -288,10 +304,17 @@ const app = new Hono()
       [Query.equal("spaceId", spaceId)]
     );
 
+    const teams = await databases.listDocuments<Team>(
+      DATABASE_ID,
+      TEAMS_ID,
+      [Query.equal("spaceId", spaceId)]
+    );
+
     const populatedSpace: PopulatedSpace = {
       ...space,
       projectCount: projects.total,
       memberCount: members.total,
+      teamCount: teams.total,
     };
 
     return c.json({ data: populatedSpace });

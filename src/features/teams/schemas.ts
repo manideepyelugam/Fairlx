@@ -18,6 +18,7 @@ export const createTeamSchema = z.object({
     .max(500, "Description must be less than 500 characters")
     .optional(),
   workspaceId: z.string().min(1, "Workspace ID is required"),
+  spaceId: z.string().optional().nullable(),
   programId: z.string().optional(),
   teamLeadId: z.string().optional(),
   imageUrl: z.union([z.string().url("Invalid image URL"), z.literal("")]).optional(),
@@ -38,6 +39,7 @@ export const updateTeamSchema = z.object({
     .string()
     .max(500, "Description must be less than 500 characters")
     .optional(),
+  spaceId: z.string().optional().nullable(),
   programId: z.string().optional().or(z.literal("")),
   teamLeadId: z.string().optional().or(z.literal("")),
   imageUrl: z.union([z.string().url("Invalid image URL"), z.literal("")]).optional(),
@@ -54,6 +56,7 @@ export const deleteTeamSchema = z.object({
 
 export const getTeamsSchema = z.object({
   workspaceId: z.string().min(1, "Workspace ID is required"),
+  spaceId: z.string().optional(),
   programId: z.string().optional(),
   visibility: z.nativeEnum(TeamVisibility).optional(),
   teamLeadId: z.string().optional(),

@@ -130,6 +130,7 @@ export type Team = Models.Document & {
   name: string;
   description?: string;
   workspaceId: string;
+  spaceId?: string;      // Space this team belongs to (optional for backward compat)
   programId?: string;
   teamLeadId?: string;
   imageUrl?: string;

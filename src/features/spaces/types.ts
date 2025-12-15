@@ -50,6 +50,7 @@ export type SpaceMember = Models.Document & {
 export type PopulatedSpace = Space & {
   memberCount?: number;
   projectCount?: number;
+  teamCount?: number;
   owner?: {
     $id: string;
     name: string;
