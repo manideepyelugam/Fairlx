@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Folder, Plus, ChevronRight, Globe, Lock } from "lucide-react";
+import { Folder, Plus, ChevronRight, Globe, Lock, UsersRound, FolderKanban } from "lucide-react";
 
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
@@ -104,11 +104,16 @@ export const SpacesList = () => {
                         <Globe className="size-3 text-muted-foreground" />
                       )}
                     </div>
-                    {space.description && (
-                      <p className="text-sm text-muted-foreground line-clamp-1">
-                        {space.description}
-                      </p>
-                    )}
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                      <span className="flex items-center gap-1">
+                        <UsersRound className="size-3" />
+                        {space.teamCount ?? 0} {(space.teamCount ?? 0) === 1 ? 'team' : 'teams'}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <FolderKanban className="size-3" />
+                        {space.projectCount ?? 0} {(space.projectCount ?? 0) === 1 ? 'project' : 'projects'}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <ChevronRight className="size-4 text-muted-foreground" />

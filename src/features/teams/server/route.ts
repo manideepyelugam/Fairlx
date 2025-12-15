@@ -43,6 +43,10 @@ const app = new Hono()
       // Build query filters
       const queryFilters: string[] = [Query.equal("workspaceId", filters.workspaceId)];
 
+      if (filters.spaceId) {
+        queryFilters.push(Query.equal("spaceId", filters.spaceId));
+      }
+
       if (filters.programId) {
         queryFilters.push(Query.equal("programId", filters.programId));
       }
@@ -194,6 +198,7 @@ const app = new Hono()
         name: data.name,
         description: data.description && data.description.trim() !== "" ? data.description : undefined,
         workspaceId: data.workspaceId,
+        spaceId: (data.spaceId === null || data.spaceId === "" || data.spaceId === "null") ? null : data.spaceId,
         programId: data.programId || undefined,
         teamLeadId: data.teamLeadId || undefined,
         imageUrl: data.imageUrl && data.imageUrl.trim() !== "" ? data.imageUrl : undefined,

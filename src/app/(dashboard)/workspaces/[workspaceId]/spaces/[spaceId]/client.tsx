@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { Settings, Users, Workflow, Plus, FolderKanban, ChevronRight, FolderPlus, X } from "lucide-react";
+import { Settings, Users, Workflow, Plus, FolderKanban, ChevronRight, FolderPlus, X, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -21,6 +21,7 @@ import {
 import { useGetSpace } from "@/features/spaces/api/use-get-space";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useGetProjects } from "@/features/projects/api/use-get-projects";
+import { useGetTeams } from "@/features/teams/api/use-get-teams";
 import { useCreateProjectModal } from "@/features/projects/hooks/use-create-project-modal";
 import { CreateProjectModal } from "@/features/projects/components/create-project-modal";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
@@ -43,6 +44,7 @@ export const SpaceIdClient = () => {
   
   const { data: space, isLoading: isLoadingSpace } = useGetSpace({ spaceId });
   const { data: projectsData, isLoading: isLoadingProjects } = useGetProjects({ workspaceId });
+  const { data: teamsData, isLoading: isLoadingTeams } = useGetTeams({ workspaceId, spaceId });
   const { isAdmin } = useCurrentMember({ workspaceId });
 
   const [isAddProjectOpen, setIsAddProjectOpen] = useState(false);
@@ -68,12 +70,23 @@ export const SpaceIdClient = () => {
     })));
     
     return projectsData.documents.filter(project => {
-      // Check if project has no space assigned (null, undefined, or empty string)
-      return !project.spaceId || project.spaceId === null || project.spaceId === "";
+      // Check if project has no space assigned
+      // Covers: null, undefined, empty string, the string "null", or whitespace
+      const hasNoSpace = !project.spaceId || 
+                        project.spaceId === null || 
+                        project.spaceId === undefined ||
+                        project.spaceId === "" ||
+                        project.spaceId === "null" ||  // Handle FormData string conversion
+                        (typeof project.spaceId === 'string' && project.spaceId.trim() === "");
+      
+      return hasNoSpace;
     });
   }, [projectsData]);
 
-  if (isLoadingSpace || isLoadingProjects) {
+  // Get teams in this space
+  const spaceTeams = teamsData?.documents ?? [];
+
+  if (isLoadingSpace || isLoadingProjects || isLoadingTeams) {
     return <PageLoader />;
   }
 
@@ -83,6 +96,10 @@ export const SpaceIdClient = () => {
 
   const handleProjectClick = (projectId: string) => {
     router.push(`/workspaces/${workspaceId}/projects/${projectId}`);
+  };
+
+  const handleTeamClick = (teamId: string) => {
+    router.push(`/workspaces/${workspaceId}/teams/${teamId}`);
   };
 
   const handleCreateProject = () => {
@@ -149,10 +166,10 @@ export const SpaceIdClient = () => {
               Workflows
             </Button>
           </Link>
-          <Link href={`/workspaces/${workspaceId}/spaces/${spaceId}/members`}>
+          <Link href={`/workspaces/${workspaceId}/teams?spaceId=${spaceId}`}>
             <Button variant="outline" size="sm">
-              <Users className="size-4 mr-2" />
-              Members
+              <UsersRound className="size-4 mr-2" />
+              Teams ({spaceTeams.length})
             </Button>
           </Link>
           <Link href={`/workspaces/${workspaceId}/spaces/${spaceId}/settings`}>
@@ -163,6 +180,75 @@ export const SpaceIdClient = () => {
           </Link>
         </div>
       </div>
+
+      {/* Teams in this Space */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <UsersRound className="size-5" />
+              Teams in {space.name}
+              <Badge variant="secondary">{spaceTeams.length}</Badge>
+            </CardTitle>
+            {isAdmin && (
+              <Link href={`/workspaces/${workspaceId}/teams/create?spaceId=${spaceId}`}>
+                <Button size="sm" variant="default">
+                  <Plus className="size-4 mr-2" />
+                  Create Team
+                </Button>
+              </Link>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {spaceTeams.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center border-2 border-dashed rounded-lg">
+              <div className="rounded-full bg-muted p-3 mb-3">
+                <UsersRound className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <h3 className="text-base font-semibold mb-1">No Teams Yet</h3>
+              <p className="text-sm text-muted-foreground mb-3 max-w-md">
+                Teams help organize people who work together. Create teams like &quot;Frontend&quot;, &quot;Backend&quot;, or &quot;DevOps&quot;.
+              </p>
+              {isAdmin && (
+                <Link href={`/workspaces/${workspaceId}/teams/create?spaceId=${spaceId}`}>
+                  <Button size="sm">
+                    <Plus className="size-4 mr-2" />
+                    Create First Team
+                  </Button>
+                </Link>
+              )}
+            </div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {spaceTeams.map((team) => (
+                <Card
+                  key={team.$id}
+                  className="group cursor-pointer hover:shadow-md transition-all duration-200 border hover:border-primary/20"
+                  onClick={() => handleTeamClick(team.$id)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="size-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                        <UsersRound className="size-5 text-purple-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
+                          {team.name}
+                        </h4>
+                        <p className="text-xs text-muted-foreground">
+                          {team.memberCount ?? 0} {(team.memberCount ?? 0) === 1 ? 'member' : 'members'}
+                        </p>
+                      </div>
+                      <ChevronRight className="size-4 text-muted-foreground group-hover:text-primary transition-all group-hover:translate-x-1" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Projects in this Space */}
       <Card>

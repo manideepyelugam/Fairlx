@@ -20,16 +20,16 @@ const steps: Step[] = [
     accent: "bg-emerald-100 text-emerald-700",
   },
   {
-    title: "Add Projects",
-    description: "Group initiatives inside the space. Project keys inherit the space prefix automatically.",
-    icon: Workflow,
-    accent: "bg-sky-100 text-sky-700",
+    title: "Add Teams",
+    description: "Create teams inside the space (e.g., Frontend Team, Backend Team) to group people who work together.",
+    icon: Users,
+    accent: "bg-purple-100 text-purple-700",
   },
   {
-    title: "Invite Your Team",
-    description: "Assign members and set permissions so the right people see the right work.",
-    icon: Users,
-    accent: "bg-amber-100 text-amber-700",
+    title: "Add Projects",
+    description: "Group initiatives inside the space. Projects are owned by teams and inherit the space prefix.",
+    icon: Workflow,
+    accent: "bg-sky-100 text-sky-700",
   },
   {
     title: "Work Together",
@@ -161,23 +161,38 @@ export const SpacesGuide = () => {
         <CardContent>
           <div className="grid gap-4 lg:grid-cols-[1.1fr_1fr]">
             <div className="rounded-xl border bg-muted/40 p-4">
-              <div className="text-xs font-semibold text-muted-foreground">Workspace</div>
+              <div className="text-xs font-semibold text-muted-foreground">Workspace (Your Company)</div>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {["ENG", "MKT", "CS", "HR"].map((spaceKey, idx) => (
+                {["ENG", "MKT"].map((spaceKey) => (
                   <div key={spaceKey} className="rounded-lg border bg-white p-3 shadow-sm">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-semibold">Space {spaceKey}</p>
-                        <p className="text-xs text-muted-foreground">Dept/Product/Client</p>
+                        <p className="text-xs text-muted-foreground">Department/Product</p>
                       </div>
                       <Badge variant="secondary" className="text-[11px]">{spaceKey}-123</Badge>
                     </div>
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      {["Project A", "Project B", "Project C"].slice(0, idx % 3 + 2).map((project) => (
-                        <div key={project} className="rounded-md border bg-muted/40 px-2 py-1 text-xs">
-                          {project}
-                        </div>
-                      ))}
+                    {/* Teams inside Space */}
+                    <div className="mt-2 space-y-1">
+                      <p className="text-[10px] font-medium text-purple-600 uppercase">Teams</p>
+                      <div className="flex flex-wrap gap-1">
+                        {(spaceKey === "ENG" ? ["Frontend", "Backend"] : ["Content", "Design"]).map((team) => (
+                          <Badge key={team} variant="outline" className="text-[10px] border-purple-200 text-purple-700">
+                            {team}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Projects */}
+                    <div className="mt-2 space-y-1">
+                      <p className="text-[10px] font-medium text-orange-600 uppercase">Projects</p>
+                      <div className="grid grid-cols-2 gap-1">
+                        {["Project A", "Project B"].map((project) => (
+                          <div key={project} className="rounded-md border bg-muted/40 px-2 py-1 text-xs">
+                            {project}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 ))}

@@ -17,6 +17,7 @@ const sanitizeString = (value?: string | null) => {
 
 interface UseGetTeamsProps {
   workspaceId: string;
+  spaceId?: string | null;
   programId?: string | null;
   visibility?: TeamVisibility | null;
   search?: string | null;
@@ -24,11 +25,13 @@ interface UseGetTeamsProps {
 
 export const useGetTeams = ({
   workspaceId,
+  spaceId,
   programId,
   visibility,
   search,
 }: UseGetTeamsProps) => {
   const sanitizedWorkspaceId = sanitizeString(workspaceId);
+  const sanitizedSpaceId = sanitizeString(spaceId ?? undefined);
   const sanitizedProgramId = sanitizeString(programId ?? undefined);
   const sanitizedVisibility = sanitizeString(visibility ?? undefined) as
     | TeamVisibility
@@ -39,6 +42,7 @@ export const useGetTeams = ({
     queryKey: [
       "teams",
       sanitizedWorkspaceId,
+      sanitizedSpaceId,
       sanitizedProgramId,
       sanitizedVisibility,
       sanitizedSearch,
@@ -54,6 +58,7 @@ export const useGetTeams = ({
       const response = await client.api.teams.$get({
         query: {
           workspaceId: sanitizedWorkspaceId,
+          spaceId: sanitizedSpaceId,
           programId: sanitizedProgramId,
           visibility: sanitizedVisibility,
           search: sanitizedSearch,

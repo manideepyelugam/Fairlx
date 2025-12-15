@@ -49,6 +49,7 @@ export const CreateSpaceForm = ({ onCancel }: CreateSpaceFormProps) => {
   const { mutate, isPending } = useCreateSpace();
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const keyManuallyEditedRef = useRef(false);
 
   const form = useForm<z.infer<typeof createSpaceSchema>>({
     resolver: zodResolver(createSpaceSchema.omit({ workspaceId: true })),
@@ -66,13 +67,14 @@ export const CreateSpaceForm = ({ onCancel }: CreateSpaceFormProps) => {
     const name = e.target.value;
     form.setValue("name", name);
     
-    // Auto-generate key (uppercase, no spaces, max 10 chars)
-    const key = name
-      .toUpperCase()
-      .replace(/[^A-Z0-9]/g, "")
-      .substring(0, 10);
-    
-    if (!form.getValues("key") || form.getValues("key") === "") {
+    // Only auto-generate key if user hasn't manually edited it
+    if (!keyManuallyEditedRef.current) {
+      // Auto-generate key (uppercase, no spaces, max 10 chars)
+      const key = name
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "")
+        .substring(0, 10);
+      
       form.setValue("key", key);
     }
   };
@@ -159,6 +161,10 @@ export const CreateSpaceForm = ({ onCancel }: CreateSpaceFormProps) => {
                       <Input 
                         placeholder="e.g., ENG, MKT" 
                         {...field}
+                        onChange={(e) => {
+                          keyManuallyEditedRef.current = true;
+                          field.onChange(e);
+                        }}
                         className="uppercase"
                         maxLength={10}
                       />

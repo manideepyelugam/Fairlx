@@ -84,7 +84,8 @@ const app = new Hono()
           deadline: deadline || undefined,
           imageUrl: uploadedImageUrl,
           workspaceId,
-          spaceId: spaceId || null,
+          // Handle explicit null, empty string, and the string "null" as null
+          spaceId: (spaceId === null || spaceId === "" || spaceId === "null") ? null : spaceId,
         }
       );
 
@@ -261,7 +262,8 @@ const app = new Hono()
 
       // Only update spaceId if it was provided (null to remove from space)
       if (spaceId !== undefined) {
-        updateData.spaceId = spaceId || null;
+        // Handle explicit null, empty string, and the string "null" as null
+        updateData.spaceId = (spaceId === null || spaceId === "" || spaceId === "null") ? null : spaceId;
       }
 
       // Update custom definitions if provided
