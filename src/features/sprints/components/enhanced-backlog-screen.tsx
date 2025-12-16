@@ -56,6 +56,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useGetSprints } from "../api/use-get-sprints";
 import { useGetWorkItems } from "../api/use-get-work-items";
 import { useCreateSprint } from "../api/use-create-sprint";
+import { PERMISSIONS } from "@/lib/permissions";
+import { usePermission } from "@/hooks/use-permission";
 import { useUpdateSprint } from "../api/use-update-sprint";
 import { useUpdateWorkItem } from "../api/use-update-work-item";
 import { useCreateWorkItem } from "../api/use-create-work-item";
@@ -96,6 +98,11 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   const [dateDialogSprintId, setDateDialogSprintId] = useState<string | null>(null);
   const [sprintSettingsId, setSprintSettingsId] = useState<string | null>(null);
   const [isCreateEpicDialogOpen, setIsCreateEpicDialogOpen] = useState(false);
+
+
+
+  const { can } = usePermission();
+
 
   // API Hooks
   const { data: sprintsData } = useGetSprints({ workspaceId, projectId });
@@ -401,32 +408,28 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     setEditingWorkItemTitle("");
   };
 
-  const handleUpdateEpic = (workItemId: string, epicId: string | null, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleUpdateEpic = (workItemId: string, epicId: string | null) => {
     updateWorkItem({
       param: { workItemId },
       json: { epicId: epicId === "none" ? null : epicId },
     });
   };
 
-  const handleUpdateStoryPoints = (workItemId: string, storyPoints: number | undefined, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleUpdateStoryPoints = (workItemId: string, storyPoints: number | undefined) => {
     updateWorkItem({
       param: { workItemId },
       json: { storyPoints },
     });
   };
 
-  const handleUpdatePriority = (workItemId: string, priority: WorkItemPriority, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleUpdatePriority = (workItemId: string, priority: WorkItemPriority) => {
     updateWorkItem({
       param: { workItemId },
       json: { priority },
     });
   };
 
-  const handleUpdateAssignee = (workItemId: string, assigneeId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleUpdateAssignee = (workItemId: string, assigneeId: string) => {
     updateWorkItem({
       param: { workItemId },
       json: { assigneeIds: assigneeId === "unassigned" ? [] : [assigneeId] },
@@ -441,6 +444,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
           <div className="px-4 py-4">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-4 flex-1">
+                {/* Debug Info */}
+
                 {/* Search */}
                 <div className="flex-1 max-w-md">
                   <div className="relative">
@@ -472,22 +477,37 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                     <DropdownMenuItem>Without epic</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button
-                  onClick={() => setIsCreateEpicDialogOpen(true)}
-                  variant="outline"
-                  className="h-10 px-4 text-sm"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Epic
-                </Button>
-                <Button
-                  onClick={handleCreateSprint}
-                  disabled={isCreatingSprint}
-                  className="h-10 px-4 text-sm"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Sprint
-                </Button>
+                {can(PERMISSIONS.WORKITEM_CREATE) && (
+                  <Button
+                    onClick={() => setIsCreateEpicDialogOpen(true)}
+                    variant="outline"
+                    className="h-10 px-4 text-sm"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Epic
+                  </Button>
+                )}
+                {can(PERMISSIONS.WORKITEM_CREATE) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground hover:text-foreground pl-0"
+                    onClick={() => setIsCreatingInBacklog(true)}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create work item
+                  </Button>
+                )}
+                {can(PERMISSIONS.SPRINT_CREATE) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCreateSprint}
+                    disabled={isCreatingSprint}
+                  >
+                    Create sprint
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -511,24 +531,26 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
               </Button>
             </div>
             <div className="flex items-center gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="bg-white border-blue-200 text-blue-700 hover:bg-blue-50">
-                    Move to...
-                    <ChevronDown className="ml-2 h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleBulkMove(null)}>
-                    Backlog
-                  </DropdownMenuItem>
-                  {sprints.map(sprint => (
-                    <DropdownMenuItem key={sprint.$id} onClick={() => handleBulkMove(sprint.$id)}>
-                      {sprint.name}
+              {can(PERMISSIONS.WORKITEM_UPDATE) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="bg-white border-blue-200 text-blue-700 hover:bg-blue-50">
+                      Move to...
+                      <ChevronDown className="w-3.5 h-3.5 ml-1.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={() => handleBulkMove(null)}>
+                      Backlog
                     </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    {sprints.map((sprint) => (
+                      <DropdownMenuItem key={sprint.$id} onClick={() => handleBulkMove(sprint.$id)}>
+                        {sprint.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
               <Button
                 variant="destructive"
                 size="sm"
@@ -604,13 +626,17 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                 {format(new Date(sprint.startDate), "d MMM")} – {format(new Date(sprint.endDate), "d MMM")}
                               </span>
                             ) : (
-                              <button
-                                className="text-xs text-blue-600 hover:underline flex items-center gap-1"
-                                onClick={() => setDateDialogSprintId(sprint.$id)}
-                              >
-                                <Calendar className="w-3 h-3" />
-                                Add dates
-                              </button>
+                              can(PERMISSIONS.SPRINT_UPDATE) && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2"
+                                  onClick={() => setDateDialogSprintId(sprint.$id)}
+                                >
+                                  <Calendar className="w-3 h-3 mr-1.5" />
+                                  Add dates
+                                </Button>
+                              )
                             )}
                             <span className="text-xs text-gray-400">({sprintItems.length} work {sprintItems.length === 1 ? "item" : "items"})</span>
                           </div>
@@ -636,7 +662,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
 
                         {/* Actions */}
                         <div className="flex items-center gap-2">
-                          {sprint.status === SprintStatus.PLANNED && (
+                          {sprint.status === SprintStatus.PLANNED && can(PERMISSIONS.SPRINT_UPDATE) && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -647,7 +673,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                             </Button>
                           )}
 
-                          {sprint.status === SprintStatus.ACTIVE && (
+                          {sprint.status === SprintStatus.ACTIVE && can(PERMISSIONS.SPRINT_COMPLETE) && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -658,37 +684,49 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                             </Button>
                           )}
 
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreHorizontal className="size-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setEditingSprintId(sprint.$id);
-                                  setEditingSprintName(sprint.name);
-                                }}
-                              >
-                                <Edit2 className="size-3 mr-2" />
-                                Rename sprint
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => setSprintSettingsId(sprint.$id)}
-                              >
-                                <Settings className="size-3 mr-2" />
-                                Sprint settings
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-red-600"
-                                onClick={() => handleDeleteSprint(sprint.$id)}
-                              >
-                                <Trash2 className="size-3 mr-2" />
-                                Delete sprint
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          {(can(PERMISSIONS.SPRINT_UPDATE) || can(PERMISSIONS.SPRINT_DELETE)) && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreHorizontal className="size-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {can(PERMISSIONS.SPRINT_UPDATE) && (
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingSprintId(sprint.$id);
+                                      setEditingSprintName(sprint.name);
+                                    }}
+                                  >
+                                    <Edit2 className="w-4 h-4 mr-2" />
+                                    Rename sprint
+                                  </DropdownMenuItem>
+                                )}
+                                {can(PERMISSIONS.SPRINT_UPDATE) && (
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSprintSettingsId(sprint.$id);
+                                    }}
+                                  >
+                                    <Settings className="w-4 h-4 mr-2" />
+                                    Sprint settings
+                                  </DropdownMenuItem>
+                                )}
+                                {can(PERMISSIONS.SPRINT_DELETE) && (
+                                  <DropdownMenuItem
+                                    className="text-red-600"
+                                    onClick={() => handleDeleteSprint(sprint.$id)}
+                                  >
+                                    <Trash2 className="size-3 mr-2" />
+                                    Delete sprint
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -769,7 +807,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                         {/* Epic Dropdown */}
                                         <Select
                                           value={item.epicId || "none"}
-                                          onValueChange={(value) => handleUpdateEpic(item.$id, value, {} as React.MouseEvent)}
+                                          onValueChange={(value) => handleUpdateEpic(item.$id, value)}
                                         >
                                           <SelectTrigger
                                             className="w-[100px] h-7 text-xs flex-shrink-0"
@@ -810,7 +848,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                         {/* Priority Dropdown */}
                                         <Select
                                           value={item.priority || WorkItemPriority.MEDIUM}
-                                          onValueChange={(value: WorkItemPriority) => handleUpdatePriority(item.$id, value, {} as React.MouseEvent)}
+                                          onValueChange={(value: WorkItemPriority) => handleUpdatePriority(item.$id, value)}
                                         >
                                           <SelectTrigger
                                             className="w-[90px] h-7 text-xs flex-shrink-0"
@@ -830,7 +868,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                         {/* Story Points Dropdown */}
                                         <Select
                                           value={item.storyPoints?.toString() || "none"}
-                                          onValueChange={(value) => handleUpdateStoryPoints(item.$id, value === "none" ? undefined : parseInt(value), {} as React.MouseEvent)}
+                                          onValueChange={(value) => handleUpdateStoryPoints(item.$id, value === "none" ? undefined : parseInt(value))}
                                         >
                                           <SelectTrigger
                                             className="w-[70px] h-7 text-xs flex-shrink-0"
@@ -853,7 +891,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                         {/* Assignee Dropdown */}
                                         <Select
                                           value={item.assignees?.[0]?.$id || "unassigned"}
-                                          onValueChange={(value) => handleUpdateAssignee(item.$id, value, {} as React.MouseEvent)}
+                                          onValueChange={(value) => handleUpdateAssignee(item.$id, value)}
                                         >
                                           <SelectTrigger
                                             className="w-[120px] h-7 text-xs flex-shrink-0"
@@ -953,6 +991,20 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                 >
                                   Add
                                 </Button>
+                                {can(PERMISSIONS.SPRINT_UPDATE) && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleStartSprint(sprint.$id);
+                                    }}
+                                    className="h-8 text-xs font-medium"
+                                  >
+                                    <Play className="w-3.5 h-3.5 mr-1.5" />
+                                    Start sprint
+                                  </Button>
+                                )}
                                 <Button
                                   size="sm"
                                   variant="ghost"
@@ -967,13 +1019,15 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                               </div>
                             </div>
                           ) : (
-                            <button
-                              onClick={() => setIsCreatingInSprint(sprint.$id)}
-                              className="w-full px-4 py-3 text-left text-sm text-gray-500 hover:bg-gray-50 transition-colors flex items-center gap-2 border-t border-gray-100"
-                            >
-                              <Plus className="size-4" />
-                              Create work item
-                            </button>
+                            can(PERMISSIONS.WORKITEM_CREATE) && (
+                              <button
+                                onClick={() => setIsCreatingInSprint(sprint.$id)}
+                                className="w-full px-4 py-3 text-left text-sm text-gray-500 hover:bg-gray-50 transition-colors flex items-center gap-2 border-t border-gray-100"
+                              >
+                                <Plus className="size-4" />
+                                Create work item
+                              </button>
+                            )
                           )}
 
                           {provided.placeholder}
@@ -1015,9 +1069,11 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                       </div>
                     </div>
 
-                    <Button size="sm" variant="outline" onClick={handleCreateSprint}>
-                      Create sprint
-                    </Button>
+                    {can(PERMISSIONS.SPRINT_CREATE) && (
+                      <Button size="sm" variant="outline" onClick={handleCreateSprint}>
+                        Create sprint
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1091,7 +1147,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                   {/* Epic Dropdown */}
                                   <Select
                                     value={item.epicId || "none"}
-                                    onValueChange={(value) => handleUpdateEpic(item.$id, value, {} as React.MouseEvent)}
+                                    onValueChange={(value) => handleUpdateEpic(item.$id, value)}
                                   >
                                     <SelectTrigger
                                       className="w-[100px] h-7 text-xs flex-shrink-0"
@@ -1132,7 +1188,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                   {/* Priority Dropdown */}
                                   <Select
                                     value={item.priority || WorkItemPriority.MEDIUM}
-                                    onValueChange={(value: WorkItemPriority) => handleUpdatePriority(item.$id, value, {} as React.MouseEvent)}
+                                    onValueChange={(value: WorkItemPriority) => handleUpdatePriority(item.$id, value)}
                                   >
                                     <SelectTrigger
                                       className="w-[90px] h-7 text-xs flex-shrink-0"
@@ -1152,7 +1208,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                   {/* Story Points Dropdown */}
                                   <Select
                                     value={item.storyPoints?.toString() || "none"}
-                                    onValueChange={(value) => handleUpdateStoryPoints(item.$id, value === "none" ? undefined : parseInt(value), {} as React.MouseEvent)}
+                                    onValueChange={(value) => handleUpdateStoryPoints(item.$id, value === "none" ? undefined : parseInt(value))}
                                   >
                                     <SelectTrigger
                                       className="w-[70px] h-7 text-xs flex-shrink-0"
@@ -1175,7 +1231,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                   {/* Assignee Dropdown */}
                                   <Select
                                     value={item.assignees?.[0]?.$id || "unassigned"}
-                                    onValueChange={(value) => handleUpdateAssignee(item.$id, value, {} as React.MouseEvent)}
+                                    onValueChange={(value) => handleUpdateAssignee(item.$id, value)}
                                   >
                                     <SelectTrigger
                                       className="w-[120px] h-7 text-xs flex-shrink-0"
@@ -1214,27 +1270,29 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                   </Select>
 
                                   {/* Actions Dropdown */}
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-7 w-7 flex-shrink-0"
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        <MoreHorizontal className="size-4" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      <DropdownMenuItem
-                                        onClick={(e) => handleDeleteWorkItem(item.$id, e)}
-                                        className="text-red-600"
-                                      >
-                                        <Trash2 className="size-3 mr-2" />
-                                        Delete work item
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
+                                  {can(PERMISSIONS.WORKITEM_DELETE) && (
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-7 w-7 flex-shrink-0"
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          <MoreHorizontal className="size-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                          onClick={(e) => handleDeleteWorkItem(item.$id, e)}
+                                          className="text-red-600"
+                                        >
+                                          <Trash2 className="size-3 mr-2" />
+                                          Delete work item
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  )}
                                 </div>
                               </div>
                             )}
@@ -1312,13 +1370,15 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                         </div>
                       </div>
                     ) : (
-                      <button
-                        onClick={() => setIsCreatingInBacklog(true)}
-                        className="w-full px-4 py-3 text-left text-sm text-gray-500 hover:bg-gray-50 transition-colors flex items-center gap-2 border-t border-gray-100"
-                      >
-                        <Plus className="size-4" />
-                        Create work item
-                      </button>
+                      can(PERMISSIONS.WORKITEM_CREATE) && (
+                        <button
+                          onClick={() => setIsCreatingInBacklog(true)}
+                          className="w-full px-4 py-3 text-left text-sm text-gray-500 hover:bg-gray-50 transition-colors flex items-center gap-2 border-t border-gray-100"
+                        >
+                          <Plus className="size-4" />
+                          Create work item
+                        </button>
+                      )
                     )}
 
                     {provided.placeholder}

@@ -14,6 +14,8 @@ import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useDeleteTask } from "../api/use-delete-task";
 import { useUpdateTask } from "../api/use-update-task";
 import { useEditTaskModal } from "../hooks/use-edit-task-modal";
+import { usePermission } from "@/hooks/use-permission";
+import { PERMISSIONS } from "@/lib/permissions";
 
 interface TaskActionsProps {
   id: string;
@@ -36,6 +38,7 @@ export const TaskActions = ({
   const workspaceId = useWorkspaceId();
 
   const { open } = useEditTaskModal();
+  const { can } = usePermission();
 
   const [ConfirmDialog, confirm] = useConfirm(
     "Delete Work Item",
@@ -67,6 +70,9 @@ export const TaskActions = ({
     router.push(`/workspaces/${workspaceId}/projects/${projectId}`);
   };
 
+  const canEditTask = canEdit && can(PERMISSIONS.WORKITEM_UPDATE);
+  const canDeleteTask = canDelete && can(PERMISSIONS.WORKITEM_DELETE);
+
   return (
     <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
       <ConfirmDialog />
@@ -87,7 +93,7 @@ export const TaskActions = ({
             <ExternalLink className="size-4 mr-2 stroke-2" />
             Open Project
           </DropdownMenuItem>
-          {canEdit && (
+          {canEditTask && (
             <DropdownMenuItem
               onClick={() => {
                 open(id);
@@ -106,7 +112,7 @@ export const TaskActions = ({
             <FlagIcon className={`size-4 mr-2 stroke-2 ${flagged ? 'fill-red-500 text-red-500' : ''}`} />
             {flagged ? 'Unflag Work Item' : 'Flag Work Item'}
           </DropdownMenuItem>
-          {canDelete && (
+          {canDeleteTask && (
             <DropdownMenuItem
               onClick={onDelete}
               disabled={isDeletingTask}

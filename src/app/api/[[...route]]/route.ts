@@ -27,6 +27,7 @@ import workflows from "@/features/workflows/server/route";
 import customFields from "@/features/custom-fields/server/route";
 import workItemLinks from "@/features/work-item-links/server/route";
 import savedViews from "@/features/saved-views/server/route";
+import roles from "@/features/roles/server/route";
 
 const app = new Hono().basePath("/api");
 
@@ -57,7 +58,8 @@ const routes = app
   .route("/workflows", workflows)
   .route("/custom-fields", customFields)
   .route("/work-item-links", workItemLinks)
-  .route("/saved-views", savedViews);
+  .route("/saved-views", savedViews)
+  .route("/roles", roles);
 
 export const GET = handle(app);
 export const POST = handle(app);
