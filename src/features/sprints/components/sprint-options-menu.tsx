@@ -21,6 +21,8 @@ import { useUpdateSprint } from "../api/use-update-sprint";
 import { useConfirm } from "@/hooks/use-confirm";
 import { PopulatedSprint, SprintStatus } from "../types";
 import { cn } from "@/lib/utils";
+import { usePermission } from "@/hooks/use-permission";
+import { PERMISSIONS } from "@/lib/permissions";
 
 interface SprintOptionsMenuProps {
   sprint: PopulatedSprint;
@@ -57,6 +59,8 @@ export const SprintOptionsMenu = ({
   const { mutate: deleteSprint, isPending: isDeleting } = useDeleteSprint();
   const { mutate: updateSprint, isPending: isUpdating } = useUpdateSprint();
 
+  const { can } = usePermission();
+
   const handleDelete = async () => {
     const confirmed = await confirmDelete();
     if (!confirmed) return;
@@ -90,31 +94,42 @@ export const SprintOptionsMenu = ({
             Update Status
           </DropdownMenuLabel>
 
-          {Object.values(SprintStatus).map((status) => (
-            <DropdownMenuItem
-              key={status}
-              onClick={() => handleStatusChange(status)}
-              disabled={isUpdating}
-              className="text-xs cursor-pointer"
-            >
-              <Circle className={cn("size-2.5 mr-2", statusConfig[status].color)} />
-              <span>{statusConfig[status].label}</span>
-              {sprint.status === status && (
-                <span className="ml-auto text-gray-400">✓</span>
-              )}
-            </DropdownMenuItem>
-          ))}
+          {Object.values(SprintStatus).map((status) => {
+            // Permission Checks
+            if (status === SprintStatus.ACTIVE && !can(PERMISSIONS.SPRINT_START)) return null;
+            if (status === SprintStatus.COMPLETED && !can(PERMISSIONS.SPRINT_COMPLETE)) return null;
+            // For other statuses, we generally assume update permission or specific ones?
+            // Assuming PROJECT_UPDATE or SPRINT_CREATE allows basic updates.
+            // But let's stick to specific ones if they exist.
+
+            return (
+              <DropdownMenuItem
+                key={status}
+                onClick={() => handleStatusChange(status)}
+                disabled={isUpdating}
+                className="text-xs cursor-pointer"
+              >
+                <Circle className={cn("size-2.5 mr-2", statusConfig[status].color)} />
+                <span>{statusConfig[status].label}</span>
+                {sprint.status === status && (
+                  <span className="ml-auto text-gray-400">✓</span>
+                )}
+              </DropdownMenuItem>
+            )
+          })}
 
           <DropdownMenuSeparator />
 
-          <DropdownMenuItem
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="text-destructive focus:text-destructive text-xs cursor-pointer"
-          >
-            <Trash className="size-4 mr-2" />
-            Delete Sprint
-          </DropdownMenuItem>
+          {can(PERMISSIONS.SPRINT_DELETE) && (
+            <DropdownMenuItem
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="text-destructive focus:text-destructive text-xs cursor-pointer"
+            >
+              <Trash className="size-4 mr-2" />
+              Delete Sprint
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </>

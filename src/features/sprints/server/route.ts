@@ -6,6 +6,8 @@ import { z } from "zod";
 import { DATABASE_ID, SPRINTS_ID, WORK_ITEMS_ID, MEMBERS_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
+import { can } from "@/lib/rbac";
+import { PERMISSIONS } from "@/lib/permissions";
 
 import { getMember } from "@/features/members/utils";
 
@@ -148,15 +150,15 @@ const app = new Hono()
       // Fetch all members at once
       const membersData = allAssigneeIds.size > 0
         ? await databases.listDocuments(
-            DATABASE_ID,
-            MEMBERS_ID,
-            [Query.equal("$id", Array.from(allAssigneeIds))]
-          )
+          DATABASE_ID,
+          MEMBERS_ID,
+          [Query.equal("$id", Array.from(allAssigneeIds))]
+        )
         : { documents: [] };
 
       // Build a map of member ID -> user data for quick lookup
       const assigneeMap = new Map<string, { $id: string; name: string; email: string; profileImageUrl: string | null }>();
-      
+
       await Promise.all(
         membersData.documents.map(async (memberDoc) => {
           try {
@@ -277,6 +279,10 @@ const app = new Hono()
         return c.json({ error: "Unauthorized" }, 401);
       }
 
+      if (!(await can(databases, workspaceId, user.$id, PERMISSIONS.SPRINT_CREATE))) {
+        return c.json({ error: "Forbidden" }, 403);
+      }
+
       // Get the highest position
       const sprints = await databases.listDocuments(
         DATABASE_ID,
@@ -338,6 +344,48 @@ const app = new Hono()
 
       const updates = c.req.valid("json");
 
+      // Permission Check
+      if (updates.status) {
+        if (updates.status === SprintStatus.ACTIVE && sprint.status !== SprintStatus.ACTIVE) {
+          if (!(await can(databases, sprint.workspaceId, user.$id, PERMISSIONS.SPRINT_START))) {
+            return c.json({ error: "Forbidden: Cannot start sprint" }, 403);
+          }
+        } else if (updates.status === SprintStatus.COMPLETED && sprint.status !== SprintStatus.COMPLETED) {
+          if (!(await can(databases, sprint.workspaceId, user.$id, PERMISSIONS.SPRINT_COMPLETE))) {
+            return c.json({ error: "Forbidden: Cannot complete sprint" }, 403);
+          }
+        }
+      }
+
+      // General Permission Check
+      // If we authorized a status change above, we still need to check if *other* fields are being changed that require EDIT permission.
+      // Or, we can simplify: if they passed the Status check and ONLY status is changing, they are good.
+      // If they are changing other things (name, dates), they need EDIT_SPRINTS.
+
+      const isStatusChangeOnly = Object.keys(updates).length === 1 && updates.status;
+      const hasEditPermission = await can(databases, sprint.workspaceId, user.$id, PERMISSIONS.SPRINT_UPDATE);
+
+      if (!isStatusChangeOnly && !hasEditPermission) {
+        return c.json({ error: "Forbidden: Needs Edit Sprints permission" }, 403);
+      }
+
+      // If it IS a status change only, we already checked the specific permissions above (SPRINT_START / SPRINT_COMPLETE).
+      // But we need to make sure we didn't skip verification.
+      if (isStatusChangeOnly) {
+        // The checks above (lines 348-358) handle START/COMPLETE logic.
+        // If we are here, and it was a status change, and we didn't return 403 above, we are safe.
+        // BUT, what if status is changing to something else? (e.g. back to PLANNED?)
+        // For now, let's assume those 2 are the main ones.
+        // If the status transition wasn't guarded above, we should enforce EDIT_SPRINTS.
+        const isGuardedTransition =
+          (updates.status === SprintStatus.ACTIVE && sprint.status !== SprintStatus.ACTIVE) ||
+          (updates.status === SprintStatus.COMPLETED && sprint.status !== SprintStatus.COMPLETED);
+
+        if (!isGuardedTransition && !hasEditPermission) {
+          return c.json({ error: "Forbidden" }, 403);
+        }
+      }
+
       const updateData = {
         ...updates,
         startDate: updates.startDate?.toISOString(),
@@ -378,6 +426,10 @@ const app = new Hono()
 
       if (!member) {
         return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      if (!(await can(databases, sprint.workspaceId, user.$id, PERMISSIONS.SPRINT_DELETE))) {
+        return c.json({ error: "Forbidden" }, 403);
       }
 
       // Move all work items in this sprint to backlog (null sprint)

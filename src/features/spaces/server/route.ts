@@ -13,6 +13,7 @@ import {
   SPACE_MEMBERS_ID,
   PROJECTS_ID,
   TEAMS_ID,
+  MEMBERS_ID,
 } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 
@@ -518,7 +519,7 @@ const app = new Hono()
       // Get the target member's user ID
       const targetMember = await databases.getDocument(
         DATABASE_ID,
-        "members", // Assuming members collection
+        MEMBERS_ID,
         memberId
       );
 

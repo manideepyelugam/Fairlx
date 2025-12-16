@@ -27,6 +27,8 @@ export enum TeamPermission {
   VIEW_SPRINTS = "VIEW_SPRINTS",
   CREATE_SPRINTS = "CREATE_SPRINTS",
   EDIT_SPRINTS = "EDIT_SPRINTS",
+  SPRINT_START = "START_SPRINTS",
+  SPRINT_COMPLETE = "COMPLETE_SPRINTS",
   DELETE_SPRINTS = "DELETE_SPRINTS",
 
   // Member Management
@@ -63,6 +65,8 @@ export const PERMISSION_CATEGORIES = {
       { key: TeamPermission.VIEW_SPRINTS, label: "View Sprints", description: "View all sprints" },
       { key: TeamPermission.CREATE_SPRINTS, label: "Create Sprints", description: "Create new sprints" },
       { key: TeamPermission.EDIT_SPRINTS, label: "Edit Sprints", description: "Edit sprint details" },
+      { key: TeamPermission.SPRINT_START, label: "Start Sprints", description: "Start planned sprints" },
+      { key: TeamPermission.SPRINT_COMPLETE, label: "Complete Sprints", description: "Complete active sprints" },
       { key: TeamPermission.DELETE_SPRINTS, label: "Delete Sprints", description: "Delete sprints" },
     ],
   },
