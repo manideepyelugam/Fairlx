@@ -666,6 +666,8 @@ interface TeamCardProps {
     $id: string;
     name: string;
     imageUrl?: string;
+    memberCount?: number;
+    description?: string;
   };
   spaceColor?: string | null;
   workspaceId: string;
