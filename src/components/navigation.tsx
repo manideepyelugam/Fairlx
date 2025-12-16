@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Settings, User, FolderKanban, Users2, Calendar, Clock as ClockIcon, Activity, Shield } from "lucide-react";
+import { Settings, User, FolderKanban, Users2, Calendar, Clock as ClockIcon, Activity, Shield, Layers } from "lucide-react";
 import Link from "next/link";
 import {
   GoCheckCircle,
@@ -34,6 +34,12 @@ const routes = [
     href: "/programs",
     icon: FolderKanban,
     activeIcon: FolderKanban,
+  },
+  {
+    label: "Spaces",
+    href: "/spaces",
+    icon: Layers,
+    activeIcon: Layers,
   },
   {
     label: "Teams",
