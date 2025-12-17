@@ -134,6 +134,7 @@ export type Team = Models.Document & {
   name: string;
   description?: string;
   workspaceId: string;
+  projectId?: string;    // NEW: Project this team belongs to (for project-scoped RBAC)
   spaceId?: string;      // Space this team belongs to (optional for backward compat)
   programId?: string;
   teamLeadId?: string;

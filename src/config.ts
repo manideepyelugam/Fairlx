@@ -34,6 +34,10 @@ export const TEAM_MEMBERS_ID = process.env.NEXT_PUBLIC_APPWRITE_TEAM_MEMBERS_ID!
 export const PROGRAMS_ID = process.env.NEXT_PUBLIC_APPWRITE_PROGRAMS_ID!;
 export const CUSTOM_ROLES_ID = process.env.NEXT_PUBLIC_APPWRITE_CUSTOM_ROLES_ID!;
 
+// Project-Scoped RBAC Collections
+export const PROJECT_MEMBERS_ID = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_MEMBERS_ID!;
+export const PROJECT_ROLES_ID = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ROLES_ID!;
+
 // Email/Messaging Configuration
 export const SMTP_PROVIDER_ID = process.env.NEXT_PUBLIC_APPWRITE_SMTP_PROVIDER_ID!;
 export const EMAIL_TOPIC_ID = process.env.NEXT_PUBLIC_APPWRITE_EMAIL_TOPIC_ID!;

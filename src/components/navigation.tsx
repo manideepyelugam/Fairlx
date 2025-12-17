@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Settings, User, FolderKanban, Users2, Calendar, Clock as ClockIcon, Activity, Shield, Layers } from "lucide-react";
+import { Settings, User, FolderKanban, Users2, Calendar, Clock as ClockIcon, Activity, Layers } from "lucide-react";
 import Link from "next/link";
 import {
   GoCheckCircle,
@@ -77,12 +77,7 @@ const routes = [
     icon: User,
     activeIcon: User,
   },
-  {
-    label: "Roles",
-    href: "/settings/roles",
-    icon: Shield,
-    activeIcon: Shield,
-  },
+  // Roles are now managed within Teams (project-scoped RBAC)
 ];
 
 export const Navigation = () => {

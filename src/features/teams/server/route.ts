@@ -80,7 +80,7 @@ const app = new Hono()
         })
       );
 
-      return c.json({ 
+      return c.json({
         data: {
           ...teams,
           documents: teamsWithMemberCounts,
@@ -327,14 +327,14 @@ const app = new Hono()
         if (updateSpaceId !== undefined) {
           updateData.spaceId = updateSpaceId === null ? undefined : updateSpaceId;
         }
-        
+
         // Handle empty imageUrl
         if ("imageUrl" in updates) {
-          updateData.imageUrl = updates.imageUrl && updates.imageUrl.trim() !== "" 
-            ? updates.imageUrl 
+          updateData.imageUrl = updates.imageUrl && updates.imageUrl.trim() !== ""
+            ? updates.imageUrl
             : undefined;
         }
-        
+
         const updatedTeam = await databases.updateDocument<Team>(
           DATABASE_ID,
           TEAMS_ID,
@@ -749,7 +749,7 @@ const app = new Hono()
           CUSTOM_ROLES_ID,
           [Query.equal("teamId", teamId)]
         );
-        
+
         return c.json({ data: customRoles });
       } catch {
         return c.json({ error: "Failed to fetch custom roles" }, 400);
@@ -811,6 +811,8 @@ const app = new Hono()
           ID.unique(),
           {
             ...data,
+            workspaceId: team.workspaceId, // Add workspaceId from team
+            roleName: data.name, // Map name to roleName for backwards compatibility
             createdBy: user.$id,
             lastModifiedBy: user.$id,
           }
@@ -819,7 +821,7 @@ const app = new Hono()
         return c.json({ data: customRole });
       } catch (error) {
         console.error("Error creating custom role:", error);
-        return c.json({ 
+        return c.json({
           error: "Failed to create custom role",
           details: error instanceof Error ? error.message : String(error)
         }, 400);
@@ -947,8 +949,8 @@ const app = new Hono()
         );
 
         if (membersWithRole.total > 0) {
-          return c.json({ 
-            error: `Cannot delete role - ${membersWithRole.total} member(s) are using this role. Please reassign them first.` 
+          return c.json({
+            error: `Cannot delete role - ${membersWithRole.total} member(s) are using this role. Please reassign them first.`
           }, 400);
         }
 
