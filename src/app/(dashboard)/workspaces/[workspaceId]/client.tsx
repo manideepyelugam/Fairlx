@@ -4,6 +4,7 @@ import { PageLoader } from "@/components/page-loader"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 import { useGetMembers } from "@/features/members/api/use-get-members"
 import { MemberAvatar } from "@/features/members/components/member-avatar"
@@ -17,8 +18,9 @@ import { useGetWorkItems, useCreateWorkItemModal, WorkItemStatus, WorkItemPriori
 import { useGetWorkspaceAnalytics } from "@/features/workspaces/api/use-get-workspace-analytics"
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id"
 import { useCurrentMember } from "@/features/members/hooks/use-current-member"
+import { useCurrent } from "@/features/auth/api/use-current"
 
-import { formatDistanceToNow } from "date-fns"
+import { formatDistanceToNow, format } from "date-fns"
 import {
   CalendarIcon,
   PlusIcon,
@@ -35,6 +37,9 @@ import {
   FolderKanban,
   ExternalLink,
   TrendingUp,
+  ArrowUpRight,
+  MoreHorizontal,
+  FileText,
 } from "lucide-react"
 import Link from "next/link"
 import { useMemo } from "react"
@@ -49,10 +54,57 @@ import {
   YAxis, 
   Tooltip,
   CartesianGrid,
+  Legend,
 } from "recharts"
+
+// Mini bar chart component for stat cards
+const MiniBarChart = ({ value, max, variant = "default" }: { value: number; max: number; variant?: "default" | "dotted" | "blocks" }) => {
+  const bars = 12
+  const filledBars = Math.round((value / Math.max(max, 1)) * bars)
+  
+  if (variant === "dotted") {
+    return (
+      <div className="flex items-end gap-0.5 h-8">
+        {Array.from({ length: bars }).map((_, i) => (
+          <div
+            key={i}
+            className={`w-1.5 rounded-sm ${i < filledBars ? 'bg-blue-600 dark:bg-blue-500' : 'bg-blue-100 dark:bg-slate-700'}`}
+            style={{ height: `${20 + (i * 5) % 30 + 20}%` }}
+          />
+        ))}
+      </div>
+    )
+  }
+  
+  if (variant === "blocks") {
+    return (
+      <div className="flex items-end gap-1 h-8">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div
+            key={i}
+            className={`w-3 h-6 rounded-sm ${i < Math.ceil(filledBars / 2) ? 'bg-blue-600 dark:bg-blue-500' : 'bg-blue-100 dark:bg-slate-700'}`}
+          />
+        ))}
+      </div>
+    )
+  }
+  
+  return (
+    <div className="flex items-end gap-0.5 h-8">
+      {Array.from({ length: bars }).map((_, i) => (
+        <div
+          key={i}
+          className={`w-1 rounded-sm ${i < filledBars ? 'bg-blue-600 dark:bg-blue-500' : 'bg-blue-100 dark:bg-slate-700'}`}
+          style={{ height: `${30 + (i * 7) % 40 + 30}%` }}
+        />
+      ))}
+    </div>
+  )
+}
 
 export const WorkspaceIdClient = () => {
   const workspaceId = useWorkspaceId()
+  const { data: user } = useCurrent()
   const { data: analytics, isLoading: isLoadingAnalytics } = useGetWorkspaceAnalytics({ workspaceId })
   const { data: workItems, isLoading: isLoadingWorkItems } = useGetWorkItems({ workspaceId })
   const { data: projects, isLoading: isLoadingProjects } = useGetProjects({ workspaceId })
@@ -73,6 +125,8 @@ export const WorkspaceIdClient = () => {
         completionRate: 0,
         flaggedCount: 0,
         contributionData: [],
+        monthlyData: [],
+        projectStats: [],
       }
     }
 
@@ -87,9 +141,9 @@ export const WorkspaceIdClient = () => {
     }
 
     const statusOverview = [
-      { id: "completed", name: "Completed", value: statusCounts.completed, color: "#22c55e" },
+      { id: "completed", name: "Done", value: statusCounts.completed, color: "#22c55e" },
       { id: "in-progress", name: "In Progress", value: statusCounts.inProgress, color: "#2663ec" },
-      { id: "todo", name: "To Do", value: statusCounts.todo, color: "#93c5fd" },
+      { id: "todo", name: "To Do", value: statusCounts.todo, color: "#e5e7eb" },
     ]
 
     // Completion rate
@@ -102,11 +156,30 @@ export const WorkspaceIdClient = () => {
 
     // Priority distribution for bar chart
     const priorityDistribution = [
-      { name: "URGENT", count: itemDocs.filter(t => t.priority === WorkItemPriority.URGENT).length, fill: "#ef4444" },
-      { name: "HIGH", count: itemDocs.filter(t => t.priority === WorkItemPriority.HIGH).length, fill: "#f97316" },
-      { name: "MEDIUM", count: itemDocs.filter(t => t.priority === WorkItemPriority.MEDIUM).length, fill: "#f59e0b" },
-      { name: "LOW", count: itemDocs.filter(t => t.priority === WorkItemPriority.LOW).length, fill: "#22c55e" },
+      { name: "URGENT", count: itemDocs.filter(t => t.priority === WorkItemPriority.URGENT).length, fill: "#2563eb" },
+      { name: "HIGH", count: itemDocs.filter(t => t.priority === WorkItemPriority.HIGH).length, fill: "#3b82f6" },
+      { name: "MEDIUM", count: itemDocs.filter(t => t.priority === WorkItemPriority.MEDIUM).length, fill: "#60a5fa" },
+      { name: "LOW", count: itemDocs.filter(t => t.priority === WorkItemPriority.LOW).length, fill: "#93c5fd" },
     ]
+
+    // Monthly data for bar chart (based on actual task creation dates)
+    const now = new Date()
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May']
+    const currentMonth = now.getMonth()
+    const monthlyData = months.map((month, idx) => {
+      const monthIndex = (currentMonth - 4 + idx + 12) % 12
+      const monthItems = itemDocs.filter(t => {
+        const createdDate = new Date(t.$createdAt)
+        return createdDate.getMonth() === monthIndex
+      })
+      const completedMonthItems = monthItems.filter(t => t.status === WorkItemStatus.DONE)
+      
+      return {
+        name: month,
+        total: monthItems.length > 0 ? monthItems.length : 0,
+        completed: completedMonthItems.length,
+      }
+    })
 
     // Member workload
     const memberWorkload = memberDocs.map(member => {
@@ -154,16 +227,18 @@ export const WorkspaceIdClient = () => {
         return {
           id: item.$id,
           title: item.title,
-          status: item.status === WorkItemStatus.DONE ? "Done" :
+          status: item.status === WorkItemStatus.DONE ? "Completed" :
                   item.status === WorkItemStatus.IN_PROGRESS || item.status === WorkItemStatus.IN_REVIEW ? "In Progress" : "To Do",
-          assignee: assignee?.name?.split(' ').map(n => n[0]).join('') || "N/A",
+          assignee: assignee?.name || "Unassigned",
+          assigneeImage: assignee?.profileImageUrl,
           priority: item.priority || "MEDIUM",
           projectId: item.projectId,
+          project: item.project?.name || "No Project",
+          dueDate: item.dueDate ? new Date(item.dueDate) : null,
         }
       })
 
     // Due soon work items
-    const now = new Date()
     const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
     const dueSoonWorkItems = itemDocs
       .filter(item => {
@@ -179,6 +254,23 @@ export const WorkspaceIdClient = () => {
         dueDate: new Date(t.dueDate!),
       }))
 
+    // Project stats
+    const projectStats = projects?.documents?.slice(0, 3).map((project, idx) => {
+      const projectItems = itemDocs.filter(t => t.projectId === project.$id)
+      const dueSoon = projectItems.filter(t => {
+        if (!t.dueDate || t.status === WorkItemStatus.DONE) return false
+        const dueDate = new Date(t.dueDate)
+        return dueDate >= now && dueDate <= weekFromNow
+      }).length
+      
+      return {
+        id: project.$id,
+        name: project.name,
+        dueSoon,
+        rank: idx + 1,
+      }
+    }) || []
+
     return {
       statusOverview,
       priorityDistribution,
@@ -188,8 +280,10 @@ export const WorkspaceIdClient = () => {
       completionRate,
       flaggedCount,
       contributionData,
+      monthlyData,
+      projectStats,
     }
-  }, [workItems, members])
+  }, [workItems, members, projects])
 
   if (isLoading) {
     return <PageLoader />
@@ -199,373 +293,595 @@ export const WorkspaceIdClient = () => {
     return <PageError message="Failed to load workspace data." />
   }
 
+  const totalTasks = workItems.total
+  const pendingTasks = analytics.incompleteTaskCount
+  const completedTasks = analytics.completedTaskCount
+
   return (
-    <div className="space-y-3 p-4">
-      {/* Analytics Cards - Matching Project Dashboard Style */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <Card className="p-3">
-          <div className="flex items-start justify-between">
-            <div className="space-y-0.5">
-              <p className="text-xs text-muted-foreground">Work Items</p>
-              <p className="text-xl font-semibold">{workItems.total}</p>
-            </div>
-            <div className="p-2 bg-blue-50 dark:bg-blue-950 rounded">
-              <ListTodo className="h-4 w-4 text-[#2663ec]" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <Progress 
-              value={dynamicData.completionRate} 
-              className="h-1 bg-blue-100 dark:bg-blue-900 [&>div]:bg-[#2663ec]" 
-            />
-          </div>
-        </Card>
+    <div className="h-full  ">
+      <div className=" max-w-[1600px] mx-auto">
+        {/* Header Section */}
+        <div className="mb-8">
+          <p className="text-sm text-blue-600 dark:text-blue-400 mb-1">Ready to conquer your projects?</p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+            Welcome Back, {user?.name?.split(' ')[0] || "User"}.
+          </h1>
+        </div>
 
-        <Card className="p-3">
-          <div className="flex items-start justify-between">
-            <div className="space-y-0.5">
-              <p className="text-xs text-muted-foreground">Completed</p>
-              <p className="text-xl font-semibold">{analytics.completedTaskCount}</p>
-            </div>
-            <div className="p-2 bg-green-50 dark:bg-green-950 rounded">
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="text-[11px] text-muted-foreground">
-              {dynamicData.completionRate}% completion rate
-            </p>
-          </div>
-        </Card>
+        {/* Main Grid Layout */}
+        <div className="grid grid-cols-12 gap-4">
+          {/* Left Section - Stats and Charts (9 columns) */}
+          <div className="col-span-12 xl:col-span-9 space-y-4">
+            {/* Top Stats Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Total Task Card */}
+              <Card className="p-5 bg-white  border border-blue-100">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm font-normal text-slate-600 dark:text-slate-400">Total Tasks</span>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                    <ArrowUpRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </Button>
+                </div>
+                <div className="flex items-end justify-between">
+                  <span className="text-4xl font-bold text-slate-900 dark:text-white">{totalTasks}</span>
+                  <MiniBarChart value={totalTasks} max={totalTasks + 50} variant="default" />
+                </div>
+              </Card>
 
-        <Card className="p-3">
-          <div className="flex items-start justify-between">
-            <div className="space-y-0.5">
-              <p className="text-xs text-muted-foreground">In Progress</p>
-              <p className="text-xl font-semibold">{analytics.incompleteTaskCount}</p>
-            </div>
-            <div className="p-2 bg-blue-50 dark:bg-blue-950 rounded">
-              <Clock className="h-4 w-4 text-[#2663ec]" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="text-[11px] text-muted-foreground">
-              Active tasks
-            </p>
-          </div>
-        </Card>
+              {/* Pending Task Card */}
+              <Card className="p-5 bg-white border border-blue-100  ">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm font-normal text-slate-600 dark:text-slate-400">Pending Tasks</span>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                    <ArrowUpRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </Button>
+                </div>
+                <div className="flex items-end justify-between">
+                  <span className="text-4xl font-bold text-slate-900 dark:text-white">{pendingTasks}</span>
+                  <MiniBarChart value={pendingTasks} max={totalTasks} variant="dotted" />
+                </div>
+              </Card>
 
-        <Card className="p-3">
-          <div className="flex items-start justify-between">
-            <div className="space-y-0.5">
-              <p className="text-xs text-muted-foreground">Flagged</p>
-              <p className="text-xl font-semibold">{dynamicData.flaggedCount}</p>
+              {/* Completed Task Card */}
+              <Card className="p-5 bg-white  border border-blue-100 ">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm font-normal text-slate-600 dark:text-slate-400">Completed Tasks</span>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                    <ArrowUpRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </Button>
+                </div>
+                <div className="flex items-end justify-between">
+                  <span className="text-4xl font-bold text-slate-900 dark:text-white">{completedTasks}</span>
+                  <MiniBarChart value={completedTasks} max={totalTasks} variant="blocks" />
+                </div>
+              </Card>
             </div>
-            <div className="p-2 bg-red-50 dark:bg-red-950 rounded">
-              <Flag className="h-4 w-4 text-red-500" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="text-[11px] text-muted-foreground">
-              Needs attention
-            </p>
-          </div>
-        </Card>
 
-        <Card className="p-3">
-          <div className="flex items-start justify-between">
-            <div className="space-y-0.5">
-              <p className="text-xs text-muted-foreground">Overdue</p>
-              <p className="text-xl font-semibold">{analytics.overdueTaskCount}</p>
-            </div>
-            <div className="p-2 bg-amber-50 dark:bg-amber-950 rounded">
-              <AlertCircle className="h-4 w-4 text-amber-500" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="text-[11px] text-muted-foreground">
-              Past due date
-            </p>
-          </div>
-        </Card>
-
-        <Card className="p-3">
-          <div className="flex items-start justify-between">
-            <div className="space-y-0.5">
-              <p className="text-xs text-muted-foreground">Teams</p>
-              <p className="text-xl font-semibold">{teams.total}</p>
-            </div>
-            <div className="p-2 bg-purple-50 dark:bg-purple-950 rounded">
-              <UsersRound className="h-4 w-4 text-purple-500" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="text-[11px] text-muted-foreground">
-              Active teams
-            </p>
-          </div>
-        </Card>
-      </div>
-
-      {/* Top Row - Status Overview & Due Alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <Card className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-medium text-muted-foreground">Status Overview</h3>
-            <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
-          </div>
-          {dynamicData.statusOverview.some(s => s.value > 0) ? (
-            <>
-              <div className="h-[160px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RechartsPieChart>
-                    <Pie
-                      data={dynamicData.statusOverview.filter(s => s.value > 0)}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={65}
-                    >
-                      {dynamicData.statusOverview.filter(s => s.value > 0).map((entry) => (
-                        <Cell key={entry.id} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </RechartsPieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                {dynamicData.statusOverview.map((status) => (
-                  <div key={status.id} className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: status.color }} />
-                    <span className="text-[11px] text-muted-foreground">{status.name}</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <div className="h-[160px] flex items-center justify-center text-sm text-muted-foreground">
-              No tasks yet
-            </div>
-          )}
-        </Card>
-
-        {/* Due Alerts & Recent Tasks */}
-        <div className="lg:col-span-2 space-y-3">
-          <Card className="p-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-medium text-muted-foreground">Due Alerts</h3>
-              <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {dynamicData.dueSoonWorkItems.length > 0 ? (
-                dynamicData.dueSoonWorkItems.map((alert) => (
-                  <Link
-                    key={alert.id}
-                    href={`/workspaces/${workspaceId}/tasks/${alert.id}`}
-                    className="flex items-center justify-between p-2 bg-secondary/10 rounded-md hover:bg-secondary/20 transition-colors"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Clock className="h-3.5 w-3.5 text-[#2663ec] flex-shrink-0" />
-                      <span className="text-xs font-medium truncate">{alert.title}</span>
+            {/* Charts Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Project Overview Chart */}
+              <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Project Overview</h3>
+                  <select className="text-xs bg-blue-50 dark:bg-slate-700 text-blue-900 dark:text-blue-100 px-2 py-1 rounded-md border border-blue-200 dark:border-slate-600 focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                    <option>This Week</option>
+                    <option>This Month</option>
+                    <option>This Year</option>
+                  </select>
+                </div>
+                <div className="h-[240px]">
+                  {dynamicData.monthlyData.some(m => m.total > 0) ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsBarChart
+                        data={dynamicData.monthlyData}
+                        margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" className="dark:stroke-slate-700" />
+                        <XAxis 
+                          dataKey="name" 
+                          tick={{ fontSize: 12, fill: '#64748b' }}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <YAxis 
+                          tick={{ fontSize: 12, fill: '#64748b' }}
+                          axisLine={false}
+                          tickLine={false}
+                          allowDecimals={false}
+                        />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'white', 
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                          }}
+                          labelStyle={{ color: '#1e293b' }}
+                        />
+                        <Bar 
+                          dataKey="total" 
+                          fill="#93c5fd"
+                          radius={[4, 4, 0, 0]}
+                          maxBarSize={40}
+                          name="Total"
+                        />
+                        <Bar 
+                          dataKey="completed" 
+                          fill="#2563eb"
+                          radius={[4, 4, 0, 0]}
+                          maxBarSize={40}
+                          name="Completed"
+                        />
+                      </RechartsBarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-sm text-slate-500 dark:text-slate-400">
+                      No task data available yet
                     </div>
-                    <span className="text-[11px] text-muted-foreground whitespace-nowrap ml-2">
-                      {formatDistanceToNow(alert.dueDate, { addSuffix: true })}
+                  )}
+                </div>
+              </Card>
+
+              {/* Task Statistics Card */}
+              <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Task Statistics</h3>
+                  <select className="text-xs bg-blue-50 dark:bg-slate-700 text-blue-900 dark:text-blue-100 px-2 py-1 rounded-md border border-blue-200 dark:border-slate-600 focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                    <option>Monthly</option>
+                    <option>Weekly</option>
+                    <option>Daily</option>
+                  </select>
+                </div>
+                
+                {/* Total Project Count with Trend */}
+                <div className="mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-3xl font-bold text-slate-900 dark:text-white">{totalTasks}</span>
+                    <span className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950 px-1.5 py-0.5 rounded">
+                      ↑ {dynamicData.completionRate}%
                     </span>
-                  </Link>
-                ))
-              ) : (
-                <div className="col-span-2 text-sm text-center text-muted-foreground py-2">
-                  No upcoming due dates
-                </div>
-              )}
-            </div>
-          </Card>
-
-          <Card className="p-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-medium text-muted-foreground">Recent Tasks</h3>
-              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-            </div>
-            <div className="space-y-2">
-              {dynamicData.recentWorkItems.length > 0 ? (
-                dynamicData.recentWorkItems.map((task) => (
-                  <Link
-                    key={task.id}
-                    href={`/workspaces/${workspaceId}/tasks/${task.id}`}
-                    className="flex items-center justify-between p-2 bg-secondary/10 rounded-md hover:bg-secondary/20 transition-colors"
-                  >
-                    <div className="flex items-start gap-2 min-w-0">
-                      <div className={`w-1.5 h-1.5 mt-1.5 rounded-full flex-shrink-0 ${
-                        task.status === "Done" ? "bg-green-500" :
-                        task.status === "In Progress" ? "bg-[#2663ec]" : "bg-gray-400"
-                      }`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate">{task.title}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[11px] text-muted-foreground">{task.assignee}</span>
-                          <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${
-                            task.priority === "HIGH" || task.priority === "URGENT" ? "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400" :
-                            task.priority === "MEDIUM" ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400" :
-                            "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400"
-                          }`}>
-                            {task.priority}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                ))
-              ) : (
-                <div className="text-sm text-center text-muted-foreground py-4">
-                  No tasks yet
-                </div>
-              )}
-            </div>
-          </Card>
-        </div>
-      </div>
-
-      {/* Middle Row - Workload & Priority Distribution */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <Card className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-medium text-muted-foreground">Workload Distribution</h3>
-            <Users className="h-3.5 w-3.5 text-muted-foreground" />
-          </div>
-          <div className="space-y-3">
-            {dynamicData.memberWorkload.length > 0 ? (
-              dynamicData.memberWorkload.map((member) => {
-                const workloadPercentage = analytics.taskCount > 0 ? (member.tasks / analytics.taskCount) * 100 : 0
-                return (
-                  <div key={member.id} className="space-y-1.5">
-                    <div className="flex items-start gap-2">
-                      <MemberAvatar
-                        name={member.name}
-                        imageUrl={member.imageUrl}
-                        className="size-6"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-medium truncate">{member.name}</p>
-                          <span className="text-[11px] text-muted-foreground">{member.tasks} tasks</span>
-                        </div>
-                        <Progress value={workloadPercentage} className="h-1.5 mt-1.5 bg-blue-100 dark:bg-blue-900 [&>div]:bg-[#2663ec]" />
-                      </div>
-                    </div>
                   </div>
-                )
-              })
-            ) : (
-              <div className="text-sm text-center text-muted-foreground py-4">
-                No assigned tasks yet
+                  <p className="text-xs text-slate-600 dark:text-slate-400">Total Tasks</p>
+                </div>
+
+                {/* Status Legend */}
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-blue-600" />
+                    <span className="text-xs text-slate-600 dark:text-slate-400">Completed</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-blue-400" />
+                    <span className="text-xs text-slate-600 dark:text-slate-400">Pending</span>
+                  </div>
+                </div>
+
+                {/* Progress Bar Visualization */}
+                <div className="h-3 flex rounded-full overflow-hidden bg-blue-100 dark:bg-slate-700 mb-6">
+                  <div 
+                    className="bg-blue-600 transition-all" 
+                    style={{ width: `${(completedTasks / Math.max(totalTasks, 1)) * 100}%` }}
+                  />
+                  <div 
+                    className="bg-blue-400 transition-all" 
+                    style={{ width: `${(pendingTasks / Math.max(totalTasks, 1)) * 100}%` }}
+                  />
+                </div>
+
+                {/* In Progress / Completed Files */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-slate-900 dark:text-white">In Progress</p>
+                    <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-slate-700/50 rounded-lg">
+                      <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded">
+                        <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate text-slate-900 dark:text-white">Active Items</p>
+                        <p className="text-[10px] text-slate-600 dark:text-slate-400">{pendingTasks} tasks</p>
+                      </div>
+                    </div>
+                    <Progress value={pendingTasks > 0 ? Math.min((pendingTasks / totalTasks) * 100, 100) : 0} className="h-1 bg-blue-100 dark:bg-slate-700 [&>div]:bg-blue-400" />
+                    <p className="text-[10px] text-slate-600 dark:text-slate-400">Progress... {pendingTasks > 0 ? Math.round((pendingTasks / totalTasks) * 100) : 0}%</p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-slate-900 dark:text-white">Completed</p>
+                    <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+                      <div className="p-1.5 bg-blue-100 dark:bg-blue-950 rounded">
+                        <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate text-slate-900 dark:text-white">Done Items</p>
+                        <p className="text-[10px] text-slate-600 dark:text-slate-400">{completedTasks} tasks</p>
+                      </div>
+                    </div>
+                    <Progress value={completedTasks > 0 ? Math.min((completedTasks / totalTasks) * 100, 100) : 0} className="h-1 bg-blue-100 dark:bg-blue-950 [&>div]:bg-blue-500" />
+                    <p className="text-[10px] text-slate-600 dark:text-slate-400">Completed {completedTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0}%</p>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            {/* Task List Table */}
+            <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Task List</h3>
+                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                  <MoreHorizontal className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                </Button>
               </div>
-            )}
-          </div>
-        </Card>
+              
+              {/* Table Header */}
+              <div className="grid grid-cols-12 gap-4 pb-3 border-b border-blue-100 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-400">
+                <div className="col-span-4">Name</div>
+                <div className="col-span-2">Project</div>
+                <div className="col-span-2">Time</div>
+                <div className="col-span-2">Status</div>
+                <div className="col-span-2">Priority</div>
+              </div>
 
-        <Card className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-medium text-muted-foreground">Priority Distribution</h3>
-            <Layers className="h-3.5 w-3.5 text-muted-foreground" />
-          </div>
-          <div className="h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <RechartsBarChart
-                data={dynamicData.priorityDistribution}
-                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis 
-                  dataKey="name" 
-                  tick={{ fontSize: 11 }}
-                  stroke="#888"
-                />
-                <YAxis 
-                  tick={{ fontSize: 11 }}
-                  stroke="#888"
-                  allowDecimals={false}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'white', 
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '6px',
-                    fontSize: '12px'
-                  }}
-                  cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
-                />
-                <Bar 
-                  dataKey="count" 
-                  radius={[4, 4, 0, 0]}
-                  maxBarSize={60}
-                />
-              </RechartsBarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-      </div>
+              {/* Table Body */}
+              <div className="divide-y divide-blue-50 dark:divide-slate-700">
+                {dynamicData.recentWorkItems.length > 0 ? (
+                  dynamicData.recentWorkItems.map((task) => (
+                    <Link
+                      key={task.id}
+                      href={`/workspaces/${workspaceId}/tasks/${task.id}`}
+                      className="grid grid-cols-12 gap-4 py-3 items-center hover:bg-blue-50 dark:hover:bg-slate-700/50 -mx-5 px-5 transition-colors"
+                    >
+                      <div className="col-span-4 flex items-center gap-3">
+                        <MemberAvatar 
+                          name={task.assignee} 
+                          imageUrl={task.assigneeImage}
+                          className="h-8 w-8" 
+                        />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate text-slate-900 dark:text-white">{task.assignee}</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 truncate">{task.title}</p>
+                        </div>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-sm truncate text-slate-700 dark:text-slate-300">{task.project}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          {task.dueDate ? format(task.dueDate, 'MMM d') : '—'}
+                        </p>
+                      </div>
+                      <div className="col-span-2">
+                        <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
+                          task.status === "Completed" 
+                            ? "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400" 
+                            : task.status === "In Progress"
+                            ? "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300"
+                            : "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            task.status === "Completed" ? "bg-blue-600" : 
+                            task.status === "In Progress" ? "bg-blue-400" : "bg-slate-400"
+                          }`} />
+                          {task.status}
+                        </span>
+                      </div>
+                      <div className="col-span-2">
+                        <span className={`text-xs font-medium px-2 py-1 rounded ${
+                          task.priority === "URGENT" || task.priority === "HIGH" 
+                            ? "bg-blue-600 text-blue-100 dark:bg-blue-900 dark:text-blue-200" 
+                            : task.priority === "MEDIUM"
+                            ? "bg-blue-400 text-blue-900 dark:bg-blue-700 dark:text-blue-100"
+                            : "bg-blue-200 text-blue-800 dark:bg-blue-800 dark:text-blue-200"
+                        }`}>
+                          {task.priority}
+                        </span>
+                      </div>
+                    </Link>
+                  ))
+                ) : (
+                  <div className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                    No tasks yet. Create your first task to get started.
+                  </div>
+                )}
+              </div>
 
-      {/* Top Contributors - GitHub-style contribution display */}
-      <Card className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xs font-medium text-muted-foreground">Top Contributors</h3>
-          <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+              {workItems.total > 5 && (
+                <Link href={`/workspaces/${workspaceId}/tasks`}>
+                  <Button variant="ghost" size="sm" className="w-full mt-4 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20">
+                    View All Tasks <ExternalLink className="ml-1 h-3 w-3" />
+                  </Button>
+                </Link>
+              )}
+            </Card>
+
+          
+          </div>
+
+          {/* Right Sidebar (3 columns) */}
+          <div className="col-span-12  xl:col-span-3 flex flex-col space-y-4 h-full">
+            {/* Due Alerts Card */}
+            <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm flex-1">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Due Alerts</h3>
+                <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                  <PlusIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                </Button>
+              </div>
+              
+              {dynamicData.dueSoonWorkItems.length > 0 ? (
+                <div className="space-y-3">
+                  {dynamicData.dueSoonWorkItems.slice(0, 1).map((alert) => (
+                    <Link
+                      key={alert.id}
+                      href={`/workspaces/${workspaceId}/tasks/${alert.id}`}
+                      className="block p-4 bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 rounded-xl text-white hover:from-blue-700 hover:to-blue-800 dark:hover:from-blue-800 dark:hover:to-blue-900 transition-all"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate mb-1">{alert.title}</p>
+                          <p className="text-xs opacity-90">
+                            Due: {format(alert.dueDate, 'MMM d, h:mm a')}
+                          </p>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-white/70 hover:text-white hover:bg-white/10">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        className="w-full mt-3 bg-white text-blue-700 hover:bg-blue-50 dark:bg-blue-950 dark:text-blue-100 dark:hover:bg-blue-900"
+                      >
+                        <Clock className="mr-2 h-3 w-3" />
+                        View Details
+                      </Button>
+                    </Link>
+                  ))}
+                  
+                  {dynamicData.dueSoonWorkItems.slice(1, 4).map((alert) => (
+                    <Link
+                      key={alert.id}
+                      href={`/workspaces/${workspaceId}/tasks/${alert.id}`}
+                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-blue-50 dark:hover:bg-slate-700/50 transition-colors"
+                    >
+                      <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                        <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate text-slate-900 dark:text-white">{alert.title}</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                          {formatDistanceToNow(alert.dueDate, { addSuffix: true })}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Clock className="h-8 w-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                  <p className="text-sm text-slate-500 dark:text-slate-400">No upcoming deadlines</p>
+                </div>
+              )}
+            </Card>
+
+            {/* Task Statistics by Project */}
+            <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm flex-1">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium tracking-tight  text-slate-900 dark:text-white">Project Statistics</h3>
+              </div>
+              
+              <div className="space-y-2 max-h-[280px] overflow-y-auto">
+                {projects.documents.slice(0, 5).map((project, idx) => {
+                  const projectItems = (workItems.documents as PopulatedWorkItem[]).filter(t => t.projectId === project.$id)
+                  const dueSoon = projectItems.filter(t => {
+                    if (!t.dueDate || t.status === WorkItemStatus.DONE) return false
+                    const dueDate = new Date(t.dueDate)
+                    const now = new Date()
+                    const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+                    return dueDate >= now && dueDate <= weekFromNow
+                  }).length
+                  
+                  return (
+                    <Link
+                      key={project.$id}
+                      href={`/workspaces/${workspaceId}/projects/${project.$id}`}
+                      className={`flex items-center gap-3 p-3 rounded-xl transition-all ${
+                        idx === 0 ? 'bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 text-white hover:from-blue-700 hover:to-blue-800' : 'hover:bg-blue-50 dark:hover:bg-slate-700/50'
+                      }`}
+                    >
+                      <div className={`flex items-center justify-center w-8 h-8 rounded-lg text-sm font-bold ${
+                        idx === 0 ? 'bg-white/20' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                      }`}>
+                        {idx + 1}
+                      </div>
+                    
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium truncate ${idx === 0 ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{project.name}</p>
+                        <p className={`text-xs ${idx === 0 ? 'text-white/80' : 'text-slate-600 dark:text-slate-400'}`}>
+                          {dueSoon > 0 ? `${dueSoon} tasks due soon` : `${projectItems.length} total tasks`}
+                        </p>
+                      </div>
+                     
+                    </Link>
+                  )
+                })}
+                
+                {projects.total === 0 && (
+                  <div className="text-center py-8">
+                    <FolderKanban className="h-8 w-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                    <p className="text-sm text-slate-500 dark:text-slate-400">No projects yet</p>
+                  </div>
+                )}
+              </div>
+              
+              {projects.total > 5 && (
+                <Link href={`/workspaces/${workspaceId}/projects`}>
+                  <Button variant="ghost" size="sm" className="w-full mt-3 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20">
+                    View All Projects <ExternalLink className="ml-1 h-3 w-3" />
+                  </Button>
+                </Link>
+              )}
+            </Card>
+
+            {/* Team Members Quick View */}
+            <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm flex-1">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Team Members</h3>
+                <Link href={`/workspaces/${workspaceId}/members`}>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                    <SettingsIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </Button>
+                </Link>
+              </div>
+              
+              <div className="flex flex-wrap gap-2">
+                {members.documents.slice(0, 8).map((member) => (
+                  <MemberAvatar
+                    key={member.$id}
+                    name={member.name || member.email || "U"}
+                    imageUrl={member.profileImageUrl}
+                    className="h-10 w-10 border-2 border-blue-100 dark:border-blue-900"
+                  />
+                ))}
+                {members.total > 8 && (
+                  <div className="flex items-center justify-center h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 text-xs font-medium text-blue-700 dark:text-blue-300">
+                    +{members.total - 8}
+                  </div>
+                )}
+              </div>
+              
+              <div className="mt-4 pt-4 border-t border-blue-100 dark:border-slate-700">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-600 text-xs dark:text-slate-400">Total Members</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">{members.total}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm mt-2">
+                  <span className="text-slate-600 text-xs dark:text-slate-400">Active Teams</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">{teams.total}</span>
+                </div>
+              </div>
+            </Card>
+          </div>
         </div>
-        {dynamicData.contributionData.length > 0 ? (
-          <div className="h-[180px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <RechartsBarChart
-                data={dynamicData.contributionData}
-                layout="vertical"
-                margin={{ top: 0, right: 30, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 11 }} stroke="#888" allowDecimals={false} />
-                <YAxis 
-                  type="category" 
-                  dataKey="name" 
-                  tick={{ fontSize: 11 }} 
-                  stroke="#888"
-                  width={80}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'white', 
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '6px',
-                    fontSize: '12px'
-                  }}
-                  cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
-                  formatter={(value: number, name: string) => {
-                    if (name === 'completed') return [value, 'Completed']
-                    if (name === 'total') return [value, 'Total']
-                    return [value, name]
-                  }}
-                />
-                <Bar 
-                  dataKey="completed" 
-                  fill="#22c55e"
-                  radius={[0, 4, 4, 0]}
-                  maxBarSize={24}
-                  name="Completed"
-                />
-              </RechartsBarChart>
-            </ResponsiveContainer>
-          </div>
-        ) : (
-          <div className="h-[180px] flex items-center justify-center text-sm text-muted-foreground">
-            No completed tasks yet
-          </div>
-        )}
-      </Card>
 
-      {/* Bottom Row - Work Items, Projects, Members */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <WorkItemList data={workItems.documents as PopulatedWorkItem[]} total={workItems.total} />
-        <ProjectList data={projects.documents} total={projects.total} />
-        <MemberList data={members.documents} total={members.total} />
+          {/* Bottom Row - Workload, Priority & Top Contributors */}
+            <div className="grid grid-cols-1 w-full mt-4  lg:grid-cols-3 gap-4">
+              {/* Workload Distribution */}
+              <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Workload Distribution</h3>
+                  <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="space-y-4">
+                  {dynamicData.memberWorkload.length > 0 ? (
+                    dynamicData.memberWorkload.map((member) => {
+                      const workloadPercentage = analytics.taskCount > 0 ? (member.tasks / analytics.taskCount) * 100 : 0
+                      return (
+                        <div key={member.id} className="space-y-2 pt-2 ">
+                          <div className="flex items-center gap-3">
+                            <MemberAvatar
+                              name={member.name}
+                              imageUrl={member.imageUrl}
+                              className="h-8 w-8"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between mb-1">
+                                <p className="text-sm font-medium truncate text-slate-900 dark:text-white">{member.name}</p>
+                                <span className="text-xs text-slate-600 dark:text-slate-400">{member.tasks} tasks</span>
+                              </div>
+                              <Progress 
+                                value={workloadPercentage} 
+                                className="h-2 bg-blue-100 dark:bg-slate-700 [&>div]:bg-blue-600" 
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })
+                  ) : (
+                    <div className="text-sm text-center text-slate-500 dark:text-slate-400 py-8">
+                      No assigned tasks yet
+                    </div>
+                  )}
+                </div>
+              </Card>
+
+              {/* Priority Distribution */}
+              <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Priority Distribution</h3>
+                  <Layers className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsBarChart
+                      data={dynamicData.priorityDistribution}
+                      margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" className="dark:stroke-slate-700" />
+                      <XAxis 
+                        dataKey="name" 
+                        tick={{ fontSize: 11, fill: '#64748b' }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 11, fill: '#64748b' }}
+                        axisLine={false}
+                        tickLine={false}
+                        allowDecimals={false}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'white', 
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          fontSize: '12px'
+                        }}
+                      />
+                      <Bar 
+                        dataKey="count" 
+                        radius={[4, 4, 0, 0]}
+                        maxBarSize={50}
+                      />
+                    </RechartsBarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Top Contributors */}
+              <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Top Contributors</h3>
+                  <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                </div>
+                {dynamicData.contributionData.length > 0 ? (
+                  <div className="space-y-3">
+                    {dynamicData.contributionData.slice(0, 5).map((contributor, idx) => (
+                      <div key={contributor.id} className="flex items-center py-1 gap-3">
+                      
+                        <MemberAvatar
+                          name={contributor.name}
+                          imageUrl={contributor.imageUrl}
+                          className="h-8 w-8"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate text-slate-900 dark:text-white">{contributor.name}</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">{contributor.completed} completed</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">{contributor.completed}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">/{contributor.total}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="h-[200px] flex flex-col items-center justify-center text-center">
+                    <TrendingUp className="h-8 w-8 text-slate-300 dark:text-slate-600 mb-2" />
+                    <p className="text-sm text-slate-500 dark:text-slate-400">No completed tasks yet</p>
+                  </div>
+                )}
+              </Card>
+            </div>
       </div>
     </div>
   )
