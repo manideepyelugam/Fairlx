@@ -4,8 +4,6 @@ import { PageLoader } from "@/components/page-loader"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { ScrollArea } from "@/components/ui/scroll-area"
-
 import { useGetMembers } from "@/features/members/api/use-get-members"
 import { MemberAvatar } from "@/features/members/components/member-avatar"
 import type { Member } from "@/features/members/types"
@@ -25,10 +23,8 @@ import {
   CalendarIcon,
   PlusIcon,
   SettingsIcon,
-  AlertCircle,
   Users,
-  UsersRound,
-  CheckCircle2,
+ 
   Clock,
   ListTodo,
   Flag,

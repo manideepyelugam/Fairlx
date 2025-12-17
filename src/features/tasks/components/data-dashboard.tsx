@@ -2,25 +2,75 @@
 
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import {
-  BarChart,
-  CheckCircle2,
   Clock,
-  ListTodo,
   AlertCircle,
   Users,
   Layers,
-  Flag, 
+  Flag,
+  ArrowUpRight,
+  MoreHorizontal,
+  FileText,
+  TrendingUp,
+  PlusIcon,
+  CheckCircle2,
 } from "lucide-react";
 import { TaskStatus, TaskPriority, Task } from "../types";
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from "recharts";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { useMemo } from "react";
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
 import { ProjectActivityLogWidget } from "@/features/audit-logs/components/project-activity-log-widget";
 import { ProjectMembersWidget } from "@/features/members/components/project-members-widget";
+import { MemberAvatar } from "@/features/members/components/member-avatar";
+
+// Mini bar chart component for stat cards
+const MiniBarChart = ({ value, max, variant = "default" }: { value: number; max: number; variant?: "default" | "dotted" | "blocks" }) => {
+  const bars = 12
+  const filledBars = Math.round((value / Math.max(max, 1)) * bars)
+  
+  if (variant === "dotted") {
+    return (
+      <div className="flex items-end gap-0.5 h-8">
+        {Array.from({ length: bars }).map((_, i) => (
+          <div
+            key={i}
+            className={`w-1.5 rounded-sm ${i < filledBars ? 'bg-blue-600 dark:bg-blue-500' : 'bg-blue-100 dark:bg-slate-700'}`}
+            style={{ height: `${20 + (i * 5) % 30 + 20}%` }}
+          />
+        ))}
+      </div>
+    )
+  }
+  
+  if (variant === "blocks") {
+    return (
+      <div className="flex items-end gap-1 h-8">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div
+            key={i}
+            className={`w-3 h-6 rounded-sm ${i < Math.ceil(filledBars / 2) ? 'bg-blue-600 dark:bg-blue-500' : 'bg-blue-100 dark:bg-slate-700'}`}
+          />
+        ))}
+      </div>
+    )
+  }
+  
+  return (
+    <div className="flex items-end gap-0.5 h-8">
+      {Array.from({ length: bars }).map((_, i) => (
+        <div
+          key={i}
+          className={`w-1 rounded-sm ${i < filledBars ? 'bg-blue-600 dark:bg-blue-500' : 'bg-blue-100 dark:bg-slate-700'}`}
+          style={{ height: `${30 + (i * 7) % 40 + 30}%` }}
+        />
+      ))}
+    </div>
+  )
+}
 
 interface DataDashboardProps {
   tasks?: Task[];
@@ -32,14 +82,14 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
   const projectId = useProjectId();
   const { data: membersData } = useGetMembers({ workspaceId });
   
-  // Memoize members to prevent dependency issues in other useMemo hooks
   const members = useMemo(() => membersData?.documents ?? [], [membersData?.documents]);
 
   // Calculate analytics from real tasks data
   const analytics = useMemo(() => {
     const totalTasks = tasks.length;
     const completedTasks = tasks.filter(t => t.status === TaskStatus.DONE).length;
-    const inProgressTasks = tasks.filter(t => t.status === TaskStatus.IN_PROGRESS).length;
+    const inProgressTasks = tasks.filter(t => t.status === TaskStatus.IN_PROGRESS || t.status === TaskStatus.IN_REVIEW).length;
+    const pendingTasks = totalTasks - completedTasks;
     const flaggedTasks = tasks.filter(t => t.flagged === true).length;
     const now = new Date();
     const overdueTasks = tasks.filter(t => {
@@ -47,31 +97,39 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
       const dueDate = new Date(t.dueDate);
       return dueDate < now && t.status !== TaskStatus.DONE;
     }).length;
+    const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
     return {
       totalTasks,
       completedTasks,
       inProgressTasks,
+      pendingTasks,
       flaggedTasks,
       overdueTasks,
+      completionRate,
     };
   }, [tasks]);
 
-  // Calculate status overview from real data
-  const statusOverview = useMemo(() => {
-    const todo = tasks.filter(t => t.status === TaskStatus.TODO).length;
-    const assigned = tasks.filter(t => t.status === TaskStatus.ASSIGNED).length;
-    const inProgress = tasks.filter(t => t.status === TaskStatus.IN_PROGRESS).length;
-    const inReview = tasks.filter(t => t.status === TaskStatus.IN_REVIEW).length;
-    const done = tasks.filter(t => t.status === TaskStatus.DONE).length;
-
-    return [
-      { id: "status-1", name: "Done", value: done, color: "#22c55e" },
-      { id: "status-2", name: "In Progress", value: inProgress, color: "#2663ec" },
-      { id: "status-3", name: "To Do", value: todo, color: "#93c5fd" },
-      { id: "status-4", name: "In Review", value: inReview, color: "#f59e0b" },
-      { id: "status-5", name: "Assigned", value: assigned, color: "#ef4444" },
-    ];
+  // Calculate monthly data for bar chart
+  const monthlyData = useMemo(() => {
+    const now = new Date();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May'];
+    const currentMonth = now.getMonth();
+    
+    return months.map((month, idx) => {
+      const monthIndex = (currentMonth - 4 + idx + 12) % 12;
+      const monthItems = tasks.filter(t => {
+        const createdDate = new Date(t.$createdAt);
+        return createdDate.getMonth() === monthIndex;
+      });
+      const completedMonthItems = monthItems.filter(t => t.status === TaskStatus.DONE);
+      
+      return {
+        name: month,
+        total: monthItems.length,
+        completed: completedMonthItems.length,
+      };
+    });
   }, [tasks]);
 
   // Calculate workload distribution from real data
@@ -86,12 +144,13 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
 
       return {
         id: member.$id,
-        name: member.name,
-        avatar: member.name.substring(0, 2).toUpperCase(),
+        name: member.name || member.email || "Unknown",
+        imageUrl: member.profileImageUrl,
+        avatar: (member.name || member.email || "U").substring(0, 2).toUpperCase(),
         tasks: memberTasks.length,
         completedTasks,
       };
-    }).filter(m => m.tasks > 0).slice(0, 4); // Top 4 members
+    }).filter(m => m.tasks > 0).sort((a, b) => b.tasks - a.tasks).slice(0, 4);
 
     return memberWorkload;
   }, [tasks, members]);
@@ -111,347 +170,325 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
       .slice(0, 6)
       .map(t => ({
         id: t.$id,
-        title: t.name,
+        title: t.name || t.title,
         dueDate: new Date(t.dueDate!),
       }));
   }, [tasks]);
 
   // Calculate recent tasks
   const recentTasks = useMemo(() => {
-    return tasks
+    return [...tasks]
+      .sort((a, b) => new Date(b.$updatedAt || b.$createdAt).getTime() - new Date(a.$updatedAt || a.$createdAt).getTime())
       .slice(0, 5)
       .map(task => {
         const member = members.find(m => m.$id === task.assigneeId);
         return {
           id: task.$id,
           title: task.name || task.title,
-          status: task.status === TaskStatus.DONE ? "Done" :
-                  task.status === TaskStatus.IN_PROGRESS ? "In Progress" :
-                  task.status === TaskStatus.IN_REVIEW ? "In Review" :
-                  task.status === TaskStatus.ASSIGNED ? "Assigned" : "To Do",
-          assignee: member?.name?.split(' ').map(n => n[0]).join('') + '.' || "N/A",
-          priority: task.priority || "Medium",
+          status: task.status === TaskStatus.DONE ? "Completed" :
+                  task.status === TaskStatus.IN_PROGRESS || task.status === TaskStatus.IN_REVIEW ? "In Progress" : "To Do",
+          assignee: member?.name || "Unassigned",
+          assigneeImage: member?.profileImageUrl,
+          priority: task.priority || "MEDIUM",
+          dueDate: task.dueDate ? new Date(task.dueDate) : null,
         };
       });
   }, [tasks, members]);
 
+  // Top contributors
+  const contributionData = useMemo(() => {
+    return members.map(member => {
+      const memberTasks = tasks.filter(t => 
+        t.assigneeId === member.$id || t.assigneeIds?.includes(member.$id)
+      );
+      const completedTasks = memberTasks.filter(t => 
+        t.status === TaskStatus.DONE
+      ).length;
+
+      return {
+        id: member.$id,
+        name: member.name || member.email?.split('@')[0] || "Unknown",
+        imageUrl: member.profileImageUrl,
+        completed: completedTasks,
+        total: memberTasks.length,
+      };
+    }).filter(m => m.total > 0).sort((a, b) => b.completed - a.completed).slice(0, 5);
+  }, [tasks, members]);
+
+  // Priority distribution
+  const priorityDistribution = useMemo(() => [
+    { name: "URGENT", count: tasks.filter(t => t.priority === TaskPriority.URGENT).length, fill: "#2563eb" },
+    { name: "HIGH", count: tasks.filter(t => t.priority === TaskPriority.HIGH).length, fill: "#3b82f6" },
+    { name: "MEDIUM", count: tasks.filter(t => t.priority === TaskPriority.MEDIUM).length, fill: "#60a5fa" },
+    { name: "LOW", count: tasks.filter(t => t.priority === TaskPriority.LOW).length, fill: "#93c5fd" },
+  ], [tasks]);
+
+  // Status overview for pie chart
+  const statusOverview = useMemo(() => {
+    const todo = tasks.filter(t => t.status === TaskStatus.TODO).length;
+    const assigned = tasks.filter(t => t.status === TaskStatus.ASSIGNED).length;
+    const inProgress = tasks.filter(t => t.status === TaskStatus.IN_PROGRESS).length;
+    const inReview = tasks.filter(t => t.status === TaskStatus.IN_REVIEW).length;
+    const done = tasks.filter(t => t.status === TaskStatus.DONE).length;
+
+    return [
+      { id: "done", name: "Done", value: done, color: "#2563eb" },
+      { id: "inProgress", name: "In Progress", value: inProgress, color: "#3b82f6" },
+      { id: "inReview", name: "In Review", value: inReview, color: "#60a5fa" },
+      { id: "todo", name: "To Do", value: todo, color: "#93c5fd" },
+       { id: "assigned", name: "Assigned", value: assigned, color: "#bfdbfe" },
+    ].filter(s => s.value > 0);
+  }, [tasks]);
+
   return (
-    <div className="space-y-3 p-1">
-      {/* Analytics Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <Card className="p-3">
-          <div className="flex items-start justify-between">
-            <div className="space-y-0.5">
-              <p className="text-xs text-muted-foreground">Total Tasks</p>
-              <p className="text-xl font-semibold">{analytics.totalTasks}</p>
-            </div>
-            <div className="p-2 bg-blue-50 rounded">
-              <ListTodo className="h-4 w-4 text-[#2663ec]" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <Progress value={(analytics.completedTasks / analytics.totalTasks) * 100}
-              className="h-1 bg-blue-100 [&>div]:bg-[#2663ec]" />
-          </div>
-        </Card>
-
-        <Card className="p-3">
-          <div className="flex items-start justify-between">
-            <div className="space-y-0.5">
-              <p className="text-xs text-muted-foreground">Completed</p>
-              <p className="text-xl font-semibold">{analytics.completedTasks}</p>
-            </div>
-            <div className="p-2 bg-green-50 rounded">
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="text-[11px] text-muted-foreground">
-              {Math.round((analytics.completedTasks / analytics.totalTasks) * 100)}% completion rate
-            </p>
-          </div>
-        </Card>
-
-        <Card className="p-3">
-          <div className="flex items-start justify-between">
-            <div className="space-y-0.5">
-              <p className="text-xs text-muted-foreground">In Progress</p>
-              <p className="text-xl font-semibold">{analytics.inProgressTasks}</p>
-            </div>
-            <div className="p-2 bg-blue-50 rounded">
-              <Clock className="h-4 w-4 text-[#2663ec]" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="text-[11px] text-muted-foreground">
-              Active in current sprint
-            </p>
-          </div>
-        </Card>
-
-        <Card className="p-3">
-          <div className="flex items-start justify-between">
-            <div className="space-y-0.5">
-              <p className="text-xs text-muted-foreground">Flagged</p>
-              <p className="text-xl font-semibold">{analytics.flaggedTasks}</p>
-            </div>
-            <div className="p-2 bg-red-50 rounded">
-              <Flag className="h-4 w-4 text-red-500" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="text-[11px] text-muted-foreground">
-              Needs attention
-            </p>
-          </div>
-        </Card>
-
-        <Card className="p-3">
-          <div className="flex items-start justify-between">
-            <div className="space-y-0.5">
-              <p className="text-xs text-muted-foreground">Overdue</p>
-              <p className="text-xl font-semibold">{analytics.overdueTasks}</p>
-            </div>
-            <div className="p-2 bg-amber-50 rounded">
-              <Clock className="h-4 w-4 text-amber-500" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="text-[11px] text-muted-foreground">
-              Past due date
-            </p>
-          </div>
-        </Card>
-      </div>
-
-      {/* Top row - Status Overview, Recent Activity, and Due Alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <Card className="p-4 lg:col-span-1">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-medium text-muted-foreground">Status Overview</h3>
-            <BarChart className="h-3.5 w-3.5 text-muted-foreground" />
-          </div>
-          {statusOverview.some(s => s.value > 0) ? (
-            <>
-              <div className="h-[160px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RechartsPieChart>
-                    <Pie
-                      data={statusOverview.filter(s => s.value > 0)}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={65}
-                    >
-                      {statusOverview.filter(s => s.value > 0).map((entry) => (
-                        <Cell key={entry.id} fill={entry.color} />
-                      ))}
-                    </Pie>
-                  </RechartsPieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                {statusOverview.map((status) => (
-                  <div key={status.id} className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: status.color }} />
-                    <span className="text-[11px] text-muted-foreground">{status.name}</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <div className="h-[160px] flex items-center justify-center text-sm text-muted-foreground">
-              No tasks yet
-            </div>
-          )}
-        </Card>
-
-        {/* Replace Recent Activity with Audit Log Widget */}
-        <div className="lg:col-span-2">
-          <ProjectActivityLogWidget 
-            workspaceId={workspaceId} 
-            projectId={projectId}
-            limit={6}
-          />
-
-          <Card className="p-4 mt-3">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-medium text-muted-foreground">Due Alerts</h3>
-              <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {dueAlerts.length > 0 ? (
-                dueAlerts.map((alert) => (
-                  <div
-                    key={alert.id}
-                    className="flex items-center justify-between p-2 bg-secondary/10 rounded-md"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-3.5 w-3.5 text-[#2663ec]" />
-                      <span className="text-xs font-medium">{alert.title}</span>
-                    </div>
-                    <span className="text-[11px] text-muted-foreground whitespace-nowrap ml-2">
-                      Due {formatDistanceToNow(alert.dueDate, { addSuffix: true })}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <div className="col-span-2 text-sm text-center text-muted-foreground py-2">
-                  No upcoming due dates
+    <div className="h-full">
+      <div className="max-w-[1600px] mx-auto">
+        {/* Main Content - Full Width */}
+        <div className="space-y-4">
+            {/* Top Stats Row */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Total Task Card */}
+              <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm font-normal text-slate-600 dark:text-slate-400">Total Tasks</span>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                    <ArrowUpRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </Button>
                 </div>
-              )}
-            </div>
-          </Card>
-        </div>
-      </div>
+                <div className="flex items-end justify-between">
+                  <span className="text-4xl font-bold text-slate-900 dark:text-white">{analytics.totalTasks}</span>
+                  <MiniBarChart value={analytics.totalTasks} max={analytics.totalTasks + 50} variant="default" />
+                </div>
+              </Card>
 
-      {/* Middle row - Workload Distribution and Tasks */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <Card className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-medium text-muted-foreground">Workload Distribution</h3>
-            <Users className="h-3.5 w-3.5 text-muted-foreground" />
-          </div>
-          <div className="space-y-3">
-            {workloadDistribution.length > 0 ? (
-              workloadDistribution.map((member) => {
-                const workloadPercentage = analytics.totalTasks > 0 ? (member.tasks / analytics.totalTasks) * 100 : 0;
-                return (
-                  <div key={member.id} className="space-y-1.5">
-                    <div className="flex items-start gap-2">
-                      <div className="w-6 h-6 rounded-full bg-[#2663ec]/10 text-[#2663ec] flex items-center justify-center text-[11px] font-medium shrink-0">
-                        {member.avatar}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs font-medium truncate">{member.name}</p>
-                          <span className="text-[11px] text-muted-foreground">{member.tasks} tasks</span>
-                        </div>
-                        <Progress value={workloadPercentage} className="h-1.5 mt-1.5 bg-blue-100 [&>div]:bg-[#2663ec]" />
-                      </div>
-                    </div>
+              {/* Pending Task Card */}
+              <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm font-normal text-slate-600 dark:text-slate-400">Pending Tasks</span>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                    <ArrowUpRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </Button>
+                </div>
+                <div className="flex items-end justify-between">
+                  <span className="text-4xl font-bold text-slate-900 dark:text-white">{analytics.pendingTasks}</span>
+                  <MiniBarChart value={analytics.pendingTasks} max={analytics.totalTasks} variant="dotted" />
+                </div>
+              </Card>
+
+              {/* Completed Task Card */}
+              <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm font-normal text-slate-600 dark:text-slate-400">Completed Tasks</span>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                    <ArrowUpRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </Button>
+                </div>
+                <div className="flex items-end justify-between">
+                  <span className="text-4xl font-bold text-slate-900 dark:text-white">{analytics.completedTasks}</span>
+                  <MiniBarChart value={analytics.completedTasks} max={analytics.totalTasks} variant="blocks" />
+                </div>
+              </Card>
+
+              {/* Flagged Task Card */}
+              <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm font-normal text-slate-600 dark:text-slate-400">Flagged</span>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                    <Flag className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </Button>
+                </div>
+                <div className="flex items-end justify-between">
+                  <span className="text-4xl font-bold text-slate-900 dark:text-white">{analytics.flaggedTasks}</span>
+                  <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    <span>{analytics.overdueTasks} overdue</span>
                   </div>
-                );
-              })
-            ) : (
-              <div className="text-sm text-center text-muted-foreground py-4">
-                No assigned tasks yet
-              </div>
-            )}
-          </div>
-        </Card>
+                </div>
+              </Card>
+            </div>
 
-        <Card className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-medium text-muted-foreground">Recent Tasks</h3>
-            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-          </div>
-          <div className="space-y-2">
-            {recentTasks.length > 0 ? (
-              recentTasks.map((task) => (
-                <div key={task.id} className="flex items-center justify-between p-2 bg-secondary/10 rounded-md">
-                  <div className="flex items-start gap-2 min-w-0">
-                    <div className={`w-1.5 h-1.5 mt-1.5 rounded-full ${
-                      task.status === "Done" ? "bg-green-500" :
-                      task.status === "In Progress" ? "bg-[#2663ec]" : "bg-gray-400"
-                    }`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium truncate">{task.title}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[11px] text-muted-foreground">{task.assignee}</span>
-                        <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${
-                          task.priority === "HIGH" || task.priority === "URGENT" ? "bg-red-100 text-red-700" :
-                          task.priority === "MEDIUM" ? "bg-amber-100 text-amber-700" :
-                          "bg-green-100 text-green-700"
+            {/* Charts Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Status Overview Pie Chart */}
+              <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Status Overview</h3>
+                </div>
+                {statusOverview.length > 0 ? (
+                  <>
+                    <div className="h-[200px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RechartsPieChart>
+                          <Pie
+                            data={statusOverview}
+                            dataKey="value"
+                            nameKey="name"
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={80}
+                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          >
+                            {statusOverview.map((entry) => (
+                              <Cell key={entry.id} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'white', 
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '8px',
+                              fontSize: '12px'
+                            }}
+                          />
+                        </RechartsPieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="mt-4 flex gap-8">
+                      {statusOverview.map((status) => (
+                        <div key={status.id} className="flex items-center gap-1.5">
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: status.color }} />
+                          <span className="text-[11px] text-slate-600 dark:text-slate-400 truncate">{status.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="h-[200px] flex items-center justify-center text-sm text-slate-500 dark:text-slate-400">
+                    No task data available yet
+                  </div>
+                )}
+              </Card>
+
+             
+
+                <ProjectActivityLogWidget 
+              workspaceId={workspaceId} 
+              projectId={projectId}
+              limit={6}
+            />
+            </div>
+
+            {/* Task List Table */}
+            <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Recent Tasks</h3>
+                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                  <MoreHorizontal className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                </Button>
+              </div>
+              
+              {/* Table Header */}
+              <div className="grid grid-cols-12 gap-4 pb-3 border-b border-blue-100 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-400">
+                <div className="col-span-5">Name</div>
+                <div className="col-span-3">Time</div>
+                <div className="col-span-2">Status</div>
+                <div className="col-span-2">Priority</div>
+              </div>
+
+              {/* Table Body */}
+              <div className="divide-y divide-blue-50 dark:divide-slate-700">
+                {recentTasks.length > 0 ? (
+                  recentTasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className="grid grid-cols-12 gap-4 py-3 items-center hover:bg-blue-50 dark:hover:bg-slate-700/50 -mx-5 px-5 transition-colors"
+                    >
+                      <div className="col-span-5 flex items-center gap-3">
+                        <MemberAvatar 
+                          name={task.assignee} 
+                          imageUrl={task.assigneeImage}
+                          className="h-8 w-8" 
+                        />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate text-slate-900 dark:text-white">{task.assignee}</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 truncate">{task.title}</p>
+                        </div>
+                      </div>
+                      <div className="col-span-3">
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          {task.dueDate ? format(task.dueDate, 'MMM d') : '—'}
+                        </p>
+                      </div>
+                      <div className="col-span-2">
+                        <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
+                          task.status === "Completed" 
+                            ? "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400" 
+                            : task.status === "In Progress"
+                            ? "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300"
+                            : "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            task.status === "Completed" ? "bg-blue-600" : 
+                            task.status === "In Progress" ? "bg-blue-400" : "bg-slate-400"
+                          }`} />
+                          {task.status}
+                        </span>
+                      </div>
+                      <div className="col-span-2">
+                        <span className={`text-xs font-medium px-2 py-1 rounded ${
+                          task.priority === "URGENT" || task.priority === "HIGH" 
+                            ? "bg-blue-600 text-blue-100 dark:bg-blue-900 dark:text-blue-200" 
+                            : task.priority === "MEDIUM"
+                            ? "bg-blue-400 text-blue-900 dark:bg-blue-700 dark:text-blue-100"
+                            : "bg-blue-200 text-blue-800 dark:bg-blue-800 dark:text-blue-200"
                         }`}>
                           {task.priority}
                         </span>
                       </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                    No tasks yet. Create your first task to get started.
                   </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-sm text-center text-muted-foreground py-4">
-                No tasks yet
+                )}
               </div>
-            )}
-          </div>
-        </Card>
-      </div>
+            </Card>
 
-      {/* Bottom row - Priority Distribution & Members */}
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-        {/* Priority Distribution Chart */}
-        <Card className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-medium text-muted-foreground">Priority Distribution</h3>
-            <Layers className="h-3.5 w-3.5 text-muted-foreground" />
-          </div>
-          <div className="h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <RechartsBarChart
-                data={[
-                  { 
-                    name: "URGENT", 
-                    count: tasks.filter(t => t.priority === TaskPriority.URGENT).length,
-                    fill: "#ef4444"
-                  },
-                  { 
-                    name: "HIGH", 
-                    count: tasks.filter(t => t.priority === TaskPriority.HIGH).length,
-                    fill: "#f97316"
-                  },
-                  { 
-                    name: "MEDIUM", 
-                    count: tasks.filter(t => t.priority === TaskPriority.MEDIUM).length,
-                    fill: "#f59e0b"
-                  },
-                  { 
-                    name: "LOW", 
-                    count: tasks.filter(t => t.priority === TaskPriority.LOW).length,
-                    fill: "#22c55e"
-                  },
-                ]}
-                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis 
-                  dataKey="name" 
-                  tick={{ fontSize: 11 }}
-                  stroke="#888"
-                />
-                <YAxis 
-                  tick={{ fontSize: 11 }}
-                  stroke="#888"
-                  allowDecimals={false}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'white', 
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '6px',
-                    fontSize: '12px'
-                  }}
-                  cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
-                />
-                <Bar 
-                  dataKey="count" 
-                  radius={[4, 4, 0, 0]}
-                  maxBarSize={60}
-                />
-              </RechartsBarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
+         
 
-        {/* Replace Team Members with Enhanced Widget */}
-        <ProjectMembersWidget 
-          workspaceId={workspaceId} 
-          projectId={projectId}
-          limit={12}
-        />
+          {/* Bottom Section - Due Alerts & Team Members */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Due Alerts Card */}
+            <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Due Alerts</h3>
+                <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                  <PlusIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                </Button>
+              </div>
+              
+              {dueAlerts.length > 0 ? (
+                <div className="space-y-2">
+                  {dueAlerts.map((alert) => (
+                    <div key={alert.id} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Clock className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                        <span className="text-xs text-slate-700 dark:text-slate-300 truncate">{alert.title}</span>
+                      </div>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap ml-2">
+                        Due {formatDistanceToNow(alert.dueDate, { addSuffix: true })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Clock className="h-8 w-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                  <p className="text-sm text-slate-500 dark:text-slate-400">No upcoming deadlines</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500">You&apos;re all caught up!</p>
+                </div>
+              )}
+            </Card>
+
+            {/* Team Members */}
+            <ProjectMembersWidget 
+              workspaceId={workspaceId} 
+              projectId={projectId}
+              limit={12}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
