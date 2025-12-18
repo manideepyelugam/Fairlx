@@ -138,7 +138,7 @@ const app = new Hono()
           }
         }
       } else {
-        // Create default statuses from template
+        // Create default statuses from template (Software Development - simple linear flow)
         const template = DEFAULT_SOFTWARE_WORKFLOW;
         const statusIdMap: Record<string, string> = {};
 
@@ -163,28 +163,9 @@ const app = new Hono()
           statusIdMap[statusDef.key] = status.$id;
         }
 
-        // Create transitions
-        if (template.transitions === "ALL") {
-          // Create transitions between all status pairs
-          const statusKeys = Object.keys(statusIdMap);
-          for (const fromKey of statusKeys) {
-            for (const toKey of statusKeys) {
-              if (fromKey !== toKey) {
-                await databases.createDocument<WorkflowTransition>(
-                  DATABASE_ID,
-                  WORKFLOW_TRANSITIONS_ID,
-                  ID.unique(),
-                  {
-                    workflowId: workflow.$id,
-                    fromStatusId: statusIdMap[fromKey],
-                    toStatusId: statusIdMap[toKey],
-                    autoAssign: false,
-                  }
-                );
-              }
-            }
-          }
-        } else {
+        // ALWAYS create simple transitions from template (never use "ALL")
+        // Software Development template has proper defined transitions
+        if (Array.isArray(template.transitions)) {
           // Create transitions from template
           for (const transitionDef of template.transitions) {
             const fromId = statusIdMap[transitionDef.from];

@@ -107,11 +107,17 @@ export const StatusNode = memo(({ data, selected }: StatusNodeProps) => {
                 <Edit className="size-3.5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onClick={() => data.onEdit(data.id)}>
                 <Edit className="size-4 mr-2" />
                 Edit Status
               </DropdownMenuItem>
+              {data.onRemove && (
+                <DropdownMenuItem onClick={() => data.onRemove?.(data.id)}>
+                  <Circle className="size-4 mr-2" />
+                  Remove from Canvas
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => data.onDelete(data.id)}

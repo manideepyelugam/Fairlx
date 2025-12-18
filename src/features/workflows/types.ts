@@ -111,6 +111,7 @@ export interface StatusNodeData extends Record<string, unknown> {
   position: number;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
+  onRemove?: (id: string) => void;
   [key: string]: unknown;
 }
 
@@ -181,10 +182,8 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     transitions: [
       { from: "TODO", to: "IN_PROGRESS", name: "Start Work" },
       { from: "IN_PROGRESS", to: "IN_REVIEW", name: "Submit for Review" },
-      { from: "IN_PROGRESS", to: "TODO", name: "Move Back" },
       { from: "IN_REVIEW", to: "DONE", name: "Approve" },
       { from: "IN_REVIEW", to: "IN_PROGRESS", name: "Request Changes" },
-      { from: "DONE", to: "TODO", name: "Reopen" },
     ],
   },
   {
@@ -283,7 +282,8 @@ export const STATUS_COLORS = [
 export function convertStatusesToNodes(
   statuses: WorkflowStatus[],
   onEdit: (id: string) => void,
-  onDelete: (id: string) => void
+  onDelete: (id: string) => void,
+  onRemove?: (id: string) => void
 ): StatusNode[] {
   return statuses.map((status) => ({
     id: status.$id,
@@ -301,6 +301,7 @@ export function convertStatusesToNodes(
       position: status.position,
       onEdit,
       onDelete,
+      onRemove,
     },
   }));
 }
