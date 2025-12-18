@@ -24,38 +24,34 @@ export const ProjectMembersWidget = ({
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <Users className="size-4" />
+      <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+            <Users className="h-4 w-4" />
             Team Members
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {[...Array(4)].map((_, i) => (
-              <Skeleton key={i} className="size-10 rounded-full" />
-            ))}
-          </div>
-        </CardContent>
+          </h3>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="size-10 rounded-full" />
+          ))}
+        </div>
       </Card>
     );
   }
 
   if (error || !membersData) {
     return (
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <Users className="size-4" />
+      <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+            <Users className="h-4 w-4" />
             Team Members
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-4">
-            Failed to load team members
-          </p>
-        </CardContent>
+          </h3>
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">
+          Failed to load team members
+        </p>
       </Card>
     );
   }
@@ -65,56 +61,52 @@ export const ProjectMembersWidget = ({
   const remainingCount = Math.max(0, members.length - limit);
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <Users className="size-4" />
-            Team Members
-            <span className="text-sm font-normal text-muted-foreground">
-              ({members.length})
-            </span>
-          </CardTitle>
-          <Link href={`/workspaces/${workspaceId}/members`}>
-            <Button variant="ghost" size="sm" className="h-8">
-              Manage
-            </Button>
-          </Link>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {members.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            No team members yet
-          </p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {displayMembers.map((member) => {
-              const displayName = member.name?.trim() || member.email || "Unknown";
-              const displayInfo = member.email
-                ? `${displayName}\n${member.email}`
-                : displayName;
+    <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+          <Users className="h-4 w-4" />
+          Team Members
+          <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
+            ({members.length})
+          </span>
+        </h3>
+        <Link href={`/workspaces/${workspaceId}/members`}>
+          <Button variant="ghost" size="sm" className="h-7 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-xs text-slate-600 dark:text-slate-400">
+            Manage
+          </Button>
+        </Link>
+      </div>
+      {members.length === 0 ? (
+        <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">
+          No team members yet
+        </p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {displayMembers.map((member) => {
+            const displayName = member.name?.trim() || member.email || "Unknown";
+            const displayInfo = member.email
+              ? `${displayName}\n${member.email}`
+              : displayName;
 
-              return (
-                <MemberAvatar
-                  key={member.$id}
-                  name={displayName}
-                  imageUrl={member.profileImageUrl}
-                  className="size-10 hover:scale-110 transition-transform cursor-pointer"
-                  fallbackClassName="text-sm"
-                  withTooltip={true}
-                  tooltipText={displayInfo}
-                />
-              );
-            })}
-            {remainingCount > 0 && (
-              <div className="size-10 rounded-full bg-muted border border-border flex items-center justify-center text-xs font-medium text-muted-foreground hover:bg-muted/80 transition-colors cursor-pointer">
-                +{remainingCount}
-              </div>
-            )}
-          </div>
-        )}
-      </CardContent>
+            return (
+              <MemberAvatar
+                key={member.$id}
+                name={displayName}
+                imageUrl={member.profileImageUrl}
+                className="size-10 hover:scale-110 transition-transform cursor-pointer border-2 border-blue-100 dark:border-blue-900"
+                fallbackClassName="text-sm"
+                withTooltip={true}
+                tooltipText={displayInfo}
+              />
+            );
+          })}
+          {remainingCount > 0 && (
+            <div className="size-10 rounded-full bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-100 dark:border-blue-900 flex items-center justify-center text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors cursor-pointer">
+              +{remainingCount}
+            </div>
+          )}
+        </div>
+      )}
     </Card>
   );
 };

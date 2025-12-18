@@ -32,9 +32,10 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const isProfilePage = pathname === "/profile" || pathname.startsWith("/profile/");
   const workspaceId = useWorkspaceId();
   const isTaskDetailPage = /^\/workspaces\/[^\/]+\/tasks\/[^\/]+$/.test(pathname || "");
+  const isMainDashboard = /^\/workspaces\/[^\/]+$/.test(pathname || "");
 
   return (
-    <div className="min-h-screen">
+    <div className={`min-h-screen ${isMainDashboard ? 'bg-[#ffffff]' : ''}`}>
       <CreateWorkspaceModal />
       <CreateProjectModal />
       <CreateWorkItemModal />

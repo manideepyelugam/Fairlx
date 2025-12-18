@@ -63,38 +63,34 @@ export const ProjectActivityLogWidget = ({
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <Clock className="size-4" />
+      <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+            <Clock className="h-4 w-4" />
             Recent Activity
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {[...Array(3)].map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full" />
-            ))}
-          </div>
-        </CardContent>
+          </h3>
+        </div>
+        <div className="space-y-3">
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full" />
+          ))}
+        </div>
       </Card>
     );
   }
 
   if (error || !data) {
     return (
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <Clock className="size-4" />
+      <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+            <Clock className="h-4 w-4" />
             Recent Activity
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-8">
-            Failed to load activity logs
-          </p>
-        </CardContent>
+          </h3>
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-8">
+          Failed to load activity logs
+        </p>
       </Card>
     );
   }
@@ -102,71 +98,66 @@ export const ProjectActivityLogWidget = ({
   const activities = data.data || [];
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <Clock className="size-4" />
-            Recent Activity
-          </CardTitle>
-          <Link
-            href={`/workspaces/${workspaceId}/projects/${projectId}/audit-logs`}
-          >
-            <Button variant="ghost" size="sm" className="h-8 gap-2">
-              View All
-              <ExternalLink className="size-3" />
-            </Button>
-          </Link>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {activities.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-8">
-            No activity yet
-          </p>
-        ) : (
-          <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1">
-            {activities.map((activity) => (
-              <div
-                key={activity.id}
-                className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex-shrink-0 mt-0.5 text-muted-foreground">
-                  {getActivityIcon(activity.type)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      {activity.userName && (
-                        <MemberAvatar
-                          name={activity.userName}
-                          imageUrl={activity.userImageUrl}
-                          className="size-6"
-                          tooltipText={activity.userName}
-                        />
-                      )}
-                      <p className="text-sm font-medium truncate">
-                        {activity.userName || "Someone"}
-                      </p>
-                    </div>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      {formatDistanceToNow(new Date(activity.timestamp), {
-                        addSuffix: true,
-                      })}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    <span className={getActionColor(activity.action)}>
-                      {activity.action}
-                    </span>{" "}
-                    {activity.description || activity.entityName || "an item"}
-                  </p>
-                </div>
+    <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+          <Clock className="h-4 w-4" />
+          Recent Activity
+        </h3>
+        <Link
+          href={`/workspaces/${workspaceId}/projects/${projectId}/audit-logs`}
+        >
+          <Button variant="ghost" size="sm" className="h-7 w-7 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-0">
+            <ExternalLink className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
+          </Button>
+        </Link>
+      </div>
+      {activities.length === 0 ? (
+        <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-8">
+          No activity yet
+        </p>
+      ) : (
+        <div className="space-y-2  max-h-[230px] overflow-y-auto pr-1">
+          {activities.map((activity) => (
+            <div
+              key={activity.id}
+              className="flex items-start gap-3 p-2 rounded-lg bg-slate-50 dark:bg-slate-700/50 hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors"
+            >
+              <div className="flex-shrink-0 mt-0.5 text-blue-600 dark:text-blue-400">
+                {getActivityIcon(activity.type)}
               </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {activity.userName && (
+                      <MemberAvatar
+                        name={activity.userName}
+                        imageUrl={activity.userImageUrl}
+                        className="h-6 w-6"
+                        tooltipText={activity.userName}
+                      />
+                    )}
+                    <p className="text-sm font-medium truncate text-slate-900 dark:text-white">
+                      {activity.userName || "Someone"}
+                    </p>
+                  </div>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                    {formatDistanceToNow(new Date(activity.timestamp), {
+                      addSuffix: true,
+                    })}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                  <span className={getActionColor(activity.action)}>
+                    {activity.action}
+                  </span>{" "}
+                  {activity.description || activity.entityName || "an item"}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </Card>
   );
 };
