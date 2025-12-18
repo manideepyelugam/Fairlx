@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useEffect, useRef } from "react";
+import { useCallback, useState, useEffect, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -8,6 +8,8 @@ import {
   GitBranch,
   Trash2,
   Plus,
+  PanelLeftClose,
+  PanelLeft,
 } from "lucide-react";
 import {
   ReactFlow,
@@ -28,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Card } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { useGetWorkflow } from "@/features/workflows/api/use-get-workflow";
@@ -38,9 +41,10 @@ import { useDeleteStatus } from "@/features/workflows/api/use-delete-status";
 import { useCreateTransition } from "@/features/workflows/api/use-create-transition";
 import { useUpdateTransition } from "@/features/workflows/api/use-update-transition";
 import { useDeleteTransition } from "@/features/workflows/api/use-delete-transition";
+import { useGetProjects } from "@/features/projects/api/use-get-projects";
+import { useUpdateProject } from "@/features/projects/api/use-update-project";
 import { useConfirm } from "@/hooks/use-confirm";
 import { PageLoader } from "@/components/page-loader";
-import { PageError } from "@/components/page-error";
 
 import {
   WorkflowStatus,
@@ -50,11 +54,14 @@ import {
   convertTransitionsToEdges,
   StatusNode as StatusNodeType,
   TransitionEdge as TransitionEdgeType,
+  PopulatedWorkflow,
 } from "@/features/workflows/types";
 import { StatusNode } from "@/features/workflows/components/status-node";
 import { TransitionEdge } from "@/features/workflows/components/transition-edge";
 import { StatusEditDialog } from "@/features/workflows/components/status-edit-dialog";
 import { TransitionEditDialog } from "@/features/workflows/components/transition-edit-dialog";
+import { WorkflowSimpleView } from "@/features/workflows/components/workflow-simple-view";
+import { ConnectProjectDialog } from "@/features/workflows/components/connect-project-dialog";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const nodeTypes: Record<string, any> = {
@@ -76,6 +83,7 @@ const WorkflowEditor = () => {
   const { isAdmin } = useCurrentMember({ workspaceId });
 
   const { data: workflow, isLoading: workflowLoading } = useGetWorkflow({ workflowId });
+  const { data: projectsData } = useGetProjects({ workspaceId });
   const { mutate: deleteWorkflow, isPending: isDeleting } = useDeleteWorkflow();
   const { mutateAsync: createStatus } = useCreateWorkflowStatus();
   const { mutateAsync: updateStatus } = useUpdateStatus();
@@ -83,6 +91,20 @@ const WorkflowEditor = () => {
   const { mutateAsync: createTransition } = useCreateTransition();
   const { mutateAsync: updateTransition } = useUpdateTransition();
   const { mutateAsync: deleteTransitionMutation } = useDeleteTransition();
+  const { mutate: updateProject, isPending: isUpdatingProject } = useUpdateProject();
+
+  // Get projects for this space
+  const projects = useMemo(() => {
+    if (!projectsData?.documents) return [];
+    // Filter to only show projects in this space
+    return projectsData.documents.filter(p => p.spaceId === spaceId);
+  }, [projectsData, spaceId]);
+
+  // Available projects to connect (those without this workflow or different workflow)
+  const availableProjects = useMemo(() => 
+    projects.filter(p => p.workflowId !== workflowId),
+    [projects, workflowId]
+  );
 
   const [DeleteDialog, confirmDelete] = useConfirm(
     "Delete Workflow",
@@ -102,9 +124,17 @@ const WorkflowEditor = () => {
     "destructive"
   );
 
+  const [DisconnectDialog, confirmDisconnect] = useConfirm(
+    "Disconnect Project",
+    "Are you sure you want to disconnect this project from the workflow?",
+    "destructive"
+  );
+
   // Dialog states
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [transitionDialogOpen, setTransitionDialogOpen] = useState(false);
+  const [connectProjectOpen, setConnectProjectOpen] = useState(false);
+  const [showInfoPanel, setShowInfoPanel] = useState(true);
   const [editingStatus, setEditingStatus] = useState<WorkflowStatus | null>(null);
   const [editingTransition, setEditingTransition] = useState<WorkflowTransition | null>(null);
   const [zoomLevel, setZoomLevel] = useState(100);
@@ -156,16 +186,34 @@ const WorkflowEditor = () => {
     });
   }, [workflowId, deleteTransitionMutation]);
 
+  // Handle removing status from canvas (reset position to 0)
+  const handleRemoveStatus = useCallback(
+    async (statusId: string) => {
+      try {
+        await updateStatus({
+          param: { workflowId, statusId },
+          json: {
+            positionX: 0,
+            positionY: 0,
+          },
+        });
+      } catch (error) {
+        console.error("Failed to remove status:", error);
+      }
+    },
+    [workflowId, updateStatus]
+  );
+
   // Convert workflow data to React Flow nodes and edges
   useEffect(() => {
     if (workflow?.statuses) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setNodes(convertStatusesToNodes(workflow.statuses, handleNodeEdit, handleNodeDelete) as any);
+      setNodes(convertStatusesToNodes(workflow.statuses, handleNodeEdit, handleNodeDelete, handleRemoveStatus) as any);
     }
     if (workflow?.transitions) {
       setEdges(convertTransitionsToEdges(workflow.transitions, handleEdgeEdit, handleEdgeDelete));
     }
-  }, [workflow?.statuses, workflow?.transitions, setNodes, setEdges, handleNodeEdit, handleNodeDelete, handleEdgeEdit, handleEdgeDelete]);
+  }, [workflow?.statuses, workflow?.transitions, setNodes, setEdges, handleNodeEdit, handleNodeDelete, handleRemoveStatus, handleEdgeEdit, handleEdgeDelete]);
 
   const handleDelete = async () => {
     const ok = await confirmDelete();
@@ -180,6 +228,21 @@ const WorkflowEditor = () => {
       }
     );
   };
+
+  // Connect project to workflow
+  const handleConnectProject = useCallback((projectId: string) => {
+    updateProject(
+      { param: { projectId }, form: { workflowId } },
+      { onSuccess: () => setConnectProjectOpen(false) }
+    );
+  }, [workflowId, updateProject]);
+
+  // Disconnect project from workflow
+  const handleDisconnectProject = useCallback(async (projectId: string) => {
+    const ok = await confirmDisconnect();
+    if (!ok) return;
+    updateProject({ param: { projectId }, form: { workflowId: "" } });
+  }, [confirmDisconnect, updateProject]);
 
   // Handle new connection (transition) creation
   const onConnect = useCallback(
@@ -265,12 +328,19 @@ const WorkflowEditor = () => {
     setEditingTransition(null);
   };
 
+  // Redirect if workflow not found
+  useEffect(() => {
+    if (!workflowLoading && !workflow) {
+      router.push(`/workspaces/${workspaceId}/spaces/${spaceId}/workflows`);
+    }
+  }, [workflowLoading, workflow, router, workspaceId, spaceId]);
+
   if (workflowLoading) {
     return <PageLoader />;
   }
 
   if (!workflow) {
-    return <PageError message="Workflow not found" />;
+    return <PageLoader />;
   }
 
   const statuses = workflow.statuses || [];
@@ -281,14 +351,24 @@ const WorkflowEditor = () => {
       <DeleteDialog />
       <DeleteStatusDialog />
       <DeleteTransitionDialog />
+      <DisconnectDialog />
+
+      {/* Connect Project Dialog */}
+      <ConnectProjectDialog
+        open={connectProjectOpen}
+        onOpenChange={setConnectProjectOpen}
+        workflow={workflow}
+        availableProjects={availableProjects}
+        isLoading={isUpdatingProject}
+        onConnect={handleConnectProject}
+      />
 
       {/* Header */}
       <div className="flex flex-col gap-4 p-4 border-b bg-background shrink-0">
         <div className="flex items-center gap-4">
           <Link href={`/workspaces/${workspaceId}/spaces/${spaceId}/workflows`}>
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="size-4 mr-2" />
-              Back
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="size-4" />
             </Button>
           </Link>
           <Separator orientation="vertical" className="h-6" />
@@ -319,7 +399,27 @@ const WorkflowEditor = () => {
             <Badge variant="outline" className="text-xs">
               {transitions.length} transitions
             </Badge>
+            <Badge variant="outline" className="text-xs">
+              {projects.filter(p => p.workflowId === workflowId).length} projects
+            </Badge>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowInfoPanel(!showInfoPanel)}
+          >
+            {showInfoPanel ? (
+              <>
+                <PanelLeftClose className="size-4 mr-2" />
+                Hide Info
+              </>
+            ) : (
+              <>
+                <PanelLeft className="size-4 mr-2" />
+                Show Info
+              </>
+            )}
+          </Button>
           {isAdmin && !workflow.isSystem && (
             <>
               <Button
@@ -343,34 +443,56 @@ const WorkflowEditor = () => {
         </div>
       </div>
 
-      {/* Editor */}
-      <div className="flex-1 relative">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onNodeDragStop={onNodeDragStop}
-          onMove={(_, viewport) => setZoomLevel(Math.round(viewport.zoom * 100))}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          fitView
-          fitViewOptions={{ padding: 0.4, maxZoom: 0.8 }}
-          minZoom={0.2}
-          maxZoom={2}
-          defaultEdgeOptions={{
-            type: "transitionEdge",
-            animated: true,
-          }}
-          connectionLineStyle={{
-            stroke: "#3B82F6",
-            strokeWidth: 2,
-            strokeDasharray: "5,5",
-          }}
-          proOptions={{ hideAttribution: true }}
-          className="bg-muted/30"
-        >
+      {/* Main Content with Info Panel */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Info Panel */}
+        {showInfoPanel && (
+          <div className="w-[380px] border-r bg-background shrink-0 overflow-hidden">
+            <ScrollArea className="h-full">
+              <div className="p-4">
+                <WorkflowSimpleView
+                  workflow={workflow as PopulatedWorkflow}
+                  projects={projects}
+                  workspaceId={workspaceId}
+                  spaceId={spaceId}
+                  isAdmin={isAdmin}
+                  onConnectProject={() => setConnectProjectOpen(true)}
+                  onDisconnectProject={handleDisconnectProject}
+                  onRemoveStatus={handleRemoveStatus}
+                />
+              </div>
+            </ScrollArea>
+          </div>
+        )}
+
+        {/* Editor */}
+        <div className="flex-1 relative">
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onNodeDragStop={onNodeDragStop}
+            onMove={(_, viewport) => setZoomLevel(Math.round(viewport.zoom * 100))}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            fitView
+            fitViewOptions={{ padding: 0.4, maxZoom: 0.8 }}
+            minZoom={0.2}
+            maxZoom={2}
+            defaultEdgeOptions={{
+              type: "transitionEdge",
+              animated: true,
+            }}
+            connectionLineStyle={{
+              stroke: "#3B82F6",
+              strokeWidth: 2,
+              strokeDasharray: "5,5",
+            }}
+            proOptions={{ hideAttribution: true }}
+            className="bg-muted/30"
+          >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
           <Controls showInteractive={false} />
           <MiniMap
@@ -434,7 +556,8 @@ const WorkflowEditor = () => {
               </Card>
             </Panel>
           )}
-        </ReactFlow>
+          </ReactFlow>
+        </div>
       </div>
 
       {/* Dialogs */}
