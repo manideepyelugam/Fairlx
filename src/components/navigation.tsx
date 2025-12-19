@@ -24,7 +24,7 @@ const routes = [
     activeIcon: GoHomeFill,
   },
   {
-    label: "My Work",
+    label: "My Spaces",
     href: "/tasks",
     icon: GoCheckCircle,
     activeIcon: GoCheckCircleFill,

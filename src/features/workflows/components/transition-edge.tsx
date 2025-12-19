@@ -1,13 +1,13 @@
 "use client";
 
-import { memo, useState } from "react";
+import { memo, useState, useMemo } from "react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
   getBezierPath,
   type Position,
 } from "@xyflow/react";
-import { Edit, Trash2, ArrowRight } from "lucide-react";
+import { Edit, Trash2, ArrowRight, Shield, Users, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,7 +15,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Badge } from "@/components/ui/badge";
 import { TransitionEdgeData } from "../types";
 
 type TransitionEdgeProps = {
@@ -26,6 +25,8 @@ type TransitionEdgeProps = {
   targetY: number;
   sourcePosition: Position;
   targetPosition: Position;
+  source: string;
+  target: string;
   data?: TransitionEdgeData;
   selected?: boolean;
 };
@@ -39,10 +40,25 @@ export const TransitionEdge = memo(
     targetY,
     sourcePosition,
     targetPosition,
+    source,
+    target,
     data,
     selected,
   }: TransitionEdgeProps) => {
     const [isHovered, setIsHovered] = useState(false);
+    
+    // Determine if this is a "reverse" edge (target < source alphabetically)
+    // This helps offset bidirectional edges to avoid overlap
+    const isReverseDirection = source > target;
+    
+    // Calculate offset for bidirectional edges
+    const labelOffset = useMemo(() => {
+      if (isReverseDirection) {
+        return { x: 0, y: -25 }; // Move label up for reverse direction
+      }
+      return { x: 0, y: 25 }; // Move label down for forward direction
+    }, [isReverseDirection]);
+
     const [edgePath, labelX, labelY] = getBezierPath({
       sourceX,
       sourceY,
@@ -50,13 +66,17 @@ export const TransitionEdge = memo(
       targetX,
       targetY,
       targetPosition,
-      curvature: 0.25,
+      curvature: isReverseDirection ? 0.4 : 0.25, // More curve for reverse edges
     });
 
-    const hasRules = 
-      (data?.requiredFields && data.requiredFields.length > 0) ||
-      (data?.allowedRoles && data.allowedRoles.length > 0) ||
-      data?.autoAssign;
+    // Check for new team-based rules
+    const hasTeamRules = 
+      (data?.allowedTeamIds && data.allowedTeamIds.length > 0) ||
+      (data?.allowedMemberRoles && data.allowedMemberRoles.length > 0);
+    
+    const hasApproval = data?.requiresApproval;
+    
+    const hasRules = hasTeamRules || hasApproval;
 
     return (
       <>
@@ -106,8 +126,9 @@ export const TransitionEdge = memo(
           <div
             style={{
               position: "absolute",
-              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+              transform: `translate(-50%, -50%) translate(${labelX + labelOffset.x}px,${labelY + labelOffset.y}px)`,
               pointerEvents: "all",
+              zIndex: isHovered || selected ? 10 : 1,
             }}
             className="nodrag nopan"
             onMouseEnter={() => setIsHovered(true)}
@@ -126,18 +147,21 @@ export const TransitionEdge = memo(
                 >
                   {data?.name ? (
                     <>
-                      <ArrowRight className="size-3 text-muted-foreground" />
-                      <span className="max-w-[100px] truncate">{data.name}</span>
+                      <ArrowRight className="size-3 text-muted-foreground flex-shrink-0" />
+                      <span className="max-w-[120px] truncate">{data.name}</span>
                     </>
                   ) : (
                     <ArrowRight className="size-3 text-muted-foreground" />
                   )}
-                  {hasRules && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                  {hasTeamRules && (
+                    <Users className="size-3 text-blue-500 flex-shrink-0" />
+                  )}
+                  {hasApproval && (
+                    <CheckCircle2 className="size-3 text-green-500 flex-shrink-0" />
                   )}
                 </div>
               </PopoverTrigger>
-              <PopoverContent className="w-64 p-3" align="center">
+              <PopoverContent className="w-72 p-3" align="center">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h4 className="font-medium text-sm">Transition</h4>
@@ -175,27 +199,41 @@ export const TransitionEdge = memo(
                     </div>
                   )}
 
-                  {/* Rules Summary */}
+                  {/* Team-based Rules Summary */}
                   {hasRules && (
-                    <div className="pt-2 border-t">
-                      <p className="text-xs text-muted-foreground mb-2">Rules</p>
-                      <div className="flex flex-wrap gap-1">
-                        {data?.autoAssign && (
-                          <Badge variant="secondary" className="text-[10px]">
-                            Auto-assign
-                          </Badge>
-                        )}
-                        {data?.requiredFields && data.requiredFields.length > 0 && (
-                          <Badge variant="secondary" className="text-[10px]">
-                            {data.requiredFields.length} required field(s)
-                          </Badge>
-                        )}
-                        {data?.allowedRoles && data.allowedRoles.length > 0 && (
-                          <Badge variant="secondary" className="text-[10px]">
-                            {data.allowedRoles.length} role(s)
-                          </Badge>
-                        )}
-                      </div>
+                    <div className="pt-2 border-t space-y-2">
+                      <p className="text-xs text-muted-foreground">Rules</p>
+                      
+                      {data?.allowedTeamIds && data.allowedTeamIds.length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <Users className="size-3 text-blue-500" />
+                          <span className="text-xs">
+                            {data.allowedTeamIds.length} team(s) allowed
+                          </span>
+                        </div>
+                      )}
+                      
+                      {data?.allowedMemberRoles && data.allowedMemberRoles.length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <Shield className="size-3 text-purple-500" />
+                          <span className="text-xs">
+                            Roles: {data.allowedMemberRoles.join(", ")}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {data?.requiresApproval && (
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="size-3 text-green-500" />
+                          <span className="text-xs">
+                            Requires approval
+                            {data.approverTeamIds && data.approverTeamIds.length > 0 
+                              ? ` (${data.approverTeamIds.length} team(s))`
+                              : ""
+                            }
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
 

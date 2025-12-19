@@ -40,7 +40,7 @@ import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { useCreateWorkflowModal } from "@/features/workflows/hooks/use-create-workflow-modal";
 import { CreateWorkflowModal } from "@/features/workflows/components/create-workflow-modal";
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
-import { StatusCategory, STATUS_CATEGORY_CONFIG } from "@/features/workflows/types";
+import { StatusType, STATUS_TYPE_CONFIG } from "@/features/workflows/types";
 
 export const ProjectWorkflowClient = () => {
   const router = useRouter();
@@ -253,7 +253,7 @@ export const ProjectWorkflowClient = () => {
                         />
                         <span className="text-sm font-medium">{status.name}</span>
                         <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                          {STATUS_CATEGORY_CONFIG[status.category as StatusCategory]?.label || status.category}
+                          {STATUS_TYPE_CONFIG[status.statusType as StatusType]?.label || status.statusType}
                         </Badge>
                       </div>
                     ))}

@@ -202,6 +202,7 @@ const app = new Hono()
         deadline,
         image,
         spaceId,
+        workflowId,
         customWorkItemTypes,
         customPriorities,
         customLabels
@@ -264,6 +265,12 @@ const app = new Hono()
       if (spaceId !== undefined) {
         // Handle explicit null, empty string, and the string "null" as null
         updateData.spaceId = (spaceId === null || spaceId === "" || spaceId === "null") ? null : spaceId;
+      }
+
+      // Only update workflowId if it was provided (null to disconnect from workflow)
+      if (workflowId !== undefined) {
+        // Handle explicit null, empty string, and the string "null" as null
+        updateData.workflowId = (workflowId === null || workflowId === "" || workflowId === "null") ? null : workflowId;
       }
 
       // Update custom definitions if provided

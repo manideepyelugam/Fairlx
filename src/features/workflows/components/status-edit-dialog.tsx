@@ -3,7 +3,42 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Circle, CheckCircle, Clock } from "lucide-react";
+import {
+  Circle,
+  CheckCircle,
+  Clock,
+  Play,
+  Pause,
+  AlertCircle,
+  XCircle,
+  Archive,
+  Flag,
+  Star,
+  Zap,
+  Target,
+  Rocket,
+  Bug,
+  Lightbulb,
+  Bookmark,
+  MessageCircle,
+  Eye,
+  Search,
+  Settings,
+  Users,
+  Shield,
+  Lock,
+  Unlock,
+  Heart,
+  ThumbsUp,
+  Send,
+  FileText,
+  Folder,
+  Package,
+  Code,
+  GitBranch,
+  RefreshCw,
+  type LucideIcon,
+} from "lucide-react";
 
 import {
   Dialog,
@@ -33,14 +68,52 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 import {
   WorkflowStatus,
-  StatusCategory,
-  STATUS_CATEGORY_CONFIG,
+  StatusType,
+  STATUS_TYPE_CONFIG,
   STATUS_COLORS,
 } from "../types";
 import { cn } from "@/lib/utils";
+
+// Available icons for status
+const AVAILABLE_ICONS: { name: string; icon: LucideIcon; label: string }[] = [
+  { name: "circle", icon: Circle, label: "Circle" },
+  { name: "check-circle", icon: CheckCircle, label: "Check" },
+  { name: "clock", icon: Clock, label: "Clock" },
+  { name: "play", icon: Play, label: "Play" },
+  { name: "pause", icon: Pause, label: "Pause" },
+  { name: "alert-circle", icon: AlertCircle, label: "Alert" },
+  { name: "x-circle", icon: XCircle, label: "Cancel" },
+  { name: "archive", icon: Archive, label: "Archive" },
+  { name: "flag", icon: Flag, label: "Flag" },
+  { name: "star", icon: Star, label: "Star" },
+  { name: "zap", icon: Zap, label: "Zap" },
+  { name: "target", icon: Target, label: "Target" },
+  { name: "rocket", icon: Rocket, label: "Rocket" },
+  { name: "bug", icon: Bug, label: "Bug" },
+  { name: "lightbulb", icon: Lightbulb, label: "Idea" },
+  { name: "bookmark", icon: Bookmark, label: "Bookmark" },
+  { name: "message-circle", icon: MessageCircle, label: "Message" },
+  { name: "eye", icon: Eye, label: "Review" },
+  { name: "search", icon: Search, label: "Search" },
+  { name: "settings", icon: Settings, label: "Settings" },
+  { name: "users", icon: Users, label: "Users" },
+  { name: "shield", icon: Shield, label: "Shield" },
+  { name: "lock", icon: Lock, label: "Lock" },
+  { name: "unlock", icon: Unlock, label: "Unlock" },
+  { name: "heart", icon: Heart, label: "Heart" },
+  { name: "thumbs-up", icon: ThumbsUp, label: "Approved" },
+  { name: "send", icon: Send, label: "Send" },
+  { name: "file-text", icon: FileText, label: "Document" },
+  { name: "folder", icon: Folder, label: "Folder" },
+  { name: "package", icon: Package, label: "Package" },
+  { name: "code", icon: Code, label: "Code" },
+  { name: "git-branch", icon: GitBranch, label: "Branch" },
+  { name: "refresh-cw", icon: RefreshCw, label: "Refresh" },
+];
 
 const statusFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(50),
@@ -52,7 +125,8 @@ const statusFormSchema = z.object({
       /^[A-Z][A-Z0-9_]*$/,
       "Key must start with a letter, contain only uppercase letters, numbers, and underscores"
     ),
-  category: z.nativeEnum(StatusCategory),
+  statusType: z.nativeEnum(StatusType),
+  icon: z.string().min(1, "Icon is required"),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color"),
   description: z.string().max(200).optional(),
   isInitial: z.boolean().default(false),
@@ -70,6 +144,12 @@ interface StatusEditDialogProps {
   onSave: (data: Partial<WorkflowStatus>) => Promise<void>;
 }
 
+// Helper to get icon component from name
+const getIconFromName = (name: string): LucideIcon => {
+  const found = AVAILABLE_ICONS.find((i) => i.name === name);
+  return found?.icon || Circle;
+};
+
 export const StatusEditDialog = ({
   open,
   onOpenChange,
@@ -85,7 +165,8 @@ export const StatusEditDialog = ({
     defaultValues: {
       name: status?.name || "",
       key: status?.key || "",
-      category: status?.category || StatusCategory.TODO,
+      statusType: status?.statusType || StatusType.OPEN,
+      icon: status?.icon || "circle",
       color: status?.color || "#6B7280",
       description: status?.description || "",
       isInitial: status?.isInitial || false,
@@ -98,7 +179,8 @@ export const StatusEditDialog = ({
     form.reset({
       name: status?.name || "",
       key: status?.key || "",
-      category: status?.category || StatusCategory.TODO,
+      statusType: status?.statusType || StatusType.OPEN,
+      icon: status?.icon || "circle",
       color: status?.color || "#6B7280",
       description: status?.description || "",
       isInitial: status?.isInitial || false,
@@ -134,20 +216,13 @@ export const StatusEditDialog = ({
     resetForm();
   };
 
-  const getCategoryIcon = (category: StatusCategory) => {
-    switch (category) {
-      case StatusCategory.TODO:
-        return Circle;
-      case StatusCategory.IN_PROGRESS:
-        return Clock;
-      case StatusCategory.DONE:
-        return CheckCircle;
-    }
-  };
+  const selectedIcon = form.watch("icon");
+  const selectedColor = form.watch("color");
+  const SelectedIconComponent = getIconFromName(selectedIcon);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Edit Status" : "Create New Status"}
@@ -160,7 +235,7 @@ export const StatusEditDialog = ({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 overflow-y-auto flex-1 pr-2">
             {/* Name & Key */}
             <div className="grid grid-cols-2 gap-4">
               <FormField
@@ -201,41 +276,92 @@ export const StatusEditDialog = ({
               />
             </div>
 
-            {/* Category */}
+            {/* Status Type */}
             <FormField
               control={form.control}
-              name="category"
+              name="statusType"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Category</FormLabel>
+                  <FormLabel>Status Type</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
+                        <SelectValue placeholder="Select status type" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {Object.entries(STATUS_CATEGORY_CONFIG).map(
-                        ([key, config]) => {
-                          const Icon = getCategoryIcon(key as StatusCategory);
-                          return (
-                            <SelectItem key={key} value={key}>
-                              <div className="flex items-center gap-2">
-                                <Icon className="size-4" />
-                                <span>{config.label}</span>
-                                <span className="text-muted-foreground text-xs">
-                                  - {config.description}
-                                </span>
-                              </div>
-                            </SelectItem>
-                          );
-                        }
+                      {Object.entries(STATUS_TYPE_CONFIG).map(
+                        ([key, config]) => (
+                          <SelectItem key={key} value={key}>
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="size-3 rounded-full"
+                                style={{ backgroundColor: config.defaultColor }}
+                              />
+                              <span>{config.label}</span>
+                              <span className="text-muted-foreground text-xs">
+                                - {config.description}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        )
                       )}
                     </SelectContent>
                   </Select>
+                  <FormDescription>
+                    Used for analytics and reporting. Choose based on how work is progressing.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Icon Picker */}
+            <FormField
+              control={form.control}
+              name="icon"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Icon</FormLabel>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div
+                      className="p-2 rounded-lg border"
+                      style={{ backgroundColor: `${selectedColor}20` }}
+                    >
+                      <SelectedIconComponent
+                        className="size-6"
+                        style={{ color: selectedColor }}
+                      />
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      Selected: {AVAILABLE_ICONS.find((i) => i.name === field.value)?.label || "Circle"}
+                    </span>
+                  </div>
+                  <ScrollArea className="h-32 rounded-lg border p-2">
+                    <div className="grid grid-cols-8 gap-1">
+                      {AVAILABLE_ICONS.map((iconItem) => {
+                        const Icon = iconItem.icon;
+                        return (
+                          <button
+                            key={iconItem.name}
+                            type="button"
+                            onClick={() => form.setValue("icon", iconItem.name)}
+                            className={cn(
+                              "p-2 rounded-md transition-all hover:bg-muted",
+                              field.value === iconItem.name &&
+                                "ring-2 ring-primary bg-primary/10"
+                            )}
+                            title={iconItem.label}
+                          >
+                            <Icon className="size-4" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
                   <FormMessage />
                 </FormItem>
               )}
@@ -347,7 +473,7 @@ export const StatusEditDialog = ({
               />
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="pt-4">
               <Button
                 type="button"
                 variant="outline"

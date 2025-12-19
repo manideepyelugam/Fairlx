@@ -1,29 +1,46 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { ID, Query } from "node-appwrite";
+import { z } from "zod";
 
 import { createSessionClient } from "@/lib/appwrite";
 import { DATABASE_ID, CUSTOM_COLUMNS_ID } from "@/config";
 
 import { createCustomColumnSchema, updateCustomColumnSchema } from "../schemas";
 
+// Query schema for GET - supports both projectId and workflowId
+const getCustomColumnsQuerySchema = z.object({
+  workspaceId: z.string(),
+  projectId: z.string().optional(),
+  workflowId: z.string().optional(),
+});
+
 const app = new Hono()
   .get(
     "/",
-    zValidator("query", createCustomColumnSchema.pick({ workspaceId: true, projectId: true })),
+    zValidator("query", getCustomColumnsQuerySchema),
     async (c) => {
-      const { workspaceId, projectId } = c.req.valid("query");
+      const { workspaceId, projectId, workflowId } = c.req.valid("query");
 
       const { databases } = await createSessionClient();
+
+      const queries = [
+        Query.equal("workspaceId", workspaceId),
+        Query.orderAsc("position"),
+      ];
+
+      // Filter by projectId or workflowId
+      if (projectId) {
+        queries.push(Query.equal("projectId", projectId));
+      }
+      if (workflowId) {
+        queries.push(Query.equal("workflowId", workflowId));
+      }
 
       const customColumns = await databases.listDocuments(
         DATABASE_ID,
         CUSTOM_COLUMNS_ID,
-        [
-          Query.equal("workspaceId", workspaceId),
-          Query.equal("projectId", projectId),
-          Query.orderAsc("position"),
-        ]
+        queries
       );
 
       return c.json({ data: customColumns });
@@ -33,9 +50,18 @@ const app = new Hono()
     "/",
     zValidator("json", createCustomColumnSchema),
     async (c) => {
-      const { name, workspaceId, projectId, icon, color, position } = c.req.valid("json");
+      const { name, workspaceId, projectId, workflowId, icon, color, position } = c.req.valid("json");
 
       const { databases } = await createSessionClient();
+
+      // Build query based on projectId or workflowId
+      const filterQueries = [Query.equal("workspaceId", workspaceId)];
+      if (projectId) {
+        filterQueries.push(Query.equal("projectId", projectId));
+      }
+      if (workflowId) {
+        filterQueries.push(Query.equal("workflowId", workflowId));
+      }
 
       // If no position provided, get the highest position + 1000
       let finalPosition = position;
@@ -44,8 +70,7 @@ const app = new Hono()
           DATABASE_ID,
           CUSTOM_COLUMNS_ID,
           [
-            Query.equal("workspaceId", workspaceId),
-            Query.equal("projectId", projectId),
+            ...filterQueries,
             Query.orderDesc("position"),
             Query.limit(1),
           ]
@@ -56,18 +81,27 @@ const app = new Hono()
           : 1000;
       }
 
+      const documentData: Record<string, unknown> = {
+        name,
+        workspaceId,
+        icon,
+        color,
+        position: finalPosition,
+      };
+
+      // Only set projectId or workflowId if provided
+      if (projectId) {
+        documentData.projectId = projectId;
+      }
+      if (workflowId) {
+        documentData.workflowId = workflowId;
+      }
+
       const customColumn = await databases.createDocument(
         DATABASE_ID,
         CUSTOM_COLUMNS_ID,
         ID.unique(),
-        {
-          name,
-          workspaceId,
-          projectId,
-          icon,
-          color,
-          position: finalPosition,
-        }
+        documentData
       );
 
       return c.json({ data: customColumn });

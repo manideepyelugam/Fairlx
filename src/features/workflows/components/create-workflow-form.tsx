@@ -35,13 +35,14 @@ import { Badge } from "@/components/ui/badge";
 
 import { createWorkflowSchema } from "../schemas";
 import { useCreateWorkflow } from "../api/use-create-workflow";
-import { StatusCategory, DEFAULT_SOFTWARE_WORKFLOW } from "../types";
+import { StatusType, STATUS_TYPE_CONFIG, DEFAULT_SOFTWARE_WORKFLOW } from "../types";
 
 // Type for local status management
 interface LocalStatus {
   name: string;
   key: string;
-  category: StatusCategory;
+  statusType: StatusType;
+  icon: string;
   color: string;
   position: number;
   isInitial: boolean;
@@ -55,22 +56,26 @@ interface CreateWorkflowFormProps {
   projectId?: string;
 }
 
-const STATUS_CATEGORY_COLORS: Record<StatusCategory, string> = {
-  [StatusCategory.TODO]: "#6b7280",
-  [StatusCategory.IN_PROGRESS]: "#3b82f6",
-  [StatusCategory.DONE]: "#22c55e",
+const STATUS_TYPE_COLORS: Record<StatusType, string> = {
+  [StatusType.OPEN]: "#6b7280",
+  [StatusType.IN_PROGRESS]: "#3b82f6",
+  [StatusType.CLOSED]: "#22c55e",
 };
 
-export const CreateWorkflowForm = ({ onCancel, workspaceId: propWorkspaceId, spaceId, projectId }: CreateWorkflowFormProps) => {
+export const CreateWorkflowForm = ({ onCancel, workspaceId: propWorkspaceId, spaceId }: CreateWorkflowFormProps) => {
   const hookWorkspaceId = useWorkspaceId();
   const workspaceId = propWorkspaceId || hookWorkspaceId;
   const { mutate, isPending } = useCreateWorkflow();
 
   const [statuses, setStatuses] = useState<LocalStatus[]>(DEFAULT_SOFTWARE_WORKFLOW.statuses.map((s, i) => ({
-    ...s,
+    name: s.name,
+    key: s.key,
+    statusType: s.statusType,
+    icon: s.icon,
+    color: s.color,
     position: i,
     isInitial: i === 0,
-    isFinal: s.category === StatusCategory.DONE,
+    isFinal: s.statusType === StatusType.CLOSED,
   })));
 
   const form = useForm<z.infer<typeof createWorkflowSchema>>({
@@ -89,7 +94,8 @@ export const CreateWorkflowForm = ({ onCancel, workspaceId: propWorkspaceId, spa
       {
         name: "",
         key: "",
-        category: StatusCategory.TODO,
+        statusType: StatusType.OPEN,
+        icon: "circle",
         color: "#94a3b8",
         position: statuses.length,
         isInitial: false,
@@ -114,9 +120,9 @@ export const CreateWorkflowForm = ({ onCancel, workspaceId: propWorkspaceId, spa
         .substring(0, 20);
     }
     
-    // Auto-set color based on category
-    if (field === "category") {
-      newStatuses[index].color = STATUS_CATEGORY_COLORS[value as StatusCategory];
+    // Auto-set color based on status type
+    if (field === "statusType") {
+      newStatuses[index].color = STATUS_TYPE_COLORS[value as StatusType];
     }
     
     setStatuses(newStatuses);
@@ -129,7 +135,6 @@ export const CreateWorkflowForm = ({ onCancel, workspaceId: propWorkspaceId, spa
           ...values,
           workspaceId,
           spaceId: spaceId || undefined,
-          projectId: projectId || undefined,
         }
       },
       {
@@ -275,16 +280,16 @@ export const CreateWorkflowForm = ({ onCancel, workspaceId: propWorkspaceId, spa
                         className="flex-1"
                       />
                       <Select
-                        value={status.category}
-                        onValueChange={(value) => updateStatus(index, "category", value)}
+                        value={status.statusType}
+                        onValueChange={(value) => updateStatus(index, "statusType", value)}
                       >
                         <SelectTrigger className="w-32">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value={StatusCategory.TODO}>To Do</SelectItem>
-                          <SelectItem value={StatusCategory.IN_PROGRESS}>In Progress</SelectItem>
-                          <SelectItem value={StatusCategory.DONE}>Done</SelectItem>
+                          <SelectItem value={StatusType.OPEN}>Open</SelectItem>
+                          <SelectItem value={StatusType.IN_PROGRESS}>In Progress</SelectItem>
+                          <SelectItem value={StatusType.CLOSED}>Closed</SelectItem>
                         </SelectContent>
                       </Select>
                       <input
@@ -308,15 +313,15 @@ export const CreateWorkflowForm = ({ onCancel, workspaceId: propWorkspaceId, spa
                 </div>
 
                 <div className="mt-4 flex gap-2 flex-wrap">
-                  {Object.entries(STATUS_CATEGORY_COLORS).map(([category, color]) => (
+                  {Object.entries(STATUS_TYPE_CONFIG).map(([statusType, config]) => (
                     <Badge
-                      key={category}
+                      key={statusType}
                       variant="outline"
                       className="text-xs"
-                      style={{ borderColor: color, color }}
+                      style={{ borderColor: config.defaultColor, color: config.defaultColor }}
                     >
-                      {category.replace("_", " ")}:{" "}
-                      {statuses.filter((s: LocalStatus) => s.category === category).length}
+                      {config.label}:{" "}
+                      {statuses.filter((s: LocalStatus) => s.statusType === statusType).length}
                     </Badge>
                   ))}
                 </div>
