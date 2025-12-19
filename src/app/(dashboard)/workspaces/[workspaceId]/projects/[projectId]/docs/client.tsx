@@ -1,16 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { 
-  ArrowLeft, 
   BookOpen, 
   FolderOpen,
   Sparkles,
+  FileText,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { PageLoader } from "@/components/page-loader";
 import { PageError } from "@/components/page-error";
 
@@ -34,72 +30,45 @@ export const ProjectDocsClient = () => {
   }
 
   return (
-    <div className="flex flex-col gap-y-6">
+    <div className="flex flex-col  gap-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
-          <Link href={`/workspaces/${workspaceId}/projects/${projectId}`}>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight">Project Documents</h1>
-              <Badge variant="secondary" className="text-xs">
-                {project.name}
-              </Badge>
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Manage PRD, FRD, and other project documentation
-            </p>
-          </div>
+      <div className="flex flex-col gap-1 mb-4">
+        <div className="flex items-center gap-2">
+         
+          <h1 className="text-2xl font-semibold text-gray-900 tracking-tight dark:text-white">Project Documents</h1>
+          <span className="text-sm font-light text-gray-400">•</span>
+          <span className="text-sm tracking-normal font-light text-gray-500 dark:text-gray-400">{project.name}</span>
         </div>
+        <p className="text-sm font-normal text-gray-500 dark:text-gray-400 ">
+          Manage PRD, FRD, and other project documentation
+        </p>
       </div>
 
-      {/* Quick Info Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-blue-600" />
-              Product Requirements
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              Upload PRD documents to define product features, user stories, and acceptance criteria.
-            </p>
-          </CardContent>
-        </Card>
+      {/* Quick Info Pills */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="flex items-center gap-4 px-6 py-3 rounded-md bg-[#1269d6]/5 border border-[#1269d6]/10">
+          <BookOpen className="h-5 w-5 text-[#1269d6]" />
+          <div className="flex flex-col">
+            <span className="text-xs font-medium text-gray-700 dark:text-gray-200">Product Requirements</span>
+            <span className="text-[10px] font-light text-gray-500 dark:text-gray-400">PRD, features, user stories</span>
+          </div>
+        </div>
 
-        <Card className="border-purple-200 bg-purple-50/50 dark:bg-purple-950/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <FolderOpen className="h-4 w-4 text-purple-600" />
-              Functional Specs
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              Store FRD and technical specifications for development reference.
-            </p>
-          </CardContent>
-        </Card>
+        <div className="flex items-center gap-4 px-6 py-3 rounded-md bg-[#1269d6]/5 border border-[#1269d6]/10">
+          <FolderOpen className="h-5 w-5 text-[#1269d6]" />
+          <div className="flex flex-col">
+            <span className="text-xs font-medium text-gray-700 dark:text-gray-200">Functional Specs</span>
+            <span className="text-[10px] font-light text-gray-500 dark:text-gray-400">FRD, technical specs</span>
+          </div>
+        </div>
 
-        <Card className="border-indigo-200 bg-indigo-50/50 dark:bg-indigo-950/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-indigo-600" />
-              AI Integration
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              Documents are automatically analyzed by AI for context-aware assistance.
-            </p>
-          </CardContent>
-        </Card>
+        <div className="flex items-center gap-4 px-6 py-3 rounded-md bg-[#1269d6]/5 border border-[#1269d6]/10">
+          <Sparkles className="h-5 w-5 text-[#1269d6]" />
+          <div className="flex flex-col">
+            <span className="text-xs font-medium text-gray-700 dark:text-gray-200">AI Integration</span>
+            <span className="text-[10px] font-light text-gray-500 dark:text-gray-400">Auto-analyzed by AI</span>
+          </div>
+        </div>
       </div>
 
       {/* Document List */}
