@@ -27,8 +27,6 @@ import {
  
   Clock,
   ListTodo,
-  Flag,
-  BarChart3,
   Layers,
   FolderKanban,
   ExternalLink,
@@ -40,17 +38,13 @@ import {
 import Link from "next/link"
 import { useMemo } from "react"
 import { 
-  PieChart as RechartsPieChart, 
-  Pie, 
-  Cell, 
   ResponsiveContainer, 
-  BarChart as RechartsBarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
   Tooltip,
+  BarChart as RechartsBarChart,
+  Bar,
+  XAxis,
+  YAxis,
   CartesianGrid,
-  Legend,
 } from "recharts"
 
 // Mini bar chart component for stat cards
@@ -851,7 +845,7 @@ export const WorkspaceIdClient = () => {
                 </div>
                 {dynamicData.contributionData.length > 0 ? (
                   <div className="space-y-3">
-                    {dynamicData.contributionData.slice(0, 5).map((contributor, idx) => (
+                    {dynamicData.contributionData.slice(0, 5).map((contributor) => (
                       <div key={contributor.id} className="flex items-center py-1 gap-3">
                       
                         <MemberAvatar

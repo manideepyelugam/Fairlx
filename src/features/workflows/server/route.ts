@@ -11,6 +11,8 @@ import {
   WORKFLOWS_ID,
   WORKFLOW_STATUSES_ID,
   WORKFLOW_TRANSITIONS_ID,
+  PROJECTS_ID,
+  TEAM_MEMBERS_ID,
 } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 
@@ -28,6 +30,7 @@ import {
   WorkflowTransition,
   PopulatedWorkflow,
   DEFAULT_SOFTWARE_WORKFLOW,
+  StatusType,
 } from "../types";
 
 const app = new Hono()
@@ -46,7 +49,6 @@ const app = new Hono()
         description,
         workspaceId,
         spaceId,
-        projectId,
         isDefault,
         copyFromWorkflowId,
       } = c.req.valid("json");
@@ -72,8 +74,8 @@ const app = new Hono()
           description: description || null,
           workspaceId,
           spaceId: spaceId || null,
-          projectId: projectId || null,
           isDefault: isDefault || false,
+          isArchived: false,
         }
       );
 
@@ -102,8 +104,9 @@ const app = new Hono()
               workflowId: workflow.$id,
               name: status.name,
               key: status.key,
-              category: status.category,
+              icon: status.icon,
               color: status.color,
+              statusType: status.statusType,
               description: status.description,
               position: status.position,
               positionX: status.positionX || 0,
@@ -130,9 +133,11 @@ const app = new Hono()
                 toStatusId: newToId,
                 name: transition.name,
                 description: transition.description,
-                requiredFields: transition.requiredFields,
-                allowedRoles: transition.allowedRoles,
-                autoAssign: transition.autoAssign,
+                allowedTeamIds: transition.allowedTeamIds,
+                allowedMemberRoles: transition.allowedMemberRoles,
+                requiresApproval: transition.requiresApproval,
+                approverTeamIds: transition.approverTeamIds,
+                autoTransition: transition.autoTransition,
               }
             );
           }
@@ -151,8 +156,9 @@ const app = new Hono()
               workflowId: workflow.$id,
               name: statusDef.name,
               key: statusDef.key,
-              category: statusDef.category,
+              icon: statusDef.icon,
               color: statusDef.color,
+              statusType: statusDef.statusType,
               position: statusDef.position,
               positionX: statusDef.positionX || (statusDef.position * 250),
               positionY: statusDef.positionY || 100,
@@ -179,7 +185,10 @@ const app = new Hono()
                   workflowId: workflow.$id,
                   fromStatusId: fromId,
                   toStatusId: toId,
-                  autoAssign: false,
+                  name: transitionDef.name || null,
+                  allowedTeamIds: transitionDef.allowedTeamIds || null,
+                  requiresApproval: transitionDef.requiresApproval || false,
+                  autoTransition: false,
                 }
               );
             }
@@ -457,8 +466,9 @@ const app = new Hono()
           workflowId,
           name: statusData.name,
           key: statusData.key,
-          category: statusData.category,
+          icon: statusData.icon || "Circle",
           color: statusData.color,
+          statusType: statusData.statusType || StatusType.OPEN,
           description: statusData.description || null,
           position,
           positionX: statusData.positionX || 0,
@@ -655,9 +665,12 @@ const app = new Hono()
           toStatusId: transitionData.toStatusId,
           name: transitionData.name || null,
           description: transitionData.description || null,
-          requiredFields: transitionData.requiredFields || null,
-          allowedRoles: transitionData.allowedRoles || null,
-          autoAssign: transitionData.autoAssign || false,
+          allowedTeamIds: transitionData.allowedTeamIds || null,
+          allowedMemberRoles: transitionData.allowedMemberRoles || null,
+          requiresApproval: transitionData.requiresApproval || false,
+          approverTeamIds: transitionData.approverTeamIds || null,
+          autoTransition: transitionData.autoTransition || false,
+          conditions: transitionData.conditions || null,
         }
       );
 
@@ -728,11 +741,17 @@ const app = new Hono()
         return c.json({ error: "Only admins can update transitions" }, 403);
       }
 
+      // Serialize conditions to JSON string if provided
+      const dataToUpdate = {
+        ...updates,
+        conditions: updates.conditions ? JSON.stringify(updates.conditions) : null,
+      };
+
       const updatedTransition = await databases.updateDocument<WorkflowTransition>(
         DATABASE_ID,
         WORKFLOW_TRANSITIONS_ID,
         transitionId,
-        updates
+        dataToUpdate
       );
 
       return c.json({ data: updatedTransition });
@@ -829,9 +848,9 @@ const app = new Hono()
 
       const transitionDoc = transition.documents[0];
 
-      // Check role restrictions
-      if (transitionDoc.allowedRoles && transitionDoc.allowedRoles.length > 0) {
-        if (!transitionDoc.allowedRoles.includes(member.role)) {
+      // Check role restrictions (using new allowedMemberRoles)
+      if (transitionDoc.allowedMemberRoles && transitionDoc.allowedMemberRoles.length > 0) {
+        if (!transitionDoc.allowedMemberRoles.includes(member.role)) {
           return c.json({
             data: {
               allowed: false,
@@ -842,11 +861,63 @@ const app = new Hono()
         }
       }
 
+      // Check team restrictions
+      if (transitionDoc.allowedTeamIds && transitionDoc.allowedTeamIds.length > 0) {
+        // Get user's team memberships
+        const userTeamMemberships = await databases.listDocuments(
+          DATABASE_ID,
+          TEAM_MEMBERS_ID,
+          [Query.equal("userId", user.$id), Query.equal("workspaceId", workflow.workspaceId)]
+        );
+        
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const userTeamIds = userTeamMemberships.documents.map((m) => (m as any).teamId);
+        const hasAllowedTeam = transitionDoc.allowedTeamIds.some((teamId: string) => 
+          userTeamIds.includes(teamId)
+        );
+        
+        if (!hasAllowedTeam) {
+          return c.json({
+            data: {
+              allowed: false,
+              reason: "TEAM_NOT_ALLOWED",
+              message: "Your team does not have permission for this transition",
+            },
+          });
+        }
+      }
+
+      // Check if requires approval
+      if (transitionDoc.requiresApproval) {
+        // Check if user is in an approver team
+        const userTeamMemberships = await databases.listDocuments(
+          DATABASE_ID,
+          TEAM_MEMBERS_ID,
+          [Query.equal("userId", user.$id), Query.equal("workspaceId", workflow.workspaceId)]
+        );
+        
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const userTeamIds = userTeamMemberships.documents.map((m) => (m as any).teamId);
+        const isApprover = transitionDoc.approverTeamIds?.some((teamId: string) => 
+          userTeamIds.includes(teamId)
+        );
+        
+        if (!isApprover) {
+          return c.json({
+            data: {
+              allowed: false,
+              reason: "REQUIRES_APPROVAL",
+              message: "This transition requires approval from designated teams",
+              approverTeamIds: transitionDoc.approverTeamIds,
+            },
+          });
+        }
+      }
+
       return c.json({
         data: {
           allowed: true,
           transition: transitionDoc,
-          requiredFields: transitionDoc.requiredFields || [],
         },
       });
     }
@@ -895,12 +966,35 @@ const app = new Hono()
         ]
       );
 
-      // Filter by role if needed
+      // Get user's team memberships for filtering
+      const userTeamMemberships = await databases.listDocuments(
+        DATABASE_ID,
+        TEAM_MEMBERS_ID,
+        [Query.equal("userId", user.$id), Query.equal("workspaceId", workflow.workspaceId)]
+      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const userTeamIds = userTeamMemberships.documents.map((m) => (m as any).teamId);
+
+      // Filter transitions based on role and team restrictions
       const allowedTransitions = transitions.documents.filter((t) => {
-        if (!t.allowedRoles || t.allowedRoles.length === 0) {
-          return true;
+        // Check role restrictions
+        if (t.allowedMemberRoles && t.allowedMemberRoles.length > 0) {
+          if (!t.allowedMemberRoles.includes(member.role)) {
+            return false;
+          }
         }
-        return t.allowedRoles.includes(member.role);
+        
+        // Check team restrictions
+        if (t.allowedTeamIds && t.allowedTeamIds.length > 0) {
+          const hasAllowedTeam = t.allowedTeamIds.some((teamId: string) => 
+            userTeamIds.includes(teamId)
+          );
+          if (!hasAllowedTeam) {
+            return false;
+          }
+        }
+        
+        return true;
       });
 
       // Get the target status details
@@ -921,9 +1015,170 @@ const app = new Hono()
       const result = allowedTransitions.map((t) => ({
         ...t,
         toStatus: statusMap.get(t.toStatusId),
+        requiresApproval: t.requiresApproval || false,
       }));
 
       return c.json({ data: result });
+    }
+  )
+
+  // ============ Connect project to workflow ============
+  .post(
+    "/:workflowId/connect-project/:projectId",
+    sessionMiddleware,
+    async (c) => {
+      const databases = c.get("databases");
+      const user = c.get("user");
+      const { workflowId, projectId } = c.req.param();
+
+      // Get the workflow
+      const workflow = await databases.getDocument<Workflow>(
+        DATABASE_ID,
+        WORKFLOWS_ID,
+        workflowId
+      );
+
+      const member = await getMember({
+        databases,
+        workspaceId: workflow.workspaceId,
+        userId: user.$id,
+      });
+
+      if (!member || member.role !== MemberRole.ADMIN) {
+        return c.json({ error: "Only admins can connect projects to workflows" }, 403);
+      }
+
+      // Get the project
+      const project = await databases.getDocument(
+        DATABASE_ID,
+        PROJECTS_ID,
+        projectId
+      );
+
+      if (project.workspaceId !== workflow.workspaceId) {
+        return c.json({ error: "Project and workflow must be in the same workspace" }, 400);
+      }
+
+      // Update the project to use this workflow
+      const updatedProject = await databases.updateDocument(
+        DATABASE_ID,
+        PROJECTS_ID,
+        projectId,
+        {
+          workflowId: workflowId,
+        }
+      );
+
+      return c.json({
+        data: {
+          project: updatedProject,
+          workflow: workflow,
+        },
+      });
+    }
+  )
+
+  // ============ Disconnect project from workflow ============
+  .post(
+    "/:workflowId/disconnect-project/:projectId",
+    sessionMiddleware,
+    async (c) => {
+      const databases = c.get("databases");
+      const user = c.get("user");
+      const { workflowId, projectId } = c.req.param();
+
+      // Get the workflow
+      const workflow = await databases.getDocument<Workflow>(
+        DATABASE_ID,
+        WORKFLOWS_ID,
+        workflowId
+      );
+
+      const member = await getMember({
+        databases,
+        workspaceId: workflow.workspaceId,
+        userId: user.$id,
+      });
+
+      if (!member || member.role !== MemberRole.ADMIN) {
+        return c.json({ error: "Only admins can disconnect projects from workflows" }, 403);
+      }
+
+      // Update the project to remove workflow connection
+      const updatedProject = await databases.updateDocument(
+        DATABASE_ID,
+        PROJECTS_ID,
+        projectId,
+        {
+          workflowId: null,
+        }
+      );
+
+      return c.json({
+        data: {
+          project: updatedProject,
+        },
+      });
+    }
+  )
+
+  // ============ Get workflow statuses for a project ============
+  .get(
+    "/project/:projectId/statuses",
+    sessionMiddleware,
+    async (c) => {
+      const databases = c.get("databases");
+      const user = c.get("user");
+      const { projectId } = c.req.param();
+
+      // Get the project
+      const project = await databases.getDocument(
+        DATABASE_ID,
+        PROJECTS_ID,
+        projectId
+      );
+
+      const member = await getMember({
+        databases,
+        workspaceId: project.workspaceId,
+        userId: user.$id,
+      });
+
+      if (!member) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      // If project has a workflow, get its statuses
+      if (project.workflowId) {
+        const statuses = await databases.listDocuments<WorkflowStatus>(
+          DATABASE_ID,
+          WORKFLOW_STATUSES_ID,
+          [Query.equal("workflowId", project.workflowId), Query.orderAsc("position")]
+        );
+
+        return c.json({ 
+          data: { 
+            statuses: statuses.documents,
+            workflowId: project.workflowId,
+          } 
+        });
+      }
+
+      // No workflow connected - return default statuses
+      const defaultStatuses = [
+        { $id: "TODO", name: "To Do", key: "TODO", icon: "Circle", color: "#6B7280", statusType: StatusType.OPEN, position: 0, isInitial: true, isFinal: false },
+        { $id: "ASSIGNED", name: "Assigned", key: "ASSIGNED", icon: "UserCheck", color: "#F59E0B", statusType: StatusType.OPEN, position: 1, isInitial: false, isFinal: false },
+        { $id: "IN_PROGRESS", name: "In Progress", key: "IN_PROGRESS", icon: "Clock", color: "#3B82F6", statusType: StatusType.IN_PROGRESS, position: 2, isInitial: false, isFinal: false },
+        { $id: "IN_REVIEW", name: "In Review", key: "IN_REVIEW", icon: "Eye", color: "#8B5CF6", statusType: StatusType.IN_PROGRESS, position: 3, isInitial: false, isFinal: false },
+        { $id: "DONE", name: "Done", key: "DONE", icon: "CheckCircle", color: "#10B981", statusType: StatusType.CLOSED, position: 4, isInitial: false, isFinal: true },
+      ];
+
+      return c.json({ 
+        data: { 
+          statuses: defaultStatuses,
+          workflowId: null,
+        } 
+      });
     }
   );
 

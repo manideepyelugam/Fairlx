@@ -26,7 +26,7 @@ import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
 import { TaskStatus } from "@/features/tasks/types";
 
-import { createCustomColumnSchema } from "../schemas";
+import { createCustomColumnBaseSchema } from "../schemas";
 import { useCreateCustomColumn } from "../api/use-create-custom-column";
 import { useDeleteCustomColumn } from "../api/use-delete-custom-column";
 import { useGetCustomColumns } from "../api/use-get-custom-columns";
@@ -40,7 +40,7 @@ interface ManageColumnsFormProps {
 }
 
 // Omit workspaceId & projectId; they are injected on submit
-const formSchema = createCustomColumnSchema.omit({ workspaceId: true, projectId: true });
+const formSchema = createCustomColumnBaseSchema.omit({ workspaceId: true, projectId: true, workflowId: true });
 type FormData = z.infer<typeof formSchema>;
 
 export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {

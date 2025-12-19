@@ -1,12 +1,12 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { StatusCategory } from "../types";
+import { StatusType } from "../types";
 
 interface WorkflowStatusBadgeProps {
   name: string;
   color: string;
-  category: StatusCategory;
+  statusType: StatusType;
   size?: "sm" | "md" | "lg";
   className?: string;
 }

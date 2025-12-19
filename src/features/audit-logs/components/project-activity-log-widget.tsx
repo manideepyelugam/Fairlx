@@ -4,7 +4,7 @@ import { Clock, ExternalLink, CheckSquare, Zap, FileText, Timer, Paperclip, User
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MemberAvatar } from "@/features/members/components/member-avatar";

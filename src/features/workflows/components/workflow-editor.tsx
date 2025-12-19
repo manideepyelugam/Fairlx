@@ -45,10 +45,18 @@ const edgeTypes: Record<string, any> = {
   transitionEdge: TransitionEdge,
 };
 
+// Team type for the editor
+interface Team {
+  $id: string;
+  name: string;
+}
+
 interface WorkflowEditorProps {
   workflowId: string;
   statuses: WorkflowStatus[];
   transitions: WorkflowTransition[];
+  teams?: Team[];
+  isLoadingTeams?: boolean;
   isReadOnly?: boolean;
   onStatusCreate: (data: Partial<WorkflowStatus>) => Promise<void>;
   onStatusUpdate: (statusId: string, data: Partial<WorkflowStatus>) => Promise<void>;
@@ -63,6 +71,8 @@ export const WorkflowEditor = ({
   workflowId,
   statuses,
   transitions,
+  teams = [],
+  isLoadingTeams = false,
   isReadOnly = false,
   onStatusCreate,
   onStatusUpdate,
@@ -284,6 +294,8 @@ export const WorkflowEditor = ({
           }}
           transition={editingTransition}
           statuses={statuses}
+          teams={teams}
+          isLoadingTeams={isLoadingTeams}
           onSave={async (data) => {
             if (editingTransitionId) {
               await onTransitionUpdate(editingTransitionId, data);

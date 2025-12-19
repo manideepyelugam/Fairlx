@@ -10,6 +10,7 @@ import {
   Plus,
   PanelLeftClose,
   PanelLeft,
+  BookOpen,
 } from "lucide-react";
 import {
   ReactFlow,
@@ -33,6 +34,7 @@ import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
+import { useGetTeams } from "@/features/teams/api/use-get-teams";
 import { useGetWorkflow } from "@/features/workflows/api/use-get-workflow";
 import { useDeleteWorkflow } from "@/features/workflows/api/use-delete-workflow";
 import { useCreateWorkflowStatus } from "@/features/workflows/api/use-create-workflow-status";
@@ -43,6 +45,7 @@ import { useUpdateTransition } from "@/features/workflows/api/use-update-transit
 import { useDeleteTransition } from "@/features/workflows/api/use-delete-transition";
 import { useGetProjects } from "@/features/projects/api/use-get-projects";
 import { useUpdateProject } from "@/features/projects/api/use-update-project";
+import { useSyncFromProject } from "@/features/workflows/api/use-sync-from-project";
 import { useConfirm } from "@/hooks/use-confirm";
 import { PageLoader } from "@/components/page-loader";
 
@@ -84,6 +87,7 @@ const WorkflowEditor = () => {
 
   const { data: workflow, isLoading: workflowLoading } = useGetWorkflow({ workflowId });
   const { data: projectsData } = useGetProjects({ workspaceId });
+  const { data: teamsData, isLoading: isLoadingTeams } = useGetTeams({ workspaceId, spaceId });
   const { mutate: deleteWorkflow, isPending: isDeleting } = useDeleteWorkflow();
   const { mutateAsync: createStatus } = useCreateWorkflowStatus();
   const { mutateAsync: updateStatus } = useUpdateStatus();
@@ -92,6 +96,7 @@ const WorkflowEditor = () => {
   const { mutateAsync: updateTransition } = useUpdateTransition();
   const { mutateAsync: deleteTransitionMutation } = useDeleteTransition();
   const { mutate: updateProject, isPending: isUpdatingProject } = useUpdateProject();
+  const { mutate: syncFromProject, isPending: isSyncing } = useSyncFromProject();
 
   // Get projects for this space
   const projects = useMemo(() => {
@@ -233,9 +238,15 @@ const WorkflowEditor = () => {
   const handleConnectProject = useCallback((projectId: string) => {
     updateProject(
       { param: { projectId }, form: { workflowId } },
-      { onSuccess: () => setConnectProjectOpen(false) }
+      { 
+        onSuccess: () => {
+          setConnectProjectOpen(false);
+          // Auto-sync statuses from the connected project
+          syncFromProject({ param: { workflowId, projectId } });
+        } 
+      }
     );
-  }, [workflowId, updateProject]);
+  }, [workflowId, updateProject, syncFromProject]);
 
   // Disconnect project from workflow
   const handleDisconnectProject = useCallback(async (projectId: string) => {
@@ -243,6 +254,11 @@ const WorkflowEditor = () => {
     if (!ok) return;
     updateProject({ param: { projectId }, form: { workflowId: "" } });
   }, [confirmDisconnect, updateProject]);
+
+  // Sync workflow statuses from project's columns
+  const handleSyncFromProject = useCallback((projectId: string) => {
+    syncFromProject({ param: { workflowId, projectId } });
+  }, [workflowId, syncFromProject]);
 
   // Handle new connection (transition) creation
   const onConnect = useCallback(
@@ -406,6 +422,16 @@ const WorkflowEditor = () => {
           <Button
             variant="outline"
             size="sm"
+            asChild
+          >
+            <Link href={`/workspaces/${workspaceId}/workflow-guide`}>
+              <BookOpen className="size-4 mr-2" />
+              Workflow Guide
+            </Link>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setShowInfoPanel(!showInfoPanel)}
           >
             {showInfoPanel ? (
@@ -458,6 +484,8 @@ const WorkflowEditor = () => {
                   isAdmin={isAdmin}
                   onConnectProject={() => setConnectProjectOpen(true)}
                   onDisconnectProject={handleDisconnectProject}
+                  onSyncFromProject={handleSyncFromProject}
+                  isSyncing={isSyncing}
                   onRemoveStatus={handleRemoveStatus}
                 />
               </div>
@@ -575,6 +603,8 @@ const WorkflowEditor = () => {
         onOpenChange={setTransitionDialogOpen}
         transition={editingTransition}
         statuses={statuses}
+        teams={teamsData?.documents || []}
+        isLoadingTeams={isLoadingTeams}
         onSave={handleSaveTransition}
       />
     </div>

@@ -1,23 +1,17 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import {
   Clock,
   AlertCircle,
-  Users,
-  Layers,
   Flag,
   ArrowUpRight,
   MoreHorizontal,
-  FileText,
-  TrendingUp,
   PlusIcon,
-  CheckCircle2,
 } from "lucide-react";
 import { TaskStatus, TaskPriority, Task } from "../types";
-import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from "recharts";
+import { Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from "recharts";
 import { formatDistanceToNow, format } from "date-fns";
 import { useMemo } from "react";
 import { useGetMembers } from "@/features/members/api/use-get-members";
@@ -110,8 +104,9 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
     };
   }, [tasks]);
 
-  // Calculate monthly data for bar chart
-  const monthlyData = useMemo(() => {
+  // Calculate monthly data for bar chart (unused but kept for future use)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _monthlyData = useMemo(() => {
     const now = new Date();
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May'];
     const currentMonth = now.getMonth();
@@ -132,8 +127,9 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
     });
   }, [tasks]);
 
-  // Calculate workload distribution from real data
-  const workloadDistribution = useMemo(() => {
+  // Calculate workload distribution from real data (unused but kept for future use)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _workloadDistribution = useMemo(() => {
     const memberWorkload = members.map(member => {
       const memberTasks = tasks.filter(t => 
         t.assigneeId === member.$id || t.assigneeIds?.includes(member.$id)
@@ -195,8 +191,9 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
       });
   }, [tasks, members]);
 
-  // Top contributors
-  const contributionData = useMemo(() => {
+  // Top contributors (unused but kept for future use)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _contributionData = useMemo(() => {
     return members.map(member => {
       const memberTasks = tasks.filter(t => 
         t.assigneeId === member.$id || t.assigneeIds?.includes(member.$id)
@@ -215,8 +212,9 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
     }).filter(m => m.total > 0).sort((a, b) => b.completed - a.completed).slice(0, 5);
   }, [tasks, members]);
 
-  // Priority distribution
-  const priorityDistribution = useMemo(() => [
+  // Priority distribution (unused but kept for future use)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _priorityDistribution = useMemo(() => [
     { name: "URGENT", count: tasks.filter(t => t.priority === TaskPriority.URGENT).length, fill: "#2563eb" },
     { name: "HIGH", count: tasks.filter(t => t.priority === TaskPriority.HIGH).length, fill: "#3b82f6" },
     { name: "MEDIUM", count: tasks.filter(t => t.priority === TaskPriority.MEDIUM).length, fill: "#60a5fa" },

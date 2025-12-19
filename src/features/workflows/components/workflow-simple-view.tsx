@@ -15,6 +15,34 @@ import {
   Sparkles,
   Layers,
   ArrowDownRight,
+  RefreshCw,
+  Archive,
+  AlertCircle,
+  XCircle,
+  Star,
+  Zap,
+  Target,
+  Rocket,
+  Bug,
+  Lightbulb,
+  Bookmark,
+  MessageCircle,
+  Eye,
+  Search,
+  Settings,
+  Users,
+  Shield,
+  Lock,
+  Unlock,
+  Heart,
+  ThumbsUp,
+  Send,
+  FileText,
+  Package,
+  Code,
+  GitBranch,
+  Pause,
+  type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -35,10 +63,52 @@ import {
 import { 
   PopulatedWorkflow, 
   WorkflowStatus, 
-  StatusCategory,
-  STATUS_CATEGORY_CONFIG 
+  StatusType,
+  STATUS_TYPE_CONFIG 
 } from "../types";
 import { Project } from "@/features/projects/types";
+
+// Icon mapping for dynamic icon loading
+const ICON_MAP: Record<string, LucideIcon> = {
+  "circle": Circle,
+  "check-circle": CheckCircle2,
+  "clock": Clock,
+  "play": Play,
+  "pause": Pause,
+  "alert-circle": AlertCircle,
+  "x-circle": XCircle,
+  "archive": Archive,
+  "flag": Flag,
+  "star": Star,
+  "zap": Zap,
+  "target": Target,
+  "rocket": Rocket,
+  "bug": Bug,
+  "lightbulb": Lightbulb,
+  "bookmark": Bookmark,
+  "message-circle": MessageCircle,
+  "eye": Eye,
+  "search": Search,
+  "settings": Settings,
+  "users": Users,
+  "shield": Shield,
+  "lock": Lock,
+  "unlock": Unlock,
+  "heart": Heart,
+  "thumbs-up": ThumbsUp,
+  "send": Send,
+  "file-text": FileText,
+  "folder": Folder,
+  "package": Package,
+  "code": Code,
+  "git-branch": GitBranch,
+  "refresh-cw": RefreshCw,
+};
+
+const getIconComponent = (iconName?: string): LucideIcon => {
+  if (!iconName) return Circle;
+  return ICON_MAP[iconName] || Circle;
+};
 
 interface WorkflowSimpleViewProps {
   workflow: PopulatedWorkflow;
@@ -48,6 +118,8 @@ interface WorkflowSimpleViewProps {
   isAdmin?: boolean;
   onConnectProject?: () => void;
   onDisconnectProject?: (projectId: string) => void;
+  onSyncFromProject?: (projectId: string) => void;
+  isSyncing?: boolean;
   onDragStatusStart?: (status: WorkflowStatus) => void;
   onRemoveStatus?: (statusId: string) => void;
 }
@@ -99,18 +171,20 @@ export const WorkflowSimpleView = ({
   isAdmin = false,
   onConnectProject,
   onDisconnectProject,
+  onSyncFromProject,
+  isSyncing = false,
   onDragStatusStart,
   onRemoveStatus: _onRemoveStatus,
 }: WorkflowSimpleViewProps) => {
   void _spaceId;
   void _onRemoveStatus; // Used by parent, not directly in this component
 
-  // Group statuses by category - only show statuses NOT yet placed on canvas
-  const statusesByCategory = useMemo(() => {
-    const groups: Record<StatusCategory, WorkflowStatus[]> = {
-      [StatusCategory.TODO]: [],
-      [StatusCategory.IN_PROGRESS]: [],
-      [StatusCategory.DONE]: [],
+  // Group statuses by status type - only show statuses NOT yet placed on canvas
+  const statusesByType = useMemo(() => {
+    const groups: Record<StatusType, WorkflowStatus[]> = {
+      [StatusType.OPEN]: [],
+      [StatusType.IN_PROGRESS]: [],
+      [StatusType.CLOSED]: [],
     };
     
     for (const status of workflow.statuses || []) {
@@ -118,14 +192,14 @@ export const WorkflowSimpleView = ({
       // If positionX and positionY are 0 or undefined, show them
       const hasCanvasPosition = (status.positionX && status.positionX > 0) || (status.positionY && status.positionY > 0);
       
-      if (!hasCanvasPosition && groups[status.category]) {
-        groups[status.category].push(status);
+      if (!hasCanvasPosition && groups[status.statusType]) {
+        groups[status.statusType].push(status);
       }
     }
     
     // Sort each group by position
     Object.keys(groups).forEach(key => {
-      groups[key as StatusCategory].sort((a, b) => a.position - b.position);
+      groups[key as StatusType].sort((a, b) => a.position - b.position);
     });
     
     return groups;
@@ -155,10 +229,10 @@ export const WorkflowSimpleView = ({
     onDragStatusStart?.(status);
   };
 
-  const categoryConfig = [
+  const statusTypeConfig = [
     { 
-      key: StatusCategory.TODO, 
-      label: "To Do", 
+      key: StatusType.OPEN, 
+      label: "Open", 
       icon: Circle,
       gradient: "from-slate-500/20 to-slate-600/10",
       borderColor: "border-slate-400/30",
@@ -167,7 +241,7 @@ export const WorkflowSimpleView = ({
       description: "Work not started"
     },
     { 
-      key: StatusCategory.IN_PROGRESS, 
+      key: StatusType.IN_PROGRESS, 
       label: "In Progress", 
       icon: Clock,
       gradient: "from-blue-500/20 to-blue-600/10",
@@ -177,8 +251,8 @@ export const WorkflowSimpleView = ({
       description: "Work in progress"
     },
     { 
-      key: StatusCategory.DONE, 
-      label: "Done", 
+      key: StatusType.CLOSED, 
+      label: "Closed", 
       icon: CheckCircle2,
       gradient: "from-emerald-500/20 to-emerald-600/10",
       borderColor: "border-emerald-400/30",
@@ -216,22 +290,24 @@ export const WorkflowSimpleView = ({
 
         {hasStatuses ? (
           <div className="space-y-3">
-            {categoryConfig.map(({ key, label, icon: Icon, gradient, borderColor, iconColor, description }) => {
-              const statuses = statusesByCategory[key];
+            {statusTypeConfig.map(({ key, label, icon: TypeIcon, gradient, borderColor, iconColor, description }) => {
+              const statuses = statusesByType[key];
               if (statuses.length === 0) return null;
 
               return (
                 <div key={key} className="space-y-2">
-                  {/* Category Header */}
+                  {/* Status Type Header */}
                   <div className="flex items-center gap-2 px-1">
-                    <Icon className={`size-3.5 ${iconColor}`} />
+                    <TypeIcon className={`size-3.5 ${iconColor}`} />
                     <span className="text-xs font-medium text-muted-foreground">{label}</span>
                     <span className="text-[10px] text-muted-foreground/70">({statuses.length})</span>
                   </div>
                   
                   {/* Status Cards */}
                   <div className="space-y-1.5">
-                    {statuses.map((status) => (
+                    {statuses.map((status) => {
+                      const StatusIcon = getIconComponent(status.icon);
+                      return (
                       <TooltipProvider key={status.$id}>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -252,11 +328,13 @@ export const WorkflowSimpleView = ({
                                 <GripVertical className="size-3.5 text-muted-foreground" />
                               </div>
                               
-                              {/* Status Color Indicator */}
+                              {/* Status Icon */}
                               <div 
-                                className="size-3 rounded-full ring-2 ring-white/50 shrink-0 shadow-sm"
-                                style={{ backgroundColor: status.color }}
-                              />
+                                className="size-6 rounded-md flex items-center justify-center shrink-0"
+                                style={{ backgroundColor: `${status.color}20` }}
+                              >
+                                <StatusIcon className="size-3.5" style={{ color: status.color }} />
+                              </div>
                               
                               {/* Status Info */}
                               <div className="flex-1 min-w-0">
@@ -288,7 +366,7 @@ export const WorkflowSimpleView = ({
                               </p>
                               <div className="flex flex-wrap items-center gap-1 pt-1 border-t">
                                 <Badge variant="outline" className="text-[10px]">
-                                  {STATUS_CATEGORY_CONFIG[status.category]?.label}
+                                  {STATUS_TYPE_CONFIG[status.statusType]?.label}
                                 </Badge>
                                 {status.isInitial && (
                                   <Badge className="text-[10px] bg-green-500/10 text-green-600 hover:bg-green-500/20 border-0">
@@ -305,7 +383,7 @@ export const WorkflowSimpleView = ({
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
-                    ))}
+                    )})}
                   </div>
                 </div>
               );
@@ -392,6 +470,28 @@ export const WorkflowSimpleView = ({
                       </span>
                     )}
                   </div>
+                  {isAdmin && onSyncFromProject && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-6 text-muted-foreground hover:text-primary transition-colors"
+                            disabled={isSyncing}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              onSyncFromProject(project.$id);
+                            }}
+                          >
+                            <RefreshCw className={`size-3 ${isSyncing ? 'animate-spin' : ''}`} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Sync statuses from project</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
                   {isAdmin && onDisconnectProject && (
                     <TooltipProvider>
                       <Tooltip>
@@ -399,7 +499,7 @@ export const WorkflowSimpleView = ({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="size-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
+                            className="size-6 text-muted-foreground hover:text-destructive transition-colors"
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
