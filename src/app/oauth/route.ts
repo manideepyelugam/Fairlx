@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 export async function GET(request: NextRequest) {
   const userId = request.nextUrl.searchParams.get("userId");
   const secret = request.nextUrl.searchParams.get("secret");
+  const returnUrl = request.nextUrl.searchParams.get("returnUrl");
 
   if (!userId || !secret) {
     return new NextResponse("Missing fields", { status: 400 });
@@ -26,5 +27,7 @@ export async function GET(request: NextRequest) {
     secure: true,
   });
 
-  return NextResponse.redirect(`${request.nextUrl.origin}/`);
+  // Redirect to returnUrl if provided, otherwise to home
+  const redirectTo = returnUrl || "/";
+  return NextResponse.redirect(`${request.nextUrl.origin}${redirectTo}`);
 }

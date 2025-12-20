@@ -24,8 +24,12 @@ import { signUpWithGithub, signUpWithGoogle } from "@/lib/oauth";
 import { loginSchema } from "../schemas";
 import { useLogin } from "../api/use-login";
 
-export const SignInCard = () => {
-  const { mutate, isPending } = useLogin();
+interface SignInCardProps {
+  returnUrl?: string;
+}
+
+export const SignInCard = ({ returnUrl }: SignInCardProps) => {
+  const { mutate, isPending } = useLogin(returnUrl);
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -99,7 +103,7 @@ export const SignInCard = () => {
       </div>
       <CardContent className="p-7 flex flex-col gap-y-4">
         <Button
-          onClick={() => signUpWithGoogle()}
+          onClick={() => signUpWithGoogle(returnUrl)}
           disabled={isPending}
           variant="secondary"
           size="lg"
@@ -109,7 +113,7 @@ export const SignInCard = () => {
           Login with Google
         </Button>
         <Button
-          onClick={() => signUpWithGithub()}
+          onClick={() => signUpWithGithub(returnUrl)}
           disabled={isPending}
           variant="secondary"
           size="lg"
@@ -125,7 +129,7 @@ export const SignInCard = () => {
       <CardContent className="p-7 flex items-center justify-center">
         <p>
           Don&apos;t have an account?{" "}
-          <Link href="/sign-up">
+          <Link href={returnUrl ? `/sign-up?returnUrl=${encodeURIComponent(returnUrl)}` : "/sign-up"}>
             <span className="text-blue-700">Sign Up</span>
           </Link>
         </p>
