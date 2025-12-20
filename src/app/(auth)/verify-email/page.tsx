@@ -66,6 +66,18 @@ const VerifyEmailContent = () => {
   }
 
   if (status === "success") {
+    // Check for stored returnUrl
+    const returnUrl = typeof window !== 'undefined' 
+      ? sessionStorage.getItem('postVerificationReturnUrl') 
+      : null;
+    
+    // Clear the stored URL
+    if (returnUrl && typeof window !== 'undefined') {
+      sessionStorage.removeItem('postVerificationReturnUrl');
+    }
+
+    const signInUrl = returnUrl ? `/sign-in?returnUrl=${encodeURIComponent(returnUrl)}` : '/sign-in';
+
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Card className="w-full max-w-md">
@@ -80,7 +92,7 @@ const VerifyEmailContent = () => {
           </CardHeader>
           <CardContent>
             <Button asChild className="w-full">
-              <Link href="/sign-in">
+              <Link href={signInUrl}>
                 Continue to Login
               </Link>
             </Button>

@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {  Loader2, Mail, User,  } from "lucide-react";
+import {  Loader2, Mail, User, Trash2, Shield, Camera  } from "lucide-react";
 import { useUpdateProfile } from "../api/use-update-profile";
 import { useUploadProfileImage } from "../api/use-upload-profile-image";
+import { useDeleteAccount } from "../api/use-delete-account";
+import { DeleteAccountDialog } from "./delete-account-dialog";
 import { Models } from "node-appwrite";
 import { toast } from "sonner";
 
@@ -22,9 +24,11 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(
     initialData.prefs?.profileImageUrl ?? null
   );
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const { mutate: updateProfile, isPending: isUpdating } = useUpdateProfile();
   const { mutate: uploadImage, isPending: isUploading } = useUploadProfileImage();
+  const { mutate: deleteAccount, isPending: isDeleting } = useDeleteAccount();
 
   const avatarFallback = initialData.name
     ? initialData.name.charAt(0).toUpperCase()
@@ -85,6 +89,18 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
     );
   };
 
+  const handleDeleteAccount = () => {
+    deleteAccount(undefined, {
+      onSuccess: () => {
+        toast.success("Account deleted successfully");
+      },
+      onError: () => {
+        toast.error("Failed to delete account");
+        setIsDeleteDialogOpen(false);
+      },
+    });
+  };
+
   return (
     <div className="h-full w-full p-6">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -92,41 +108,40 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
 
         <div className="w-full p-5 rounded-xl border flex items-center justify-between">
               <div className="flex items-start gap-5">
-
-
-                    <div>
-                                 <Avatar className="size-24 border-2 border-neutral-300">
-                {profileImageUrl && (
-                  <AvatarImage src={profileImageUrl} alt={initialData.name} />
-                )}
-                <AvatarFallback className="bg-neutral-200 text-3xl font-medium text-neutral-500">
-                  {avatarFallback}
-                </AvatarFallback>
-              </Avatar>
+                    <div className="relative group">
+                      <input
+                        id="profile-image-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageUpload}
+                        disabled={isUploading}
+                      />
+                      <label htmlFor="profile-image-upload" className="cursor-pointer">
+                        <Avatar className="size-24 border-2 border-neutral-300 transition-all group-hover:border-primary">
+                          {profileImageUrl && (
+                            <AvatarImage src={profileImageUrl} alt={initialData.name} />
+                          )}
+                          <AvatarFallback className="bg-neutral-200 text-3xl font-medium text-neutral-500">
+                            {avatarFallback}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Camera className="size-8 text-white" />
+                        </div>
+                        {isUploading && (
+                          <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                            <Loader2 className="size-8 text-white animate-spin" />
+                          </div>
+                        )}
+                      </label>
                     </div>
-
-
 
                     <div className="flex flex-col ">
                            <h1 className="text-[22px] font-semibold">{initialData.name}</h1>
                            <p className="text-[13px]">Team Manager</p>
                           <p className="text-[13px]">{initialData.email}</p>
-
                     </div>
-              </div>
-
-              <div>
-                <input
-                  id="profile-image-upload"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleImageUpload}
-                  disabled={isUploading}
-                />
-                <label htmlFor="profile-image-upload">
-                  <span className="text-xs border px-4 py-2 rounded-md cursor-pointer inline-block">Edit Image</span>
-                </label>
               </div>
         </div>
 
@@ -297,26 +312,50 @@ className="text-xs font-medium px-6 rounded-sm py-3" size={"xs"}                
           </CardContent>
         </Card> */}
 
-        {/* Preferences Section */}
-        {/* <Card>
-          <CardHeader>
-            <CardTitle>Preferences</CardTitle>
-            <CardDescription>
-              Customize your experience
+        {/* Security Section */}
+        <Card>
+          <CardHeader className="mb-3">
+            <CardTitle className="!text-[18px] flex items-center gap-2">
+              <Shield className="size-5" />
+              Security
+            </CardTitle>
+            <CardDescription className="!text-xs font-normal">
+              Manage your account security and data
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Registration Method</Label>
-              <Input
-                value={initialData.registration || "Email"}
-                disabled
-                className="bg-neutral-50 capitalize"
-              />
+            {/* Delete Account Section */}
+            <div className="p-4 border border-red-200 rounded-lg bg-red-50">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-red-900">Delete Account</p>
+                  <p className="text-xs text-red-700">
+                    Permanently delete your account and all associated data
+                  </p>
+                </div>
+                <Button
+                  variant="destructive"
+                  size="xs"
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                  disabled={isDeleting}
+                  className="text-xs font-medium px-6 rounded-sm py-3"
+                >
+                  <Trash2 className="size-4 mr-2" />
+                  Delete Account
+                </Button>
+              </div>
             </div>
           </CardContent>
-        </Card> */}
+        </Card>
       </div>
+
+      <DeleteAccountDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        onConfirm={handleDeleteAccount}
+        userId={initialData.$id}
+        isPending={isDeleting}
+      />
 
       {/* <ChangePasswordModal
         open={isChangePasswordModalOpen}

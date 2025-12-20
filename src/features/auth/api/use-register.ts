@@ -11,7 +11,7 @@ type ResponseType = InferResponseType<
 >;
 type RequestType = InferRequestType<(typeof client.api.auth.register)["$post"]>;
 
-export const useRegister = () => {
+export const useRegister = (returnUrl?: string) => {
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -27,6 +27,10 @@ export const useRegister = () => {
     onSuccess: (data) => {
       if ('success' in data && data.success) {
         toast.success('message' in data && data.message ? String(data.message) : "Registration successful! Please check your email to verify your account.");
+        // Store returnUrl in sessionStorage for after email verification
+        if (returnUrl) {
+          sessionStorage.setItem('postVerificationReturnUrl', returnUrl);
+        }
         router.push("/verify-email-sent");
       } else if ('error' in data && data.error) {
         toast.error(String(data.error));
