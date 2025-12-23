@@ -30,8 +30,16 @@ import savedViews from "@/features/saved-views/server/route";
 import roles from "@/features/roles/server/route";
 // Project-scoped RBAC
 import projectMembers from "@/features/project-members/server/route";
+// Usage-Based Billing
+import usage from "@/features/usage/server/route";
+// Global Traffic Metering
+import { trafficMeteringMiddleware } from "@/lib/traffic-metering-middleware";
 
-const app = new Hono().basePath("/api");
+// Apply global traffic metering to ALL requests
+// WHY: Every HTTP request MUST generate a usage event for billing
+const app = new Hono()
+  .use("*", trafficMeteringMiddleware)
+  .basePath("/api");
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const routes = app
@@ -63,7 +71,9 @@ const routes = app
   .route("/saved-views", savedViews)
   .route("/roles", roles)
   // Project-scoped RBAC
-  .route("/project-members", projectMembers);
+  .route("/project-members", projectMembers)
+  // Usage-Based Billing
+  .route("/usage", usage);
 
 export const GET = handle(app);
 export const POST = handle(app);
