@@ -69,6 +69,7 @@ const workItemToTask = (workItem: PopulatedWorkItem): PopulatedTask => {
     assigneeId: workItem.assigneeIds?.[0] || "",
     assigneeIds: workItem.assigneeIds,
     projectId: workItem.projectId,
+    sprintId: workItem.sprintId,
     position: workItem.position,
     dueDate: workItem.dueDate || new Date().toISOString(),
     endDate: workItem.dueDate,
@@ -184,6 +185,23 @@ export const TaskViewSwitcher = ({
       total: filtered.length
     };
   }, [tasks, search]);
+
+  // Filter tasks for Kanban view to only show the active sprint
+  const kanbanTasks = useMemo(() => {
+    if (!filteredTasks?.documents) return [];
+
+    const activeSprint = sprintsData?.documents?.find(s => s.status === SprintStatus.ACTIVE);
+
+    // If we are in project view and have sprints, only show items from the active sprint
+    // If not in project view or no active sprint, maybe show nothing or keep as is? 
+    // The user said "in kanban only show active sprint workitems".
+    if (effectiveProjectId) {
+      if (!activeSprint) return []; // No active sprint = no items in Kanban
+      return filteredTasks.documents.filter(task => task.sprintId === activeSprint.$id);
+    }
+
+    return filteredTasks.documents;
+  }, [filteredTasks, sprintsData, effectiveProjectId]);
 
 
 
@@ -306,7 +324,7 @@ export const TaskViewSwitcher = ({
                   variant="kanban"
                 >
                   <EnhancedDataKanban
-                    data={filteredTasks?.documents ?? []}
+                    data={kanbanTasks}
                     onChange={onKanbanChange}
                     canCreateTasks={isAdmin}
                     canEditTasks={isAdmin}
@@ -317,7 +335,7 @@ export const TaskViewSwitcher = ({
                 </ProjectSetupOverlay>
               ) : (
                 <EnhancedDataKanban
-                  data={filteredTasks?.documents ?? []}
+                  data={kanbanTasks}
                   onChange={onKanbanChange}
                   canCreateTasks={isAdmin}
                   canEditTasks={isAdmin}

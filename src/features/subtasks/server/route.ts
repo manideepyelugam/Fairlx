@@ -7,6 +7,8 @@ import { DATABASE_ID, SUBTASKS_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 
 import { getMember } from "@/features/members/utils";
+// Usage metering for billing - every action must be metered
+import { logComputeUsage, getComputeUnits } from "@/lib/usage-metering";
 
 import { createSubtaskSchema, updateSubtaskSchema } from "../schemas";
 import { Subtask } from "../types";
@@ -108,6 +110,15 @@ const app = new Hono()
         }
       );
 
+      // Log compute usage for billing - every action must be metered
+      logComputeUsage({
+        databases,
+        workspaceId,
+        units: getComputeUnits('subtask_create'),
+        jobType: 'subtask_create',
+        operationId: subtask.$id,
+      });
+
       return c.json({ data: subtask });
     }
   )
@@ -146,6 +157,15 @@ const app = new Hono()
         updates
       );
 
+      // Log compute usage for billing
+      logComputeUsage({
+        databases,
+        workspaceId: subtask.workspaceId,
+        units: getComputeUnits('subtask_update'),
+        jobType: 'subtask_update',
+        operationId: subtaskId,
+      });
+
       return c.json({ data: updatedSubtask });
     }
   )
@@ -175,6 +195,15 @@ const app = new Hono()
       }
 
       await databases.deleteDocument(DATABASE_ID, SUBTASKS_ID, subtaskId);
+
+      // Log compute usage for billing
+      logComputeUsage({
+        databases,
+        workspaceId: subtask.workspaceId,
+        units: getComputeUnits('subtask_delete'),
+        jobType: 'subtask_delete',
+        operationId: subtaskId,
+      });
 
       return c.json({ data: { $id: subtask.$id } });
     }

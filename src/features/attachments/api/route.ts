@@ -5,6 +5,8 @@ import { ID } from "node-appwrite";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { ATTACHMENTS_BUCKET_ID, DATABASE_ID, ATTACHMENTS_ID } from "@/config";
 import { getMember } from "@/features/members/utils";
+// Storage metering for billing - every file operation must be metered
+import { logStorageUsage } from "@/lib/usage-metering";
 
 import {
   deleteAttachmentSchema,
@@ -61,9 +63,9 @@ const app = new Hono()
         const user = c.get("user");
         const databases = c.get("databases");
         const storage = c.get("storage");
-        
+
         const body = await c.req.parseBody();
-        
+
         const file = body.file as File;
         const taskId = body.taskId as string;
         const workspaceId = body.workspaceId as string;
@@ -114,6 +116,19 @@ const app = new Hono()
         // Add URL to response
         const url = storage.getFileView(ATTACHMENTS_BUCKET_ID, attachment.fileId).toString();
 
+        // Log storage usage for billing - every byte is billable
+        logStorageUsage({
+          databases,
+          workspaceId,
+          units: file.size, // Size in bytes
+          operation: 'upload',
+          metadata: {
+            fileName: file.name,
+            fileType: file.type,
+            attachmentId: attachment.$id,
+          },
+        });
+
         return c.json({
           data: {
             ...attachment,
@@ -147,7 +162,27 @@ const app = new Hono()
       }
 
       try {
+        // Get attachment first to log size for billing
+        const attachment = await databases.getDocument(
+          DATABASE_ID,
+          ATTACHMENTS_ID,
+          attachmentId
+        );
+
         await deleteAttachment(attachmentId, workspaceId);
+
+        // Log storage deletion for billing (negative delta)
+        logStorageUsage({
+          databases,
+          workspaceId,
+          units: -(attachment.size as number || 0), // Negative = storage released
+          operation: 'delete',
+          metadata: {
+            fileName: attachment.name,
+            attachmentId,
+          },
+        });
+
         return c.json({ data: { success: true } });
       } catch (error) {
         console.error("Delete error:", error);
@@ -183,14 +218,26 @@ const app = new Hono()
           ATTACHMENTS_ID,
           attachmentId
         );
-        
+
         if (!attachment || attachment.workspaceId !== workspaceId) {
           return c.json({ error: "Attachment not found" }, 404);
         }
 
         // Get file from storage and return it directly
         const file = await storage.getFileDownload(ATTACHMENTS_BUCKET_ID, attachment.fileId);
-        
+
+        // Log download for traffic billing
+        logStorageUsage({
+          databases,
+          workspaceId,
+          units: attachment.size as number || 0,
+          operation: 'download',
+          metadata: {
+            fileName: attachment.name,
+            attachmentId,
+          },
+        });
+
         // Return the file directly with proper headers
         return new Response(file, {
           headers: {
@@ -232,14 +279,14 @@ const app = new Hono()
           ATTACHMENTS_ID,
           attachmentId
         );
-        
+
         if (!attachment || attachment.workspaceId !== workspaceId) {
           return c.json({ error: "Attachment not found" }, 404);
         }
 
         // Get file from storage and return it directly for preview
         const file = await storage.getFileView(ATTACHMENTS_BUCKET_ID, attachment.fileId);
-        
+
         // Return the file directly with proper headers for preview
         return new Response(file, {
           headers: {

@@ -147,7 +147,17 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     return sprintsData?.documents || [];
   }, [sprintsData]);
 
+  // Auto-expand active sprint
+  useMemo(() => {
+    const activeSprint = sprints.find(s => s.status === SprintStatus.ACTIVE);
+    if (activeSprint && !expandedSprints.includes(activeSprint.$id)) {
+      setExpandedSprints(prev => [...prev, activeSprint.$id]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sprints]);
+
   const backlogItems = useMemo(() => {
+    // Backlog shows items NOT assigned to any sprint
     const items = workItemsData?.documents?.filter((item) =>
       !item.sprintId && item.type !== WorkItemType.EPIC
     ) || [];

@@ -3,6 +3,8 @@ import { zValidator } from "@hono/zod-validator";
 
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { getMember } from "@/features/members/utils";
+// Usage metering for billing - every action must be metered
+import { logComputeUsage, getComputeUnits } from "@/lib/usage-metering";
 
 import {
   createCommentSchema,
@@ -78,6 +80,15 @@ const app = new Hono()
           parentId,
         });
 
+        // Log compute usage for billing - every action must be metered
+        logComputeUsage({
+          databases,
+          workspaceId,
+          units: getComputeUnits('comment_create'),
+          jobType: 'comment_create',
+          operationId: comment.$id,
+        });
+
         return c.json({ data: comment });
       } catch (error) {
         console.error("Failed to create comment:", error);
@@ -113,6 +124,15 @@ const app = new Hono()
           workspaceId,
           user.$id
         );
+
+        // Log compute usage for billing
+        logComputeUsage({
+          databases,
+          workspaceId,
+          units: getComputeUnits('comment_update'),
+          jobType: 'comment_update',
+          operationId: commentId,
+        });
 
         return c.json({ data: comment });
       } catch (error) {
@@ -155,6 +175,15 @@ const app = new Hono()
 
       try {
         await deleteComment(commentId, workspaceId, user.$id, isAdmin);
+
+        // Log compute usage for billing
+        logComputeUsage({
+          databases,
+          workspaceId,
+          units: getComputeUnits('comment_delete'),
+          jobType: 'comment_delete',
+          operationId: commentId,
+        });
 
         return c.json({ data: { $id: commentId } });
       } catch (error) {

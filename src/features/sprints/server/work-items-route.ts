@@ -9,6 +9,7 @@ import { createAdminClient } from "@/lib/appwrite";
 
 import { getMember } from "@/features/members/utils";
 import { Project } from "@/features/projects/types";
+import { logComputeUsage, getComputeUnits } from "@/lib/usage-metering";
 
 import {
   createWorkItemSchema,
@@ -573,6 +574,16 @@ const app = new Hono()
         return c.json({ error: "Failed to create work item after multiple attempts" }, 500);
       }
 
+      // Log usage for work item creation
+      logComputeUsage({
+        databases,
+        workspaceId: data.workspaceId,
+        projectId: data.projectId,
+        units: getComputeUnits('task_create'),
+        jobType: 'task_create',
+        metadata: { workItemId: workItem.$id, type: data.type },
+      });
+
       return c.json({ data: workItem });
     }
   )
@@ -617,6 +628,16 @@ const app = new Hono()
         updateData
       );
 
+      // Log usage for work item update
+      logComputeUsage({
+        databases,
+        workspaceId: workItem.workspaceId,
+        projectId: workItem.projectId,
+        units: getComputeUnits('task_update'),
+        jobType: 'task_update',
+        metadata: { workItemId, updatedFields: Object.keys(updates) },
+      });
+
       return c.json({ data: updatedWorkItem });
     }
   )
@@ -659,6 +680,16 @@ const app = new Hono()
       );
 
       await databases.deleteDocument(DATABASE_ID, WORK_ITEMS_ID, workItemId);
+
+      // Log usage for work item deletion
+      logComputeUsage({
+        databases,
+        workspaceId: workItem.workspaceId,
+        projectId: workItem.projectId,
+        units: getComputeUnits('task_delete'),
+        jobType: 'task_delete',
+        metadata: { workItemId, deletedChildren: children.total },
+      });
 
       return c.json({ data: { $id: workItem.$id } });
     }

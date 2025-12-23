@@ -10,6 +10,7 @@ import { can } from "@/lib/rbac";
 import { PERMISSIONS } from "@/lib/permissions";
 
 import { getMember } from "@/features/members/utils";
+import { logComputeUsage, getComputeUnits } from "@/lib/usage-metering";
 
 import {
   createSprintSchema,
@@ -313,6 +314,16 @@ const app = new Hono()
         }
       );
 
+      // Log usage for sprint creation
+      logComputeUsage({
+        databases,
+        workspaceId,
+        projectId,
+        units: getComputeUnits('sprint_create'),
+        jobType: 'sprint_create',
+        metadata: { sprintId: sprint.$id, sprintName: name },
+      });
+
       return c.json({ data: sprint });
     }
   )
@@ -400,6 +411,17 @@ const app = new Hono()
         updateData
       );
 
+      // Log usage for sprint update
+      const isComplete = updates.status === SprintStatus.COMPLETED;
+      logComputeUsage({
+        databases,
+        workspaceId: sprint.workspaceId,
+        projectId: sprint.projectId,
+        units: getComputeUnits(isComplete ? 'sprint_complete' : 'task_update'),
+        jobType: isComplete ? 'sprint_complete' : 'sprint_update',
+        metadata: { sprintId, updatedFields: Object.keys(updates) },
+      });
+
       return c.json({ data: updatedSprint });
     }
   )
@@ -451,6 +473,16 @@ const app = new Hono()
       );
 
       await databases.deleteDocument(DATABASE_ID, SPRINTS_ID, sprintId);
+
+      // Log usage for sprint deletion
+      logComputeUsage({
+        databases,
+        workspaceId: sprint.workspaceId,
+        projectId: sprint.projectId,
+        units: getComputeUnits('task_delete'),
+        jobType: 'sprint_delete',
+        metadata: { sprintId, movedItems: workItems.total },
+      });
 
       return c.json({ data: { $id: sprint.$id } });
     }

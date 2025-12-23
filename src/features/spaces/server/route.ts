@@ -16,6 +16,8 @@ import {
   MEMBERS_ID,
 } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
+// Usage metering for billing - every action must be metered
+import { logComputeUsage, getComputeUnits } from "@/lib/usage-metering";
 
 import {
   createSpaceSchema,
@@ -144,6 +146,19 @@ const app = new Hono()
           joinedAt: new Date().toISOString(),
         }
       );
+
+      // Log compute usage for billing
+      logComputeUsage({
+        databases,
+        workspaceId,
+        units: getComputeUnits('space_create'),
+        jobType: 'space_create',
+        operationId: space.$id,
+        sourceContext: {
+          type: 'workspace',
+          displayName: `Space: ${name}`,
+        },
+      });
 
       return c.json({ data: space });
     }
@@ -402,6 +417,19 @@ const app = new Hono()
         updatePayload
       );
 
+      // Log compute usage for billing
+      logComputeUsage({
+        databases,
+        workspaceId: space.workspaceId,
+        units: getComputeUnits('space_update'),
+        jobType: 'space_update',
+        operationId: spaceId,
+        sourceContext: {
+          type: 'workspace',
+          displayName: `Space: ${updatedSpace.name}`,
+        },
+      });
+
       return c.json({ data: updatedSpace });
     }
   )
@@ -456,6 +484,19 @@ const app = new Hono()
 
     // Delete the space
     await databases.deleteDocument(DATABASE_ID, SPACES_ID, spaceId);
+
+    // Log compute usage for billing
+    logComputeUsage({
+      databases,
+      workspaceId: space.workspaceId,
+      units: getComputeUnits('space_delete'),
+      jobType: 'space_delete',
+      operationId: spaceId,
+      sourceContext: {
+        type: 'workspace',
+        displayName: `Space: ${space.name}`,
+      },
+    });
 
     return c.json({ data: { $id: spaceId } });
   })
@@ -535,6 +576,19 @@ const app = new Hono()
           joinedAt: new Date().toISOString(),
         }
       );
+
+      // Log compute usage for billing
+      logComputeUsage({
+        databases,
+        workspaceId: space.workspaceId,
+        units: getComputeUnits('space_member_add'),
+        jobType: 'space_member_add',
+        operationId: spaceMember.$id,
+        sourceContext: {
+          type: 'workspace',
+          displayName: `Space: ${space.name}`,
+        },
+      });
 
       return c.json({ data: spaceMember });
     }
@@ -748,12 +802,12 @@ const app = new Hono()
       }
 
       const spaceRole = spaceMembership.documents[0].role;
-      return c.json({ 
-        data: { 
-          role: spaceRole, 
+      return c.json({
+        data: {
+          role: spaceRole,
           isMaster: spaceRole === SpaceRole.ADMIN,
-          isWorkspaceAdmin: false 
-        } 
+          isWorkspaceAdmin: false
+        }
       });
     }
   );

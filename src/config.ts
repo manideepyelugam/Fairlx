@@ -61,4 +61,19 @@ export const CUSTOM_WORK_ITEM_TYPES_ID = process.env.NEXT_PUBLIC_APPWRITE_CUSTOM
 export const WORK_ITEM_LINKS_ID = process.env.NEXT_PUBLIC_APPWRITE_WORK_ITEM_LINKS_ID!;
 
 // Saved Views/Filters Collection
-export const SAVED_VIEWS_ID = process.env.NEXT_PUBLIC_APPWRITE_SAVED_VIEWS_ID!;;
+export const SAVED_VIEWS_ID = process.env.NEXT_PUBLIC_APPWRITE_SAVED_VIEWS_ID!;
+
+// ===============================
+// Usage-Based Billing Collections
+// ===============================
+export const USAGE_EVENTS_ID = process.env.NEXT_PUBLIC_APPWRITE_USAGE_EVENTS_ID!;
+export const USAGE_AGGREGATIONS_ID = process.env.NEXT_PUBLIC_APPWRITE_USAGE_AGGREGATIONS_ID!;
+export const USAGE_ALERTS_ID = process.env.NEXT_PUBLIC_APPWRITE_USAGE_ALERTS_ID!;
+// New collections for billing fixes
+export const STORAGE_SNAPSHOTS_ID = process.env.NEXT_PUBLIC_APPWRITE_STORAGE_SNAPSHOTS_ID!;
+export const INVOICES_ID = process.env.NEXT_PUBLIC_APPWRITE_INVOICES_ID!;
+
+// Usage Billing Rates (cents per unit)
+export const USAGE_RATE_TRAFFIC_GB = parseFloat(process.env.USAGE_RATE_TRAFFIC_GB || "0.10");
+export const USAGE_RATE_STORAGE_GB_MONTH = parseFloat(process.env.USAGE_RATE_STORAGE_GB_MONTH || "0.05");
+export const USAGE_RATE_COMPUTE_UNIT = parseFloat(process.env.USAGE_RATE_COMPUTE_UNIT || "0.001");
