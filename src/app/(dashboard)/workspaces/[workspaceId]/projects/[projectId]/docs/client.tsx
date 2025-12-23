@@ -38,13 +38,9 @@ export const ProjectDocsClient = () => {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          <Link href={`/workspaces/${workspaceId}/projects/${projectId}`}>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <div className="flex items-center gap-2">
+      
+          <div className="mb-3">
+            <div className="flex items-center gap-2 ">
               <h1 className="text-2xl font-semibold tracking-tight">Project Documents</h1>
               <Badge variant="secondary" className="text-xs">
                 {project.name}
@@ -58,7 +54,7 @@ export const ProjectDocsClient = () => {
       </div>
 
       {/* Quick Info Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
         <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">

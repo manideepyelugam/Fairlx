@@ -3,17 +3,19 @@
 import { useState } from "react";
 import { 
   FileText, 
-  Grid3X3, 
-  List, 
   Search, 
   FolderOpen,
   Loader2,
   Upload,
+  Download,
+  Trash2,
+  CheckSquare,
+  Square,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -23,22 +25,20 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 
 import { DocumentCard } from "./document-card";
 import { DocumentUploadModal } from "./document-upload-modal";
 import { DocumentEditModal } from "./document-edit-modal";
 import { DocumentReplaceModal } from "./document-replace-modal";
 
-import { useGetProjectDocuments } from "../api/use-project-docs";
+import { useGetProjectDocuments, useDeleteProjectDocument, useDownloadDocument } from "../api/use-project-docs";
 import { 
   PopulatedProjectDocument, 
   DocumentCategory, 
   DOCUMENT_CATEGORY_LABELS,
-  DOCUMENT_CATEGORY_COLORS,
 } from "../types";
 import { formatFileSize, MAX_TOTAL_PROJECT_SIZE } from "../schemas";
+import { useConfirm } from "@/hooks/use-confirm";
 
 interface DocumentListProps {
   projectId: string;
@@ -46,18 +46,27 @@ interface DocumentListProps {
 }
 
 type SortOption = "newest" | "oldest" | "name" | "size";
-type ViewMode = "grid" | "list";
 
 export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<DocumentCategory | "all">("all");
   const [includeArchived, setIncludeArchived] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>("newest");
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   
   // Modal states
   const [editDocument, setEditDocument] = useState<PopulatedProjectDocument | null>(null);
   const [replaceDocument, setReplaceDocument] = useState<PopulatedProjectDocument | null>(null);
+
+  // Bulk delete confirmation
+  const [DeleteConfirmDialog, confirmBulkDelete] = useConfirm(
+    "Delete Selected Documents",
+    `Are you sure you want to delete ${selectedIds.size} document(s)? This action cannot be undone.`,
+    "destructive"
+  );
+
+  const { mutate: deleteDocument, isPending: isDeleting } = useDeleteProjectDocument();
+  const { mutate: downloadDocument, isPending: isDownloading } = useDownloadDocument();
 
   const { data, isLoading, error } = useGetProjectDocuments(
     projectId,
@@ -102,171 +111,208 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
 
   const usagePercentage = stats ? (stats.totalSize / MAX_TOTAL_PROJECT_SIZE) * 100 : 0;
 
+  // Selection handlers
+  const handleSelectAll = () => {
+    if (selectedIds.size === filteredDocuments.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredDocuments.map(doc => doc.$id)));
+    }
+  };
+
+  const handleSelectOne = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    const ok = await confirmBulkDelete();
+    if (!ok) return;
+
+    const idsToDelete = Array.from(selectedIds);
+    let successCount = 0;
+    
+    for (const docId of idsToDelete) {
+      deleteDocument(
+        { documentId: docId, projectId, workspaceId },
+        {
+          onSuccess: () => { successCount++; },
+        }
+      );
+    }
+    
+    setSelectedIds(new Set());
+    toast.success(`Deleting ${idsToDelete.length} document(s)...`);
+  };
+
+  const handleBulkDownload = () => {
+    if (selectedIds.size === 0) return;
+    
+    const docsToDownload = filteredDocuments.filter(doc => selectedIds.has(doc.$id));
+    docsToDownload.forEach(doc => {
+      downloadDocument({
+        documentId: doc.$id,
+        workspaceId,
+        fileName: doc.name,
+      });
+    });
+    
+    toast.success(`Downloading ${docsToDownload.length} document(s)...`);
+  };
+
+  const isAllSelected = filteredDocuments.length > 0 && selectedIds.size === filteredDocuments.length;
+  const isSomeSelected = selectedIds.size > 0 && selectedIds.size < filteredDocuments.length;
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="flex items-center justify-center h-48">
+        <Loader2 className="h-5 w-5 animate-spin text-[#1269d6]" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-center">
-        <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="font-semibold text-lg">Failed to load documents</h3>
-        <p className="text-sm text-muted-foreground">{error.message}</p>
+      <div className="flex flex-col items-center justify-center h-48 text-center">
+        <FileText className="h-8 w-8 text-gray-300 mb-3" />
+        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Failed to load documents</h3>
+        <p className="text-xs font-light text-gray-500">{error.message}</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Storage Usage Card */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium">Storage Usage</span>
-              <span className="text-xs text-muted-foreground">
-                {formatFileSize(stats?.totalSize || 0)} / {formatFileSize(MAX_TOTAL_PROJECT_SIZE)}
-              </span>
-            </div>
-            <Progress value={usagePercentage} className="h-2" />
-            <p className="text-xs text-muted-foreground mt-2">
-              {formatFileSize(stats?.remainingSize || MAX_TOTAL_PROJECT_SIZE)} remaining
-            </p>
-          </CardContent>
-        </Card>
+    <div className="space-y-5">
+      {/* Search & Filters Bar - Inspired by screenshot */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px] max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+          <Input
+            placeholder="Search documents"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 h-9 text-xs font-light bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 rounded-lg"
+          />
+        </div>
+        
+        <Select value={selectedCategory} onValueChange={(v) => setSelectedCategory(v as DocumentCategory | "all")}>
+          <SelectTrigger className="w-[140px] h-9 text-xs font-light bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 rounded-lg">
+            <SelectValue placeholder="All categories" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs">All categories</SelectItem>
+            {Object.entries(DOCUMENT_CATEGORY_LABELS).map(([value, label]) => (
+              <SelectItem key={value} value={value} className="text-xs">{label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-        {/* Total Documents Card */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <FileText className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats?.totalDocuments || 0}</p>
-                <p className="text-xs text-muted-foreground">Total Documents</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+          <SelectTrigger className="w-[130px] h-9 text-xs font-light bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 rounded-lg">
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest" className="text-xs">Newest First</SelectItem>
+            <SelectItem value="oldest" className="text-xs">Oldest First</SelectItem>
+            <SelectItem value="name" className="text-xs">Name</SelectItem>
+            <SelectItem value="size" className="text-xs">Size</SelectItem>
+          </SelectContent>
+        </Select>
 
-        {/* Upload Button Card */}
-        <Card className="border-dashed">
-          <CardContent className="p-4 flex items-center justify-center">
-            <DocumentUploadModal
-              projectId={projectId}
-              workspaceId={workspaceId}
-              currentTotalSize={stats?.totalSize || 0}
-              trigger={
-                <Button variant="outline" className="w-full h-full gap-2">
-                  <Upload className="h-4 w-4" />
-                  Upload Document
-                </Button>
-              }
-            />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Category Tabs */}
-      <div className="flex flex-wrap gap-2">
-        <Badge
-          variant={selectedCategory === "all" ? "default" : "outline"}
-          className="cursor-pointer"
-          onClick={() => setSelectedCategory("all")}
-        >
-          All ({stats?.totalDocuments || 0})
-        </Badge>
-        {Object.entries(DOCUMENT_CATEGORY_LABELS).map(([value, label]) => {
-          const count = stats?.byCategory?.[value] || 0;
-          if (count === 0 && selectedCategory !== value) return null;
-          return (
-            <Badge
-              key={value}
-              variant={selectedCategory === value ? "default" : "outline"}
-              className={`cursor-pointer ${
-                selectedCategory === value 
-                  ? "" 
-                  : DOCUMENT_CATEGORY_COLORS[value as DocumentCategory]
-              }`}
-              onClick={() => setSelectedCategory(value as DocumentCategory)}
-            >
-              {label} ({count})
-            </Badge>
-          );
-        })}
-      </div>
-
-      {/* Filters & Actions Bar */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="flex items-center gap-3 flex-1 w-full sm:w-auto">
-          <div className="relative flex-1 sm:max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search documents..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          
-          <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="newest">Newest First</SelectItem>
-              <SelectItem value="oldest">Oldest First</SelectItem>
-              <SelectItem value="name">Name</SelectItem>
-              <SelectItem value="size">Size</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex items-center gap-1.5">
+          <Checkbox
+            id="includeArchived"
+            checked={includeArchived}
+            onCheckedChange={(checked) => setIncludeArchived(!!checked)}
+            className="h-3.5 w-3.5 border-gray-300 data-[state=checked]:bg-[#1269d6] data-[state=checked]:border-[#1269d6]"
+          />
+          <Label htmlFor="includeArchived" className="text-xs font-light text-gray-500 cursor-pointer">
+            Archived
+          </Label>
         </div>
 
+        <div className="ml-auto flex items-center gap-2">
+          <span className="text-[10px] border p-2.5 rounded-md  font-light text-black">
+            {formatFileSize(stats?.totalSize || 0)} / {formatFileSize(MAX_TOTAL_PROJECT_SIZE)}
+          </span>
+          <DocumentUploadModal
+            projectId={projectId}
+            workspaceId={workspaceId}
+            currentTotalSize={stats?.totalSize || 0}
+            trigger={
+              <Button className="h-9 px-4 text-xs font-medium bg-[#1269d6] hover:bg-[#0f5bbf] text-white rounded-lg">
+                Upload
+              </Button>
+            }
+          />
+        </div>
+      </div>
+
+      {/* Documents Section Header */}
+      <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="includeArchived"
-              checked={includeArchived}
-              onCheckedChange={(checked) => setIncludeArchived(!!checked)}
-            />
-            <Label htmlFor="includeArchived" className="text-sm cursor-pointer">
-              Show Archived
-            </Label>
-          </div>
-
-          <div className="border rounded-md p-1">
-            <Button
-              variant={viewMode === "list" ? "secondary" : "ghost"}
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setViewMode("list")}
-            >
-              <List className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === "grid" ? "secondary" : "ghost"}
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setViewMode("grid")}
-            >
-              <Grid3X3 className="h-4 w-4" />
-            </Button>
-          </div>
+          <button
+            onClick={handleSelectAll}
+            className="flex items-center justify-center text-gray-400 hover:text-[#1269d6] transition-colors"
+          >
+            {isAllSelected ? (
+              <CheckSquare className="h-4 w-4 text-[#1269d6]" />
+            ) : isSomeSelected ? (
+              <CheckSquare className="h-4 w-4 text-[#1269d6]/50" />
+            ) : (
+              <Square className="h-4 w-4" />
+            )}
+          </button>
+          <h2 className="text-sm font-medium text-gray-900 dark:text-white">
+            All documents
+            <span className="ml-2 text-xs font-light text-gray-400">({stats?.totalDocuments || 0})</span>
+          </h2>
         </div>
+
+        {/* Bulk Actions - Show when items are selected */}
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-light text-gray-500">
+              {selectedIds.size} selected
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-gray-600 hover:text-[#1269d6] hover:bg-[#1269d6]/10"
+              onClick={handleBulkDownload}
+              disabled={isDownloading}
+            >
+              <Download className="h-3.5 w-3.5 mr-1" />
+              Download
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-gray-600 hover:text-red-500 hover:bg-red-50"
+              onClick={handleBulkDelete}
+              disabled={isDeleting}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1" />
+              Delete
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* Document Grid/List */}
+      <DeleteConfirmDialog />
+
+      {/* Document List - Table-like view inspired by screenshot */}
       {filteredDocuments.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-64 text-center">
-          <FolderOpen className="h-16 w-16 text-muted-foreground/50 mb-4" />
-          <h3 className="font-semibold text-lg">No documents found</h3>
-          <p className="text-sm text-muted-foreground mb-4">
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <FolderOpen className="h-10 w-10 text-gray-200 mb-3" />
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">No documents found</h3>
+          <p className="text-xs font-light text-gray-500 mt-1 mb-4">
             {searchQuery
               ? "Try adjusting your search query"
               : "Upload your first document to get started"}
@@ -276,18 +322,18 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
               projectId={projectId}
               workspaceId={workspaceId}
               currentTotalSize={stats?.totalSize || 0}
+              trigger={
+                <Button className="h-8 px-4 text-xs font-medium bg-[#1269d6] hover:bg-[#0f5bbf] text-white rounded-lg">
+                  <Upload className="h-3.5 w-3.5 mr-1.5" />
+                  Upload Document
+                </Button>
+              }
             />
           )}
         </div>
       ) : (
-        <div
-          className={
-            viewMode === "grid"
-              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-              : "space-y-3"
-          }
-        >
-          {filteredDocuments.map((doc) => (
+        <div className="rounded-lg border border-gray-100 dark:border-gray-800 overflow-hidden bg-white dark:bg-gray-900">
+          {filteredDocuments.map((doc, index) => (
             <DocumentCard
               key={doc.$id}
               document={doc}
@@ -295,6 +341,9 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
               projectId={projectId}
               onEdit={setEditDocument}
               onReplace={setReplaceDocument}
+              isSelected={selectedIds.has(doc.$id)}
+              onSelect={() => handleSelectOne(doc.$id)}
+              isLast={index === filteredDocuments.length - 1}
             />
           ))}
         </div>

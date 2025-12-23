@@ -14,10 +14,46 @@ import {
   changePasswordSchema
 } from "../schemas";
 import { createAdminClient } from "@/lib/appwrite";
-import { ID, ImageFormat, Client, Account } from "node-appwrite";
+import { ID, ImageFormat, Client, Account, Query } from "node-appwrite";
 import { AUTH_COOKIE } from "../constants";
 import { sessionMiddleware } from "@/lib/session-middleware";
-import { IMAGES_BUCKET_ID } from "@/config";
+import { 
+  IMAGES_BUCKET_ID,
+  DATABASE_ID,
+  WORKSPACES_ID,
+  SPACES_ID,
+  PROJECTS_ID,
+  TASKS_ID,
+  MEMBERS_ID,
+  SPACE_MEMBERS_ID,
+  TIME_LOGS_ID,
+  CUSTOM_COLUMNS_ID,
+  DEFAULT_COLUMN_SETTINGS_ID,
+  NOTIFICATIONS_ID,
+  SUBTASKS_ID,
+  ATTACHMENTS_ID,
+  ATTACHMENTS_BUCKET_ID,
+  COMMENTS_ID,
+  GITHUB_REPOS_ID,
+  PROJECT_DOCS_ID,
+  PROJECT_DOCS_BUCKET_ID,
+  TEAMS_ID,
+  TEAM_MEMBERS_ID,
+  PROGRAMS_ID,
+  CUSTOM_ROLES_ID,
+  PROJECT_MEMBERS_ID,
+  PROJECT_ROLES_ID,
+  WORKFLOWS_ID,
+  WORKFLOW_STATUSES_ID,
+  WORKFLOW_TRANSITIONS_ID,
+  CUSTOM_FIELDS_ID,
+  CUSTOM_WORK_ITEM_TYPES_ID,
+  WORK_ITEM_LINKS_ID,
+  SAVED_VIEWS_ID,
+  SPRINTS_ID,
+  WORK_ITEMS_ID,
+  PERSONAL_BACKLOG_ID,
+} from "@/config";
 
 const app = new Hono()
   .get("/current", sessionMiddleware, (c) => {
@@ -436,6 +472,415 @@ const app = new Hono()
         return c.json({ error: "Invalid or expired recovery link" }, 400);
       }
       return c.json({ error: "Failed to reset password" }, 500);
+    }
+  })
+  .delete("/account", sessionMiddleware, async (c) => {
+    try {
+      const account = c.get("account");
+      const storage = c.get("storage");
+      const databases = c.get("databases");
+      const user = c.get("user");
+      const { users } = await createAdminClient();
+
+      console.log(`Starting account deletion for user: ${user.$id}`);
+
+      // Get all workspaces owned by the user
+      const ownedWorkspaces = await databases.listDocuments(
+        DATABASE_ID,
+        WORKSPACES_ID,
+        [Query.equal("userId", user.$id)]
+      );
+
+      console.log(`Found ${ownedWorkspaces.total} workspaces to delete`);
+
+      // Delete each owned workspace and all related data
+      for (const workspace of ownedWorkspaces.documents) {
+        const workspaceId = workspace.$id;
+        console.log(`Deleting workspace: ${workspaceId}`);
+
+        try {
+          // Get all spaces in this workspace
+          const spaces = await databases.listDocuments(
+            DATABASE_ID,
+            SPACES_ID,
+            [Query.equal("workspaceId", workspaceId)]
+          );
+
+          // Delete all spaces and their related data
+          for (const space of spaces.documents) {
+            console.log(`Deleting space: ${space.$id}`);
+            
+            // Delete space members
+            const spaceMembers = await databases.listDocuments(
+              DATABASE_ID,
+              SPACE_MEMBERS_ID,
+              [Query.equal("spaceId", space.$id)]
+            );
+            for (const sm of spaceMembers.documents) {
+              await databases.deleteDocument(DATABASE_ID, SPACE_MEMBERS_ID, sm.$id);
+            }
+
+            // Delete the space
+            await databases.deleteDocument(DATABASE_ID, SPACES_ID, space.$id);
+          }
+
+          // Get all projects in this workspace
+          const projects = await databases.listDocuments(
+            DATABASE_ID,
+            PROJECTS_ID,
+            [Query.equal("workspaceId", workspaceId)]
+          );
+
+          // Delete all projects and their related data
+          for (const project of projects.documents) {
+            console.log(`Deleting project: ${project.$id}`);
+
+            // Delete project members
+            const projectMembers = await databases.listDocuments(
+              DATABASE_ID,
+              PROJECT_MEMBERS_ID,
+              [Query.equal("projectId", project.$id)]
+            );
+            for (const pm of projectMembers.documents) {
+              await databases.deleteDocument(DATABASE_ID, PROJECT_MEMBERS_ID, pm.$id);
+            }
+
+            // Delete project roles
+            const projectRoles = await databases.listDocuments(
+              DATABASE_ID,
+              PROJECT_ROLES_ID,
+              [Query.equal("projectId", project.$id)]
+            );
+            for (const pr of projectRoles.documents) {
+              await databases.deleteDocument(DATABASE_ID, PROJECT_ROLES_ID, pr.$id);
+            }
+
+            // Delete project docs
+            const projectDocs = await databases.listDocuments(
+              DATABASE_ID,
+              PROJECT_DOCS_ID,
+              [Query.equal("projectId", project.$id)]
+            );
+            for (const doc of projectDocs.documents) {
+              // Delete document file from storage
+              if (doc.fileId) {
+                try {
+                  await storage.deleteFile(PROJECT_DOCS_BUCKET_ID, doc.fileId);
+                } catch (error) {
+                  console.error(`Failed to delete document file: ${doc.fileId}`, error);
+                }
+              }
+              await databases.deleteDocument(DATABASE_ID, PROJECT_DOCS_ID, doc.$id);
+            }
+
+            // Delete GitHub repos linked to project
+            const githubRepos = await databases.listDocuments(
+              DATABASE_ID,
+              GITHUB_REPOS_ID,
+              [Query.equal("projectId", project.$id)]
+            );
+            for (const repo of githubRepos.documents) {
+              await databases.deleteDocument(DATABASE_ID, GITHUB_REPOS_ID, repo.$id);
+            }
+          }
+
+          // Get all tasks in this workspace
+          const tasks = await databases.listDocuments(
+            DATABASE_ID,
+            TASKS_ID,
+            [Query.equal("workspaceId", workspaceId)]
+          );
+
+          // Delete all task-related data
+          for (const task of tasks.documents) {
+            // Delete subtasks
+            const subtasks = await databases.listDocuments(
+              DATABASE_ID,
+              SUBTASKS_ID,
+              [Query.equal("taskId", task.$id)]
+            );
+            for (const subtask of subtasks.documents) {
+              await databases.deleteDocument(DATABASE_ID, SUBTASKS_ID, subtask.$id);
+            }
+
+            // Delete comments
+            const comments = await databases.listDocuments(
+              DATABASE_ID,
+              COMMENTS_ID,
+              [Query.equal("taskId", task.$id)]
+            );
+            for (const comment of comments.documents) {
+              await databases.deleteDocument(DATABASE_ID, COMMENTS_ID, comment.$id);
+            }
+
+            // Delete attachments
+            const attachments = await databases.listDocuments(
+              DATABASE_ID,
+              ATTACHMENTS_ID,
+              [Query.equal("taskId", task.$id)]
+            );
+            for (const attachment of attachments.documents) {
+              // Delete attachment file from storage
+              if (attachment.fileId) {
+                try {
+                  await storage.deleteFile(ATTACHMENTS_BUCKET_ID, attachment.fileId);
+                } catch (error) {
+                  console.error(`Failed to delete attachment file: ${attachment.fileId}`, error);
+                }
+              }
+              await databases.deleteDocument(DATABASE_ID, ATTACHMENTS_ID, attachment.$id);
+            }
+
+            // Delete work item links
+            const workItemLinks = await databases.listDocuments(
+              DATABASE_ID,
+              WORK_ITEM_LINKS_ID,
+              [Query.equal("sourceTaskId", task.$id)]
+            );
+            for (const link of workItemLinks.documents) {
+              await databases.deleteDocument(DATABASE_ID, WORK_ITEM_LINKS_ID, link.$id);
+            }
+
+            // Delete the task
+            await databases.deleteDocument(DATABASE_ID, TASKS_ID, task.$id);
+          }
+
+          // Delete time logs
+          const timeLogs = await databases.listDocuments(
+            DATABASE_ID,
+            TIME_LOGS_ID,
+            [Query.equal("workspaceId", workspaceId)]
+          );
+          for (const timeLog of timeLogs.documents) {
+            await databases.deleteDocument(DATABASE_ID, TIME_LOGS_ID, timeLog.$id);
+          }
+
+          // Delete sprints
+          const sprints = await databases.listDocuments(
+            DATABASE_ID,
+            SPRINTS_ID,
+            [Query.equal("workspaceId", workspaceId)]
+          );
+          for (const sprint of sprints.documents) {
+            await databases.deleteDocument(DATABASE_ID, SPRINTS_ID, sprint.$id);
+          }
+
+          // Delete work items
+          const workItems = await databases.listDocuments(
+            DATABASE_ID,
+            WORK_ITEMS_ID,
+            [Query.equal("workspaceId", workspaceId)]
+          );
+          for (const workItem of workItems.documents) {
+            await databases.deleteDocument(DATABASE_ID, WORK_ITEMS_ID, workItem.$id);
+          }
+
+          // Delete workflows
+          const workflows = await databases.listDocuments(
+            DATABASE_ID,
+            WORKFLOWS_ID,
+            [Query.equal("workspaceId", workspaceId)]
+          );
+          for (const workflow of workflows.documents) {
+            // Delete workflow statuses
+            const statuses = await databases.listDocuments(
+              DATABASE_ID,
+              WORKFLOW_STATUSES_ID,
+              [Query.equal("workflowId", workflow.$id)]
+            );
+            for (const status of statuses.documents) {
+              await databases.deleteDocument(DATABASE_ID, WORKFLOW_STATUSES_ID, status.$id);
+            }
+
+            // Delete workflow transitions
+            const transitions = await databases.listDocuments(
+              DATABASE_ID,
+              WORKFLOW_TRANSITIONS_ID,
+              [Query.equal("workflowId", workflow.$id)]
+            );
+            for (const transition of transitions.documents) {
+              await databases.deleteDocument(DATABASE_ID, WORKFLOW_TRANSITIONS_ID, transition.$id);
+            }
+
+            await databases.deleteDocument(DATABASE_ID, WORKFLOWS_ID, workflow.$id);
+          }
+
+          // Delete custom fields
+          const customFields = await databases.listDocuments(
+            DATABASE_ID,
+            CUSTOM_FIELDS_ID,
+            [Query.equal("workspaceId", workspaceId)]
+          );
+          for (const field of customFields.documents) {
+            await databases.deleteDocument(DATABASE_ID, CUSTOM_FIELDS_ID, field.$id);
+          }
+
+          // Delete custom work item types
+          const customWorkItemTypes = await databases.listDocuments(
+            DATABASE_ID,
+            CUSTOM_WORK_ITEM_TYPES_ID,
+            [Query.equal("workspaceId", workspaceId)]
+          );
+          for (const type of customWorkItemTypes.documents) {
+            await databases.deleteDocument(DATABASE_ID, CUSTOM_WORK_ITEM_TYPES_ID, type.$id);
+          }
+
+          // Delete saved views
+          const savedViews = await databases.listDocuments(
+            DATABASE_ID,
+            SAVED_VIEWS_ID,
+            [Query.equal("workspaceId", workspaceId)]
+          );
+          for (const view of savedViews.documents) {
+            await databases.deleteDocument(DATABASE_ID, SAVED_VIEWS_ID, view.$id);
+          }
+
+          // Delete custom columns
+          const customColumns = await databases.listDocuments(
+            DATABASE_ID,
+            CUSTOM_COLUMNS_ID,
+            [Query.equal("workspaceId", workspaceId)]
+          );
+          for (const column of customColumns.documents) {
+            await databases.deleteDocument(DATABASE_ID, CUSTOM_COLUMNS_ID, column.$id);
+          }
+
+          // Delete default column settings
+          const defaultColumnSettings = await databases.listDocuments(
+            DATABASE_ID,
+            DEFAULT_COLUMN_SETTINGS_ID,
+            [Query.equal("workspaceId", workspaceId)]
+          );
+          for (const setting of defaultColumnSettings.documents) {
+            await databases.deleteDocument(DATABASE_ID, DEFAULT_COLUMN_SETTINGS_ID, setting.$id);
+          }
+
+          // Delete teams
+          const teams = await databases.listDocuments(
+            DATABASE_ID,
+            TEAMS_ID,
+            [Query.equal("workspaceId", workspaceId)]
+          );
+          for (const team of teams.documents) {
+            // Delete team members
+            const teamMembers = await databases.listDocuments(
+              DATABASE_ID,
+              TEAM_MEMBERS_ID,
+              [Query.equal("teamId", team.$id)]
+            );
+            for (const tm of teamMembers.documents) {
+              await databases.deleteDocument(DATABASE_ID, TEAM_MEMBERS_ID, tm.$id);
+            }
+            await databases.deleteDocument(DATABASE_ID, TEAMS_ID, team.$id);
+          }
+
+          // Delete programs
+          const programs = await databases.listDocuments(
+            DATABASE_ID,
+            PROGRAMS_ID,
+            [Query.equal("workspaceId", workspaceId)]
+          );
+          for (const program of programs.documents) {
+            await databases.deleteDocument(DATABASE_ID, PROGRAMS_ID, program.$id);
+          }
+
+          // Delete custom roles
+          const customRoles = await databases.listDocuments(
+            DATABASE_ID,
+            CUSTOM_ROLES_ID,
+            [Query.equal("workspaceId", workspaceId)]
+          );
+          for (const role of customRoles.documents) {
+            await databases.deleteDocument(DATABASE_ID, CUSTOM_ROLES_ID, role.$id);
+          }
+
+          // Delete all projects (after related data is deleted)
+          for (const project of projects.documents) {
+            await databases.deleteDocument(DATABASE_ID, PROJECTS_ID, project.$id);
+          }
+
+          // Delete workspace members
+          const members = await databases.listDocuments(
+            DATABASE_ID,
+            MEMBERS_ID,
+            [Query.equal("workspaceId", workspaceId)]
+          );
+          for (const member of members.documents) {
+            await databases.deleteDocument(DATABASE_ID, MEMBERS_ID, member.$id);
+          }
+
+          // Finally delete the workspace
+          await databases.deleteDocument(DATABASE_ID, WORKSPACES_ID, workspaceId);
+          console.log(`Successfully deleted workspace: ${workspaceId}`);
+        } catch (error) {
+          console.error(`Error deleting workspace ${workspaceId}:`, error);
+          // Continue with other workspaces even if one fails
+        }
+      }
+
+      // Delete user's personal backlog items
+      try {
+        const personalBacklog = await databases.listDocuments(
+          DATABASE_ID,
+          PERSONAL_BACKLOG_ID,
+          [Query.equal("userId", user.$id)]
+        );
+        for (const item of personalBacklog.documents) {
+          await databases.deleteDocument(DATABASE_ID, PERSONAL_BACKLOG_ID, item.$id);
+        }
+      } catch (error) {
+        console.error("Error deleting personal backlog:", error);
+      }
+
+      // Delete user's notifications
+      try {
+        const notifications = await databases.listDocuments(
+          DATABASE_ID,
+          NOTIFICATIONS_ID,
+          [Query.equal("userId", user.$id)]
+        );
+        for (const notification of notifications.documents) {
+          await databases.deleteDocument(DATABASE_ID, NOTIFICATIONS_ID, notification.$id);
+        }
+      } catch (error) {
+        console.error("Error deleting notifications:", error);
+      }
+
+      // Delete profile image if exists
+      if (user.prefs?.profileImageId) {
+        try {
+          await storage.deleteFile(IMAGES_BUCKET_ID, user.prefs.profileImageId);
+        } catch (error) {
+          console.error("Error deleting profile image:", error);
+        }
+      }
+
+      // Delete all user sessions
+      await account.deleteSessions();
+
+      // Delete the user account (requires admin client)
+      await users.delete(user.$id);
+
+      // Clear auth cookie
+      deleteCookie(c, AUTH_COOKIE);
+
+      console.log(`Successfully deleted user account: ${user.$id}`);
+
+      return c.json({ 
+        success: true, 
+        message: "Account and all associated data deleted successfully" 
+      });
+    } catch (error: unknown) {
+      console.error("Delete account error:", error);
+      const appwriteError = error as { code?: number; message?: string };
+      
+      if (appwriteError.code === 401) {
+        return c.json({ error: "Unauthorized. Please log in again." }, 401);
+      }
+      
+      return c.json({ 
+        error: appwriteError.message || "Failed to delete account. Please try again." 
+      }, 500);
     }
   });
 
