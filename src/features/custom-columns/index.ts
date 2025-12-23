@@ -23,4 +23,4 @@ export { useMoveTasksFromDisabledColumn } from "./hooks/use-move-tasks-from-disa
 
 // Types and Schemas
 export type { CustomColumn } from "./types";
-export { createCustomColumnSchema, updateCustomColumnSchema } from "./schemas";
+export { createCustomColumnSchema, createCustomColumnBaseSchema, updateCustomColumnSchema } from "./schemas";

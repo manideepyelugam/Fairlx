@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, Plus, BookOpen } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -40,12 +40,20 @@ export const WorkflowsClient = () => {
             Manage workflows and statuses for this space
           </p>
         </div>
-        {isAdmin && (
-          <Button onClick={open}>
-            <Plus className="size-4 mr-2" />
-            Create Workflow
+        <div className="flex items-center gap-2">
+          <Button variant="outline" asChild>
+            <Link href={`/workspaces/${workspaceId}/workflow-guide`}>
+              <BookOpen className="size-4 mr-2" />
+              Workflow Guide
+            </Link>
           </Button>
-        )}
+          {isAdmin && (
+            <Button onClick={open}>
+              <Plus className="size-4 mr-2" />
+              Create Workflow
+            </Button>
+          )}
+        </div>
       </div>
 
       <WorkflowsList spaceId={spaceId} />

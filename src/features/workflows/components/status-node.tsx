@@ -2,7 +2,15 @@
 
 import { memo } from "react";
 import { Handle, Position } from "@xyflow/react";
-import { Circle, CheckCircle, Clock, Edit, Trash2, Play, Flag } from "lucide-react";
+import { 
+  Circle, CheckCircle, Clock, Edit, Trash2, Play, Flag, 
+  UserCheck, Eye, Bug, Zap, Star, AlertCircle, Ban, 
+  CircleDashed, CheckSquare, ShieldCheck, Sparkles,
+  CircleDot, Timer, Pause, Square, XCircle, AlertTriangle,
+  Bookmark, EyeOff, Lock, Unlock, Archive, Send, 
+  MessageSquare, Users, Rocket, Target, Crosshair,
+  Shield, ThumbsUp, ThumbsDown, Loader, RefreshCw
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,19 +21,21 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { StatusNodeData, StatusCategory, STATUS_CATEGORY_CONFIG } from "../types";
+import { StatusNodeData, STATUS_TYPE_CONFIG } from "../types";
 
-const getCategoryIcon = (category: StatusCategory) => {
-  switch (category) {
-    case StatusCategory.TODO:
-      return Circle;
-    case StatusCategory.IN_PROGRESS:
-      return Clock;
-    case StatusCategory.DONE:
-      return CheckCircle;
-    default:
-      return Circle;
-  }
+// Map icon names to actual icon components
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
+  Circle, CircleDot, CircleDashed, Clock, Timer, Play, Pause,
+  Square, CheckSquare, CheckCircle, CheckCircle2: CheckCircle,
+  XCircle, AlertCircle, AlertTriangle, Bug, Zap, Star, Flag,
+  Bookmark, Eye, EyeOff, Lock, Unlock, Archive, Trash: Trash2,
+  Send, MessageSquare, UserCheck, Users, Sparkles, Rocket,
+  Target, Crosshair, Shield, ShieldCheck, ThumbsUp, ThumbsDown,
+  Ban, Loader, RefreshCw,
+};
+
+const getIconComponent = (iconName: string) => {
+  return ICON_MAP[iconName] || Circle;
 };
 
 type StatusNodeProps = {
@@ -34,8 +44,8 @@ type StatusNodeProps = {
 };
 
 export const StatusNode = memo(({ data, selected }: StatusNodeProps) => {
-  const CategoryIcon = getCategoryIcon(data.category);
-  const categoryConfig = STATUS_CATEGORY_CONFIG[data.category];
+  const IconComponent = getIconComponent(data.icon);
+  const statusTypeConfig = STATUS_TYPE_CONFIG[data.statusType];
 
   return (
     <div
@@ -83,7 +93,7 @@ export const StatusNode = memo(({ data, selected }: StatusNodeProps) => {
               className="flex-shrink-0 p-1 rounded-md"
               style={{ backgroundColor: `${data.color}20` }}
             >
-              <CategoryIcon
+              <IconComponent
                 className="size-3.5"
                 style={{ color: data.color }}
               />
@@ -107,11 +117,17 @@ export const StatusNode = memo(({ data, selected }: StatusNodeProps) => {
                 <Edit className="size-3.5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onClick={() => data.onEdit(data.id)}>
                 <Edit className="size-4 mr-2" />
                 Edit Status
               </DropdownMenuItem>
+              {data.onRemove && (
+                <DropdownMenuItem onClick={() => data.onRemove?.(data.id)}>
+                  <Circle className="size-4 mr-2" />
+                  Remove from Canvas
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => data.onDelete(data.id)}
@@ -124,14 +140,14 @@ export const StatusNode = memo(({ data, selected }: StatusNodeProps) => {
           </DropdownMenu>
         </div>
 
-        {/* Category Badge */}
+        {/* Status Type Badge */}
         <div className="mt-2 flex items-center gap-1.5">
           <Badge
             variant="outline"
             className="text-[9px] h-4 px-1.5"
             style={{ borderColor: `${data.color}50`, color: data.color }}
           >
-            {categoryConfig.label}
+            {statusTypeConfig.label}
           </Badge>
         </div>
       </div>

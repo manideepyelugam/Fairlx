@@ -21,7 +21,7 @@ import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
 import { toast } from "sonner";
 
-import { createCustomColumnSchema } from "../schemas";
+import { createCustomColumnBaseSchema } from "../schemas";
 import { useCreateCustomColumn } from "../api/use-create-custom-column";
 import { IconPicker } from "./icon-picker";
 import { ColorPicker } from "./color-picker";
@@ -31,7 +31,7 @@ interface CreateCustomColumnFormProps {
 }
 
 // Form schema excludes workspaceId & projectId because they're injected programmatically
-const formSchema = createCustomColumnSchema.omit({ workspaceId: true, projectId: true });
+const formSchema = createCustomColumnBaseSchema.omit({ workspaceId: true, projectId: true, workflowId: true });
 type FormData = z.infer<typeof formSchema>;
 
 export const CreateCustomColumnForm = ({ onCancel }: CreateCustomColumnFormProps) => {

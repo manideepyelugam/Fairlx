@@ -1,7 +1,22 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { Settings, Workflow, Plus, FolderKanban, ChevronRight, FolderPlus, X, UsersRound } from "lucide-react";
+import { 
+  Settings, 
+  Workflow, 
+  Plus, 
+  FolderKanban, 
+  ChevronRight, 
+  FolderPlus, 
+  X, 
+  UsersRound,
+  Crown,
+  GitBranch,
+  Shield,
+  Users,
+  MoreHorizontal,
+  ExternalLink
+} from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -10,6 +25,8 @@ import { PageLoader } from "@/components/page-loader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +34,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 import { useGetSpace } from "@/features/spaces/api/use-get-space";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
@@ -26,7 +62,12 @@ import { CreateProjectModal } from "@/features/projects/components/create-projec
 import { ProjectAvatar } from "@/features/projects/components/project-avatar";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { useUpdateProject } from "@/features/projects/api/use-update-project";
+import { useGetTeams } from "@/features/teams/api/use-get-teams";
+import { useUpdateTeam } from "@/features/teams/api/use-update-team";
+import { useGetMembers } from "@/features/members/api/use-get-members";
+import { useGetTeamMembers } from "@/features/teams/api/use-get-team-members";
 import { useConfirm } from "@/hooks/use-confirm";
+import { MasterBadge } from "@/features/spaces/components/space-role-badge";
 
 export const SpaceIdClient = () => {
   const router = useRouter();
@@ -34,18 +75,40 @@ export const SpaceIdClient = () => {
   const spaceId = params.spaceId as string;
   const workspaceId = useWorkspaceId();
   const { open: openCreateProject } = useCreateProjectModal();
-  const { mutate: updateProject, isPending: isUpdating } = useUpdateProject();
-  const [ConfirmDialog, confirm] = useConfirm(
+  const { mutate: updateProject, isPending: isUpdatingProject } = useUpdateProject();
+  const { mutate: updateTeam, isPending: isUpdatingTeam } = useUpdateTeam();
+  
+  const [ConfirmProjectDialog, confirmProjectRemove] = useConfirm(
     "Remove Project",
     "Are you sure you want to remove this project from the space? The project will not be deleted, just unassigned from this space.",
     "destructive"
   );
   
+  const [ConfirmTeamDialog, confirmTeamRemove] = useConfirm(
+    "Remove Team from Space",
+    "This team will be removed from the space but not deleted.",
+    "destructive"
+  );
+  
   const { data: space, isLoading: isLoadingSpace } = useGetSpace({ spaceId });
   const { data: projectsData, isLoading: isLoadingProjects } = useGetProjects({ workspaceId });
+  const { data: spaceTeamsData, isLoading: isLoadingSpaceTeams } = useGetTeams({ workspaceId, spaceId });
+  const { data: allTeamsData } = useGetTeams({ workspaceId });
+  const { data: membersData } = useGetMembers({ workspaceId });
   const { isAdmin } = useCurrentMember({ workspaceId });
 
   const [isAddProjectOpen, setIsAddProjectOpen] = useState(false);
+  const [isAddTeamOpen, setIsAddTeamOpen] = useState(false);
+  const [selectedTeamId, setSelectedTeamId] = useState("");
+
+  // Workspace admins are treated as space masters
+  const isMaster = isAdmin;
+
+  // Get the space owner from members
+  const spaceOwner = useMemo(() => {
+    if (!space?.ownerId || !membersData?.documents) return null;
+    return membersData.documents.find(member => member.userId === space.ownerId);
+  }, [space?.ownerId, membersData?.documents]);
 
   // Filter projects that belong to this space
   const spaceProjects = useMemo(() => {
@@ -56,32 +119,27 @@ export const SpaceIdClient = () => {
   // Get all projects without a space (available to add)
   const availableProjects = useMemo(() => {
     if (!projectsData?.documents) return [];
-    
-    // Debug: Log all projects with their spaceId
-    console.log("All projects:", projectsData.documents.map(p => ({
-      name: p.name,
-      spaceId: p.spaceId,
-      spaceIdType: typeof p.spaceId,
-      isNull: p.spaceId === null,
-      isUndefined: p.spaceId === undefined,
-      isEmpty: p.spaceId === "",
-    })));
-    
     return projectsData.documents.filter(project => {
-      // Check if project has no space assigned
-      // Covers: null, undefined, empty string, the string "null", or whitespace
       const hasNoSpace = !project.spaceId || 
                         project.spaceId === null || 
                         project.spaceId === undefined ||
                         project.spaceId === "" ||
-                        project.spaceId === "null" ||  // Handle FormData string conversion
+                        project.spaceId === "null" ||
                         (typeof project.spaceId === 'string' && project.spaceId.trim() === "");
-      
       return hasNoSpace;
     });
   }, [projectsData]);
 
-  if (isLoadingSpace || isLoadingProjects) {
+  // Get space teams
+  const spaceTeams = useMemo(() => spaceTeamsData?.documents ?? [], [spaceTeamsData]);
+  const allTeams = useMemo(() => allTeamsData?.documents ?? [], [allTeamsData]);
+
+  // Get teams without a space (available to add)
+  const availableTeams = useMemo(() => {
+    return allTeams.filter(team => !team.spaceId || team.spaceId === null || team.spaceId === "");
+  }, [allTeams]);
+
+  if (isLoadingSpace || isLoadingProjects || isLoadingSpaceTeams) {
     return <PageLoader />;
   }
 
@@ -93,8 +151,12 @@ export const SpaceIdClient = () => {
     router.push(`/workspaces/${workspaceId}/projects/${projectId}`);
   };
 
+  const handleWorkflowClick = (projectId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    router.push(`/workspaces/${workspaceId}/projects/${projectId}/workflow`);
+  };
+
   const handleCreateProject = () => {
-    // Open create project modal with spaceId pre-filled
     openCreateProject(spaceId);
   };
 
@@ -114,7 +176,7 @@ export const SpaceIdClient = () => {
 
   const handleRemoveProject = async (projectId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const ok = await confirm();
+    const ok = await confirmProjectRemove();
     if (!ok) return;
     
     updateProject(
@@ -125,66 +187,157 @@ export const SpaceIdClient = () => {
     );
   };
 
+  const handleTeamClick = (teamId: string) => {
+    router.push(`/workspaces/${workspaceId}/teams/${teamId}`);
+  };
+
+  const handleAddExistingTeam = () => {
+    if (!selectedTeamId) return;
+
+    updateTeam(
+      {
+        param: { teamId: selectedTeamId },
+        json: { spaceId },
+      },
+      {
+        onSuccess: () => {
+          setIsAddTeamOpen(false);
+          setSelectedTeamId("");
+        },
+      }
+    );
+  };
+
+  const handleRemoveTeam = async (teamId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const ok = await confirmTeamRemove();
+    if (!ok) return;
+    
+    updateTeam({
+      param: { teamId },
+      json: { spaceId: null },
+    });
+  };
+
   return (
-    <div className="flex flex-col gap-y-4">
-      <ConfirmDialog />
+    <div className="flex flex-col gap-y-6">
+      <ConfirmProjectDialog />
+      <ConfirmTeamDialog />
       <CreateProjectModal />
       
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div
-            className="size-10 rounded-lg flex items-center justify-center text-white font-bold"
-            style={{ backgroundColor: space.color || "#6366f1" }}
-          >
-            {space.name.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-semibold">{space.name}</h1>
-              <Badge variant="outline">{space.key}</Badge>
+      {/* Professional Header */}
+      <div className="bg-gradient-to-r from-background to-muted/30 rounded-xl border p-6">
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          {/* Left: Space Info */}
+          <div className="flex items-start gap-4">
+            <div
+              className="size-16 rounded-xl flex items-center justify-center text-white font-bold text-2xl shadow-lg"
+              style={{ 
+                backgroundColor: space.color || "#6366f1",
+                boxShadow: `0 8px 24px -4px ${space.color || "#6366f1"}40`
+              }}
+            >
+              {space.name.charAt(0).toUpperCase()}
             </div>
-            <p className="text-sm text-muted-foreground">
-              {space.description || "No description"}
-            </p>
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold tracking-tight">{space.name}</h1>
+                <Badge variant="secondary" className="font-mono text-xs">
+                  {space.key}
+                </Badge>
+                {isMaster && <MasterBadge size="sm" />}
+              </div>
+              <p className="text-muted-foreground max-w-xl">
+                {space.description || "No description provided"}
+              </p>
+              
+              {/* Space Master Info */}
+              {spaceOwner && (
+                <div className="flex items-center gap-2 pt-2">
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                    <Crown className="size-4 text-amber-500" />
+                    <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                      Space Master:
+                    </span>
+                    <Avatar className="size-5">
+                      <AvatarImage src={spaceOwner.profileImageUrl || undefined} />
+                      <AvatarFallback className="text-xs bg-amber-500/20 text-amber-700 dark:text-amber-400">
+                        {spaceOwner.name?.charAt(0) || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm font-medium">{spaceOwner.name}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right: Actions */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link href={`/workspaces/${workspaceId}/spaces/${spaceId}/workflows`}>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Workflow className="size-4" />
+                Workflows
+              </Button>
+            </Link>
+            {isMaster && (
+              <Link href={`/workspaces/${workspaceId}/spaces/${spaceId}/settings`}>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Settings className="size-4" />
+                  Settings
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Link href={`/workspaces/${workspaceId}/spaces/${spaceId}/workflows`}>
-            <Button variant="outline" size="sm">
-              <Workflow className="size-4 mr-2" />
-              Workflows
-            </Button>
-          </Link>
-          <Link href={`/workspaces/${workspaceId}/spaces/${spaceId}/teams`}>
-            <Button variant="outline" size="sm">
-              <UsersRound className="size-4 mr-2" />
-              Teams {space.teamCount !== undefined && `(${space.teamCount})`}
-            </Button>
-          </Link>
-          <Link href={`/workspaces/${workspaceId}/spaces/${spaceId}/settings`}>
-            <Button variant="outline" size="sm">
-              <Settings className="size-4 mr-2" />
-              Settings
-            </Button>
-          </Link>
+        {/* Stats Bar */}
+        <div className="flex items-center gap-6 mt-6 pt-4 border-t border-border/50">
+          <div className="flex items-center gap-2 text-sm">
+            <FolderKanban className="size-4 text-muted-foreground" />
+            <span className="font-medium">{spaceProjects.length}</span>
+            <span className="text-muted-foreground">Projects</span>
+          </div>
+          <Separator orientation="vertical" className="h-4" />
+          <div className="flex items-center gap-2 text-sm">
+            <UsersRound className="size-4 text-muted-foreground" />
+            <span className="font-medium">{spaceTeams.length}</span>
+            <span className="text-muted-foreground">Teams</span>
+          </div>
+          <Separator orientation="vertical" className="h-4" />
+          <div className="flex items-center gap-2 text-sm">
+            <Users className="size-4 text-muted-foreground" />
+            <span className="font-medium">
+              {spaceTeams.reduce((acc, team) => acc + (team.memberCount || 0), 0)}
+            </span>
+            <span className="text-muted-foreground">Members</span>
+          </div>
         </div>
       </div>
 
-      {/* Projects in this Space */}
-      <Card>
-        <CardHeader>
+      {/* Projects Section */}
+      <Card className="border-none shadow-sm">
+        <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Projects in {space.name}</CardTitle>
-            {isAdmin && (
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <FolderKanban className="size-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">Projects</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Manage projects in {space.name}
+                </p>
+              </div>
+            </div>
+            {isMaster && (
               <div className="flex items-center gap-2">
-                <Button onClick={handleCreateProject} size="sm" variant="primary">
-                  <Plus className="size-4 mr-2" />
+                <Button onClick={handleCreateProject} size="sm" className="gap-2">
+                  <Plus className="size-4" />
                   Create Project
                 </Button>
-                <Button onClick={() => setIsAddProjectOpen(true)} size="sm" variant="secondary">
-                  <FolderPlus className="size-4 mr-2" />
+                <Button onClick={() => setIsAddProjectOpen(true)} size="sm" variant="outline" className="gap-2">
+                  <FolderPlus className="size-4" />
                   Add Existing
                 </Button>
               </div>
@@ -193,18 +346,18 @@ export const SpaceIdClient = () => {
         </CardHeader>
         <CardContent>
           {spaceProjects.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-lg">
+            <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-xl bg-muted/30">
               <div className="rounded-full bg-muted p-4 mb-4">
                 <FolderKanban className="h-8 w-8 text-muted-foreground" />
               </div>
               <h3 className="text-lg font-semibold mb-2">No Projects Yet</h3>
               <p className="text-sm text-muted-foreground mb-4 max-w-md">
-                This space doesn&apos;t have any projects yet. Projects help you organize work items and track progress.
-                {isAdmin && " Create a new project to get started!"}
+                Projects help you organize work items and track progress.
+                {isMaster && " Create a new project to get started!"}
               </p>
-              {isAdmin && (
-                <Button onClick={handleCreateProject}>
-                  <Plus className="size-4 mr-2" />
+              {isMaster && (
+                <Button onClick={handleCreateProject} className="gap-2">
+                  <Plus className="size-4" />
                   Create First Project
                 </Button>
               )}
@@ -214,40 +367,88 @@ export const SpaceIdClient = () => {
               {spaceProjects.map((project) => (
                 <Card
                   key={project.$id}
-                  className="group relative cursor-pointer hover:shadow-md transition-all duration-200 border hover:border-primary/20"
+                  className="group relative cursor-pointer hover:shadow-lg transition-all duration-200 border hover:border-primary/30 overflow-hidden"
                   onClick={() => handleProjectClick(project.$id)}
                 >
+                  {/* Colored Top Border */}
+                  <div 
+                    className="h-1 w-full"
+                    style={{ backgroundColor: project.color || space.color || "#6366f1" }}
+                  />
                   <CardContent className="p-5">
                     <div className="flex items-start gap-3">
                       <ProjectAvatar
                         name={project.name}
                         image={project.imageUrl}
-                        className="size-12 flex-shrink-0"
+                        className="size-12 flex-shrink-0 rounded-lg"
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2 mb-1">
                           <h4 className="font-semibold text-base truncate group-hover:text-primary transition-colors">
                             {project.name}
                           </h4>
-                          {isAdmin && (
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="size-7 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive flex-shrink-0 -mt-1 -mr-1"
-                              disabled={isUpdating}
-                              onClick={(e) => handleRemoveProject(project.$id, e)}
-                              title="Remove from space"
-                            >
-                              <X className="size-4" />
-                            </Button>
-                          )}
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {/* Workflow Icon */}
+                            <TooltipProvider delayDuration={100}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="size-7 hover:bg-primary/10 hover:text-primary"
+                                    onClick={(e) => handleWorkflowClick(project.$id, e)}
+                                  >
+                                    <GitBranch className="size-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top">
+                                  <p>Project Workflow</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            
+                            {/* Remove Button */}
+                            {isMaster && (
+                              <TooltipProvider delayDuration={100}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="size-7 hover:bg-destructive/10 hover:text-destructive"
+                                      disabled={isUpdatingProject}
+                                      onClick={(e) => handleRemoveProject(project.$id, e)}
+                                    >
+                                      <X className="size-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top">
+                                    <p>Remove from space</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
                         </div>
-                        <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+                        <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed mb-3">
                           {project.description || "No description provided"}
                         </p>
+                        
+                        {/* Project Footer with Key and Workflow indicator */}
+                        <div className="flex items-center justify-between">
+                          {project.key && (
+                            <Badge variant="outline" className="text-xs font-mono">
+                              {project.key}
+                            </Badge>
+                          )}
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <GitBranch className="size-3" />
+                            <span>{project.workflowId ? "Custom" : "Default"} Workflow</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <ChevronRight className="size-4 text-muted-foreground group-hover:text-primary transition-all group-hover:translate-x-1 absolute bottom-3 right-3" />
+                    <ChevronRight className="size-4 text-muted-foreground group-hover:text-primary transition-all group-hover:translate-x-1 absolute bottom-5 right-4" />
                   </CardContent>
                 </Card>
               ))}
@@ -256,35 +457,97 @@ export const SpaceIdClient = () => {
         </CardContent>
       </Card>
 
+      {/* Teams Section */}
+      <Card className="border-none shadow-sm">
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-indigo-500/10">
+                <UsersRound className="size-5 text-indigo-500" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">Teams</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Teams assigned to {space.name}
+                </p>
+              </div>
+            </div>
+            {isMaster && (
+              <Button onClick={() => setIsAddTeamOpen(true)} size="sm" variant="outline" className="gap-2">
+                <Plus className="size-4" />
+                Add Team
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {spaceTeams.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-xl bg-muted/30">
+              <div className="rounded-full bg-muted p-4 mb-4">
+                <UsersRound className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">No Teams Yet</h3>
+              <p className="text-sm text-muted-foreground mb-4 max-w-md">
+                Add teams to this space to enable collaboration.
+              </p>
+              {isMaster && (
+                <Button onClick={() => setIsAddTeamOpen(true)} variant="outline" className="gap-2">
+                  <Plus className="size-4" />
+                  Add Team
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {spaceTeams.map((team) => (
+                <TeamCard
+                  key={team.$id}
+                  team={team}
+                  spaceColor={space.color}
+                  workspaceId={workspaceId}
+                  isMaster={isMaster}
+                  isUpdating={isUpdatingTeam}
+                  onTeamClick={handleTeamClick}
+                  onRemoveTeam={handleRemoveTeam}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Add Existing Project Dialog */}
       <Dialog open={isAddProjectOpen} onOpenChange={setIsAddProjectOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh]">
+        <DialogContent className="max-w-2xl max-h-[80vh]">
           <DialogHeader>
-            <DialogTitle className="text-xl">Add Existing Project to {space.name}</DialogTitle>
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <FolderPlus className="size-5" />
+              Add Existing Project
+            </DialogTitle>
             <DialogDescription>
-              Select a project to assign to this space. Only projects that haven&apos;t been assigned to any space are shown here.
+              Select a project to assign to {space.name}. Only unassigned projects are shown.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 overflow-y-auto max-h-[500px] pr-2">
             {availableProjects.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-lg">
+              <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-xl">
                 <div className="rounded-full bg-muted p-4 mb-4">
                   <FolderKanban className="h-10 w-10 text-muted-foreground" />
                 </div>
                 <h3 className="font-semibold text-lg mb-2">No Available Projects</h3>
                 <p className="text-sm text-muted-foreground max-w-md">
-                  All projects in this workspace are already assigned to spaces. Create a new project or remove a project from its current space to assign it here.
+                  All projects are already assigned to spaces.
                 </p>
               </div>
             ) : (
               <>
-                <div className="text-sm text-muted-foreground px-1">
+                <div className="text-sm text-muted-foreground px-1 pb-2">
                   {availableProjects.length} {availableProjects.length === 1 ? 'project' : 'projects'} available
                 </div>
                 {availableProjects.map((project) => (
                   <Card
                     key={project.$id}
-                    className="group cursor-pointer hover:shadow-md transition-all duration-200 border hover:border-primary/20"
+                    className="group cursor-pointer hover:shadow-md transition-all duration-200 border hover:border-primary/30"
                     onClick={() => handleAddExistingProject(project.$id)}
                   >
                     <CardContent className="p-4">
@@ -293,29 +556,28 @@ export const SpaceIdClient = () => {
                           <ProjectAvatar
                             name={project.name}
                             image={project.imageUrl}
-                            className="size-12 flex-shrink-0"
+                            className="size-10 flex-shrink-0"
                           />
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-base truncate group-hover:text-primary transition-colors">
+                            <h4 className="font-semibold truncate group-hover:text-primary transition-colors">
                               {project.name}
                             </h4>
-                            <p className="text-sm text-muted-foreground mt-0.5 line-clamp-1">
-                              {project.description || "No description provided"}
+                            <p className="text-sm text-muted-foreground line-clamp-1">
+                              {project.description || "No description"}
                             </p>
                           </div>
                         </div>
                         <Button
                           size="sm"
-                          variant="primary"
-                          disabled={isUpdating}
-                          className="flex-shrink-0"
+                          disabled={isUpdatingProject}
+                          className="flex-shrink-0 gap-1"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleAddExistingProject(project.$id);
                           }}
                         >
-                          <Plus className="size-4 mr-1" />
-                          Add to Space
+                          <Plus className="size-4" />
+                          Add
                         </Button>
                       </div>
                     </CardContent>
@@ -326,6 +588,199 @@ export const SpaceIdClient = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Add Team Dialog */}
+      <Dialog open={isAddTeamOpen} onOpenChange={setIsAddTeamOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UsersRound className="size-5" />
+              Add Team to {space.name}
+            </DialogTitle>
+            <DialogDescription>
+              Select a team without a space assignment.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {availableTeams.length === 0 ? (
+              <div className="text-center py-8">
+                <UsersRound className="size-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">
+                  No available teams. All teams are already assigned to spaces.
+                </p>
+              </div>
+            ) : (
+              <>
+                <Select value={selectedTeamId} onValueChange={setSelectedTeamId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a team..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableTeams.map((team) => (
+                      <SelectItem key={team.$id} value={team.$id}>
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="size-5 rounded flex items-center justify-center text-white text-xs font-bold"
+                            style={{ backgroundColor: space.color || "#6366f1" }}
+                          >
+                            {team.name.charAt(0)}
+                          </div>
+                          {team.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setIsAddTeamOpen(false);
+                      setSelectedTeamId("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleAddExistingTeam} 
+                    disabled={!selectedTeamId || isUpdatingTeam}
+                    className="gap-2"
+                  >
+                    {isUpdatingTeam ? "Adding..." : "Add Team"}
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
-};;
+};
+
+// Team Card Component with Admin Info
+interface TeamCardProps {
+  team: {
+    $id: string;
+    name: string;
+    imageUrl?: string;
+    memberCount?: number;
+    description?: string;
+  };
+  spaceColor?: string | null;
+  workspaceId: string;
+  isMaster: boolean;
+  isUpdating: boolean;
+  onTeamClick: (teamId: string) => void;
+  onRemoveTeam: (teamId: string, e: React.MouseEvent) => void;
+}
+
+const TeamCard = ({ 
+  team, 
+  spaceColor, 
+  isMaster, 
+  isUpdating,
+  onTeamClick, 
+  onRemoveTeam 
+}: TeamCardProps) => {
+  const { data: teamMembersData } = useGetTeamMembers({ teamId: team.$id });
+  
+  // Find the team lead/admin
+  const teamLead = useMemo(() => {
+    if (!teamMembersData?.documents) return null;
+    return teamMembersData.documents.find(member => member.role === "LEAD");
+  }, [teamMembersData]);
+
+  return (
+    <Card 
+      className="group cursor-pointer hover:shadow-lg transition-all duration-200 border hover:border-primary/30 overflow-hidden"
+      onClick={() => onTeamClick(team.$id)}
+    >
+      {/* Colored Top Border */}
+      <div 
+        className="h-1 w-full"
+        style={{ backgroundColor: spaceColor || "#6366f1" }}
+      />
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div 
+              className="size-11 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm"
+              style={{ backgroundColor: spaceColor || "#6366f1" }}
+            >
+              {team.name.substring(0, 2).toUpperCase()}
+            </div>
+            <div>
+              <h3 className="font-semibold group-hover:text-primary transition-colors">{team.name}</h3>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Users className="size-3" />
+                <span>{team.memberCount || 0} members</span>
+              </div>
+            </div>
+          </div>
+          
+          {isMaster && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onTeamClick(team.$id);
+                  }}
+                >
+                  <ExternalLink className="size-4 mr-2" />
+                  View Team
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  className="text-destructive focus:text-destructive"
+                  onClick={(e) => onRemoveTeam(team.$id, e)}
+                  disabled={isUpdating}
+                >
+                  <X className="size-4 mr-2" />
+                  Remove from Space
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+        
+        {team.description && (
+          <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+            {team.description}
+          </p>
+        )}
+
+        {/* Team Lead/Admin Info */}
+        {teamLead && (
+          <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+            <Shield className="size-3 text-amber-500" />
+            <Avatar className="size-5">
+              <AvatarImage src={teamLead.user?.profileImageUrl || undefined} />
+              <AvatarFallback className="text-xs bg-amber-500/20 text-amber-700 dark:text-amber-400">
+                {teamLead.user?.name?.charAt(0) || "?"}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-xs font-medium truncate">
+              {teamLead.user?.name || "Unknown"} 
+              <span className="text-muted-foreground"> (Lead)</span>
+            </span>
+          </div>
+        )}
+        
+        <ChevronRight className="size-4 text-muted-foreground group-hover:text-primary transition-all group-hover:translate-x-1 absolute bottom-5 right-4" />
+      </CardContent>
+    </Card>
+  );
+};
