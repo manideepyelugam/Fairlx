@@ -32,8 +32,12 @@ import { registerSchema } from "../schemas";
 import { useRegister } from "../api/use-register";
 import { AccountTypeSelector } from "./account-type-selector";
 
-export const SignUpCard = () => {
-  const { mutate, isPending } = useRegister();
+interface SignUpCardProps {
+  returnUrl?: string;
+}
+
+export const SignUpCard = ({ returnUrl }: SignUpCardProps) => {
+  const { mutate, isPending } = useRegister(returnUrl);
 
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
@@ -176,7 +180,7 @@ export const SignUpCard = () => {
       </div>
       <CardContent className="p-7 flex flex-col gap-y-4">
         <Button
-          onClick={() => signUpWithGoogle()}
+          onClick={() => signUpWithGoogle(returnUrl)}
           disabled={isPending}
           variant="secondary"
           size="lg"
@@ -186,7 +190,7 @@ export const SignUpCard = () => {
           Sign Up with Google
         </Button>
         <Button
-          onClick={() => signUpWithGithub()}
+          onClick={() => signUpWithGithub(returnUrl)}
           disabled={isPending}
           variant="secondary"
           size="lg"
@@ -202,7 +206,7 @@ export const SignUpCard = () => {
       <CardContent className="p-7 flex items-center justify-center">
         <p>
           Already have an account?{" "}
-          <Link href="/sign-in">
+          <Link href={returnUrl ? `/sign-in?returnUrl=${encodeURIComponent(returnUrl)}` : "/sign-in"}>
             <span className="text-blue-700">Login</span>
           </Link>
         </p>

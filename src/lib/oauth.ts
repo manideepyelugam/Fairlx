@@ -8,29 +8,49 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { OAuthProvider } from "node-appwrite";
 
-export async function signUpWithGithub() {
+export async function signUpWithGithub(returnUrl?: string) {
   const { account } = await createAdminClient();
 
   const origin = (await headers()).get("origin");
 
+  // Encode returnUrl in the failure redirect URL so it can be preserved
+  const failureUrl = returnUrl 
+    ? `${origin}/sign-up?returnUrl=${encodeURIComponent(returnUrl)}`
+    : `${origin}/sign-up`;
+  
+  // Encode returnUrl in the success redirect URL
+  const successUrl = returnUrl
+    ? `${origin}/oauth?returnUrl=${encodeURIComponent(returnUrl)}`
+    : `${origin}/oauth`;
+
   const redirectUrl = await account.createOAuth2Token(
     OAuthProvider.Github,
-    `${origin}/oauth`,
-    `${origin}/sign-up`
+    successUrl,
+    failureUrl
   );
 
   return redirect(redirectUrl);
 }
 
-export async function signUpWithGoogle() {
+export async function signUpWithGoogle(returnUrl?: string) {
   const { account } = await createAdminClient();
 
   const origin = (await headers()).get("origin");
 
+  // Encode returnUrl in the failure redirect URL so it can be preserved
+  const failureUrl = returnUrl 
+    ? `${origin}/sign-up?returnUrl=${encodeURIComponent(returnUrl)}`
+    : `${origin}/sign-up`;
+  
+  // Encode returnUrl in the success redirect URL
+  const successUrl = returnUrl
+    ? `${origin}/oauth?returnUrl=${encodeURIComponent(returnUrl)}`
+    : `${origin}/oauth`;
+
   const redirectUrl = await account.createOAuth2Token(
     OAuthProvider.Google,
-    `${origin}/oauth`,
-    `${origin}/sign-up`
+    successUrl,
+    failureUrl
   );
 
   return redirect(redirectUrl);

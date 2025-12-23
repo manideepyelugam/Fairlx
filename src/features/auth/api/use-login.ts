@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 type ResponseType = InferResponseType<(typeof client.api.auth.login)["$post"]>;
 type RequestType = InferRequestType<(typeof client.api.auth.login)["$post"]>;
 
-export const useLogin = () => {
+export const useLogin = (returnUrl?: string) => {
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -29,6 +29,10 @@ export const useLogin = () => {
         toast.success("Logged in.");
         router.refresh();
         queryClient.invalidateQueries({ queryKey: ["current"] });
+        // Redirect to returnUrl if provided, otherwise to home
+        if (returnUrl) {
+          router.push(returnUrl);
+        }
       }
     },
     onError: (error: { needsVerification?: boolean; error?: string; email?: string } | Error) => {

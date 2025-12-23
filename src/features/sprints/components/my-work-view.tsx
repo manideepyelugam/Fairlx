@@ -1,16 +1,27 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { useQueryState } from "nuqs";
+import {
+  DragDropContext,
+  Droppable,
+  Draggable,
+  type DropResult,
+} from "@hello-pangea/dnd";
 import { 
   Search, 
   LayoutGrid,
   List,
   CheckCircle2,
-  Clock,
+  CircleDotDashedIcon,
+  CircleCheckIcon,
+  CircleDotIcon,
+  CircleIcon,
   AlertCircle,
   Flag,
-  Layers
+  Layers,
+  Calendar,
+  MoreHorizontal
 } from "lucide-react";
 
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
@@ -18,7 +29,6 @@ import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { useGetProjects } from "@/features/projects/api/use-get-projects";
 
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -30,14 +40,47 @@ import {
 } from "@/components/ui/select";
 
 import { useGetWorkItems } from "../api/use-get-work-items";
-import { WorkItemCard } from "./work-item-card";
+import { useUpdateWorkItem } from "../api/use-update-work-item";
+import { WorkItemOptionsMenu } from "./work-item-options-menu";
 import { 
   WorkItemStatus, 
   WorkItemPriority, 
   PopulatedWorkItem 
 } from "../types";
 import { cn } from "@/lib/utils";
-import { isAfter, isBefore, addDays } from "date-fns";
+import { isBefore, format } from "date-fns";
+
+// Status icon map matching kanban board
+const statusIconMap: Record<WorkItemStatus, React.ReactNode> = {
+  [WorkItemStatus.TODO]: <CircleIcon className="size-4 text-gray-400" />,
+  [WorkItemStatus.ASSIGNED]: <CircleIcon className="size-4 text-red-400" />,
+  [WorkItemStatus.IN_PROGRESS]: <CircleDotDashedIcon className="size-4 text-yellow-500" />,
+  [WorkItemStatus.IN_REVIEW]: <CircleDotIcon className="size-4 text-blue-400" />,
+  [WorkItemStatus.DONE]: <CircleCheckIcon className="size-4 text-emerald-400" />,
+};
+
+// Status display names
+const statusLabels: Record<WorkItemStatus, string> = {
+  [WorkItemStatus.TODO]: "To Do",
+  [WorkItemStatus.ASSIGNED]: "Assigned",
+  [WorkItemStatus.IN_PROGRESS]: "In Progress",
+  [WorkItemStatus.IN_REVIEW]: "In Review",
+  [WorkItemStatus.DONE]: "Done",
+};
+
+// Board order for kanban view
+const boardOrder: WorkItemStatus[] = [
+  WorkItemStatus.TODO,
+  WorkItemStatus.ASSIGNED,
+  WorkItemStatus.IN_PROGRESS,
+  WorkItemStatus.IN_REVIEW,
+  WorkItemStatus.DONE,
+];
+
+// Type for grouped items state
+type ItemsState = {
+  [key in WorkItemStatus]: PopulatedWorkItem[];
+};
 
 export const MyWorkView = () => {
   const workspaceId = useWorkspaceId();
@@ -49,11 +92,21 @@ export const MyWorkView = () => {
   const [projectFilter, setProjectFilter] = useState<string>("all");
 
   const { data: projects } = useGetProjects({ workspaceId });
+  const { mutate: updateWorkItem } = useUpdateWorkItem();
 
   // Fetch work items assigned to current user
   const { data: workItems, isLoading } = useGetWorkItems({
     workspaceId,
     assigneeId: currentMember?.$id,
+  });
+
+  // State for kanban board items
+  const [itemsByStatus, setItemsByStatus] = useState<ItemsState>({
+    [WorkItemStatus.TODO]: [],
+    [WorkItemStatus.ASSIGNED]: [],
+    [WorkItemStatus.IN_PROGRESS]: [],
+    [WorkItemStatus.IN_REVIEW]: [],
+    [WorkItemStatus.DONE]: [],
   });
 
   // Filter and organize work items
@@ -90,39 +143,14 @@ export const MyWorkView = () => {
     return items;
   }, [workItems, searchQuery, statusFilter, priorityFilter, projectFilter]);
 
-  // Calculate statistics
-  const stats = useMemo(() => {
-    const items = workItems?.documents || [];
-    const today = new Date();
-    
-    return {
-      total: items.length,
-      todo: items.filter((i) => i.status === WorkItemStatus.TODO).length,
-      inProgress: items.filter((i) => i.status === WorkItemStatus.IN_PROGRESS).length,
-      inReview: items.filter((i) => i.status === WorkItemStatus.IN_REVIEW).length,
-      done: items.filter((i) => i.status === WorkItemStatus.DONE).length,
-      assigned: items.filter((i) => i.status === WorkItemStatus.ASSIGNED).length,
-      flagged: items.filter((i) => i.flagged).length,
-      overdue: items.filter((i) => {
-        if (!i.dueDate || i.status === WorkItemStatus.DONE) return false;
-        return isBefore(new Date(i.dueDate), today);
-      }).length,
-      dueSoon: items.filter((i) => {
-        if (!i.dueDate || i.status === WorkItemStatus.DONE) return false;
-        const dueDate = new Date(i.dueDate);
-        return isAfter(dueDate, today) && isBefore(dueDate, addDays(today, 7));
-      }).length,
-    };
-  }, [workItems]);
-
-  // Group items by status for board view
-  const itemsByStatus = useMemo(() => {
-    const grouped: Record<WorkItemStatus, PopulatedWorkItem[]> = {
+  // Update itemsByStatus when filteredWorkItems changes
+  useEffect(() => {
+    const grouped: ItemsState = {
       [WorkItemStatus.TODO]: [],
+      [WorkItemStatus.ASSIGNED]: [],
       [WorkItemStatus.IN_PROGRESS]: [],
       [WorkItemStatus.IN_REVIEW]: [],
       [WorkItemStatus.DONE]: [],
-      [WorkItemStatus.ASSIGNED]: [],
     };
 
     filteredWorkItems.forEach((item) => {
@@ -131,236 +159,484 @@ export const MyWorkView = () => {
       }
     });
 
-    return grouped;
+    setItemsByStatus(grouped);
   }, [filteredWorkItems]);
+
+  // Calculate statistics
+  const stats = useMemo(() => {
+    const items = workItems?.documents || [];
+    const today = new Date();
+    
+    return {
+      total: items.length,
+      inProgress: items.filter((i) => i.status === WorkItemStatus.IN_PROGRESS).length,
+      done: items.filter((i) => i.status === WorkItemStatus.DONE).length,
+      flagged: items.filter((i) => i.flagged).length,
+      overdue: items.filter((i) => {
+        if (!i.dueDate || i.status === WorkItemStatus.DONE) return false;
+        return isBefore(new Date(i.dueDate), today);
+      }).length,
+    };
+  }, [workItems]);
+
+  // Handle drag and drop
+  const onDragEnd = useCallback(
+    (result: DropResult) => {
+      if (!result.destination) return;
+
+      const { source, destination } = result;
+      const sourceStatus = source.droppableId as WorkItemStatus;
+      const destStatus = destination.droppableId as WorkItemStatus;
+
+      setItemsByStatus((prev) => {
+        const newItems = { ...prev };
+
+        // Remove from source
+        const sourceColumn = [...newItems[sourceStatus]];
+        const [movedItem] = sourceColumn.splice(source.index, 1);
+
+        if (!movedItem) return prev;
+
+        // Update the item's status
+        const updatedItem = { ...movedItem, status: destStatus };
+
+        // Add to destination
+        const destColumn = [...newItems[destStatus]];
+        destColumn.splice(destination.index, 0, updatedItem);
+
+        newItems[sourceStatus] = sourceColumn;
+        newItems[destStatus] = destColumn;
+
+        return newItems;
+      });
+
+      // If status changed, update in the database
+      if (sourceStatus !== destStatus) {
+        const movedItem = itemsByStatus[sourceStatus][source.index];
+        if (movedItem) {
+          updateWorkItem({
+            param: { workItemId: movedItem.$id },
+            json: { status: destStatus },
+          });
+        }
+      }
+    },
+    [itemsByStatus, updateWorkItem]
+  );
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col bg-background">
       {/* Header */}
-      <div className="p-4 border-b bg-background">
-        <div className="flex items-center justify-between mb-4">
+      <div className="px-4  pb-4 bg-background">
+        <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold">My Work</h1>
+            <h1 className="text-2xl font-semibold tracking-tight mb-1 ">My Work</h1>
             <p className="text-sm text-muted-foreground">
-              All work items assigned to you across projects
+              Work items assigned to you across all projects
             </p>
           </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 mb-4">
-          <Card className="p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">Total</p>
-                <p className="text-xl font-semibold">{stats.total}</p>
-              </div>
-              <Layers className="h-4 w-4 text-blue-500" />
-            </div>
-          </Card>
-          <Card className="p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">To Do</p>
-                <p className="text-xl font-semibold">{stats.todo}</p>
-              </div>
-              <div className="h-4 w-4 rounded-full bg-gray-400" />
-            </div>
-          </Card>
-          <Card className="p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">In Progress</p>
-                <p className="text-xl font-semibold">{stats.inProgress}</p>
-              </div>
-              <Clock className="h-4 w-4 text-blue-500" />
-            </div>
-          </Card>
-          <Card className="p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">In Review</p>
-                <p className="text-xl font-semibold">{stats.inReview}</p>
-              </div>
-              <div className="h-4 w-4 rounded-full bg-purple-500" />
-            </div>
-          </Card>
-          <Card className="p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">Done</p>
-                <p className="text-xl font-semibold">{stats.done}</p>
-              </div>
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
-            </div>
-          </Card>
-          <Card className="p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">Assigned</p>
-                <p className="text-xl font-semibold">{stats.assigned}</p>
-              </div>
-              <AlertCircle className="h-4 w-4 text-red-500" />
-            </div>
-          </Card>
-          <Card className="p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">Flagged</p>
-                <p className="text-xl font-semibold">{stats.flagged}</p>
-              </div>
-              <Flag className="h-4 w-4 text-orange-500" />
-            </div>
-          </Card>
-          <Card className="p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">Overdue</p>
-                <p className="text-xl font-semibold">{stats.overdue}</p>
-              </div>
-              <AlertCircle className="h-4 w-4 text-red-500" />
-            </div>
-          </Card>
-        </div>
-
-        {/* Filters and View Toggle */}
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-          <div className="flex flex-wrap gap-2 items-center">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search work items..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 w-64"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value={WorkItemStatus.TODO}>To Do</SelectItem>
-                <SelectItem value={WorkItemStatus.IN_PROGRESS}>In Progress</SelectItem>
-                <SelectItem value={WorkItemStatus.IN_REVIEW}>In Review</SelectItem>
-                <SelectItem value={WorkItemStatus.DONE}>Done</SelectItem>
-                <SelectItem value={WorkItemStatus.ASSIGNED}>Assigned</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="Priority" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Priority</SelectItem>
-                <SelectItem value={WorkItemPriority.URGENT}>Urgent</SelectItem>
-                <SelectItem value={WorkItemPriority.HIGH}>High</SelectItem>
-                <SelectItem value={WorkItemPriority.MEDIUM}>Medium</SelectItem>
-                <SelectItem value={WorkItemPriority.LOW}>Low</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={projectFilter} onValueChange={setProjectFilter}>
-              <SelectTrigger className="w-44">
-                <SelectValue placeholder="Project" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Projects</SelectItem>
-                {projects?.documents.map((project) => (
-                  <SelectItem key={project.$id} value={project.$id}>
-                    {project.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           <Tabs value={view} onValueChange={setView}>
-            <TabsList>
-              <TabsTrigger value="board" className="gap-1">
-                <LayoutGrid className="h-4 w-4" />
+            <TabsList className="h-8">
+              <TabsTrigger value="board" className="gap-1.5 text-xs h-7 px-2.5">
+                <LayoutGrid className="size-3.5" />
                 Board
               </TabsTrigger>
-              <TabsTrigger value="list" className="gap-1">
-                <List className="h-4 w-4" />
+              <TabsTrigger value="list" className="gap-1.5 text-xs h-7 px-2.5">
+                <List className="size-3.5" />
                 List
               </TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
+
+        {/* Stats Cards - Beautiful card design */}
+        <div className="grid grid-cols-5 gap-3 mb-8">
+          <div className="relative overflow-hidden rounded-lg border bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Total Items</p>
+                <p className="text-2xl font-bold text-foreground mt-0.5">{stats.total}</p>
+              </div>
+              <div className="flex items-center justify-center size-10 rounded-full bg-primary/10">
+                <Layers className="size-5 text-primary" />
+              </div>
+            </div>
+            <div className="absolute -bottom-2 -right-2 size-16 rounded-full bg-primary/5" />
+          </div>
+          
+          <div className="relative overflow-hidden rounded-lg border bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-950/30 dark:to-amber-950/30 p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">In Progress</p>
+                <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mt-0.5">{stats.inProgress}</p>
+              </div>
+              <div className="flex items-center justify-center size-10 rounded-full bg-yellow-500/10">
+                <CircleDotDashedIcon className="size-5 text-yellow-500" />
+              </div>
+            </div>
+            <div className="absolute -bottom-2 -right-2 size-16 rounded-full bg-yellow-500/5" />
+          </div>
+          
+          <div className="relative overflow-hidden rounded-lg border bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-950/30 dark:to-green-950/30 p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Completed</p>
+                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{stats.done}</p>
+              </div>
+              <div className="flex items-center justify-center size-10 rounded-full bg-emerald-500/10">
+                <CheckCircle2 className="size-5 text-emerald-500" />
+              </div>
+            </div>
+            <div className="absolute -bottom-2 -right-2 size-16 rounded-full bg-emerald-500/5" />
+          </div>
+          
+          <div className="relative overflow-hidden rounded-lg border bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Flagged</p>
+                <p className="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-0.5">{stats.flagged}</p>
+              </div>
+              <div className="flex items-center justify-center size-10 rounded-full bg-orange-500/10">
+                <Flag className="size-5 text-orange-500" />
+              </div>
+            </div>
+            <div className="absolute -bottom-2 -right-2 size-16 rounded-full bg-orange-500/5" />
+          </div>
+          
+          <div className="relative overflow-hidden rounded-lg border bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/30 dark:to-rose-950/30 p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Overdue</p>
+                <p className="text-2xl font-bold text-red-600 dark:text-red-400 mt-0.5">{stats.overdue}</p>
+              </div>
+              <div className="flex items-center justify-center size-10 rounded-full bg-red-500/10">
+                <AlertCircle className="size-5 text-red-500" />
+              </div>
+            </div>
+            <div className="absolute -bottom-2 -right-2 size-16 rounded-full bg-red-500/5" />
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap gap-2 items-center">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 h-8 w-48 text-xs"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-28 h-8 text-xs">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs">All Status</SelectItem>
+              <SelectItem value={WorkItemStatus.TODO} className="text-xs">To Do</SelectItem>
+              <SelectItem value={WorkItemStatus.IN_PROGRESS} className="text-xs">In Progress</SelectItem>
+              <SelectItem value={WorkItemStatus.IN_REVIEW} className="text-xs">In Review</SelectItem>
+              <SelectItem value={WorkItemStatus.DONE} className="text-xs">Done</SelectItem>
+              <SelectItem value={WorkItemStatus.ASSIGNED} className="text-xs">Assigned</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+            <SelectTrigger className="w-28 h-8 text-xs">
+              <SelectValue placeholder="Priority" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs">All Priority</SelectItem>
+              <SelectItem value={WorkItemPriority.URGENT} className="text-xs">Urgent</SelectItem>
+              <SelectItem value={WorkItemPriority.HIGH} className="text-xs">High</SelectItem>
+              <SelectItem value={WorkItemPriority.MEDIUM} className="text-xs">Medium</SelectItem>
+              <SelectItem value={WorkItemPriority.LOW} className="text-xs">Low</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={projectFilter} onValueChange={setProjectFilter}>
+            <SelectTrigger className="w-36 h-8 text-xs">
+              <SelectValue placeholder="Project" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs">All Projects</SelectItem>
+              {projects?.documents.map((project) => (
+                <SelectItem key={project.$id} value={project.$id} className="text-xs">
+                  {project.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 overflow-hidden">
         {filteredWorkItems.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-center">
-            <Layers className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">No work items found</h3>
-            <p className="text-muted-foreground mb-4">
+          <div className="flex flex-col items-center justify-center h-full text-center p-8">
+            <div className="flex items-center justify-center size-12 rounded-full bg-muted mb-3">
+              <Layers className="size-6 text-muted-foreground" />
+            </div>
+            <h3 className="text-sm font-medium text-foreground mb-1">No work items found</h3>
+            <p className="text-xs text-muted-foreground max-w-[240px]">
               {searchQuery || statusFilter !== "all" || priorityFilter !== "all"
                 ? "Try adjusting your filters"
                 : "You don't have any work items assigned yet"}
             </p>
           </div>
         ) : view === "board" ? (
-          /* Board View */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 h-full">
-            {Object.entries(itemsByStatus).map(([status, items]) => (
-              <div key={status} className="flex flex-col bg-muted/30 rounded-lg p-3">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={cn(
-                        "h-2 w-2 rounded-full",
-                        status === WorkItemStatus.TODO && "bg-gray-400",
-                        status === WorkItemStatus.IN_PROGRESS && "bg-blue-500",
-                        status === WorkItemStatus.IN_REVIEW && "bg-purple-500",
-                        status === WorkItemStatus.DONE && "bg-green-500",
-                        status === WorkItemStatus.ASSIGNED && "bg-red-500"
+          /* Board View - Kanban Style with drag and drop */
+          <DragDropContext onDragEnd={onDragEnd}>
+            <div className="flex overflow-x-auto gap-4 p-4 h-full pb-4">
+              {boardOrder.map((status) => {
+                const items = itemsByStatus[status];
+                return (
+                  <div
+                    key={status}
+                    className="flex-shrink-0 w-[280px] bg-gray-50 dark:bg-muted/30 rounded-xl flex flex-col h-[500px]"
+                  >
+                    {/* Column Header */}
+                    <div className="px-3 py-2.5 flex items-center justify-between rounded-t-xl">
+                      <div className="flex items-center gap-2">
+                        {statusIconMap[status]}
+                        <span className="text-xs font-medium text-foreground">
+                          {statusLabels[status]}
+                        </span>
+                        <Badge 
+                          variant="secondary" 
+                          className="text-[10px] h-5 px-1.5 font-medium bg-background"
+                        >
+                          {items.length}
+                        </Badge>
+                      </div>
+                    </div>
+                    {/* Column Content with Droppable */}
+                    <Droppable droppableId={status}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className={cn(
+                            "flex-1 overflow-y-auto px-3 pb-3 min-h-[200px]",
+                            snapshot.isDraggingOver && "bg-primary/5 rounded-b-xl"
+                          )}
+                        >
+                          {items.length === 0 ? (
+                            <div className="flex items-center justify-center h-24 text-center">
+                              <p className="text-xs text-muted-foreground">No items</p>
+                            </div>
+                          ) : (
+                            items.map((item, index) => (
+                              <Draggable
+                                key={item.$id}
+                                draggableId={item.$id}
+                                index={index}
+                              >
+                                {(provided, snapshot) => (
+                                  <div
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    className="mb-2"
+                                  >
+                                    <MyWorkKanbanCard
+                                      workItem={item}
+                                      workspaceId={workspaceId}
+                                      isDragging={snapshot.isDragging}
+                                    />
+                                  </div>
+                                )}
+                              </Draggable>
+                            ))
+                          )}
+                          {provided.placeholder}
+                        </div>
                       )}
-                    />
-                    <span className="font-medium text-sm">
-                      {status.replace("_", " ")}
-                    </span>
-                    <Badge variant="secondary" className="text-xs">
-                      {items.length}
-                    </Badge>
+                    </Droppable>
                   </div>
-                </div>
-                <div className="flex-1 space-y-2 overflow-y-auto">
-                  {items.map((item) => (
-                    <WorkItemCard
-                      key={item.$id}
-                      workItem={item}
-                      workspaceId={workspaceId}
-                      projectId={item.projectId}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          </DragDropContext>
         ) : (
-          /* List View */
-          <div className="space-y-2">
-            {filteredWorkItems.map((item) => (
-              <WorkItemCard
-                key={item.$id}
-                workItem={item}
-                workspaceId={workspaceId}
-                projectId={item.projectId}
-              />
-            ))}
+          /* List View - Enhanced table-like design */
+          <div className="p-4 overflow-y-auto h-full">
+            <div className="bg-background rounded-lg border overflow-hidden">
+              {/* List Header */}
+              <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-muted/50 border-b text-xs font-medium text-muted-foreground">
+                <div className="col-span-5">Work Item</div>
+                <div className="col-span-2">Status</div>
+                <div className="col-span-2">Priority</div>
+                <div className="col-span-2">Due Date</div>
+                <div className="col-span-1">Points</div>
+              </div>
+              {/* List Items */}
+              <div className="divide-y">
+                {filteredWorkItems.map((item) => (
+                  <MyWorkListItem
+                    key={item.$id}
+                    workItem={item}
+                    workspaceId={workspaceId}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+};
+
+// Kanban Card Component for Board View
+interface MyWorkKanbanCardProps {
+  workItem: PopulatedWorkItem;
+  workspaceId: string;
+  isDragging?: boolean;
+}
+
+const typeColors: Record<string, string> = {
+  STORY: "bg-blue-500",
+  BUG: "bg-red-500",
+  TASK: "bg-green-500",
+  EPIC: "bg-purple-500",
+  SUBTASK: "bg-gray-500",
+};
+
+const priorityColors: Record<string, string> = {
+  LOW: "text-gray-500 bg-gray-100",
+  MEDIUM: "text-yellow-600 bg-yellow-50",
+  HIGH: "text-orange-600 bg-orange-50",
+  URGENT: "text-red-600 bg-red-50",
+};
+
+const MyWorkKanbanCard = ({ workItem, workspaceId, isDragging }: MyWorkKanbanCardProps) => {
+  return (
+    <div className={cn(
+      "bg-white dark:bg-card rounded-xl border shadow-sm hover:shadow-md transition-shadow cursor-grab",
+      isDragging && "shadow-lg ring-2 ring-primary/20 rotate-2"
+    )}>
+      <div className="p-3">
+        {/* Header with type indicator, key, and menu */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <div className={cn("size-1.5 rounded-full", typeColors[workItem.type] || "bg-gray-400")} />
+            <span className="text-[10px] font-medium text-muted-foreground">{workItem.key}</span>
+            {workItem.flagged && (
+              <Flag className="size-3 fill-red-500 text-red-500" />
+            )}
+          </div>
+          <WorkItemOptionsMenu workItem={workItem} />
+        </div>
+        
+        {/* Title */}
+        <h3 className="text-xs font-medium text-foreground line-clamp-2 mb-2">
+          {workItem.title}
+        </h3>
+
+        {/* Priority Badge */}
+        <div className="flex items-center gap-2 mb-2">
+          <span className={cn(
+            "text-[10px] px-1.5 py-0.5 rounded font-medium",
+            priorityColors[workItem.priority] || "text-gray-500 bg-gray-100"
+          )}>
+            {workItem.priority}
+          </span>
+          {workItem.storyPoints && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
+              {workItem.storyPoints} pts
+            </span>
+          )}
+        </div>
+
+        {/* Footer with due date and project */}
+        <div className="flex items-center justify-between pt-2 border-t">
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <Calendar className="size-3" />
+            {workItem.dueDate
+              ? format(new Date(workItem.dueDate), "MMM d")
+              : "No date"}
+          </div>
+          {workItem.project && (
+            <span className="text-[10px] text-muted-foreground truncate max-w-[100px]">
+              {workItem.project.name}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// List Item Component for List View
+interface MyWorkListItemProps {
+  workItem: PopulatedWorkItem;
+  workspaceId: string;
+}
+
+const MyWorkListItem = ({ workItem, workspaceId }: MyWorkListItemProps) => {
+  const today = new Date();
+  const isOverdue = workItem.dueDate && 
+    workItem.status !== WorkItemStatus.DONE && 
+    isBefore(new Date(workItem.dueDate), today);
+
+  return (
+    <div className="grid grid-cols-12 gap-2 px-3 py-2.5 hover:bg-muted/30 transition-colors cursor-pointer items-center group">
+      {/* Work Item Info */}
+      <div className="col-span-5 flex items-center gap-2 min-w-0">
+        <div className={cn("size-1.5 rounded-full flex-shrink-0", typeColors[workItem.type] || "bg-gray-400")} />
+        <span className="text-[10px] font-medium text-muted-foreground flex-shrink-0">{workItem.key}</span>
+        {workItem.flagged && (
+          <Flag className="size-3 fill-red-500 text-red-500 flex-shrink-0" />
+        )}
+        <span className="text-xs text-foreground truncate">{workItem.title}</span>
+      </div>
+      
+      {/* Status */}
+      <div className="col-span-2 flex items-center gap-1.5">
+        {statusIconMap[workItem.status as WorkItemStatus]}
+        <span className="text-xs text-muted-foreground">
+          {statusLabels[workItem.status as WorkItemStatus]}
+        </span>
+      </div>
+      
+      {/* Priority */}
+      <div className="col-span-2">
+        <span className={cn(
+          "text-[10px] px-1.5 py-0.5 rounded font-medium",
+          priorityColors[workItem.priority] || "text-gray-500 bg-gray-100"
+        )}>
+          {workItem.priority}
+        </span>
+      </div>
+      
+      {/* Due Date */}
+      <div className="col-span-2 flex items-center justify-between">
+        <span className={cn(
+          "text-xs",
+          isOverdue ? "text-red-500 font-medium" : "text-muted-foreground"
+        )}>
+          {workItem.dueDate
+            ? format(new Date(workItem.dueDate), "MMM d, yyyy")
+            : "—"}
+        </span>
+      </div>
+      
+      {/* Story Points and Menu */}
+      <div className="col-span-1 flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">
+          {workItem.storyPoints || "—"}
+        </span>
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+          <WorkItemOptionsMenu workItem={workItem} />
+        </div>
       </div>
     </div>
   );
