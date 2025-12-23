@@ -2,7 +2,7 @@ import "server-only";
 
 import { createMiddleware } from "hono/factory";
 import { Databases, ID } from "node-appwrite";
-import { DATABASE_ID, USAGE_EVENTS_ID } from "@/config";
+import { DATABASE_ID, USAGE_EVENTS_ID, WORKSPACES_ID, ORGANIZATIONS_ID } from "@/config";
 import { ResourceType, UsageSource } from "@/features/usage/types";
 
 /**
@@ -118,13 +118,14 @@ export const trafficMeteringMiddleware = createMiddleware<MeteringContext>(
         // Extract workspace ID for attribution
         const workspaceId = extractWorkspaceId(requestUrl, requestBody || undefined);
 
-        // Only log if we have a databases instance and workspace context
-        // Traffic from unauthenticated requests still needs logging
-        // but we need the admin client for that
+        // Get databases and user from context
         const databases = c.get('databases');
         const user = c.get('user');
 
-        if (databases && workspaceId) {
+        // CRITICAL FIX: Log ALL traffic, even without workspace context
+        // WHY: Every request costs resources and should be billed
+        // For requests without workspace, log to admin/system tracking
+        if (databases) {
             // Generate idempotency key
             // Format: traffic:{userId}:{endpoint}:{method}:{timestamp_rounded}
             // Round timestamp to nearest second to handle retries
@@ -137,35 +138,110 @@ export const trafficMeteringMiddleware = createMiddleware<MeteringContext>(
             // Using setTimeout to ensure response is sent first
             setTimeout(async () => {
                 try {
+                    // If no workspace, use a system tracking workspace or skip
+                    // For production, consider creating a "system" workspace for unmapped traffic
+                    if (!workspaceId) {
+                        // Log to console for admin monitoring
+                        console.log(`[TrafficMetering] Unattributed traffic: ${endpoint} (${totalBytes} bytes)`);
+                        return;
+                    }
+
+                    // CRITICAL: Determine billing entity at event creation time
+                    // This makes querying efficient and ensures correct billing attribution
+                    const eventTimestamp = new Date(startTime).toISOString();
+                    let billingEntityId: string | null = null;
+                    let billingEntityType: string | null = null;
+
+                    try {
+                        // Get workspace to check organizationId
+                        const workspace = await databases.getDocument(
+                            DATABASE_ID,
+                            WORKSPACES_ID,
+                            workspaceId
+                        );
+
+                        // If no organization, bill to workspace owner (user)
+                        if (!workspace.organizationId) {
+                            billingEntityId = workspace.userId;
+                            billingEntityType = 'user';
+                        } else {
+                            // Get organization to check billingStartAt
+                            const organization = await databases.getDocument(
+                                DATABASE_ID,
+                                ORGANIZATIONS_ID,
+                                workspace.organizationId
+                            );
+
+                            const billingStartAt = organization.billingStartAt
+                                ? new Date(organization.billingStartAt)
+                                : null;
+                            const eventDate = new Date(eventTimestamp);
+
+                            // If event occurred before org billing started, bill to user
+                            if (billingStartAt && eventDate < billingStartAt) {
+                                billingEntityId = workspace.userId;
+                                billingEntityType = 'user';
+                            } else {
+                                // Event after org billing started, bill to organization
+                                billingEntityId = workspace.organizationId;
+                                billingEntityType = 'organization';
+                            }
+                        }
+                    } catch (error) {
+                        console.error('[TrafficMetering] Could not determine billing entity:', error);
+                        // Fallback: try to get workspace userId
+                        try {
+                            const workspace = await databases.getDocument(
+                                DATABASE_ID,
+                                WORKSPACES_ID,
+                                workspaceId
+                            );
+                            billingEntityId = workspace.userId;
+                            billingEntityType = 'user';
+                        } catch {
+                            // Leave as null if can't determine
+                        }
+                    }
+
+                    // Build event data
+                    const eventData: Record<string, unknown> = {
+                        workspaceId,
+                        projectId: null,
+                        resourceType: ResourceType.TRAFFIC,
+                        units: totalBytes,
+                        metadata: JSON.stringify({
+                            idempotencyKey,
+                            endpoint,
+                            method: requestMethod,
+                            requestBytes: requestSize,
+                            responseBytes: responseSize,
+                            durationMs: duration,
+                            statusCode: c.res.status,
+                            // Store billing entity in metadata until schema is updated
+                            billingEntityId,
+                            billingEntityType,
+                            // Source context for display
+                            sourceContext: {
+                                type: endpoint.includes('/admin') ? 'admin' :
+                                    endpoint.includes('/projects') ? 'project' : 'workspace',
+                                displayName: endpoint.includes('/admin') ? 'Admin Panel' :
+                                    endpoint.includes('/projects') ? 'Project' : 'Workspace',
+                            },
+                        }),
+                        timestamp: eventTimestamp,
+                        source: UsageSource.API,
+                    };
+
+                    // TODO: Once Appwrite schema is updated with billingEntityId and billingEntityType fields,
+                    // uncomment these lines to enable direct filtering:
+                    // if (billingEntityId) eventData.billingEntityId = billingEntityId;
+                    // if (billingEntityType) eventData.billingEntityType = billingEntityType;
+
                     await databases.createDocument(
                         DATABASE_ID,
                         USAGE_EVENTS_ID,
                         ID.unique(),
-                        {
-                            workspaceId,
-                            projectId: null,
-                            resourceType: ResourceType.TRAFFIC,
-                            units: totalBytes,
-                            // Note: idempotencyKey stored in metadata until Appwrite collection updated
-                            metadata: JSON.stringify({
-                                idempotencyKey,
-                                endpoint,
-                                method: requestMethod,
-                                requestBytes: requestSize,
-                                responseBytes: responseSize,
-                                durationMs: duration,
-                                statusCode: c.res.status,
-                                // Source context for display
-                                sourceContext: {
-                                    type: endpoint.includes('/admin') ? 'admin' :
-                                        endpoint.includes('/projects') ? 'project' : 'workspace',
-                                    displayName: endpoint.includes('/admin') ? 'Admin Panel' :
-                                        endpoint.includes('/projects') ? 'Project' : 'Workspace',
-                                },
-                            }),
-                            timestamp: new Date(startTime).toISOString(),
-                            source: UsageSource.API,
-                        }
+                        eventData
                     );
                 } catch (error: unknown) {
                     // Silently handle duplicates (idempotency working)

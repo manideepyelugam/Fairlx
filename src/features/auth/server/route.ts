@@ -3,9 +3,9 @@ import { zValidator } from "@hono/zod-validator";
 import { deleteCookie, setCookie } from "hono/cookie";
 import { z } from "zod";
 
-import { 
-  loginSchema, 
-  registerSchema, 
+import {
+  loginSchema,
+  registerSchema,
   updateProfileSchema,
   verifyEmailSchema,
   resendVerificationSchema,
@@ -17,7 +17,17 @@ import { createAdminClient } from "@/lib/appwrite";
 import { ID, ImageFormat, Client, Account } from "node-appwrite";
 import { AUTH_COOKIE } from "../constants";
 import { sessionMiddleware } from "@/lib/session-middleware";
-import { IMAGES_BUCKET_ID } from "@/config";
+import {
+  DATABASE_ID,
+  IMAGES_BUCKET_ID,
+  WORKSPACES_ID,
+  MEMBERS_ID,
+  ORGANIZATIONS_ID,
+  ORGANIZATION_MEMBERS_ID,
+} from "@/config";
+import { MemberRole } from "@/features/members/types";
+import { OrganizationRole } from "@/features/organizations/types";
+import { generateInviteCode } from "@/lib/utils";
 
 const app = new Hono()
   .get("/current", sessionMiddleware, (c) => {
@@ -29,25 +39,25 @@ const app = new Hono()
     const { email, password } = c.req.valid("json");
 
     const { account } = await createAdminClient();
-    
+
     try {
       // First, try to create a session to validate credentials
       const session = await account.createEmailPasswordSession(email, password);
-      
+
       // Set the session to check user details
       const tempClient = new Client()
         .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
         .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT!)
         .setSession(session.secret);
-      
+
       const tempAccount = new Account(tempClient);
       const user = await tempAccount.get();
-      
+
       // Check if email is verified
       if (!user.emailVerification) {
         // Delete the session since email is not verified
         await tempAccount.deleteSession("current");
-        return c.json({ 
+        return c.json({
           error: "Please verify your email before logging in. Check your inbox for the verification link.",
           needsVerification: true,
           email: email
@@ -73,59 +83,68 @@ const app = new Hono()
     }
   })
   .post("/register", zValidator("json", registerSchema), async (c) => {
-    const { name, email, password } = c.req.valid("json");
+    const { name, email, password, accountType, organizationName } = c.req.valid("json");
 
     try {
       const { account } = await createAdminClient();
-      
+
       // Create user account
       const user = await account.create(ID.unique(), email, password, name);
-      
-      // Create a temporary session to send verification email
+
+      // Create a temporary session to send verification email and set prefs
       const session = await account.createEmailPasswordSession(email, password);
-      
-      // Create a new client with the user session to send verification
+
+      // Create a new client with the user session
       const userClient = new Client()
         .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
         .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT!)
         .setSession(session.secret);
-      
+
       const userAccount = new Account(userClient);
-      
+
+      // Store account type and org name in user prefs for use after verification
+      // WHY: Workspace/org creation happens after email verification
+      // We need to persist this data between registration and verification
+      await userAccount.updatePrefs({
+        accountType: accountType || "PERSONAL",
+        pendingOrganizationName: organizationName || null,
+        signupCompletedAt: null, // Will be set after workspace/org creation
+      });
+
       // Send email verification using user session
       await userAccount.createVerification(
         `${process.env.NEXT_PUBLIC_APP_URL}/verify-email`
       );
-      
+
       // Delete the temporary session since email is not verified yet
       await userAccount.deleteSession("current");
 
-      return c.json({ 
-        success: true, 
+      return c.json({
+        success: true,
         message: "Registration successful! Please check your email to verify your account.",
-        userId: user.$id 
+        userId: user.$id
       });
     } catch (error: unknown) {
       console.error("Registration error:", error);
       const appwriteError = error as { code?: number; message?: string; type?: string };
-      
+
       if (appwriteError.code === 409) {
         return c.json({ error: "A user with this email already exists." }, 409);
       }
-      
+
       // Check for SMTP configuration issues during registration
-      if (appwriteError.type === "general_smtp_disabled" || 
-          (appwriteError.message && appwriteError.message.toLowerCase().includes("smtp"))) {
-        return c.json({ 
+      if (appwriteError.type === "general_smtp_disabled" ||
+        (appwriteError.message && appwriteError.message.toLowerCase().includes("smtp"))) {
+        return c.json({
           error: "Account created but verification email could not be sent. Please contact support.",
           smtpError: true
         }, 500);
       }
-      
+
       if (appwriteError.message) {
         return c.json({ error: `Registration failed: ${appwriteError.message}` }, 500);
       }
-      
+
       return c.json({ error: "Registration failed. Please try again." }, 500);
     }
   })
@@ -155,7 +174,7 @@ const app = new Hono()
       const account = c.get("account");
       const storage = c.get("storage");
       const user = c.get("user");
-      
+
       // Get validated file from form data
       const { file } = c.req.valid("form");
 
@@ -210,9 +229,9 @@ const app = new Hono()
       if (user?.prefs && typeof user.prefs === "object" && !Array.isArray(user.prefs)) {
         // Filter out undefined, null values and functions
         currentPrefs = Object.fromEntries(
-          Object.entries(user.prefs).filter(([, value]) => 
-            value !== undefined && 
-            value !== null && 
+          Object.entries(user.prefs).filter(([, value]) =>
+            value !== undefined &&
+            value !== null &&
             typeof value !== "function"
           )
         );
@@ -229,7 +248,7 @@ const app = new Hono()
 
       return c.json({ data: { url: fileUrl } });
     } catch (error) {
-      
+
       // Return more specific error messages
       if (error instanceof Error) {
         if (error.message.includes('storage')) {
@@ -240,7 +259,7 @@ const app = new Hono()
         }
         return c.json({ error: error.message }, 500);
       }
-      
+
       return c.json({ error: "Failed to upload profile image" }, 500);
     }
   })
@@ -259,20 +278,20 @@ const app = new Hono()
         return c.json({ success: true, message: "Password updated successfully" });
       } catch (error: unknown) {
         console.error("Change password error:", error);
-        
+
         // Handle Appwrite specific errors
         const appwriteError = error as { type?: string; message?: string };
-        
+
         if (appwriteError.type === "user_invalid_credentials") {
           return c.json({ error: "Current password is incorrect" }, 400);
         }
-        
+
         if (appwriteError.type === "user_password_recently_used") {
           return c.json({ error: "Please choose a different password" }, 400);
         }
-        
-        return c.json({ 
-          error: appwriteError.message || "Failed to change password. Please try again." 
+
+        return c.json({
+          error: appwriteError.message || "Failed to change password. Please try again."
         }, 500);
       }
     }
@@ -292,9 +311,9 @@ const app = new Hono()
       // Verify the email using the secret from the verification link
       await account.updateVerification(userId, secret);
 
-      return c.json({ 
-        success: true, 
-        message: "Email verified successfully! You can now log in." 
+      return c.json({
+        success: true,
+        message: "Email verified successfully! You can now log in."
       });
     } catch (error: unknown) {
       const appwriteError = error as { code?: number; type?: string; message?: string };
@@ -315,65 +334,65 @@ const app = new Hono()
 
     try {
       const { account } = await createAdminClient();
-      
+
       // Create a temporary session to check user status and send verification
       const session = await account.createEmailPasswordSession(email, password);
-      
+
       // Create user client with session
       const userClient = new Client()
         .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
         .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT!)
         .setSession(session.secret);
-      
+
       const userAccount = new Account(userClient);
       const user = await userAccount.get();
-      
+
       if (user.emailVerification) {
         await userAccount.deleteSession("current");
         return c.json({ error: "Email is already verified. You can log in normally." }, 400);
       }
-      
+
       // Send verification email
       await userAccount.createVerification(
         `${process.env.NEXT_PUBLIC_APP_URL}/verify-email`
       );
-      
+
       // Delete the temporary session
       await userAccount.deleteSession("current");
-      
-      return c.json({ 
-        success: true, 
-        message: "Verification email sent! Please check your inbox and click the verification link." 
+
+      return c.json({
+        success: true,
+        message: "Verification email sent! Please check your inbox and click the verification link."
       });
     } catch (error: unknown) {
       console.error("Resend verification error:", error);
       const appwriteError = error as { code?: number; message?: string; type?: string };
-      
+
       if (appwriteError.code === 401) {
         return c.json({ error: "Invalid email or password." }, 401);
       }
-      
+
       if (appwriteError.code === 404) {
         return c.json({ error: "User not found." }, 404);
       }
-      
+
       if (appwriteError.code === 429) {
         return c.json({ error: "Too many requests. Please wait before trying again." }, 429);
       }
-      
+
       // Check for SMTP configuration issues
-      if (appwriteError.type === "general_smtp_disabled" || 
-          (appwriteError.message && appwriteError.message.toLowerCase().includes("smtp"))) {
-        return c.json({ 
+      if (appwriteError.type === "general_smtp_disabled" ||
+        (appwriteError.message && appwriteError.message.toLowerCase().includes("smtp"))) {
+        return c.json({
           error: "Email service is not configured. Please contact support to set up SMTP configuration.",
           smtpError: true
         }, 500);
       }
-      
+
       if (appwriteError.message) {
         return c.json({ error: `Failed to send verification email: ${appwriteError.message}` }, 500);
       }
-      
+
       return c.json({ error: "Failed to send verification email. Please try again." }, 500);
     }
   })
@@ -382,38 +401,38 @@ const app = new Hono()
 
     try {
       const { account } = await createAdminClient();
-      
+
       // Send password recovery email
       await account.createRecovery(
         email,
         `${process.env.NEXT_PUBLIC_APP_URL}/reset-password`
       );
-      
-      return c.json({ 
-        success: true, 
-        message: "Password recovery email sent! Please check your inbox." 
+
+      return c.json({
+        success: true,
+        message: "Password recovery email sent! Please check your inbox."
       });
     } catch (error: unknown) {
       console.error("Forgot password error:", error);
       const appwriteError = error as { code?: number; message?: string; type?: string };
-      
+
       // Check for SMTP configuration issues
-      if (appwriteError.type === "general_smtp_disabled" || 
-          (appwriteError.message && appwriteError.message.toLowerCase().includes("smtp"))) {
-        return c.json({ 
+      if (appwriteError.type === "general_smtp_disabled" ||
+        (appwriteError.message && appwriteError.message.toLowerCase().includes("smtp"))) {
+        return c.json({
           error: "Email service is not configured. Please contact support.",
           smtpError: true
         }, 500);
       }
-      
+
       if (appwriteError.code === 404) {
         return c.json({ error: "User not found." }, 404);
       }
-      
+
       if (appwriteError.code === 429) {
         return c.json({ error: "Too many requests. Please wait before trying again." }, 429);
       }
-      
+
       return c.json({ error: "Failed to send recovery email. Please try again." }, 500);
     }
   })
@@ -422,13 +441,13 @@ const app = new Hono()
 
     try {
       const { account } = await createAdminClient();
-      
+
       // Reset the password
       await account.updateRecovery(userId, secret, password);
-      
-      return c.json({ 
-        success: true, 
-        message: "Password reset successfully! You can now log in with your new password." 
+
+      return c.json({
+        success: true,
+        message: "Password reset successfully! You can now log in with your new password."
       });
     } catch (error: unknown) {
       const appwriteError = error as { code?: number };
@@ -436,6 +455,148 @@ const app = new Hono()
         return c.json({ error: "Invalid or expired recovery link" }, 400);
       }
       return c.json({ error: "Failed to reset password" }, 500);
+    }
+  })
+  /**
+   * POST /auth/complete-signup
+   * 
+   * Creates workspace/organization after email verification.
+   * Called on first login after email is verified.
+   * 
+   * INVARIANTS:
+   * - PERSONAL: exactly ONE workspace, organizationId = NULL
+   * - ORG: organization + default workspace with OWNER on both
+   * - Idempotent: won't create duplicates if called multiple times
+   */
+  .post("/complete-signup", sessionMiddleware, async (c) => {
+    const user = c.get("user");
+    const databases = c.get("databases");
+    const account = c.get("account");
+
+    try {
+      const prefs = user.prefs || {};
+
+      // Check if signup already completed (idempotency)
+      if (prefs.signupCompletedAt) {
+        return c.json({
+          success: true,
+          message: "Signup already completed",
+          alreadyCompleted: true
+        });
+      }
+
+      const accountType = prefs.accountType || "PERSONAL";
+      const pendingOrganizationName = prefs.pendingOrganizationName;
+
+      if (accountType === "ORG") {
+        // ORG account: Create organization and default workspace
+        if (!pendingOrganizationName) {
+          return c.json({ error: "Organization name is required for ORG accounts" }, 400);
+        }
+
+        // Create organization
+        const organization = await databases.createDocument(
+          DATABASE_ID,
+          ORGANIZATIONS_ID,
+          ID.unique(),
+          {
+            name: pendingOrganizationName,
+            createdBy: user.$id,
+            billingStartAt: new Date().toISOString(),
+          }
+        );
+
+        // Add user as OWNER of organization
+        await databases.createDocument(
+          DATABASE_ID,
+          ORGANIZATION_MEMBERS_ID,
+          ID.unique(),
+          {
+            organizationId: organization.$id,
+            userId: user.$id,
+            role: OrganizationRole.OWNER,
+            name: user.name,
+            email: user.email,
+          }
+        );
+
+        // Create default workspace under organization
+        const workspace = await databases.createDocument(
+          DATABASE_ID,
+          WORKSPACES_ID,
+          ID.unique(),
+          {
+            name: `${pendingOrganizationName} Workspace`,
+            userId: user.$id,
+            inviteCode: generateInviteCode(6),
+            organizationId: organization.$id,
+            isDefault: true,
+            billingScope: "organization",
+          }
+        );
+
+        // Add user as OWNER of workspace
+        await databases.createDocument(DATABASE_ID, MEMBERS_ID, ID.unique(), {
+          userId: user.$id,
+          workspaceId: workspace.$id,
+          role: MemberRole.OWNER,
+        });
+
+        // Update prefs to mark signup complete
+        await account.updatePrefs({
+          ...prefs,
+          accountType: "ORG",
+          primaryOrganizationId: organization.$id,
+          signupCompletedAt: new Date().toISOString(),
+          pendingOrganizationName: null, // Clear pending field
+        });
+
+        return c.json({
+          success: true,
+          accountType: "ORG",
+          organizationId: organization.$id,
+          workspaceId: workspace.$id,
+        });
+      } else {
+        // PERSONAL account: Create single workspace
+        const workspace = await databases.createDocument(
+          DATABASE_ID,
+          WORKSPACES_ID,
+          ID.unique(),
+          {
+            name: `${user.name}'s Workspace`,
+            userId: user.$id,
+            inviteCode: generateInviteCode(6),
+            organizationId: null, // PERSONAL accounts don't have org
+            isDefault: true,
+            billingScope: "user",
+          }
+        );
+
+        // Add user as OWNER of workspace
+        await databases.createDocument(DATABASE_ID, MEMBERS_ID, ID.unique(), {
+          userId: user.$id,
+          workspaceId: workspace.$id,
+          role: MemberRole.OWNER,
+        });
+
+        // Update prefs to mark signup complete
+        await account.updatePrefs({
+          ...prefs,
+          accountType: "PERSONAL",
+          signupCompletedAt: new Date().toISOString(),
+          pendingOrganizationName: null,
+        });
+
+        return c.json({
+          success: true,
+          accountType: "PERSONAL",
+          workspaceId: workspace.$id,
+        });
+      }
+    } catch (error) {
+      console.error("[Auth] Complete signup error:", error);
+      return c.json({ error: "Failed to complete signup" }, 500);
     }
   });
 

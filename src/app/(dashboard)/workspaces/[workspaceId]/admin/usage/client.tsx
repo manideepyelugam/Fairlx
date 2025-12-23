@@ -6,6 +6,7 @@ import {
     CalendarIcon,
     RefreshCw,
     Shield,
+    Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +21,8 @@ import { cn } from "@/lib/utils";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { useCurrent } from "@/features/auth/api/use-current";
+import { useAccountType } from "@/features/organizations/hooks/use-account-type";
+import { useGetOrganizations } from "@/features/organizations/api/use-get-organizations";
 import {
     useGetUsageEvents,
     useGetUsageSummary,
@@ -32,13 +35,22 @@ import {
     UsageEventsTable,
     UsageAlertsManager,
     CostSummary,
+    WorkspaceUsageBreakdown,
 } from "@/features/usage/components";
+import { BillingEntityBadge } from "@/components/billing-entity-badge";
 import { ResourceType, UsageSource, UsageSummary } from "@/features/usage/types";
 
 export function UsageDashboardClient() {
     const workspaceId = useWorkspaceId();
     const { data: user } = useCurrent();
     const { isAdmin, isLoading: isMemberLoading } = useCurrentMember({ workspaceId });
+    const { isOrg, primaryOrganizationId } = useAccountType();
+    const { data: organizations } = useGetOrganizations();
+
+    // Get current org for ORG accounts
+    const currentOrg = isOrg && primaryOrganizationId
+        ? organizations?.documents?.find((o: { $id: string }) => o.$id === primaryOrganizationId)
+        : null;
 
     // State for filters
     const [page, setPage] = useState(0);
@@ -139,10 +151,27 @@ export function UsageDashboardClient() {
             <div className="max-w-[1600px] mx-auto">
                 {/* Header Section - Matching workspace dashboard style */}
                 <div className="mb-8">
-                    <p className="text-sm text-blue-600 dark:text-blue-400 mb-1">Monitor and optimize your resource usage</p>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-                        Welcome to Admin Dashboard{user?.name ? `, ${user.name.split(' ')[0]}` : ""}.
-                    </h1>
+                    <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm text-blue-600 dark:text-blue-400">
+                            {isOrg
+                                ? "Organization-wide usage monitoring and billing insights"
+                                : "Monitor and optimize your resource usage"}
+                        </p>
+                        <BillingEntityBadge />
+                    </div>
+                    <div className="flex items-center gap-3 mb-1">
+                        {isOrg && <Building2 className="h-8 w-8 text-primary" />}
+                        <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+                            {isOrg
+                                ? `${(currentOrg as { name?: string })?.name || "Organization"} Usage Dashboard`
+                                : `Welcome to Admin Dashboard${user?.name ? `, ${user.name.split(' ')[0]}` : ""}.`}
+                        </h1>
+                    </div>
+                    {isOrg && (
+                        <p className="text-sm text-muted-foreground">
+                            Viewing aggregated usage across all workspaces in your organization
+                        </p>
+                    )}
                 </div>
 
                 {/* Toolbar - Matching workspace dashboard style */}
@@ -255,6 +284,14 @@ export function UsageDashboardClient() {
                             onResourceTypeFilterChange={setResourceTypeFilter}
                             onSourceFilterChange={setSourceFilter}
                         />
+
+                        {/* Workspace Breakdown - ORG accounts only */}
+                        {isOrg && primaryOrganizationId && (
+                            <WorkspaceUsageBreakdown
+                                organizationId={primaryOrganizationId}
+                                isLoading={isSummaryLoading}
+                            />
+                        )}
                     </div>
 
                     {/* Right Sidebar (3 columns) - Matching workspace dashboard */}

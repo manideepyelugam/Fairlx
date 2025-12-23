@@ -19,6 +19,16 @@ export interface LogUsageOptions {
     projectId?: string;
     units: number;
     metadata?: UsageEventMetadata;
+    /**
+     * ID of the billing entity (user ID or organization ID)
+     * WHY: Enables correct billing attribution during PERSONAL→ORG conversion.
+     * Events before conversion.billingStartAt bill to user, after to org.
+     */
+    billingEntityId?: string;
+    /**
+     * Type of billing entity for explicit scope
+     */
+    billingEntityType?: 'user' | 'organization';
     // Source context for display in usage events
     sourceContext?: {
         type: 'project' | 'workspace' | 'admin' | 'other';
@@ -46,8 +56,11 @@ export async function logTrafficUsage(
                 projectId: options.projectId || null,
                 resourceType: ResourceType.TRAFFIC,
                 units: options.units,
+                // Store billing entity in metadata until schema is updated
                 metadata: JSON.stringify({
                     ...options.metadata,
+                    billingEntityId: options.billingEntityId || null,
+                    billingEntityType: options.billingEntityType || null,
                     sourceContext: options.sourceContext ?? {
                         type: options.projectId ? 'project' : 'workspace',
                         displayName: 'Unknown',
@@ -81,9 +94,12 @@ export async function logStorageUsage(
                 projectId: options.projectId || null,
                 resourceType: ResourceType.STORAGE,
                 units: options.units,
+                // Store billing entity in metadata until schema is updated
                 metadata: JSON.stringify({
                     ...options.metadata,
                     operation: options.operation,
+                    billingEntityId: options.billingEntityId || null,
+                    billingEntityType: options.billingEntityType || null,
                     sourceContext: options.sourceContext ?? {
                         type: options.projectId ? 'project' : 'workspace',
                         displayName: 'Unknown',
@@ -109,6 +125,7 @@ export async function logStorageUsage(
  * 1. Defer metering to avoid blocking main operations
  * 2. Prevent duplicate events from retries
  */
+
 export async function logComputeUsage(
     options: LogUsageOptions & {
         jobType: string;
@@ -140,8 +157,7 @@ export async function logComputeUsage(
                     projectId: options.projectId || null,
                     resourceType: ResourceType.COMPUTE,
                     units: weightedUnits,           // Use weighted units for billing
-                    // Note: baseUnits, weightedUnits, idempotencyKey stored in metadata
-                    // until Appwrite collection is updated with these attributes
+                    // Store billing entity in metadata until schema is updated
                     metadata: JSON.stringify({
                         ...options.metadata,
                         jobType: options.jobType,
@@ -150,6 +166,8 @@ export async function logComputeUsage(
                         baseUnits: baseUnits,
                         weightedUnits: weightedUnits,
                         idempotencyKey: idempotencyKey,
+                        billingEntityId: options.billingEntityId || null,
+                        billingEntityType: options.billingEntityType || null,
                         sourceContext: options.sourceContext ?? {
                             type: options.projectId ? 'project' : 'workspace',
                             displayName: 'Unknown',

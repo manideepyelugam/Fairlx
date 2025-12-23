@@ -21,6 +21,7 @@ import {
   FormControl,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ import { signUpWithGithub, signUpWithGoogle } from "@/lib/oauth";
 
 import { registerSchema } from "../schemas";
 import { useRegister } from "../api/use-register";
+import { AccountTypeSelector } from "./account-type-selector";
 
 export const SignUpCard = () => {
   const { mutate, isPending } = useRegister();
@@ -39,15 +41,19 @@ export const SignUpCard = () => {
       name: "",
       email: "",
       password: "",
+      accountType: "PERSONAL",
+      organizationName: "",
     },
   });
+
+  const accountType = form.watch("accountType");
 
   const onSubmit = (values: z.infer<typeof registerSchema>) => {
     mutate({ json: values });
   };
 
   return (
-    <Card className="size-full md:w-[487px] border-none shadow-none">
+    <Card className="size-full md:w-[520px] border-none shadow-none">
       <CardHeader className="flex items-center justify-center text-center p-7">
         <CardTitle className="text-2xl">Sign Up</CardTitle>
         <CardDescription>
@@ -68,6 +74,25 @@ export const SignUpCard = () => {
       <CardContent className="p-7">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Account Type Selection */}
+            <FormField
+              name="accountType"
+              control={form.control}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Account Type</FormLabel>
+                  <FormControl>
+                    <AccountTypeSelector
+                      value={field.value as "PERSONAL" | "ORG"}
+                      onChange={field.onChange}
+                      disabled={isPending}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               name="name"
               control={form.control}
@@ -77,6 +102,7 @@ export const SignUpCard = () => {
                     <Input
                       type="text"
                       placeholder="Enter your name"
+                      disabled={isPending}
                       {...field}
                     />
                   </FormControl>
@@ -84,6 +110,28 @@ export const SignUpCard = () => {
                 </FormItem>
               )}
             />
+
+            {/* Organization Name - Only shown for ORG accounts */}
+            {accountType === "ORG" && (
+              <FormField
+                name="organizationName"
+                control={form.control}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="Enter organization name"
+                        disabled={isPending}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
             <FormField
               name="email"
               control={form.control}
@@ -93,6 +141,7 @@ export const SignUpCard = () => {
                     <Input
                       type="email"
                       placeholder="Enter your email address"
+                      disabled={isPending}
                       {...field}
                     />
                   </FormControl>
@@ -108,6 +157,7 @@ export const SignUpCard = () => {
                   <FormControl>
                     <PasswordInput
                       placeholder="Enter your password"
+                      disabled={isPending}
                       {...field}
                     />
                   </FormControl>
@@ -160,3 +210,4 @@ export const SignUpCard = () => {
     </Card>
   );
 };
+

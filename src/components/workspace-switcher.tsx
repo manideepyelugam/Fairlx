@@ -1,7 +1,7 @@
 "use client";
 
 import { RiAddCircleFill } from "react-icons/ri";
-import { LogOut, Plus } from "lucide-react";
+import { LogOut, Plus, Building2 } from "lucide-react";
 
 import { useGetWorkspaces } from "@/features/workspaces/api/use-get-workspaces";
 import { WorkspaceAvatar } from "@/features/workspaces/components/workspace-avatar";
@@ -9,6 +9,8 @@ import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useCreateWorkspaceModal } from "@/features/workspaces/hooks/use-create-workspace-modal";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { useDeleteMember } from "@/features/members/api/use-delete-member";
+import { useAccountType } from "@/features/organizations/hooks/use-account-type";
+import { useGetOrganizations } from "@/features/organizations/api/use-get-organizations";
 import { useConfirm } from "@/hooks/use-confirm";
 
 import {
@@ -35,7 +37,14 @@ export const WorkspaceSwitcher = () => {
   const { open } = useCreateWorkspaceModal();
   const { member } = useCurrentMember({ workspaceId });
   const { mutate: deleteMember } = useDeleteMember();
-  
+  const { isOrg, primaryOrganizationId } = useAccountType();
+  const { data: organizations } = useGetOrganizations();
+
+  // Get current organization for ORG accounts
+  const currentOrg = isOrg && primaryOrganizationId
+    ? organizations?.documents?.find((o: { $id: string }) => o.$id === primaryOrganizationId)
+    : null;
+
   const [ConfirmDialog, confirm] = useConfirm(
     "Leave Workspace",
     "Are you sure you want to leave this workspace? You will need an invite to rejoin.",
@@ -48,7 +57,7 @@ export const WorkspaceSwitcher = () => {
 
   const handleLeaveWorkspace = async () => {
     if (!member) return;
-    
+
     const ok = await confirm();
     if (!ok) return;
 
@@ -63,9 +72,18 @@ export const WorkspaceSwitcher = () => {
   };
 
   return (
-    <div className="flex flex-col px-3 pt-5 pb-8   border-t-[1.5px] border-neutral-200">
+    <div className="flex flex-col px-3 pt-5 pb-8 border-t-[1.5px] border-neutral-200">
       <ConfirmDialog />
-      <div className="flex items-center justify-between pb-4 ">
+
+      {/* Organization indicator for ORG accounts */}
+      {isOrg && currentOrg && (
+        <div className="flex items-center gap-2 px-2 pb-3 text-xs text-muted-foreground">
+          <Building2 className="h-3.5 w-3.5" />
+          <span className="truncate font-medium">{(currentOrg as { name: string }).name}</span>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between pb-4">
         <p className="text-[13px] tracking-normal font-medium  pl-2 text-primary">Workspaces</p>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -81,8 +99,8 @@ export const WorkspaceSwitcher = () => {
             {member && workspaces && workspaces.documents.length > 1 && (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  onClick={handleLeaveWorkspace} 
+                <DropdownMenuItem
+                  onClick={handleLeaveWorkspace}
                   className="cursor-pointer text-destructive focus:text-destructive"
                 >
                   <LogOut className="size-4 mr-2" />

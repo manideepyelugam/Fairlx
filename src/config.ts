@@ -73,6 +73,13 @@ export const USAGE_ALERTS_ID = process.env.NEXT_PUBLIC_APPWRITE_USAGE_ALERTS_ID!
 export const STORAGE_SNAPSHOTS_ID = process.env.NEXT_PUBLIC_APPWRITE_STORAGE_SNAPSHOTS_ID!;
 export const INVOICES_ID = process.env.NEXT_PUBLIC_APPWRITE_INVOICES_ID!;
 
+// ===============================
+// Organizations & Account Management
+// ===============================
+export const ORGANIZATIONS_ID = process.env.NEXT_PUBLIC_APPWRITE_ORGANIZATIONS_ID!;
+export const ORGANIZATION_MEMBERS_ID = process.env.NEXT_PUBLIC_APPWRITE_ORGANIZATION_MEMBERS_ID!;
+// User preferences extended with accountType stored in Appwrite user.prefs
+
 // Usage Billing Rates (cents per unit)
 export const USAGE_RATE_TRAFFIC_GB = parseFloat(process.env.USAGE_RATE_TRAFFIC_GB || "0.10");
 export const USAGE_RATE_STORAGE_GB_MONTH = parseFloat(process.env.USAGE_RATE_STORAGE_GB_MONTH || "0.05");

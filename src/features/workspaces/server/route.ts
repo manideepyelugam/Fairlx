@@ -100,6 +100,21 @@ const app = new Hono()
 
       const { name, image } = c.req.valid("form");
 
+      // CRITICAL: Check PERSONAL account workspace limit
+      // WHY: PERSONAL accounts can only have ONE workspace (billing constraint)
+      const { validateWorkspaceCreation } = await import("@/features/members/utils");
+      const accountType = (user.prefs?.accountType as "PERSONAL" | "ORG") || "PERSONAL";
+
+      const validation = await validateWorkspaceCreation({
+        databases,
+        userId: user.$id,
+        accountType,
+      });
+
+      if (!validation.allowed) {
+        return c.json({ error: validation.reason || "Cannot create workspace" }, 403);
+      }
+
       let uploadedImageUrl: string | undefined;
 
       if (image instanceof File) {
@@ -158,7 +173,8 @@ const app = new Hono()
         userId: user.$id,
       });
 
-      if (!member || member.role !== MemberRole.ADMIN) {
+      // OWNER and ADMIN can update workspace settings
+      if (!member || (member.role !== MemberRole.ADMIN && member.role !== MemberRole.OWNER)) {
         return c.json({ error: "Unauthorized" }, 401);
       }
 
@@ -208,8 +224,10 @@ const app = new Hono()
       userId: user.$id,
     });
 
-    if (!member || member.role !== MemberRole.ADMIN) {
-      return c.json({ error: "Unauthorized" }, 401);
+    // Only OWNER can delete workspace (not ADMIN)
+    // WHY: Deletion is irreversible and affects billing
+    if (!member || member.role !== MemberRole.OWNER) {
+      return c.json({ error: "Only workspace owner can delete" }, 401);
     }
 
     // Delete all related data when workspace is deleted
@@ -307,7 +325,8 @@ const app = new Hono()
       userId: user.$id,
     });
 
-    if (!member || member.role !== MemberRole.ADMIN) {
+    // OWNER and ADMIN can reset invite code
+    if (!member || (member.role !== MemberRole.ADMIN && member.role !== MemberRole.OWNER)) {
       return c.json({ error: "Unauthorized" }, 401);
     }
 
