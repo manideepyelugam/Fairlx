@@ -8,6 +8,8 @@ const StandaloneLayout = ({ children }: StandaloneLayoutProps) => {
       <div className="mx-auto max-w-screen-2xl ">
 
 
+        
+     
         <div className="">
           {children}
         </div>
