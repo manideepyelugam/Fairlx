@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Settings, User, FolderKanban, Users2, Calendar, Clock as ClockIcon, Activity, Layers } from "lucide-react";
+import { Settings, User, FolderKanban, Users2, Calendar, Clock as ClockIcon, Activity, Layers, Shield } from "lucide-react";
 import Link from "next/link";
 import {
   GoCheckCircle,
@@ -12,7 +12,6 @@ import {
 
 import { usePathname } from "next/navigation";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
-
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
 
@@ -66,6 +65,12 @@ const routes = [
     activeIcon: Activity,
   },
   {
+    label: "Admin Panel",
+    href: "/admin/usage",
+    icon: Shield,
+    activeIcon: Shield,
+  },
+  {
     label: "Settings",
     href: "/settings",
     icon: Settings,
@@ -88,8 +93,8 @@ export const Navigation = () => {
 
   // Filter routes based on permissions
   const visibleRoutes = routes.filter(route => {
-    // Hide Settings for non-admins
-    if (route.label === "Settings" && !isAdmin) return false;
+    // Hide Settings and Admin Panel for non-admins
+    if ((route.label === "Settings" || route.label === "Admin Panel") && !isAdmin) return false;
     return true;
   });
 
