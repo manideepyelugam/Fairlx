@@ -29,7 +29,7 @@ interface WorkspaceUsageBreakdownProps {
     isLoading?: boolean;
 }
 
-export function WorkspaceUsageBreakdown({ organizationId, isLoading }: WorkspaceUsageBreakdownProps) {
+export function WorkspaceUsageBreakdown({ isLoading }: WorkspaceUsageBreakdownProps) {
     const [sortBy, setSortBy] = useState<keyof WorkspaceUsageData>("estimatedCost");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 

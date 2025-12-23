@@ -79,7 +79,7 @@ export function OrganizationBillingSettings({
                         Payment Method
                     </CardTitle>
                     <CardDescription>
-                        Manage your organization's payment method
+                        Manage your organization&apos;s payment method
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -176,7 +176,7 @@ export function OrganizationBillingSettings({
                         <div>
                             <h3 className="font-semibold">View Detailed Usage</h3>
                             <p className="text-sm text-muted-foreground mt-1">
-                                Monitor your organization's usage metrics and costs
+                                Monitor your organization&apos;s usage metrics and costs
                             </p>
                         </div>
                         <Button asChild>

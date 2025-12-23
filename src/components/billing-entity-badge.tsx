@@ -22,7 +22,7 @@ export function BillingEntityBadge({
     variant = "default",
     className
 }: BillingEntityBadgeProps) {
-    const { isOrg, primaryOrganizationId, accountType } = useAccountType();
+    const { isOrg, primaryOrganizationId } = useAccountType();
     const { data: organizations } = useGetOrganizations();
 
     // Get current org name

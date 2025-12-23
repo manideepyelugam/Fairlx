@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import { Building2, Users, Settings2, Shield, Plus, Trash2, UserPlus, Crown, CreditCard } from "lucide-react";
+import { Building2, Users, Settings2, Shield, Trash2, UserPlus, Crown, CreditCard } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,8 +33,6 @@ import { OrganizationRole } from "@/features/organizations/types";
 import { OrganizationBillingSettings } from "@/features/organizations/components/organization-billing-settings";
 
 export const OrganizationSettingsClient = () => {
-    const params = useParams();
-    const workspaceId = params.workspaceId as string;
     const { isOrg, primaryOrganizationId } = useAccountType();
     const { data: organizations } = useGetOrganizations();
     const [inviteEmail, setInviteEmail] = useState("");

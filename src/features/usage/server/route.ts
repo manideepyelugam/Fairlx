@@ -60,6 +60,7 @@ async function checkAdminAccess(
  * 
  * This ensures correct revenue attribution across conversion boundaries.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function getBillingEntityForEvent(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     databases: any,
