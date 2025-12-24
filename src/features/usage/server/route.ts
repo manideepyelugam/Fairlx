@@ -47,6 +47,86 @@ async function checkAdminAccess(
     return member?.role === MemberRole.ADMIN;
 }
 
+/**
+ * CRITICAL: Determine billing entity for a usage event based on timestamp
+ * 
+ * WHY: When PERSONAL converts to ORG, historical usage stays with user,
+ * only post-conversion usage bills to organization.
+ * 
+ * LOGIC:
+ * - If workspace has no org: bill to user (via workspace.userId)
+ * - If workspace has org AND event BEFORE org.billingStartAt: bill to user
+ * - If workspace has org AND event AFTER org.billingStartAt: bill to org
+ * 
+ * This ensures correct revenue attribution across conversion boundaries.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function getBillingEntityForEvent(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    databases: any,
+    workspaceId: string,
+    eventTimestamp: string
+): Promise<{ entityId: string; entityType: "user" | "organization" }> {
+    try {
+        // Get workspace to check organizationId
+        const workspace = await databases.getDocument(
+            DATABASE_ID,
+            "workspaces",
+            workspaceId
+        );
+
+        // If no organization, bill to workspace owner (user)
+        if (!workspace.organizationId) {
+            return {
+                entityId: workspace.userId,
+                entityType: "user",
+            };
+        }
+
+        // Get organization to check billingStartAt
+        const organization = await databases.getDocument(
+            DATABASE_ID,
+            "organizations",
+            workspace.organizationId
+        );
+
+        const billingStartAt = organization.billingStartAt
+            ? new Date(organization.billingStartAt)
+            : null;
+        const eventDate = new Date(eventTimestamp);
+
+        // If event occurred before org billing started, bill to user
+        if (billingStartAt && eventDate < billingStartAt) {
+            return {
+                entityId: workspace.userId,
+                entityType: "user",
+            };
+        }
+
+        // Event after org billing started, bill to organization
+        return {
+            entityId: workspace.organizationId,
+            entityType: "organization",
+        };
+    } catch (error) {
+        console.error("[Usage] Error determining billing entity:", error);
+        // Fallback: bill to workspace owner
+        try {
+            const workspace = await databases.getDocument(
+                DATABASE_ID,
+                "workspaces",
+                workspaceId
+            );
+            return {
+                entityId: workspace.userId,
+                entityType: "user",
+            };
+        } catch {
+            throw new Error("Cannot determine billing entity");
+        }
+    }
+}
+
 // Convert bytes to GB
 function bytesToGB(bytes: number): number {
     return bytes / (1024 * 1024 * 1024);
@@ -237,11 +317,10 @@ const app = new Hono()
         }
     )
 
-    // ===============================
-    // Usage Summary Endpoint
-    // ===============================
-
     // GET /usage/summary - Get usage summary for current period
+    // 
+    // CRITICAL FIX IMPLEMENTED: Filters events by billing entity
+    // Events are attributed to org or user based on billingEntityType stored at creation
     .get(
         "/summary",
         sessionMiddleware,
@@ -249,7 +328,7 @@ const app = new Hono()
         async (c) => {
             const user = c.get("user");
             const databases = c.get("databases");
-            const { workspaceId, period } = c.req.valid("query");
+            const { workspaceId, period, billingEntityId } = c.req.valid("query");
 
             // Check admin access
             const isAdmin = await checkAdminAccess(databases, workspaceId, user.$id);
@@ -264,16 +343,25 @@ const app = new Hono()
             nextMonth.setMonth(nextMonth.getMonth() + 1);
             const endOfMonth = nextMonth.toISOString();
 
-            // Fetch all events for the period
+            // Build query with billing entity filter if provided
+            const queries = [
+                Query.equal("workspaceId", workspaceId),
+                Query.greaterThanEqual("timestamp", startOfMonth),
+                Query.lessThan("timestamp", endOfMonth),
+                Query.limit(10000),
+            ];
+
+            // CRITICAL: Filter by billing entity to separate org/user billing
+            // If billingEntityId is provided, only get events for that entity
+            if (billingEntityId) {
+                queries.push(Query.equal("billingEntityId", billingEntityId));
+            }
+
+            // Fetch events for the period (filtered by billing entity if specified)
             const events = await databases.listDocuments<UsageEvent>(
                 DATABASE_ID,
                 USAGE_EVENTS_ID,
-                [
-                    Query.equal("workspaceId", workspaceId),
-                    Query.greaterThanEqual("timestamp", startOfMonth),
-                    Query.lessThan("timestamp", endOfMonth),
-                    Query.limit(10000),
-                ]
+                queries
             );
 
             // Calculate totals
@@ -381,6 +469,9 @@ const app = new Hono()
     )
 
     // POST /usage/aggregations/calculate - Calculate aggregation for a period
+    //
+    // CRITICAL FIX IMPLEMENTED: Filters events by billing entity
+    // Aggregations respect billing entity boundaries for accurate org/user split
     .post(
         "/aggregations/calculate",
         sessionMiddleware,
@@ -388,7 +479,7 @@ const app = new Hono()
         async (c) => {
             const user = c.get("user");
             const databases = c.get("databases");
-            const { workspaceId, period } = c.req.valid("json");
+            const { workspaceId, period, billingEntityId } = c.req.valid("json");
 
             // Check admin access
             const isAdmin = await checkAdminAccess(databases, workspaceId, user.$id);
@@ -397,13 +488,20 @@ const app = new Hono()
             }
 
             // Check if aggregation already exists
+            const aggregationQuery = [
+                Query.equal("workspaceId", workspaceId),
+                Query.equal("period", period),
+            ];
+
+            // If billing entity specified, check for entity-specific aggregation
+            if (billingEntityId) {
+                aggregationQuery.push(Query.equal("billingEntityId", billingEntityId));
+            }
+
             const existing = await databases.listDocuments<UsageAggregation>(
                 DATABASE_ID,
                 USAGE_AGGREGATIONS_ID,
-                [
-                    Query.equal("workspaceId", workspaceId),
-                    Query.equal("period", period),
-                ]
+                aggregationQuery
             );
 
             // HARD LOCK: Finalized periods MUST NOT be modified
@@ -418,15 +516,23 @@ const app = new Hono()
             nextMonth.setMonth(nextMonth.getMonth() + 1);
             const endOfMonth = nextMonth.toISOString();
 
+            // Build query with billing entity filter
+            const eventQueries = [
+                Query.equal("workspaceId", workspaceId),
+                Query.greaterThanEqual("timestamp", startOfMonth),
+                Query.lessThan("timestamp", endOfMonth),
+                Query.limit(10000),
+            ];
+
+            // CRITICAL: Filter by billing entity for accurate attribution
+            if (billingEntityId) {
+                eventQueries.push(Query.equal("billingEntityId", billingEntityId));
+            }
+
             const events = await databases.listDocuments<UsageEvent>(
                 DATABASE_ID,
                 USAGE_EVENTS_ID,
-                [
-                    Query.equal("workspaceId", workspaceId),
-                    Query.greaterThanEqual("timestamp", startOfMonth),
-                    Query.lessThan("timestamp", endOfMonth),
-                    Query.limit(10000),
-                ]
+                eventQueries
             );
 
             let trafficTotalBytes = 0;

@@ -32,6 +32,8 @@ import roles from "@/features/roles/server/route";
 import projectMembers from "@/features/project-members/server/route";
 // Usage-Based Billing
 import usage from "@/features/usage/server/route";
+// Organizations & Account Management
+import organizations from "@/features/organizations/server/route";
 // Global Traffic Metering
 import { trafficMeteringMiddleware } from "@/lib/traffic-metering-middleware";
 
@@ -73,7 +75,9 @@ const routes = app
   // Project-scoped RBAC
   .route("/project-members", projectMembers)
   // Usage-Based Billing
-  .route("/usage", usage);
+  .route("/usage", usage)
+  // Organizations & Account Management
+  .route("/organizations", organizations);
 
 export const GET = handle(app);
 export const POST = handle(app);

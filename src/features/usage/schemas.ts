@@ -55,6 +55,7 @@ export const getUsageAggregationsSchema = z.object({
 export const calculateAggregationSchema = z.object({
     workspaceId: z.string().min(1),
     period: z.string().regex(/^\d{4}-\d{2}$/),
+    billingEntityId: z.string().optional(),
 });
 
 // ===============================
@@ -64,6 +65,7 @@ export const calculateAggregationSchema = z.object({
 export const getUsageSummarySchema = z.object({
     workspaceId: z.string().min(1),
     period: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+    billingEntityId: z.string().optional(),
 });
 
 // ===============================

@@ -37,6 +37,14 @@ export type UsageEvent = Models.Document & {
     weightedUnits?: number;  // Units after applying job type weight
     // Idempotency - prevents duplicate events from retries
     idempotencyKey?: string; // Unique key per operation (e.g., workspaceId:operation:timestamp)
+    /**
+     * Billing entity fields for attribution
+     * WHY: Enables billing to correct entity during PERSONAL→ORG conversion.
+     * - billingEntityId: user.$id (PERSONAL) or organization.$id (ORG)
+     * - billingEntityType: 'user' or 'organization'
+     */
+    billingEntityId?: string;
+    billingEntityType?: 'user' | 'organization';
     metadata?: string; // JSON stringified
     timestamp: string;
     source: UsageSource;
@@ -50,6 +58,9 @@ export type UsageAggregation = Models.Document & {
     computeTotalUnits: number;
     createdAt: string;
     isFinalized: boolean;
+    // Billing entity for organization-level aggregation
+    billingEntityId?: string;      // User ID or Organization ID
+    billingEntityType?: 'user' | 'organization';
     // Invoice reconciliation - links aggregation to invoice for audit trail
     invoiceId?: string;      // Reference to generated invoice
     finalizedAt?: string;    // When period was locked for billing
@@ -61,6 +72,8 @@ export type StorageDailySnapshot = Models.Document & {
     projectId?: string;
     storageGB: number;       // Total storage at point of snapshot
     date: string;            // YYYY-MM-DD format (UTC day boundary)
+    billingEntityId?: string;
+    billingEntityType?: 'user' | 'organization';
 };
 
 // Invoice generation and reconciliation
@@ -76,6 +89,10 @@ export type Invoice = Models.Document & {
     status: 'draft' | 'finalized' | 'paid';
     createdAt: string;
     paidAt?: string;
+    // Billing entity for organization invoices
+    billingEntityId?: string;      // User ID or Organization ID
+    billingEntityType?: 'user' | 'organization';
+    organizationId?: string;       // For org-level invoices
 };
 
 export type UsageAlert = Models.Document & {

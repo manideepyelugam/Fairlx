@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Settings, User, FolderKanban, Users2, Calendar, Clock as ClockIcon, Activity, Layers, Shield } from "lucide-react";
+import { Settings, User, FolderKanban, Users2, Calendar, Clock as ClockIcon, Activity, Layers, Shield, Building2, CreditCard } from "lucide-react";
 import Link from "next/link";
 import {
   GoCheckCircle,
@@ -14,6 +14,7 @@ import { usePathname } from "next/navigation";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
+import { useAccountType } from "@/features/organizations/hooks/use-account-type";
 
 const routes = [
   {
@@ -69,6 +70,22 @@ const routes = [
     href: "/admin/usage",
     icon: Shield,
     activeIcon: Shield,
+    adminOnly: true,
+  },
+  {
+    label: "Billing",
+    href: "/billing",
+    icon: CreditCard,
+    activeIcon: CreditCard,
+    adminOnly: true,
+  },
+  {
+    label: "Organization",
+    href: "/organization",
+    icon: Building2,
+    activeIcon: Building2,
+    orgOnly: true, // Only show for ORG accounts
+    adminOnly: true,
   },
   {
     label: "Settings",
@@ -90,11 +107,14 @@ export const Navigation = () => {
   const projectId = useProjectId();
   const pathname = usePathname();
   const { isAdmin } = useCurrentMember({ workspaceId });
+  const { isOrg } = useAccountType();
 
-  // Filter routes based on permissions
+  // Filter routes based on permissions and account type
   const visibleRoutes = routes.filter(route => {
-    // Hide Settings and Admin Panel for non-admins
-    if ((route.label === "Settings" || route.label === "Admin Panel") && !isAdmin) return false;
+    // Hide admin-only routes for non-admins
+    if (route.adminOnly && !isAdmin) return false;
+    // Hide org-only routes for PERSONAL accounts
+    if (route.orgOnly && !isOrg) return false;
     return true;
   });
 
