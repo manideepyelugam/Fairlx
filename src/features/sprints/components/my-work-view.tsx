@@ -8,8 +8,8 @@ import {
   Draggable,
   type DropResult,
 } from "@hello-pangea/dnd";
-import { 
-  Search, 
+import {
+  Search,
   LayoutGrid,
   List,
   CheckCircle2,
@@ -21,7 +21,6 @@ import {
   Flag,
   Layers,
   Calendar,
-  MoreHorizontal
 } from "lucide-react";
 
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
@@ -42,10 +41,10 @@ import {
 import { useGetWorkItems } from "../api/use-get-work-items";
 import { useUpdateWorkItem } from "../api/use-update-work-item";
 import { WorkItemOptionsMenu } from "./work-item-options-menu";
-import { 
-  WorkItemStatus, 
-  WorkItemPriority, 
-  PopulatedWorkItem 
+import {
+  WorkItemStatus,
+  WorkItemPriority,
+  PopulatedWorkItem
 } from "../types";
 import { cn } from "@/lib/utils";
 import { isBefore, format } from "date-fns";
@@ -166,7 +165,7 @@ export const MyWorkView = () => {
   const stats = useMemo(() => {
     const items = workItems?.documents || [];
     const today = new Date();
-    
+
     return {
       total: items.length,
       inProgress: items.filter((i) => i.status === WorkItemStatus.IN_PROGRESS).length,
@@ -271,7 +270,7 @@ export const MyWorkView = () => {
             </div>
             <div className="absolute -bottom-2 -right-2 size-16 rounded-full bg-primary/5" />
           </div>
-          
+
           <div className="relative overflow-hidden rounded-lg border bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-950/30 dark:to-amber-950/30 p-3">
             <div className="flex items-center justify-between">
               <div>
@@ -284,7 +283,7 @@ export const MyWorkView = () => {
             </div>
             <div className="absolute -bottom-2 -right-2 size-16 rounded-full bg-yellow-500/5" />
           </div>
-          
+
           <div className="relative overflow-hidden rounded-lg border bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-950/30 dark:to-green-950/30 p-3">
             <div className="flex items-center justify-between">
               <div>
@@ -297,7 +296,7 @@ export const MyWorkView = () => {
             </div>
             <div className="absolute -bottom-2 -right-2 size-16 rounded-full bg-emerald-500/5" />
           </div>
-          
+
           <div className="relative overflow-hidden rounded-lg border bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 p-3">
             <div className="flex items-center justify-between">
               <div>
@@ -310,7 +309,7 @@ export const MyWorkView = () => {
             </div>
             <div className="absolute -bottom-2 -right-2 size-16 rounded-full bg-orange-500/5" />
           </div>
-          
+
           <div className="relative overflow-hidden rounded-lg border bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/30 dark:to-rose-950/30 p-3">
             <div className="flex items-center justify-between">
               <div>
@@ -409,8 +408,8 @@ export const MyWorkView = () => {
                         <span className="text-xs font-medium text-foreground">
                           {statusLabels[status]}
                         </span>
-                        <Badge 
-                          variant="secondary" 
+                        <Badge
+                          variant="secondary"
                           className="text-[10px] h-5 px-1.5 font-medium bg-background"
                         >
                           {items.length}
@@ -517,7 +516,7 @@ const priorityColors: Record<string, string> = {
   URGENT: "text-red-600 bg-red-50",
 };
 
-const MyWorkKanbanCard = ({ workItem, workspaceId, isDragging }: MyWorkKanbanCardProps) => {
+const MyWorkKanbanCard = ({ workItem, isDragging }: MyWorkKanbanCardProps) => {
   return (
     <div className={cn(
       "bg-white dark:bg-card rounded-xl border shadow-sm hover:shadow-md transition-shadow cursor-grab",
@@ -535,7 +534,7 @@ const MyWorkKanbanCard = ({ workItem, workspaceId, isDragging }: MyWorkKanbanCar
           </div>
           <WorkItemOptionsMenu workItem={workItem} />
         </div>
-        
+
         {/* Title */}
         <h3 className="text-xs font-medium text-foreground line-clamp-2 mb-2">
           {workItem.title}
@@ -581,10 +580,10 @@ interface MyWorkListItemProps {
   workspaceId: string;
 }
 
-const MyWorkListItem = ({ workItem, workspaceId }: MyWorkListItemProps) => {
+const MyWorkListItem = ({ workItem }: MyWorkListItemProps) => {
   const today = new Date();
-  const isOverdue = workItem.dueDate && 
-    workItem.status !== WorkItemStatus.DONE && 
+  const isOverdue = workItem.dueDate &&
+    workItem.status !== WorkItemStatus.DONE &&
     isBefore(new Date(workItem.dueDate), today);
 
   return (
@@ -598,7 +597,7 @@ const MyWorkListItem = ({ workItem, workspaceId }: MyWorkListItemProps) => {
         )}
         <span className="text-xs text-foreground truncate">{workItem.title}</span>
       </div>
-      
+
       {/* Status */}
       <div className="col-span-2 flex items-center gap-1.5">
         {statusIconMap[workItem.status as WorkItemStatus]}
@@ -606,7 +605,7 @@ const MyWorkListItem = ({ workItem, workspaceId }: MyWorkListItemProps) => {
           {statusLabels[workItem.status as WorkItemStatus]}
         </span>
       </div>
-      
+
       {/* Priority */}
       <div className="col-span-2">
         <span className={cn(
@@ -616,7 +615,7 @@ const MyWorkListItem = ({ workItem, workspaceId }: MyWorkListItemProps) => {
           {workItem.priority}
         </span>
       </div>
-      
+
       {/* Due Date */}
       <div className="col-span-2 flex items-center justify-between">
         <span className={cn(
@@ -628,7 +627,7 @@ const MyWorkListItem = ({ workItem, workspaceId }: MyWorkListItemProps) => {
             : "—"}
         </span>
       </div>
-      
+
       {/* Story Points and Menu */}
       <div className="col-span-1 flex items-center justify-between">
         <span className="text-xs text-muted-foreground">

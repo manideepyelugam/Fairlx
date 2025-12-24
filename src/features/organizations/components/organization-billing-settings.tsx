@@ -35,6 +35,34 @@ export function OrganizationBillingSettings({
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                    {/* Billing Timeline - Item 4.6 */}
+                    <div className="rounded-lg border p-4 bg-blue-50/50 dark:bg-blue-950/30">
+                        <h4 className="text-sm font-medium flex items-center gap-2 mb-3">
+                            <Calendar className="h-4 w-4 text-blue-600" />
+                            Billing Timeline
+                        </h4>
+                        <div className="space-y-2 text-sm">
+                            <div className="flex items-center gap-3">
+                                <div className="w-2 h-2 rounded-full bg-gray-400" />
+                                <span className="text-muted-foreground">
+                                    Before organization creation → <span className="font-medium text-foreground">Personal billing</span>
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="w-2 h-2 rounded-full bg-blue-500" />
+                                <span className="text-muted-foreground">
+                                    After organization creation → <span className="font-medium text-foreground">Organization billing</span>
+                                </span>
+                            </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-3">
+                            Usage before your organization was created is billed to your personal account.
+                            All usage after is billed to this organization.
+                        </p>
+                    </div>
+
+                    <Separator />
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label>Billing Entity</Label>

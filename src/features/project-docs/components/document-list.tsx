@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { 
-  FileText, 
-  Search, 
+import {
+  FileText,
+  Search,
   FolderOpen,
   Loader2,
   Upload,
@@ -32,9 +32,9 @@ import { DocumentEditModal } from "./document-edit-modal";
 import { DocumentReplaceModal } from "./document-replace-modal";
 
 import { useGetProjectDocuments, useDeleteProjectDocument, useDownloadDocument } from "../api/use-project-docs";
-import { 
-  PopulatedProjectDocument, 
-  DocumentCategory, 
+import {
+  PopulatedProjectDocument,
+  DocumentCategory,
   DOCUMENT_CATEGORY_LABELS,
 } from "../types";
 import { formatFileSize, MAX_TOTAL_PROJECT_SIZE } from "../schemas";
@@ -53,7 +53,7 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
   const [includeArchived, setIncludeArchived] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  
+
   // Modal states
   const [editDocument, setEditDocument] = useState<PopulatedProjectDocument | null>(null);
   const [replaceDocument, setReplaceDocument] = useState<PopulatedProjectDocument | null>(null);
@@ -85,7 +85,7 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
     .filter((doc) => {
       // Hide archived documents unless "Show Archived" is checked
       if (!includeArchived && doc.isArchived) return false;
-      
+
       if (!searchQuery) return true;
       const query = searchQuery.toLowerCase();
       return (
@@ -109,7 +109,7 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
       }
     });
 
-  const usagePercentage = stats ? (stats.totalSize / MAX_TOTAL_PROJECT_SIZE) * 100 : 0;
+  // Usage percentage calculation is available in stats if needed
 
   // Selection handlers
   const handleSelectAll = () => {
@@ -136,24 +136,21 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
     if (!ok) return;
 
     const idsToDelete = Array.from(selectedIds);
-    let successCount = 0;
-    
+
+
     for (const docId of idsToDelete) {
       deleteDocument(
-        { documentId: docId, projectId, workspaceId },
-        {
-          onSuccess: () => { successCount++; },
-        }
+        { documentId: docId, projectId, workspaceId }
       );
     }
-    
+
     setSelectedIds(new Set());
     toast.success(`Deleting ${idsToDelete.length} document(s)...`);
   };
 
   const handleBulkDownload = () => {
     if (selectedIds.size === 0) return;
-    
+
     const docsToDownload = filteredDocuments.filter(doc => selectedIds.has(doc.$id));
     docsToDownload.forEach(doc => {
       downloadDocument({
@@ -162,7 +159,7 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
         fileName: doc.name,
       });
     });
-    
+
     toast.success(`Downloading ${docsToDownload.length} document(s)...`);
   };
 
@@ -200,7 +197,7 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
             className="pl-9 h-9 text-xs font-light bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 rounded-lg"
           />
         </div>
-        
+
         <Select value={selectedCategory} onValueChange={(v) => setSelectedCategory(v as DocumentCategory | "all")}>
           <SelectTrigger className="w-[140px] h-9 text-xs font-light bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 rounded-lg">
             <SelectValue placeholder="All categories" />

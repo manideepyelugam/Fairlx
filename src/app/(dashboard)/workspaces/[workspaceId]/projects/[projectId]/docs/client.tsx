@@ -1,14 +1,10 @@
 "use client";
 
-import Link from "next/link";
-import { 
-  ArrowLeft, 
-  BookOpen, 
+import {
+  BookOpen,
   FolderOpen,
   Sparkles,
 } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageLoader } from "@/components/page-loader";
@@ -22,7 +18,7 @@ import { DocumentList } from "@/features/project-docs/components";
 export const ProjectDocsClient = () => {
   const projectId = useProjectId();
   const workspaceId = useWorkspaceId();
-  
+
   const { data: project, isLoading: isLoadingProject } = useGetProject({ projectId });
 
   if (isLoadingProject) {
@@ -38,7 +34,7 @@ export const ProjectDocsClient = () => {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-      
+
           <div className="mb-3">
             <div className="flex items-center gap-2 ">
               <h1 className="text-2xl font-semibold tracking-tight">Project Documents</h1>

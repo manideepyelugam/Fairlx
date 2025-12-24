@@ -48,10 +48,26 @@ async function checkAdminAccess(
 }
 
 /**
- * CRITICAL: Determine billing entity for a usage event based on timestamp
+ * CRITICAL ITEM 3: Determine billing entity for a usage event based on timestamp
  * 
- * WHY: When PERSONAL converts to ORG, historical usage stays with user,
- * only post-conversion usage bills to organization.
+ * BILLING ATTRIBUTION TIMELINE SAFETY
+ * ====================================
+ * 
+ * AUTHORITATIVE RULE:
+ *   billingEffectiveAt = organization.billingStartAt (= accountConversionCompletedAt)
+ * 
+ *   IF usage.createdAt < billingEffectiveAt → bill PERSONAL account
+ *   ELSE → bill ORGANIZATION
+ * 
+ * WHY THIS MATTERS:
+ * - When PERSONAL converts to ORG, historical usage stays with the user
+ * - Only post-conversion usage bills to organization
+ * - Prevents retroactive billing reassignment
+ * 
+ * HANDLING DELAYED INGESTION:
+ * - Usage events may arrive out-of-order (async ingestion)
+ * - We use event.timestamp (when usage occurred), NOT ingestion time
+ * - This ensures late-arriving events are correctly attributed
  * 
  * LOGIC:
  * - If workspace has no org: bill to user (via workspace.userId)

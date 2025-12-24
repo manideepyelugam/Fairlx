@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useParams } from "next/navigation";
-import { Building2, Users, Settings2, Shield, Trash2, UserPlus, Crown, CreditCard } from "lucide-react";
+import { Building2, Users, Settings2, Shield, Trash2, UserPlus, Crown, CreditCard, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -298,12 +297,15 @@ export const OrganizationSettingsClient = () => {
                         </CardContent>
                     </Card>
 
-                    {/* Danger Zone */}
+                    {/* Danger Zone - Soft Delete with Grace Period */}
                     <Card className="border-destructive/50">
                         <CardHeader>
-                            <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                            <CardTitle className="text-destructive flex items-center gap-2">
+                                <AlertTriangle className="h-5 w-5" />
+                                Danger Zone
+                            </CardTitle>
                             <CardDescription>
-                                Irreversible actions for your organization
+                                Organization deletion actions
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -311,7 +313,8 @@ export const OrganizationSettingsClient = () => {
                                 <div>
                                     <div className="font-medium">Delete Organization</div>
                                     <div className="text-sm text-muted-foreground">
-                                        Permanently delete this organization and all its data
+                                        Data will be retained for 30 days before permanent deletion.
+                                        Billing will be frozen immediately.
                                     </div>
                                 </div>
                                 <Button variant="destructive" size="sm">

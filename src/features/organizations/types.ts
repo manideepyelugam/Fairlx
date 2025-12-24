@@ -62,6 +62,27 @@ export type Organization = Models.Document & {
      * - usage.timestamp >= billingStartAt → bill to org
      */
     billingStartAt?: string;
+    /**
+     * Soft-delete timestamp. When set, organization is considered deleted.
+     * Data is retained for gracePeriodDays (default 30) before permanent removal.
+     * 
+     * WHY soft-delete: Prevents accidental data loss and enables recovery.
+     * Also required for compliance/audit trail.
+     */
+    deletedAt?: string;
+    /**
+     * User ID who initiated the soft-delete.
+     * Required for audit trail.
+     */
+    deletedBy?: string;
+    /**
+     * Timestamp when billing was frozen.
+     * Set immediately on soft-delete to prevent further charges.
+     * 
+     * WHY separate from deletedAt: Billing freeze may happen before
+     * final deletion (e.g., payment failure scenarios).
+     */
+    billingFrozenAt?: string;
 };
 
 export type OrganizationMember = Models.Document & {
