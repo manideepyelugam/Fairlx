@@ -1,0 +1,145 @@
+/**
+ * Error Message Mapping
+ * 
+ * Replace technical errors with human-readable copy.
+ * Maps HTTP status codes and error strings to friendly messages.
+ */
+
+export interface ErrorMapping {
+    title: string;
+    message: string;
+    action?: string;
+}
+
+/**
+ * HTTP Status Code Mappings
+ */
+export const HTTP_ERROR_MESSAGES: Record<number, ErrorMapping> = {
+    400: {
+        title: "Something went wrong",
+        message: "The request couldn't be processed. Please try again.",
+    },
+    401: {
+        title: "Session expired",
+        message: "Please sign in again to continue.",
+        action: "Sign In",
+    },
+    403: {
+        title: "Access restricted",
+        message: "You don't have access to this yet. Contact your workspace admin for help.",
+    },
+    404: {
+        title: "Not found",
+        message: "We couldn't find what you're looking for.",
+    },
+    429: {
+        title: "Slow down",
+        message: "You're making too many requests. Please wait a moment.",
+    },
+    500: {
+        title: "Something went wrong",
+        message: "We're having trouble on our end. Please try again later.",
+    },
+    503: {
+        title: "Temporarily unavailable",
+        message: "We're doing some maintenance. Please try again in a few minutes.",
+    },
+};
+
+/**
+ * Specific Error String Mappings
+ */
+export const SPECIFIC_ERROR_MESSAGES: Record<string, ErrorMapping> = {
+    // Workspace limits
+    "Personal accounts can only have one workspace": {
+        title: "Workspace limit reached",
+        message: "Personal accounts can only have one workspace.",
+        action: "Upgrade to Organization to create more workspaces.",
+    },
+    "Upgrade to Organization to create more": {
+        title: "Upgrade required",
+        message: "Upgrade to Organization to unlock this feature.",
+        action: "Upgrade Now",
+    },
+
+    // Organization
+    "Organization must have at least one owner": {
+        title: "Owner required",
+        message: "Every organization needs at least one owner. Transfer ownership before removing yourself.",
+    },
+    "Only organization owner can delete": {
+        title: "Permission denied",
+        message: "Only the organization owner can perform this action.",
+    },
+    "Account is already an organization": {
+        title: "Already converted",
+        message: "Your account is already an organization.",
+    },
+
+    // Authentication
+    "Unauthorized": {
+        title: "Access denied",
+        message: "You need to sign in to continue.",
+        action: "Sign In",
+    },
+    "Not a member of this workspace": {
+        title: "Not a member",
+        message: "You're not a member of this workspace. Ask the owner for an invite.",
+    },
+
+    // Generic
+    "Network Error": {
+        title: "Connection issue",
+        message: "Check your internet connection and try again.",
+        action: "Retry",
+    },
+};
+
+/**
+ * Get human-readable error message
+ */
+export function getErrorMessage(error: unknown): ErrorMapping {
+    // Check for HTTP status
+    if (typeof error === "object" && error !== null) {
+        const errorObj = error as { status?: number; message?: string };
+
+        if (errorObj.status && HTTP_ERROR_MESSAGES[errorObj.status]) {
+            return HTTP_ERROR_MESSAGES[errorObj.status];
+        }
+
+        if (errorObj.message && SPECIFIC_ERROR_MESSAGES[errorObj.message]) {
+            return SPECIFIC_ERROR_MESSAGES[errorObj.message];
+        }
+
+        // Check if message contains a known pattern
+        if (errorObj.message) {
+            for (const [pattern, mapping] of Object.entries(SPECIFIC_ERROR_MESSAGES)) {
+                if (errorObj.message.includes(pattern)) {
+                    return mapping;
+                }
+            }
+        }
+    }
+
+    // String error
+    if (typeof error === "string" && SPECIFIC_ERROR_MESSAGES[error]) {
+        return SPECIFIC_ERROR_MESSAGES[error];
+    }
+
+    // Default fallback
+    return {
+        title: "Something went wrong",
+        message: "An unexpected error occurred. Please try again.",
+    };
+}
+
+/**
+ * Format error for toast notification
+ */
+export function formatErrorForToast(error: unknown): { title: string; description: string } {
+    const mapping = getErrorMessage(error);
+    return {
+        title: mapping.title,
+        description: mapping.action ? `${mapping.message} ${mapping.action}` : mapping.message,
+    };
+}

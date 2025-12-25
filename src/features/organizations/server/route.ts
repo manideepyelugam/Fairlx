@@ -58,7 +58,12 @@ const app = new Hono()
         const organizations = await databases.listDocuments<Organization>(
             DATABASE_ID,
             ORGANIZATIONS_ID,
-            [Query.contains("$id", orgIds), Query.orderDesc("$createdAt")]
+            [
+                Query.contains("$id", orgIds),
+                Query.orderDesc("$createdAt"),
+                // CRITICAL: Filter out soft-deleted organizations
+                Query.isNull("deletedAt"),
+            ]
         );
 
         return c.json({ data: organizations });
@@ -179,6 +184,19 @@ const app = new Hono()
                 primaryOrganizationId: organization.$id,
             });
 
+            // Log audit event for organization creation
+            const { logOrgAudit, OrgAuditAction } = await import("../audit");
+            await logOrgAudit({
+                databases,
+                organizationId: organization.$id,
+                actorUserId: user.$id,
+                actionType: OrgAuditAction.ORGANIZATION_CREATED,
+                metadata: {
+                    organizationName: name,
+                    defaultWorkspaceId: workspace.$id,
+                },
+            });
+
             return c.json({ data: organization });
         }
     )
@@ -240,10 +258,19 @@ const app = new Hono()
 
     /**
      * DELETE /organizations/:orgId
-     * Delete organization and all associated data (OWNER only)
+     * SOFT-DELETE organization (OWNER only)
      * 
-     * CASCADE: Deletes all workspaces, workspace members, and organization members
-     * WHY OWNER only: Deletion is irreversible and affects billing
+     * BEHAVIOR CHANGE: Now performs soft-delete instead of hard-delete
+     * - Sets deletedAt timestamp
+     * - Freezes billing immediately
+     * - Data retained for grace period (default 30 days)
+     * - Workspaces and members are NOT deleted - they become inaccessible
+     * 
+     * WHY soft-delete:
+     * - Prevents accidental data loss
+     * - Enables recovery within grace period
+     * - Required for billing audit trail
+     * - Compliance requirement
      */
     .delete("/:orgId", sessionMiddleware, async (c) => {
         const databases = c.get("databases");
@@ -257,39 +284,48 @@ const app = new Hono()
         }
 
         try {
-            // Get all workspaces belonging to this organization
-            const workspaces = await databases.listDocuments(
+            // Get organization to verify it exists and isn't already deleted
+            const organization = await databases.getDocument<Organization>(
                 DATABASE_ID,
-                WORKSPACES_ID,
-                [Query.equal("organizationId", orgId)]
+                ORGANIZATIONS_ID,
+                orgId
             );
 
-            // Delete all workspace members for each workspace
-            for (const workspace of workspaces.documents) {
-                const workspaceMembers = await databases.listDocuments(
-                    DATABASE_ID,
-                    MEMBERS_ID,
-                    [Query.equal("workspaceId", workspace.$id)]
-                );
-                for (const member of workspaceMembers.documents) {
-                    await databases.deleteDocument(DATABASE_ID, MEMBERS_ID, member.$id);
+            if (organization.deletedAt) {
+                return c.json({ error: "Organization is already deleted" }, 400);
+            }
+
+            const now = new Date().toISOString();
+
+            // SOFT-DELETE: Mark as deleted and freeze billing
+            // Data is NOT removed - just marked inaccessible
+            await databases.updateDocument(
+                DATABASE_ID,
+                ORGANIZATIONS_ID,
+                orgId,
+                {
+                    deletedAt: now,
+                    deletedBy: user.$id,
+                    billingFrozenAt: now,
                 }
-                // Delete the workspace itself
-                await databases.deleteDocument(DATABASE_ID, WORKSPACES_ID, workspace.$id);
-            }
-
-            // Delete all organization members
-            const orgMembers = await databases.listDocuments(
-                DATABASE_ID,
-                ORGANIZATION_MEMBERS_ID,
-                [Query.equal("organizationId", orgId)]
             );
-            for (const member of orgMembers.documents) {
-                await databases.deleteDocument(DATABASE_ID, ORGANIZATION_MEMBERS_ID, member.$id);
-            }
 
-            // Delete the organization itself
-            await databases.deleteDocument(DATABASE_ID, ORGANIZATIONS_ID, orgId);
+            // Log audit event
+            const { logOrgAudit, OrgAuditAction } = await import("../audit");
+            await logOrgAudit({
+                databases,
+                organizationId: orgId,
+                actorUserId: user.$id,
+                actionType: OrgAuditAction.ORGANIZATION_DELETED,
+                metadata: {
+                    organizationName: organization.name,
+                    workspaceCount: (await databases.listDocuments(
+                        DATABASE_ID,
+                        WORKSPACES_ID,
+                        [Query.equal("organizationId", orgId)]
+                    )).total,
+                },
+            });
 
             // Update user prefs if this was their primary organization
             const account = c.get("account");
@@ -302,9 +338,20 @@ const app = new Hono()
                 });
             }
 
-            return c.json({ data: { $id: orgId, deleted: true } });
+            return c.json({
+                data: {
+                    $id: orgId,
+                    deleted: true,
+                    deletedAt: now,
+                    // Inform client about grace period
+                    gracePeriodDays: 30,
+                    permanentDeletionAt: new Date(
+                        Date.now() + 30 * 24 * 60 * 60 * 1000
+                    ).toISOString(),
+                },
+            });
         } catch (error) {
-            console.error("[Organizations] Delete failed:", error);
+            console.error("[Organizations] Soft-delete failed:", error);
             return c.json({ error: "Failed to delete organization" }, 500);
         }
     })
@@ -475,15 +522,20 @@ const app = new Hono()
 
     /**
      * POST /organizations/convert
-     * Convert PERSONAL account to ORG account (one-way, atomic)
+     * Convert PERSONAL account to ORG account (one-way, atomic, IDEMPOTENT)
      * 
-     * INVARIANTS:
-     * - Must be a PERSONAL account
+     * INVARIANTS (Item 6):
+     * - Must be a PERSONAL account (or idempotently return existing org)
      * - Conversion is irreversible
      * - All workspace IDs preserved
-     * - Historical billing stays with user
+     * - Historical billing stays with user (usage.createdAt < accountConversionCompletedAt)
      * - Future billing moves to organization
      * - Transaction safety with rollback on failure
+     * 
+     * IDEMPOTENCY:
+     * - If user already has primaryOrganizationId set, return that org
+     * - Repeated calls must not create duplicate orgs
+     * - Must safely resume or no-op if already converted
      */
     .post(
         "/convert",
@@ -496,8 +548,37 @@ const app = new Hono()
 
             const { organizationName } = c.req.valid("json");
 
-            // Check current account type
+            // Check current account type and handle IDEMPOTENCY
             const currentPrefs = user.prefs || {};
+
+            // IDEMPOTENCY CHECK: If already ORG with a primary org, return that org
+            if (currentPrefs.accountType === "ORG" && currentPrefs.primaryOrganizationId) {
+                try {
+                    const existingOrg = await databases.getDocument<Organization>(
+                        DATABASE_ID,
+                        ORGANIZATIONS_ID,
+                        currentPrefs.primaryOrganizationId
+                    );
+
+                    console.log(
+                        `[Organizations] IDEMPOTENT: User ${user.$id} already converted to org ${existingOrg.$id}`
+                    );
+
+                    return c.json({
+                        data: existingOrg,
+                        message: "Account is already an organization (idempotent response)",
+                        idempotent: true,
+                    });
+                } catch {
+                    // Org doesn't exist but prefs say ORG - corrupted state
+                    // Allow conversion to proceed to fix it
+                    console.warn(
+                        `[Organizations] Corrupted state: User ${user.$id} has ORG type but org ${currentPrefs.primaryOrganizationId} not found`
+                    );
+                }
+            }
+
+            // Also reject if accountType is ORG but no primaryOrganizationId
             if (currentPrefs.accountType === "ORG") {
                 return c.json({ error: "Account is already an organization" }, 400);
             }
@@ -518,8 +599,13 @@ const app = new Hono()
             // Track created resources for rollback
             const rollbackStack: Array<{ type: string; id: string }> = [];
 
+            // CRITICAL: Capture conversion timestamp BEFORE any changes
+            // This becomes the billing boundary (Item 3)
+            const accountConversionCompletedAt = new Date().toISOString();
+
             try {
-                // Step 1: Create organization
+                // Step 1: Create organization with billingStartAt = accountConversionCompletedAt
+                // This timestamp is the authoritative billing boundary
                 const organization = await databases.createDocument<Organization>(
                     DATABASE_ID,
                     ORGANIZATIONS_ID,
@@ -527,7 +613,10 @@ const app = new Hono()
                     {
                         name: organizationName,
                         createdBy: user.$id,
-                        billingStartAt: new Date().toISOString(),
+                        // CRITICAL (Item 3): billingStartAt = accountConversionCompletedAt
+                        // usage.createdAt < billingStartAt → bill PERSONAL
+                        // usage.createdAt >= billingStartAt → bill ORGANIZATION
+                        billingStartAt: accountConversionCompletedAt,
                     }
                 );
                 rollbackStack.push({ type: "organization", id: organization.$id });
@@ -581,6 +670,24 @@ const app = new Hono()
                     ...currentPrefs,
                     accountType: "ORG",
                     primaryOrganizationId: organization.$id,
+                });
+
+                // Step 6: Log audit event for conversion
+                // CRITICAL: This happens after all changes succeed
+                const { logOrgAudit, OrgAuditAction } = await import("../audit");
+                await logOrgAudit({
+                    databases,
+                    organizationId: organization.$id,
+                    actorUserId: user.$id,
+                    actionType: OrgAuditAction.ACCOUNT_CONVERTED,
+                    metadata: {
+                        organizationName,
+                        previousAccountType: "PERSONAL",
+                        newAccountType: "ORG",
+                        workspaceCount: workspaceIds.length,
+                        workspaceIds,
+                        conversionTimestamp: new Date().toISOString(),
+                    },
                 });
 
                 return c.json({

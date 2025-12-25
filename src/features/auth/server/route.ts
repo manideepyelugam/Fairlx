@@ -14,7 +14,7 @@ import {
   changePasswordSchema
 } from "../schemas";
 import { createAdminClient } from "@/lib/appwrite";
-import { ID, ImageFormat, Client, Account, Query } from "node-appwrite";
+import { ID, ImageFormat, Client, Account } from "node-appwrite";
 import { AUTH_COOKIE } from "../constants";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import {

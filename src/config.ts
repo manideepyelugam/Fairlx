@@ -78,7 +78,11 @@ export const INVOICES_ID = process.env.NEXT_PUBLIC_APPWRITE_INVOICES_ID!;
 // ===============================
 export const ORGANIZATIONS_ID = process.env.NEXT_PUBLIC_APPWRITE_ORGANIZATIONS_ID!;
 export const ORGANIZATION_MEMBERS_ID = process.env.NEXT_PUBLIC_APPWRITE_ORGANIZATION_MEMBERS_ID!;
+export const ORGANIZATION_AUDIT_LOGS_ID = process.env.NEXT_PUBLIC_APPWRITE_ORGANIZATION_AUDIT_LOGS_ID!;
 // User preferences extended with accountType stored in Appwrite user.prefs
+
+// Organization lifecycle settings
+export const ORG_DELETE_GRACE_PERIOD_DAYS = parseInt(process.env.ORG_DELETE_GRACE_PERIOD_DAYS || "30");
 
 // Usage Billing Rates (cents per unit)
 export const USAGE_RATE_TRAFFIC_GB = parseFloat(process.env.USAGE_RATE_TRAFFIC_GB || "0.10");

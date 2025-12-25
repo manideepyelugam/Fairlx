@@ -22,61 +22,96 @@ import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { Navbar } from "@/components/navbar";
 import { Sidebar } from "@/components/sidebar";
 import { ProfileSidebar } from "@/components/ProfileSidebar";
+import { AppReadinessProvider, useAppReadiness } from "@/components/app-readiness-provider";
+import { GlobalAppLoader } from "@/components/global-app-loader";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
-const DashboardLayout = ({ children }: DashboardLayoutProps) => {
+/**
+ * Inner layout component that uses the readiness context
+ */
+const DashboardContent = ({ children }: DashboardLayoutProps) => {
   const pathname = usePathname();
   const isProfilePage = pathname === "/profile" || pathname.startsWith("/profile/");
   const workspaceId = useWorkspaceId();
   const isTaskDetailPage = /^\/workspaces\/[^\/]+\/tasks\/[^\/]+$/.test(pathname || "");
   const isMainDashboard = /^\/workspaces\/[^\/]+$/.test(pathname || "");
+  const { isAppReady } = useAppReadiness();
 
   return (
-    <div className={`min-h-screen ${isMainDashboard ? 'bg-[#ffffff]' : ''}`}>
-      <CreateWorkspaceModal />
-      <CreateProjectModal />
-      <CreateWorkItemModal />
-      <CreateTaskModal />
-      <EditTaskModal />
-      <TaskDetailsModalWrapper />
-      <TaskPreviewModalWrapper />
-      <CreateCustomColumnModalWrapper />
-      <ManageColumnsModalWrapper />
-      <CreateTeamModal />
-      <EditTeamModal />
-      <CreateProgramModal />
-      <EditProgramModal />
-      {workspaceId && (
-        <>
-          <CreateSpaceModal />
-          <CreateWorkflowModal workspaceId={workspaceId} />
-          <CreateLinkModal workspaceId={workspaceId} />
-        </>
-      )}
+    <>
+      {/* Global App Loader - shows during cold start */}
+      <GlobalAppLoader />
 
-      <div className="flex w-full h-screen">
-        <div className="fixed left-0 top-0 hidden lg:block lg:w-[264px] h-full overflow-y-auto">
-          {isProfilePage ? <ProfileSidebar /> : <Sidebar />}
-        </div>
-        <div className="lg:pl-[264px] w-full h-full flex flex-col">
-          <Navbar />
-          <div className="flex-1 overflow-y-scroll">
-            <div className="mx-auto max-w-screen-2xl">
-              <main className={`${isTaskDetailPage ? "py-0 px-0" : "py-8 px-6"} flex flex-col overflow-y-scroll`}>
-                {children}
-              </main>
+      {/* Main content - only rendered when app is ready */}
+      {isAppReady && (
+        <div className={`min-h-screen ${isMainDashboard ? 'bg-[#ffffff]' : ''}`}>
+          <CreateWorkspaceModal />
+          <CreateProjectModal />
+          <CreateWorkItemModal />
+          <CreateTaskModal />
+          <EditTaskModal />
+          <TaskDetailsModalWrapper />
+          <TaskPreviewModalWrapper />
+          <CreateCustomColumnModalWrapper />
+          <ManageColumnsModalWrapper />
+          <CreateTeamModal />
+          <EditTeamModal />
+          <CreateProgramModal />
+          <EditProgramModal />
+          {workspaceId && (
+            <>
+              <CreateSpaceModal />
+              <CreateWorkflowModal workspaceId={workspaceId} />
+              <CreateLinkModal workspaceId={workspaceId} />
+            </>
+          )}
+
+          <div className="flex w-full h-screen">
+            <div className="fixed left-0 top-0 hidden lg:block lg:w-[264px] h-full overflow-y-auto">
+              {isProfilePage ? <ProfileSidebar /> : <Sidebar />}
+            </div>
+            <div className="lg:pl-[264px] w-full h-full flex flex-col">
+              <Navbar />
+              <div className="flex-1 overflow-y-scroll">
+                <div className="mx-auto max-w-screen-2xl">
+                  <main className={`${isTaskDetailPage ? "py-0 px-0" : "py-8 px-6"} flex flex-col overflow-y-scroll`}>
+                    {children}
+                  </main>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Project AI Chat - floating button, only shows on project pages */}
-      <ProjectAIChatWrapper />
-    </div>
+          {/* Project AI Chat - floating button, only shows on project pages */}
+          <ProjectAIChatWrapper />
+        </div>
+      )}
+    </>
+  );
+};
+
+/**
+ * Dashboard Layout with Global App Readiness
+ * 
+ * Wraps the dashboard with AppReadinessProvider to ensure:
+ * - Auth verified
+ * - User profile loaded
+ * - Account type resolved
+ * - Workspaces loaded
+ * - Organizations loaded (if ORG account)
+ * 
+ * Until ready, only the GlobalAppLoader is shown.
+ */
+const DashboardLayout = ({ children }: DashboardLayoutProps) => {
+  return (
+    <AppReadinessProvider>
+      <DashboardContent>{children}</DashboardContent>
+    </AppReadinessProvider>
   );
 };
 
 export default DashboardLayout;
+
