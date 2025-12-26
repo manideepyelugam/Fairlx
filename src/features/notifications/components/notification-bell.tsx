@@ -22,20 +22,30 @@ import { NotificationItem } from "./notification-item";
 export const NotificationBell = () => {
   const workspaceId = useWorkspaceId();
 
+  // Only fetch notifications when we have a valid workspaceId
+  // On org-level routes (like /organization), workspaceId will be undefined
+  const hasWorkspace = Boolean(workspaceId);
+
   const { data: notifications, isLoading } = useGetNotifications({
-    workspaceId,
+    workspaceId: workspaceId || "",
     limit: 20,
+    enabled: hasWorkspace,
   });
 
-  const { data: unreadCount } = useGetUnreadCount({ workspaceId });
+  const { data: unreadCount } = useGetUnreadCount({
+    workspaceId: workspaceId || "",
+    enabled: hasWorkspace,
+  });
+
   const { mutate: markAllAsRead, isPending: isMarkingAllAsRead } =
     useMarkAllNotificationsRead();
 
   const handleMarkAllAsRead = () => {
+    if (!workspaceId) return;
     markAllAsRead({ json: { workspaceId } });
   };
 
-  const hasUnread = (unreadCount?.count ?? 0) > 0;
+  const hasUnread = hasWorkspace && (unreadCount?.count ?? 0) > 0;
   const unreadCountValue = unreadCount?.count ?? 0;
   const notificationsList = notifications?.documents ?? [];
 
@@ -98,7 +108,17 @@ export const NotificationBell = () => {
 
         {/* Notifications List */}
         <ScrollArea className="h-[400px]">
-          {isLoading ? (
+          {!hasWorkspace ? (
+            <div className="flex flex-col items-center justify-center h-32 text-center px-4">
+              <Bell className="h-10 w-10 text-muted-foreground/50 mb-2" />
+              <p className="text-sm text-muted-foreground">
+                Select a workspace
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Notifications are workspace-specific
+              </p>
+            </div>
+          ) : isLoading ? (
             <div className="flex items-center justify-center h-32">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
@@ -126,7 +146,7 @@ export const NotificationBell = () => {
         </ScrollArea>
 
         {/* Footer */}
-        {notificationsList.length > 0 && (
+        {hasWorkspace && notificationsList.length > 0 && (
           <>
             <Separator />
             <div className="p-2">
@@ -147,3 +167,4 @@ export const NotificationBell = () => {
     </DropdownMenu>
   );
 };
+

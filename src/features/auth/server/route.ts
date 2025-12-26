@@ -296,6 +296,16 @@ const app = new Hono()
       }
     }
   )
+  /**
+   * POST /auth/verify-email
+   * Verifies email and auto-authenticates user
+   * 
+   * After verification:
+   * - Creates authenticated session using Admin SDK
+   * - Sets auth cookie
+   * - Returns routing info (accountType, orgSetupComplete)
+   * - User is auto-logged in and redirected to onboarding
+   */
   .post("/verify-email", zValidator("json", verifyEmailSchema), async (c) => {
     const { userId, secret } = c.req.valid("json");
 
@@ -311,12 +321,36 @@ const app = new Hono()
       // Verify the email using the secret from the verification link
       await account.updateVerification(userId, secret);
 
+      // Get admin client to create session and get user data
+      const { users } = await createAdminClient();
+      const user = await users.get(userId);
+      const accountType = user.prefs?.accountType || "PERSONAL";
+      const orgSetupComplete = user.prefs?.orgSetupComplete === true;
+
+      // Create a session for the user using Admin SDK
+      // This allows auto-login without requiring credentials
+      const session = await users.createSession(userId);
+
+      // Set the auth cookie so user is logged in
+      setCookie(c, AUTH_COOKIE, session.secret, {
+        path: "/",
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+      });
+
       return c.json({
         success: true,
-        message: "Email verified successfully! You can now log in."
+        message: "Email verified successfully!",
+        accountType,
+        orgSetupComplete,
+        autoAuthenticated: true,
       });
     } catch (error: unknown) {
       const appwriteError = error as { code?: number; type?: string; message?: string };
+
+      // Handle specific verification errors
       if (appwriteError.code === 401) {
         return c.json({ error: "Invalid or expired verification link" }, 400);
       }
@@ -326,7 +360,11 @@ const app = new Hono()
       if (appwriteError.code === 500 && appwriteError.type === "general_argument_invalid") {
         return c.json({ error: "Verification request was rejected by Appwrite. Please request a new link." }, 400);
       }
-      return c.json({ error: "Failed to verify email: " + (appwriteError.message || "Unknown error") }, 500);
+
+      console.error("[Auth] Verification error:", error);
+      return c.json({
+        error: "Failed to verify email: " + (appwriteError.message || "Unknown error")
+      }, 500);
     }
   })
   .post("/resend-verification", zValidator("json", resendVerificationSchema), async (c) => {
@@ -489,7 +527,9 @@ const app = new Hono()
       const pendingOrganizationName = prefs.pendingOrganizationName;
 
       if (accountType === "ORG") {
-        // ORG account: Create organization and default workspace
+        // ORG account: Create organization only
+        // Workspace creation is handled by the onboarding workspace step
+        // User can choose to create a workspace or skip (ZERO-WORKSPACE state)
         if (!pendingOrganizationName) {
           return c.json({ error: "Organization name is required for ORG accounts" }, 400);
         }
@@ -520,29 +560,12 @@ const app = new Hono()
           }
         );
 
-        // Create default workspace under organization
-        const workspace = await databases.createDocument(
-          DATABASE_ID,
-          WORKSPACES_ID,
-          ID.unique(),
-          {
-            name: `${pendingOrganizationName} Workspace`,
-            userId: user.$id,
-            inviteCode: generateInviteCode(6),
-            organizationId: organization.$id,
-            isDefault: true,
-            billingScope: "organization",
-          }
-        );
+        // NOTE: Workspace creation is handled separately in the onboarding workspace step
+        // User can choose to create a workspace or skip to enter ZERO-WORKSPACE state
+        // This allows "Skip workspace" to truly mean no workspace is created
 
-        // Add user as OWNER of workspace
-        await databases.createDocument(DATABASE_ID, MEMBERS_ID, ID.unique(), {
-          userId: user.$id,
-          workspaceId: workspace.$id,
-          role: MemberRole.OWNER,
-        });
-
-        // Update prefs to mark signup complete
+        // Update prefs to mark signup complete (but NOT onboarding complete)
+        // User still needs to go through workspace setup step
         await account.updatePrefs({
           ...prefs,
           accountType: "ORG",
@@ -555,7 +578,7 @@ const app = new Hono()
           success: true,
           accountType: "ORG",
           organizationId: organization.$id,
-          workspaceId: workspace.$id,
+          // No workspaceId - this is intentional
         });
       } else {
         // PERSONAL account: Create single workspace
@@ -597,6 +620,44 @@ const app = new Hono()
     } catch (error) {
       console.error("[Auth] Complete signup error:", error);
       return c.json({ error: "Failed to complete signup" }, 500);
+    }
+  })
+  /**
+   * POST /auth/update-prefs
+   * Update user preferences (for onboarding state tracking)
+   */
+  .post("/update-prefs", sessionMiddleware, async (c) => {
+    try {
+      const account = c.get("account");
+      const user = c.get("user");
+      const body = await c.req.json();
+
+      // Merge with existing prefs
+      const currentPrefs = user.prefs || {};
+      const newPrefs = { ...currentPrefs };
+
+      // Only allow specific fields to be updated
+      const allowedFields = [
+        "onboardingStep",
+        "orgSetupComplete",
+        "primaryOrganizationId",
+        "organizationSize",
+        "signupCompletedAt",
+        "workspaceSkipped", // Allow tracking when user skips workspace creation
+      ];
+
+      for (const field of allowedFields) {
+        if (field in body) {
+          newPrefs[field] = body[field];
+        }
+      }
+
+      await account.updatePrefs(newPrefs);
+
+      return c.json({ success: true, prefs: newPrefs });
+    } catch (error) {
+      console.error("[Auth] Update prefs error:", error);
+      return c.json({ error: "Failed to update preferences" }, 500);
     }
   });
 

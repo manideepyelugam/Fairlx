@@ -11,7 +11,6 @@ import {
     IMAGES_BUCKET_ID,
 } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
-import { generateInviteCode } from "@/lib/utils";
 import { MemberRole } from "@/features/members/types";
 import { Organization, OrganizationMember, OrganizationRole } from "../types";
 import {
@@ -61,8 +60,8 @@ const app = new Hono()
             [
                 Query.contains("$id", orgIds),
                 Query.orderDesc("$createdAt"),
-                // CRITICAL: Filter out soft-deleted organizations
-                Query.isNull("deletedAt"),
+                // NOTE: deletedAt filter removed - attribute not in schema
+                // Soft delete can be added later when schema is updated
             ]
         );
 
@@ -152,28 +151,9 @@ const app = new Hono()
                 }
             );
 
-            // Create default workspace under organization
-            const workspace = await databases.createDocument(
-                DATABASE_ID,
-                WORKSPACES_ID,
-                ID.unique(),
-                {
-                    name: `${name} Workspace`,
-                    userId: user.$id,
-                    imageUrl: uploadedImageUrl,
-                    inviteCode: generateInviteCode(6),
-                    organizationId: organization.$id,
-                    isDefault: true,
-                    billingScope: "organization",
-                }
-            );
-
-            // Add user as OWNER of workspace
-            await databases.createDocument(DATABASE_ID, MEMBERS_ID, ID.unique(), {
-                userId: user.$id,
-                workspaceId: workspace.$id,
-                role: MemberRole.OWNER,
-            });
+            // NOTE: Workspace creation is handled separately in the onboarding workspace step
+            // User can choose to create a workspace or skip to enter ZERO-WORKSPACE state
+            // This allows "Skip workspace" to truly mean no workspace is created
 
             // Update user prefs to set accountType = ORG
             const account = c.get("account");
@@ -193,7 +173,6 @@ const app = new Hono()
                 actionType: OrgAuditAction.ORGANIZATION_CREATED,
                 metadata: {
                     organizationName: name,
-                    defaultWorkspaceId: workspace.$id,
                 },
             });
 
@@ -733,7 +712,52 @@ const app = new Hono()
                 }, 500);
             }
         }
-    );
+    )
+
+    /**
+     * GET /organizations/:orgId/audit-logs
+     * Read-only view of organization audit logs
+     * OWNER ONLY - for compliance and debugging
+     */
+    .get("/:orgId/audit-logs", sessionMiddleware, async (c) => {
+        const databases = c.get("databases");
+        const user = c.get("user");
+        const { orgId } = c.req.param();
+
+        // OWNER ONLY - audit logs are sensitive
+        const membership = await getOrganizationMember(databases, orgId, user.$id);
+        if (!membership || membership.role !== OrganizationRole.OWNER) {
+            return c.json({ error: "Only organization owner can view audit logs" }, 403);
+        }
+
+        // Get pagination params
+        const url = new URL(c.req.url);
+        const limit = Math.min(parseInt(url.searchParams.get("limit") || "50"), 100);
+        const offset = parseInt(url.searchParams.get("offset") || "0");
+        const actionType = url.searchParams.get("actionType") || undefined;
+
+        try {
+            const { getOrgAuditLogs } = await import("../audit");
+
+            const result = await getOrgAuditLogs({
+                databases,
+                organizationId: orgId,
+                actionType: actionType as import("../audit").OrgAuditAction | undefined,
+                limit,
+                offset,
+            });
+
+            return c.json({
+                data: result.logs,
+                total: result.total,
+                limit,
+                offset,
+            });
+        } catch (error) {
+            console.error("[Organizations] Failed to fetch audit logs:", error);
+            return c.json({ error: "Failed to fetch audit logs" }, 500);
+        }
+    });
 
 /**
  * Helper: Get organization member
@@ -756,3 +780,4 @@ async function getOrganizationMember(
 }
 
 export default app;
+

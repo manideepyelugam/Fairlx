@@ -42,23 +42,29 @@ export const Breadcrumb = () => {
 
   // Handle profile routes
   const isProfileRoute = pathSegments[0] === "profile";
-  
-  // Extract IDs from path segments - accounting for (dashboard) route group
-  const workspaceIndex = pathSegments.findIndex(segment => segment === "workspaces") + 1;
-  const workspaceId = pathSegments[workspaceIndex]; // workspaces/[workspaceId]/...
-  const sectionType = pathSegments[workspaceIndex + 1]; // projects, tasks, time-tracking, etc.
-  const itemId = pathSegments[workspaceIndex + 2]; // [projectId], [taskId], [teamId], etc.
-  const subSection = pathSegments[workspaceIndex + 3]; // backlog, sprints, docs, settings, etc.
-  const subItemId = pathSegments[workspaceIndex + 4]; // nested item IDs if any
 
-  // Only fetch if we have the required IDs
-  const shouldFetchWorkspace = Boolean(workspaceId);
+  // Handle organization routes (dashboard-level, not workspace-scoped)
+  const isOrganizationRoute = pathSegments[0] === "organization";
+
+  // Extract IDs from path segments - accounting for (dashboard) route group
+  // Only extract workspaceId if "workspaces" is actually in the path
+  const workspaceSegmentIndex = pathSegments.findIndex(segment => segment === "workspaces");
+  const isWorkspaceRoute = workspaceSegmentIndex !== -1;
+  const workspaceIndex = isWorkspaceRoute ? workspaceSegmentIndex + 1 : -1;
+  const workspaceId = isWorkspaceRoute ? pathSegments[workspaceIndex] : undefined; // workspaces/[workspaceId]/...
+  const sectionType = isWorkspaceRoute ? pathSegments[workspaceIndex + 1] : undefined; // projects, tasks, time-tracking, etc.
+  const itemId = isWorkspaceRoute ? pathSegments[workspaceIndex + 2] : undefined; // [projectId], [taskId], [teamId], etc.
+  const subSection = isWorkspaceRoute ? pathSegments[workspaceIndex + 3] : undefined; // backlog, sprints, docs, settings, etc.
+  const subItemId = isWorkspaceRoute ? pathSegments[workspaceIndex + 4] : undefined; // nested item IDs if any
+
+  // Only fetch if we have the required IDs AND we're on a workspace route
+  const shouldFetchWorkspace = isWorkspaceRoute && Boolean(workspaceId);
   const shouldFetchProject = Boolean(itemId && sectionType === "projects");
   const shouldFetchTask = Boolean(itemId && sectionType === "tasks");
   const shouldFetchTeam = Boolean(itemId && sectionType === "teams");
   const shouldFetchSpace = Boolean(itemId && sectionType === "spaces");
   const shouldFetchSprint = Boolean(
-    (sectionType === "sprints" && itemId) || 
+    (sectionType === "sprints" && itemId) ||
     (subSection === "sprints" && subItemId)
   );
   const shouldFetchProgram = Boolean(itemId && sectionType === "programs");
@@ -68,33 +74,33 @@ export const Breadcrumb = () => {
     workspaceId,
     enabled: shouldFetchWorkspace,
   });
-  
+
   const { data: project } = useGetProject({
     projectId: shouldFetchProject ? itemId : undefined,
     enabled: shouldFetchProject,
   });
-  
+
   const { data: task } = useGetTask({
     taskId: shouldFetchTask ? itemId : undefined,
     enabled: shouldFetchTask,
   });
 
   const { data: team } = useGetTeam({
-    teamId: shouldFetchTeam ? itemId : null,
+    teamId: shouldFetchTeam ? (itemId ?? null) : null,
   });
 
   const { data: space } = useGetSpace({
-    spaceId: shouldFetchSpace ? itemId : "",
+    spaceId: shouldFetchSpace ? (itemId ?? "") : "",
   });
 
   const { data: sprint } = useGetSprint({
-    sprintId: shouldFetchSprint 
+    sprintId: shouldFetchSprint
       ? (sectionType === "sprints" ? itemId : subItemId) || ""
       : "",
   });
 
   const { data: program } = useGetProgram({
-    programId: shouldFetchProgram ? itemId : "",
+    programId: shouldFetchProgram ? (itemId ?? "") : "",
   });
 
   // Handle profile routes
@@ -103,7 +109,7 @@ export const Breadcrumb = () => {
     const breadcrumbs: Array<{ label: string; href?: string; isClickable?: boolean }> = [
       { label: "Profile", href: "/profile", isClickable: true },
     ];
-    
+
     if (profileSection && sectionLabels[profileSection]) {
       breadcrumbs.push({
         label: sectionLabels[profileSection],
@@ -115,8 +121,15 @@ export const Breadcrumb = () => {
     return renderBreadcrumbs(breadcrumbs);
   }
 
+  // Handle organization routes (dashboard-level)
+  if (isOrganizationRoute) {
+    return renderBreadcrumbs([
+      { label: "Organization", href: "/organization", isClickable: true },
+    ]);
+  }
+
   // Don't render if we're not in a workspace route
-  if (!shouldFetchWorkspace || !workspace) return null;
+  if (!isWorkspaceRoute || !shouldFetchWorkspace || !workspace) return null;
 
   const breadcrumbs: Array<{ label: string; href?: string; isClickable?: boolean }> = [];
 
@@ -136,7 +149,7 @@ export const Breadcrumb = () => {
       href: `/workspaces/${workspaceId}/projects`,
       isClickable: false, // Projects list page might not exist as a standalone page
     });
-    
+
     if (project && itemId) {
       breadcrumbs.push({
         label: project.name,
@@ -171,13 +184,13 @@ export const Breadcrumb = () => {
         href: `/workspaces/${workspaceId}/projects`,
         isClickable: false,
       });
-      
+
       breadcrumbs.push({
         label: task.project.name,
         href: `/workspaces/${workspaceId}/projects/${task.projectId}`,
         isClickable: true,
       });
-      
+
       breadcrumbs.push({
         label: task.name,
         href: `/workspaces/${workspaceId}/tasks/${itemId}`,
@@ -190,7 +203,7 @@ export const Breadcrumb = () => {
         href: `/workspaces/${workspaceId}/tasks`,
         isClickable: true,
       });
-      
+
       if (task && itemId) {
         breadcrumbs.push({
           label: task.name,
@@ -205,7 +218,7 @@ export const Breadcrumb = () => {
       href: `/workspaces/${workspaceId}/teams`,
       isClickable: true,
     });
-    
+
     if (team && itemId) {
       breadcrumbs.push({
         label: team.name,
@@ -219,7 +232,7 @@ export const Breadcrumb = () => {
       href: `/workspaces/${workspaceId}/spaces`,
       isClickable: true,
     });
-    
+
     if (space && itemId) {
       breadcrumbs.push({
         label: space.name,
@@ -243,7 +256,7 @@ export const Breadcrumb = () => {
       href: `/workspaces/${workspaceId}/sprints`,
       isClickable: true,
     });
-    
+
     if (sprint && itemId) {
       breadcrumbs.push({
         label: sprint.name,
@@ -257,7 +270,7 @@ export const Breadcrumb = () => {
       href: `/workspaces/${workspaceId}/programs`,
       isClickable: true,
     });
-    
+
     if (program && itemId) {
       breadcrumbs.push({
         label: program.name,

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { useCurrent } from "@/features/auth/api/use-current";
 import { useAccountType } from "@/features/organizations/hooks/use-account-type";
 import { useGetWorkspaces } from "@/features/workspaces/api/use-get-workspaces";
@@ -15,6 +16,7 @@ import { useGetOrganizations } from "@/features/organizations/api/use-get-organi
  * - Account type resolved
  * - Active organization resolved (if ORG)
  * - Active workspace resolved
+ * - ORG onboarding completed (if ORG account)
  * 
  * Until isAppReady === true:
  * - Render ONLY a full-screen loader
@@ -45,6 +47,8 @@ interface AppReadinessProviderProps {
 }
 
 export const AppReadinessProvider = ({ children }: AppReadinessProviderProps) => {
+    const router = useRouter();
+    const pathname = usePathname();
     const [isTimedOut, setIsTimedOut] = useState(false);
     const [retryCount, setRetryCount] = useState(0);
 
@@ -57,8 +61,20 @@ export const AppReadinessProvider = ({ children }: AppReadinessProviderProps) =>
     // Calculate overall loading state
     const isLoading = isUserLoading || isAccountTypeLoading || isWorkspacesLoading || (isOrg && isOrgsLoading);
 
-    // App is ready when user exists and all data is loaded
-    const isAppReady = !isLoading && !!user && !isTimedOut;
+    // Check if ORG onboarding is complete
+    const prefs = user?.prefs || {};
+    const orgSetupComplete = prefs.orgSetupComplete === true;
+    const needsOrgOnboarding = isOrg && !orgSetupComplete;
+
+    // App is ready when user exists, all data is loaded, and onboarding is complete
+    const isAppReady = !isLoading && !!user && !isTimedOut && !needsOrgOnboarding;
+
+    // Redirect to onboarding if needed
+    useEffect(() => {
+        if (!isLoading && user && needsOrgOnboarding && !pathname?.startsWith("/onboarding")) {
+            router.push("/onboarding/organization");
+        }
+    }, [isLoading, user, needsOrgOnboarding, router, pathname]);
 
     // Determine loading message
     const getLoadingMessage = useCallback(() => {
@@ -66,8 +82,9 @@ export const AppReadinessProvider = ({ children }: AppReadinessProviderProps) =>
         if (isAccountTypeLoading) return "Loading your profile…";
         if (isWorkspacesLoading) return "Loading your workspace…";
         if (isOrgsLoading && isOrg) return "Loading organization…";
+        if (needsOrgOnboarding) return "Redirecting to setup…";
         return "Almost ready…";
-    }, [isUserLoading, isAccountTypeLoading, isWorkspacesLoading, isOrgsLoading, isOrg]);
+    }, [isUserLoading, isAccountTypeLoading, isWorkspacesLoading, isOrgsLoading, isOrg, needsOrgOnboarding]);
 
     // Retry handler
     const retry = useCallback(() => {

@@ -3,9 +3,10 @@ import { client } from "@/lib/rpc";
 
 interface UseGetUnreadCountProps {
   workspaceId: string;
+  enabled?: boolean;
 }
 
-export const useGetUnreadCount = ({ workspaceId }: UseGetUnreadCountProps) => {
+export const useGetUnreadCount = ({ workspaceId, enabled = true }: UseGetUnreadCountProps) => {
   const query = useQuery({
     queryKey: ["notifications", "unread-count", workspaceId],
     queryFn: async () => {
@@ -20,9 +21,11 @@ export const useGetUnreadCount = ({ workspaceId }: UseGetUnreadCountProps) => {
       const { data } = await response.json();
       return data;
     },
-    refetchInterval: 30000, // Refetch every 30 seconds
+    enabled: enabled && Boolean(workspaceId),
+    refetchInterval: enabled ? 30000 : false, // Refetch every 30 seconds when enabled
     refetchIntervalInBackground: true, // Continue refetching even when window is not focused
   });
 
   return query;
 };
+

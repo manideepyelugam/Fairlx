@@ -5,12 +5,14 @@ interface UseGetNotificationsProps {
   workspaceId: string;
   limit?: number;
   unreadOnly?: boolean;
+  enabled?: boolean;
 }
 
 export const useGetNotifications = ({
   workspaceId,
   limit = 50,
   unreadOnly = false,
+  enabled = true,
 }: UseGetNotificationsProps) => {
   const query = useQuery({
     queryKey: ["notifications", workspaceId, limit, unreadOnly],
@@ -30,9 +32,11 @@ export const useGetNotifications = ({
       const { data } = await response.json();
       return data;
     },
-    refetchInterval: 30000, // Refetch every 30 seconds
+    enabled: enabled && Boolean(workspaceId),
+    refetchInterval: enabled ? 30000 : false, // Refetch every 30 seconds when enabled
     refetchIntervalInBackground: true, // Continue refetching even when window is not focused
   });
 
   return query;
 };
+
