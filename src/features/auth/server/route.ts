@@ -20,14 +20,10 @@ import { sessionMiddleware } from "@/lib/session-middleware";
 import {
   DATABASE_ID,
   IMAGES_BUCKET_ID,
-  WORKSPACES_ID,
-  MEMBERS_ID,
   ORGANIZATIONS_ID,
   ORGANIZATION_MEMBERS_ID,
 } from "@/config";
-import { MemberRole } from "@/features/members/types";
 import { OrganizationRole } from "@/features/organizations/types";
-import { generateInviteCode } from "@/lib/utils";
 
 const app = new Hono()
   .get("/current", sessionMiddleware, (c) => {
@@ -581,40 +577,15 @@ const app = new Hono()
           // No workspaceId - this is intentional
         });
       } else {
-        // PERSONAL account: Create single workspace
-        const workspace = await databases.createDocument(
-          DATABASE_ID,
-          WORKSPACES_ID,
-          ID.unique(),
-          {
-            name: `${user.name}'s Workspace`,
-            userId: user.$id,
-            inviteCode: generateInviteCode(6),
-            organizationId: null, // PERSONAL accounts don't have org
-            isDefault: true,
-            billingScope: "user",
-          }
-        );
-
-        // Add user as OWNER of workspace
-        await databases.createDocument(DATABASE_ID, MEMBERS_ID, ID.unique(), {
-          userId: user.$id,
-          workspaceId: workspace.$id,
-          role: MemberRole.OWNER,
-        });
-
-        // Update prefs to mark signup complete
-        await account.updatePrefs({
-          ...prefs,
-          accountType: "PERSONAL",
-          signupCompletedAt: new Date().toISOString(),
-          pendingOrganizationName: null,
-        });
+        // PERSONAL account:
+        // DO NOT create a workspace here. Workspace creation is mandatory in the next step.
+        // We do NOT set signupCompletedAt yet for Personal accounts.
+        // It will be set when they create their first workspace.
 
         return c.json({
           success: true,
           accountType: "PERSONAL",
-          workspaceId: workspace.$id,
+          // No workspaceId created yet
         });
       }
     } catch (error) {
@@ -643,7 +614,7 @@ const app = new Hono()
         "primaryOrganizationId",
         "organizationSize",
         "signupCompletedAt",
-        "workspaceSkipped", // Allow tracking when user skips workspace creation
+        "signupCompletedAt",
       ];
 
       for (const field of allowedFields) {

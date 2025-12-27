@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -39,6 +40,7 @@ const ORGANIZATION_SIZES = [
 
 export default function OrganizationSetupPage() {
     const router = useRouter();
+    const queryClient = useQueryClient();
     const { data: user, isLoading: isUserLoading } = useCurrent();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isRedirecting, setIsRedirecting] = useState(false);
@@ -110,6 +112,9 @@ export default function OrganizationSetupPage() {
             if (!prefsResponse.ok) {
                 console.error("Failed to update prefs, but org was created");
             }
+
+            // Invalidate cache so next page sees updated prefs immediately
+            await queryClient.invalidateQueries({ queryKey: ["current"] });
 
             toast.success("Organization created!", {
                 description: "Your organization is ready.",

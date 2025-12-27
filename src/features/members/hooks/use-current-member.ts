@@ -33,7 +33,7 @@ export const useCurrentMember = ({ workspaceId }: UseCurrentMemberProps) => {
   }
 
   const member = members.documents.find(m => m.userId === user.$id);
-  const isAdmin = member?.role === MemberRole.ADMIN;
+  const isAdmin = member?.role === MemberRole.ADMIN || member?.role === MemberRole.OWNER;
 
   return {
     member,
