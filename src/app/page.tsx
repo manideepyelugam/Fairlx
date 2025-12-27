@@ -10,7 +10,8 @@ export default async function Home() {
     const workspaces = await getWorkspaces();
 
     if (workspaces.total === 0) {
-      redirect("/workspaces/create");
+      // Zero-workspace state: show welcome page instead of forcing workspace creation
+      redirect("/welcome");
     } else {
       redirect(`/workspaces/${workspaces.documents[0].$id}`);
     }
@@ -18,3 +19,4 @@ export default async function Home() {
 
   redirect("/sign-in");
 }
+

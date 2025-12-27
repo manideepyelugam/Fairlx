@@ -17,7 +17,7 @@ const VerifyEmailContent = () => {
   useEffect(() => {
     // Prevent multiple attempts
     if (hasAttempted.current) return;
-    
+
     const userId = searchParams.get("userId");
     const secret = searchParams.get("secret");
 
@@ -27,7 +27,7 @@ const VerifyEmailContent = () => {
     }
 
     hasAttempted.current = true;
-    
+
     verifyEmail.mutate(
       { json: { userId, secret } },
       {
@@ -66,18 +66,6 @@ const VerifyEmailContent = () => {
   }
 
   if (status === "success") {
-    // Check for stored returnUrl
-    const returnUrl = typeof window !== 'undefined' 
-      ? sessionStorage.getItem('postVerificationReturnUrl') 
-      : null;
-    
-    // Clear the stored URL
-    if (returnUrl && typeof window !== 'undefined') {
-      sessionStorage.removeItem('postVerificationReturnUrl');
-    }
-
-    const signInUrl = returnUrl ? `/sign-in?returnUrl=${encodeURIComponent(returnUrl)}` : '/sign-in';
-
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Card className="w-full max-w-md">
@@ -87,15 +75,11 @@ const VerifyEmailContent = () => {
               Email Verified!
             </CardTitle>
             <CardDescription>
-              Your email has been successfully verified. You can now log in to your account.
+              Your email has been verified. Taking you to your dashboard...
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Button asChild className="w-full">
-              <Link href={signInUrl}>
-                Continue to Login
-              </Link>
-            </Button>
+          <CardContent className="flex items-center justify-center py-4">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </CardContent>
         </Card>
       </div>

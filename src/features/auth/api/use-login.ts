@@ -16,12 +16,12 @@ export const useLogin = (returnUrl?: string) => {
   const mutation = useMutation<ResponseType, Error, RequestType>({
     mutationFn: async ({ json }) => {
       const response = await client.api.auth.login.$post({ json });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw errorData;
       }
-      
+
       return await response.json();
     },
     onSuccess: (data) => {
@@ -29,10 +29,19 @@ export const useLogin = (returnUrl?: string) => {
         toast.success("Logged in.");
         router.refresh();
         queryClient.invalidateQueries({ queryKey: ["current"] });
-        // Redirect to returnUrl if provided, otherwise to home
-        if (returnUrl) {
+
+        // Check for post-verification redirect first
+        const postLoginRedirect = typeof window !== 'undefined'
+          ? sessionStorage.getItem('postLoginRedirect')
+          : null;
+
+        if (postLoginRedirect) {
+          sessionStorage.removeItem('postLoginRedirect');
+          router.push(postLoginRedirect);
+        } else if (returnUrl) {
           router.push(returnUrl);
         }
+        // If no redirect specified, router.refresh() will handle it
       }
     },
     onError: (error: { needsVerification?: boolean; error?: string; email?: string } | Error) => {

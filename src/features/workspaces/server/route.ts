@@ -134,6 +134,16 @@ const app = new Hono()
         ).toString("base64")}`;
       }
 
+      // Get organization ID for ORG accounts
+      const prefs = user.prefs || {};
+      const primaryOrganizationId = prefs.primaryOrganizationId as string | undefined;
+
+      // Check if this is the first workspace (will be default)
+      const existingMembers = await databases.listDocuments(DATABASE_ID, MEMBERS_ID, [
+        Query.equal("userId", user.$id),
+      ]);
+      const isFirstWorkspace = existingMembers.total === 0;
+
       const workspace = await databases.createDocument(
         DATABASE_ID,
         WORKSPACES_ID,
@@ -143,13 +153,18 @@ const app = new Hono()
           userId: user.$id,
           imageUrl: uploadedImageUrl,
           inviteCode: generateInviteCode(6),
+          // Link to organization for ORG accounts
+          organizationId: accountType === "ORG" ? primaryOrganizationId : null,
+          isDefault: isFirstWorkspace,
+          billingScope: accountType === "ORG" ? "organization" : "user",
         }
       );
 
+      // Grant OWNER role for first workspace, ADMIN for subsequent
       await databases.createDocument(DATABASE_ID, MEMBERS_ID, ID.unique(), {
         userId: user.$id,
         workspaceId: workspace.$id,
-        role: MemberRole.ADMIN,
+        role: isFirstWorkspace ? MemberRole.OWNER : MemberRole.ADMIN,
       });
 
       return c.json({ data: workspace });

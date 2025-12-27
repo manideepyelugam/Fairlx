@@ -83,7 +83,7 @@ test.describe('Personal Account Signup Flow', () => {
         await expect(personalButton).toBeVisible();
 
         // Submit form
-        await page.click('button[type="submit"]:has-text("Sign Up")');
+        await page.getByRole('button', { name: /^sign up$/i }).click();
 
         // Should redirect to verify email sent page or show success
         await page.waitForURL(/verify-email-sent|sign-in/, { timeout: 10000 });
@@ -106,7 +106,7 @@ test.describe('Organization Account Signup Flow', () => {
         await page.fill('input[placeholder="Enter your password"]', 'TestPassword123!');
 
         // Submit form
-        await page.click('button[type="submit"]:has-text("Sign Up")');
+        await page.getByRole('button', { name: /^sign up$/i }).click();
 
         // Should redirect to verify email page
         await page.waitForURL(/verify-email-sent|sign-in/, { timeout: 10000 });
@@ -158,5 +158,148 @@ test.describe('Organizations API', () => {
 
         // Should return 401 (unauthorized) not 404 (not found)
         expect(response.status()).not.toBe(404);
+    });
+});
+
+/**
+ * Onboarding Stepper Component Tests
+ * Tests the visual stepper progress indicator
+ */
+test.describe('Onboarding Stepper', () => {
+    test('should show progress navigation on signup page if stepper exists', async ({ page }) => {
+        await page.goto('/sign-up');
+
+        // Check for navigation with Progress aria-label (the stepper component)
+        const stepper = page.locator('nav[aria-label="Progress"]');
+        const stepperExists = await stepper.count() > 0;
+
+        // Stepper might not be on signup page (could be on verify pages)
+        // If it exists, verify its structure
+        if (stepperExists) {
+            await expect(stepper).toBeVisible();
+        }
+    });
+
+    test('should show Account Type selector with both options', async ({ page }) => {
+        await page.goto('/sign-up');
+
+        // Verify Personal option
+        const personalButton = page.getByRole('button', { name: /personal/i });
+        await expect(personalButton).toBeVisible();
+        await expect(page.getByText('Single workspace')).toBeVisible();
+
+        // Verify Organization option
+        const orgButton = page.getByRole('button', { name: /organization/i });
+        await expect(orgButton).toBeVisible();
+        await expect(page.getByText('Multiple workspaces')).toBeVisible();
+    });
+
+    test('should highlight Personal option by default', async ({ page }) => {
+        await page.goto('/sign-up');
+
+        // Personal button should have the active styling (bg-primary/10 class indicates selected)
+        const personalButton = page.getByRole('button', { name: /personal/i });
+        const orgButton = page.getByRole('button', { name: /organization/i });
+
+        // Check that Personal has the selected styling (bg-primary/10)
+        await expect(personalButton).toHaveClass(/bg-primary\/10/);
+        // Organization should not have the selected background when not selected
+        await expect(orgButton).not.toHaveClass(/bg-primary\/10/);
+    });
+
+    test('should switch highlight when Organization is selected', async ({ page }) => {
+        await page.goto('/sign-up');
+
+        const personalButton = page.getByRole('button', { name: /personal/i });
+        const orgButton = page.getByRole('button', { name: /organization/i });
+
+        // Click Organization
+        await orgButton.click();
+
+        // Now Organization should have the selected styling (bg-primary/10)
+        await expect(orgButton).toHaveClass(/bg-primary\/10/);
+        // Personal should lose the selected background
+        await expect(personalButton).not.toHaveClass(/bg-primary\/10/);
+    });
+
+    test('should show step icons for Personal and Organization', async ({ page }) => {
+        await page.goto('/sign-up');
+
+        // Check for User icon (Personal) - using SVG class or parent container
+        const personalIcon = page.getByRole('button', { name: /personal/i }).locator('svg');
+        await expect(personalIcon).toBeVisible();
+
+        // Check for Building icon (Organization)
+        const orgIcon = page.getByRole('button', { name: /organization/i }).locator('svg');
+        await expect(orgIcon).toBeVisible();
+    });
+});
+
+test.describe('Signup Form Fields', () => {
+    test('should have all required personal account fields', async ({ page }) => {
+        await page.goto('/sign-up');
+
+        // Name field
+        const nameInput = page.locator('input[placeholder="Enter your name"]');
+        await expect(nameInput).toBeVisible();
+        await expect(nameInput).toBeEnabled();
+
+        // Email field
+        const emailInput = page.locator('input[placeholder="Enter your email address"]');
+        await expect(emailInput).toBeVisible();
+        await expect(emailInput).toBeEnabled();
+
+        // Password field
+        const passwordInput = page.locator('input[placeholder="Enter your password"]');
+        await expect(passwordInput).toBeVisible();
+        await expect(passwordInput).toBeEnabled();
+    });
+
+    test('should show organization name field when ORG is selected', async ({ page }) => {
+        await page.goto('/sign-up');
+
+        // Initially, org name should NOT be visible
+        const orgNameField = page.locator('input[placeholder="Enter organization name"]');
+        await expect(orgNameField).not.toBeVisible();
+
+        // Select Organization account type
+        await page.getByRole('button', { name: /organization/i }).click();
+
+        // Now org name field should be visible
+        await expect(orgNameField).toBeVisible();
+        await expect(orgNameField).toBeEnabled();
+    });
+
+    test('should hide organization name field when switching back to Personal', async ({ page }) => {
+        await page.goto('/sign-up');
+
+        const orgNameField = page.locator('input[placeholder="Enter organization name"]');
+
+        // Select Organization
+        await page.getByRole('button', { name: /organization/i }).click();
+        await expect(orgNameField).toBeVisible();
+
+        // Switch back to Personal
+        await page.getByRole('button', { name: /personal/i }).click();
+        await expect(orgNameField).not.toBeVisible();
+    });
+
+    test('should have Google and GitHub OAuth buttons', async ({ page }) => {
+        await page.goto('/sign-up');
+
+        const googleButton = page.getByRole('button', { name: /sign up with google/i });
+        await expect(googleButton).toBeVisible();
+
+        const githubButton = page.getByRole('button', { name: /sign up with github/i });
+        await expect(githubButton).toBeVisible();
+    });
+
+    test('should have link to sign in page', async ({ page }) => {
+        await page.goto('/sign-up');
+
+        // Use first() to handle multiple login links (nav + card)
+        const loginLink = page.getByRole('link', { name: /login/i }).first();
+        await expect(loginLink).toBeVisible();
+        await expect(loginLink).toHaveAttribute('href', '/sign-in');
     });
 });

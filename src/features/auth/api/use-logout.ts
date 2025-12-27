@@ -19,8 +19,10 @@ export const useLogout = () => {
     },
     onSuccess: () => {
       toast.success("Logged out.");
-      router.refresh();
-      queryClient.invalidateQueries();
+      // Clear all cached queries
+      queryClient.clear();
+      // Redirect to sign-in page
+      router.push("/sign-in");
     },
     onError: () => {
       toast.error("Failed to log out.");
@@ -29,3 +31,4 @@ export const useLogout = () => {
 
   return mutation;
 };
+

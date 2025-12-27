@@ -5,9 +5,10 @@ import { QUERY_CONFIG } from "@/lib/query-config";
 
 interface useGetMembersProps {
   workspaceId: string;
+  enabled?: boolean;
 }
 
-export const useGetMembers = ({ workspaceId }: useGetMembersProps) => {
+export const useGetMembers = ({ workspaceId, enabled = true }: useGetMembersProps) => {
   const query = useQuery({
     queryKey: ["members", workspaceId],
     staleTime: QUERY_CONFIG.SEMI_DYNAMIC.staleTime,
@@ -25,7 +26,9 @@ export const useGetMembers = ({ workspaceId }: useGetMembersProps) => {
 
       return data;
     },
+    enabled: enabled && Boolean(workspaceId),
   });
 
   return query;
 };
+

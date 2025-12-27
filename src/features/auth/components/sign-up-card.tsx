@@ -169,7 +169,7 @@ export const SignUpCard = ({ returnUrl }: SignUpCardProps) => {
                 </FormItem>
               )}
             />
-            <Button disabled={isPending} size="lg" className="w-full">
+            <Button type="submit" disabled={isPending} size="lg" className="w-full">
               Sign Up
             </Button>
           </form>

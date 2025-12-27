@@ -99,6 +99,12 @@ export async function logOrgAudit({
     userAgent,
 }: LogOrgAuditProps): Promise<OrgAuditLog | null> {
     try {
+        // Skip if audit log collection is not configured
+        if (!ORGANIZATION_AUDIT_LOGS_ID) {
+            console.warn("[OrgAudit] Audit log collection not configured (NEXT_PUBLIC_APPWRITE_ORGANIZATION_AUDIT_LOGS_ID)");
+            return null;
+        }
+
         const log = await databases.createDocument(
             DATABASE_ID,
             ORGANIZATION_AUDIT_LOGS_ID,

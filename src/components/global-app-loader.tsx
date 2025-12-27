@@ -39,11 +39,11 @@ export const GlobalAppLoader = () => {
                 {/* Message */}
                 <div className="text-center">
                     <p className="text-lg font-medium text-foreground">
-                        {isTimedOut ? "This is taking longer than expected" : loadingMessage}
+                        {isTimedOut ? "This may take a bit longer on first login or slow connections" : loadingMessage}
                     </p>
                     {isTimedOut && (
                         <p className="text-sm text-muted-foreground mt-2">
-                            There might be a connection issue.
+                            Please wait a moment, or try again if the issue persists.
                         </p>
                     )}
                 </div>
