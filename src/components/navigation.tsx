@@ -136,8 +136,8 @@ export const Navigation = ({ hasWorkspaces = true }: NavigationProps) => {
 
   // Filter routes based on permissions, account type, and workspace existence
   const visibleRoutes = routes.filter(route => {
-    // Hide workspace-scoped routes when no workspace exists
-    if (route.workspaceScoped && !hasWorkspaces) return false;
+    // Hide workspace-scoped routes when no workspace exists OR no workspace is active
+    if (route.workspaceScoped && (!hasWorkspaces || !workspaceId)) return false;
     // Hide workspace admin-only routes for non-admins (when in workspace context)
     if (route.adminOnly && hasWorkspaces && !isAdmin) return false;
     // Hide org-only routes for PERSONAL accounts

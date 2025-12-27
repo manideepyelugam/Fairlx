@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Folder, Loader2, ArrowRight, SkipForward } from "lucide-react";
+import { Folder, Loader2, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,9 +24,9 @@ type WorkspaceSetupForm = z.infer<typeof workspaceSetupSchema>;
 
 export default function WorkspaceSetupPage() {
     const router = useRouter();
+    const queryClient = useQueryClient();
     const { data: user, isLoading: isUserLoading } = useCurrent();
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isSkipping, setIsSkipping] = useState(false);
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [isRedirecting, setIsRedirecting] = useState(false);
 
@@ -42,52 +43,35 @@ export default function WorkspaceSetupPage() {
     useEffect(() => {
         if (isUserLoading) return;
 
-        // Redirect if personal account
-        if (prefs.accountType !== "ORG") {
-            setIsRedirecting(true);
-            router.push("/");
-            return;
-        }
-
-        // Redirect if org not setup
-        if (!prefs.orgSetupComplete) {
+        // Redirect if org not setup (only for ORG accounts)
+        if (prefs.accountType === "ORG" && !prefs.orgSetupComplete) {
             setIsRedirecting(true);
             router.push("/onboarding/organization");
             return;
         }
+
+        // PERSONAL accounts: No redirects. They MUST create a workspace here.
     }, [isUserLoading, prefs.accountType, prefs.orgSetupComplete, router]);
 
-    const handleSkip = async () => {
-        setIsSkipping(true);
-
+    const handleOrgFinishLater = async () => {
+        // For Org accounts only: Allows proceeding without a workspace
         try {
-            // Update prefs to mark onboarding complete with workspace skipped
-            // IMPORTANT: No workspace is created - user enters ZERO-WORKSPACE state
-            const response = await fetch("/api/auth/update-prefs", {
+            // Update prefs to mark signup as fully complete (since they skipped workspace creation)
+            await fetch("/api/auth/update-prefs", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    onboardingStep: "WORKSPACE_SKIPPED",
-                    workspaceSkipped: true,
+                    onboardingStep: "COMPLETED",
                 }),
                 credentials: "include",
             });
-
-            if (!response.ok) {
-                throw new Error("Failed to complete setup");
-            }
-
-            toast.success("Setup complete!", {
-                description: "You can create workspaces anytime from the dashboard.",
-            });
-
-            // Redirect directly to welcome page (zero-workspace home)
-            router.push("/welcome");
+            // Invalidate cache before redirect
+            await queryClient.invalidateQueries({ queryKey: ["current"] });
+            router.push("/");
         } catch (error) {
-            console.error("Skip error:", error);
-            toast.error("Failed to complete setup");
-        } finally {
-            setIsSkipping(false);
+            console.error("Error finishing setup:", error);
+            // Fallback redirect
+            router.push("/");
         }
     };
 
@@ -110,6 +94,10 @@ export default function WorkspaceSetupPage() {
                 throw new Error(error.error || "Failed to create workspace");
             }
 
+            // Parse workspace ID from response for immediate redirect
+            const result = await response.json();
+            const workspaceId = result.data?.$id;
+
             // Update prefs to mark onboarding complete
             await fetch("/api/auth/update-prefs", {
                 method: "POST",
@@ -124,7 +112,13 @@ export default function WorkspaceSetupPage() {
                 description: "Your setup is complete.",
             });
 
-            router.push("/");
+            // Redirect directly to the new workspace for immediate activation
+            if (workspaceId) {
+                router.push(`/workspaces/${workspaceId}`);
+            } else {
+                // Fallback to root (will redirect appropriately)
+                router.push("/");
+            }
         } catch (error) {
             console.error("Workspace setup error:", error);
             toast.error(error instanceof Error ? error.message : "Failed to create workspace");
@@ -148,7 +142,7 @@ export default function WorkspaceSetupPage() {
             <div className="mb-8">
                 <OnboardingStepper
                     currentStep={OnboardingStep.WORKSPACE_SETUP}
-                    accountType="ORG"
+                    accountType={prefs.accountType || "ORG"}
                 />
             </div>
 
@@ -158,9 +152,13 @@ export default function WorkspaceSetupPage() {
                     <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
                         <Folder className="h-7 w-7 text-green-600" />
                     </div>
-                    <CardTitle className="text-2xl">Your Organization is Ready! 🎉</CardTitle>
+                    <CardTitle className="text-2xl">
+                        {prefs.accountType === "ORG" ? "Your Organization is Ready! 🎉" : "Create Your Workspace 🚀"}
+                    </CardTitle>
                     <CardDescription>
-                        Would you like to create your first workspace now?
+                        {prefs.accountType === "ORG"
+                            ? "Create a workspace to start managing projects, or go to dashboard."
+                            : "You need to create a workspace to get started."}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -174,28 +172,19 @@ export default function WorkspaceSetupPage() {
                                 <Folder className="mr-2 h-4 w-4" />
                                 Create Workspace
                             </Button>
-                            <Button
-                                variant="outline"
-                                className="w-full"
-                                size="lg"
-                                onClick={handleSkip}
-                                disabled={isSkipping}
-                            >
-                                {isSkipping ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Completing...
-                                    </>
-                                ) : (
-                                    <>
-                                        <SkipForward className="mr-2 h-4 w-4" />
-                                        Skip for Now
-                                    </>
-                                )}
-                            </Button>
-                            <p className="text-xs text-muted-foreground text-center">
-                                You can create workspaces anytime from the dashboard.
-                            </p>
+
+                            {/* Only ORG accounts can proceed without a workspace */}
+                            {prefs.accountType === "ORG" && (
+                                <Button
+                                    variant="ghost"
+                                    className="w-full"
+                                    size="lg"
+                                    onClick={handleOrgFinishLater}
+                                >
+                                    Go to Dashboard
+                                    <ArrowRight className="ml-2 h-4 w-4" />
+                                </Button>
+                            )}
                         </div>
                     ) : (
                         <Form {...form}>
@@ -226,7 +215,7 @@ export default function WorkspaceSetupPage() {
                                         onClick={() => setShowCreateForm(false)}
                                         disabled={isSubmitting}
                                     >
-                                        Back
+                                        Cancel
                                     </Button>
                                     <Button
                                         type="submit"
