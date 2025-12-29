@@ -110,12 +110,31 @@ const app = new Hono()
       return c.json({ error: "Unauthorized" }, 401);
     }
 
-    if (member.$id !== memberToDelete.$id && member.role !== MemberRole.ADMIN) {
-      return c.json({ error: "Unauthorized" }, 401);
+    // Check authorization: user can delete self OR must be ADMIN/OWNER
+    const isAdminOrOwner = member.role === MemberRole.ADMIN || member.role === MemberRole.OWNER;
+    const isDeletingSelf = member.$id === memberToDelete.$id;
+
+    if (!isDeletingSelf && !isAdminOrOwner) {
+      return c.json({ error: "Unauthorized. Only admins or owners can remove other members." }, 401);
     }
 
+    // Prevent deleting the only member
     if (allMembersInWorkspace.total === 1) {
       return c.json({ error: "Cannot delete the only member." }, 400);
+    }
+
+    // Prevent OWNER from leaving without transferring ownership first
+    if (memberToDelete.role === MemberRole.OWNER && isDeletingSelf) {
+      return c.json({
+        error: "Cannot leave workspace as owner. Transfer ownership to another member first."
+      }, 400);
+    }
+
+    // Prevent non-owners from removing the OWNER
+    if (memberToDelete.role === MemberRole.OWNER && !isDeletingSelf) {
+      return c.json({
+        error: "Cannot remove the workspace owner. They must transfer ownership first."
+      }, 400);
     }
 
     await databases.deleteDocument(DATABASE_ID, MEMBERS_ID, memberId);

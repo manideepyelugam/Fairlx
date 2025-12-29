@@ -98,10 +98,21 @@ export const EditProjectForm = ({
     const finalValues: Record<string, unknown> = {};
 
     Object.entries(values).forEach(([key, value]) => {
-      if (value === null) {
+      if (key === "image") {
+        // Issue 16: Properly handle image removal
+        // - If null, explicitly send empty string to clear the image on backend
+        // - If File, send the file
+        // - Otherwise send empty string (covers existing string URLs that weren't changed)
+        if (value === null) {
+          finalValues[key] = ""; // Explicitly clear image
+        } else if (value instanceof File) {
+          finalValues[key] = value;
+        } else {
+          // Keep existing image URL or empty
+          finalValues[key] = value || "";
+        }
+      } else if (value === null) {
         finalValues[key] = undefined;
-      } else if (key === "image") {
-        finalValues[key] = value instanceof File ? value : "";
       } else {
         finalValues[key] = value;
       }

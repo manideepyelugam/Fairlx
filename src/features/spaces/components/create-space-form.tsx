@@ -62,11 +62,33 @@ export const CreateSpaceForm = ({ onCancel }: CreateSpaceFormProps) => {
     },
   });
 
+  // Guard: Don't render the form if no valid workspaceId
+  if (!workspaceId) {
+    return (
+      <Card className="w-full h-full border-none shadow-none">
+        <CardHeader className="flex p-7">
+          <CardTitle className="text-xl font-bold flex items-center gap-2">
+            <Folder className="size-5" />
+            Create a new Space
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-7 text-center text-muted-foreground">
+          <p>Please select a workspace first to create a space.</p>
+          {onCancel && (
+            <Button variant="outline" className="mt-4" onClick={onCancel}>
+              Go Back
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
   // Auto-generate key from name
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const name = e.target.value;
     form.setValue("name", name);
-    
+
     // Only auto-generate key if user hasn't manually edited it
     if (!keyManuallyEditedRef.current) {
       // Auto-generate key (uppercase, no spaces, max 10 chars)
@@ -74,24 +96,37 @@ export const CreateSpaceForm = ({ onCancel }: CreateSpaceFormProps) => {
         .toUpperCase()
         .replace(/[^A-Z0-9]/g, "")
         .substring(0, 10);
-      
+
       form.setValue("key", key);
     }
   };
 
   const onSubmit = (values: z.infer<typeof createSpaceSchema>) => {
+    // Create space without image first to prevent upload blocking creation
     const finalValues = {
       ...values,
       workspaceId,
-      image: values.image instanceof File ? values.image : undefined,
+      // Exclude image from initial creation - upload separately after success
+      image: undefined,
     };
 
     mutate(
       { json: finalValues },
       {
         onSuccess: ({ data }) => {
+          // TODO: If hasImage, upload image via updateSpace after creation
+          // For now, create succeeds and image can be added in space settings
           form.reset();
+          keyManuallyEditedRef.current = false;
           router.push(`/workspaces/${workspaceId}/spaces/${data.$id}`);
+        },
+        onError: () => {
+          // Reset file input on error to prevent stale state (Issue 14)
+          if (inputRef.current) {
+            inputRef.current.value = "";
+          }
+          // Clear image from form state
+          form.setValue("image", undefined);
         },
       }
     );
@@ -126,15 +161,15 @@ export const CreateSpaceForm = ({ onCancel }: CreateSpaceFormProps) => {
                   <FormItem>
                     <FormLabel className="flex items-center gap-2">
                       Space Name
-                      <HelpTooltip 
-                        content="A descriptive name for your space (e.g., 'Engineering', 'Marketing'). This helps identify the department or product area." 
+                      <HelpTooltip
+                        content="A descriptive name for your space (e.g., 'Engineering', 'Marketing'). This helps identify the department or product area."
                         side="right"
                         align="start"
                       />
                     </FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="e.g., Engineering, Marketing" 
+                      <Input
+                        placeholder="e.g., Engineering, Marketing"
                         {...field}
                         onChange={handleNameChange}
                       />
@@ -151,15 +186,15 @@ export const CreateSpaceForm = ({ onCancel }: CreateSpaceFormProps) => {
                   <FormItem>
                     <FormLabel className="flex items-center gap-2">
                       Space Key
-                      <HelpTooltip 
-                        content="A short uppercase identifier (2-10 characters). This will prefix all work items in this space. Example: Space key 'ENG' creates work items like 'ENG-123'." 
+                      <HelpTooltip
+                        content="A short uppercase identifier (2-10 characters). This will prefix all work items in this space. Example: Space key 'ENG' creates work items like 'ENG-123'."
                         side="right"
                         align="start"
                       />
                     </FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="e.g., ENG, MKT" 
+                      <Input
+                        placeholder="e.g., ENG, MKT"
                         {...field}
                         onChange={(e) => {
                           keyManuallyEditedRef.current = true;
@@ -184,11 +219,11 @@ export const CreateSpaceForm = ({ onCancel }: CreateSpaceFormProps) => {
                   <FormItem>
                     <FormLabel>Description (Optional)</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        placeholder="Describe the purpose of this space" 
+                      <Textarea
+                        placeholder="Describe the purpose of this space"
                         className="resize-none"
                         rows={3}
-                        {...field} 
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage />
@@ -353,8 +388,8 @@ export const CreateSpaceForm = ({ onCancel }: CreateSpaceFormProps) => {
                           value={field.value || "#6366f1"}
                           className="size-10 rounded border cursor-pointer"
                         />
-                        <Input 
-                          placeholder="#6366f1" 
+                        <Input
+                          placeholder="#6366f1"
                           value={field.value || ""}
                           onChange={(e) => field.onChange(e.target.value)}
                           className="w-32"

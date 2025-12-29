@@ -1,12 +1,14 @@
 "use client";
 
-import { CreditCard, DollarSign, FileText, ExternalLink, Calendar } from "lucide-react";
+import { useState } from "react";
+import { CreditCard, DollarSign, FileText, ExternalLink, Calendar, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 interface OrganizationBillingSettingsProps {
     organizationId: string;
@@ -19,7 +21,63 @@ export function OrganizationBillingSettings({
 }: OrganizationBillingSettingsProps) {
     // In real implementation, fetch billing data from API
     const hasPaymentMethod = false;
-    const billingEmail = "billing@example.com";
+
+    // Issue 9: Add form state for billing email
+    const [billingEmailValue, setBillingEmailValue] = useState("billing@example.com");
+    const [isSaving, setIsSaving] = useState(false);
+    const [isAddingPayment, setIsAddingPayment] = useState(false);
+
+    // Issue 9: Handler for save billing settings
+    const handleSaveBillingSettings = async () => {
+        // Validate organizationId exists
+        if (!organizationId) {
+            toast.error("Organization ID is required");
+            return;
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(billingEmailValue)) {
+            toast.error("Please enter a valid email address");
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            // TODO: Replace with actual API call when billing endpoint is implemented
+            // await fetch(`/api/organizations/${organizationId}/billing`, {
+            //   method: 'PATCH',
+            //   body: JSON.stringify({ billingEmail: billingEmailValue })
+            // });
+
+            // For now, show info toast that endpoint is pending
+            toast.info("Billing settings save is not yet implemented. Settings will be saved once the billing API is ready.");
+        } catch (error) {
+            console.error("Failed to save billing settings:", error);
+            toast.error("Failed to save billing settings");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    // Issue 9: Handler for add payment method
+    const handleAddPaymentMethod = async () => {
+        if (!organizationId) {
+            toast.error("Organization ID is required");
+            return;
+        }
+
+        setIsAddingPayment(true);
+        try {
+            // TODO: Replace with actual payment provider integration (Stripe, etc.)
+            toast.info("Payment method integration is not yet implemented.");
+        } catch (error) {
+            console.error("Failed to add payment method:", error);
+            toast.error("Failed to add payment method");
+        } finally {
+            setIsAddingPayment(false);
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -87,15 +145,26 @@ export function OrganizationBillingSettings({
                         <Input
                             id="billingEmail"
                             type="email"
-                            defaultValue={billingEmail}
+                            value={billingEmailValue}
+                            onChange={(e) => setBillingEmailValue(e.target.value)}
                             placeholder="billing@example.com"
+                            disabled={isSaving}
                         />
                         <p className="text-xs text-muted-foreground">
                             Invoices and billing notifications will be sent to this email
                         </p>
                     </div>
 
-                    <Button>Save Billing Settings</Button>
+                    <Button onClick={handleSaveBillingSettings} disabled={isSaving}>
+                        {isSaving ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Saving...
+                            </>
+                        ) : (
+                            "Save Billing Settings"
+                        )}
+                    </Button>
                 </CardContent>
             </Card>
 
@@ -128,7 +197,16 @@ export function OrganizationBillingSettings({
                             <p className="text-muted-foreground mb-4">
                                 No payment method configured
                             </p>
-                            <Button>Add Payment Method</Button>
+                            <Button onClick={handleAddPaymentMethod} disabled={isAddingPayment}>
+                                {isAddingPayment ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Adding...
+                                    </>
+                                ) : (
+                                    "Add Payment Method"
+                                )}
+                            </Button>
                             <p className="text-xs text-muted-foreground mt-2">
                                 Add a payment method to enable automatic billing
                             </p>

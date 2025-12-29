@@ -254,6 +254,14 @@ const app = new Hono()
         [Query.equal("workspaceId", workspaceId)]
       );
 
+      // Get all spaces in this workspace (Issue 3 - cascade deletion)
+      const { SPACES_ID, SPACE_MEMBERS_ID } = await import("@/config");
+      const spaces = await databases.listDocuments(
+        DATABASE_ID,
+        SPACES_ID,
+        [Query.equal("workspaceId", workspaceId)]
+      );
+
       // Get all tasks in this workspace
       const tasks = await databases.listDocuments(
         DATABASE_ID,
@@ -302,6 +310,21 @@ const app = new Hono()
       // Delete all projects
       for (const project of projects.documents) {
         await databases.deleteDocument(DATABASE_ID, PROJECTS_ID, project.$id);
+      }
+
+      // Delete all space members first, then spaces (Issue 3 - cascade)
+      for (const space of spaces.documents) {
+        // Get and delete all members of this space
+        const spaceMembers = await databases.listDocuments(
+          DATABASE_ID,
+          SPACE_MEMBERS_ID,
+          [Query.equal("spaceId", space.$id)]
+        );
+        for (const sm of spaceMembers.documents) {
+          await databases.deleteDocument(DATABASE_ID, SPACE_MEMBERS_ID, sm.$id);
+        }
+        // Delete the space
+        await databases.deleteDocument(DATABASE_ID, SPACES_ID, space.$id);
       }
 
       // Delete all members

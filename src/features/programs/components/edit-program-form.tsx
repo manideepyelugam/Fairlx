@@ -119,6 +119,7 @@ export const EditProgramForm = ({ onCancel, initialValues }: EditProgramFormProp
                     <FormControl>
                       <Textarea
                         {...field}
+                        value={field.value ?? ""}
                         placeholder="Enter program description"
                         rows={3}
                       />
@@ -202,6 +203,7 @@ export const EditProgramForm = ({ onCancel, initialValues }: EditProgramFormProp
                       <FormControl>
                         <Input
                           {...field}
+                          value={field.value ?? ""}
                           type="date"
                           placeholder="Select start date"
                         />
@@ -219,6 +221,7 @@ export const EditProgramForm = ({ onCancel, initialValues }: EditProgramFormProp
                       <FormControl>
                         <Input
                           {...field}
+                          value={field.value ?? ""}
                           type="date"
                           placeholder="Select end date"
                         />
