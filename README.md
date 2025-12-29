@@ -1,20 +1,20 @@
-# 🚀 Scrumpty - Enterprise-Grade Agile Project Management
+# 🚀 Fairlx - Enterprise-Grade Agile Project Management
 
 <div align="center">
 
-<img src="public/Logo.png" alt="Scrumpty Logo" width="120" height="120" />
+<img src="public/Logo.png" alt="Fairlx Logo" width="120" height="120" />
 
 **The Complete Solution for Agile Teams at Scale**
 
-[![Built with Next.js](https://img.shields.io/badge/Built%20with-Next.js%2014-000000?style=flat&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![Built with Next.js](https://img.shields.io/badge/Built%20with-Next.js%2015-000000?style=flat&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=flat&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![Appwrite](https://img.shields.io/badge/Appwrite-FD366E?style=flat&logo=appwrite&logoColor=white)](https://appwrite.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-*A powerful project management platform for modern agile teams: workspaces, spaces, projects, teams, sprints, work items, workflows, custom fields, time tracking, docs, and integrations.*
+*A powerful project management platform for modern agile teams: organizations, workspaces, spaces, projects, teams, sprints, work items, workflows, custom fields, time tracking, docs, and integrations.*
 
-[📖 Documentation](#-documentation) | [🚀 Quick Start](#-quick-start) | [🐛 Report Bug](https://github.com/JaiVishalSingh/Scrumpty/issues) | [✨ Request Feature](https://github.com/JaiVishalSingh/Scrumpty/issues)
+[📖 Documentation](#-documentation) | [🚀 Quick Start](#-quick-start) | [🐛 Report Bug](https://github.com/yourorg/Fairlx/issues) | [✨ Request Feature](https://github.com/yourorg/Fairlx/issues)
 
 </div>
 
@@ -53,8 +53,8 @@
   <table>
     <tr>
       <td align="center" width="33%">
-        <h3>🏢 Multi-Workspace</h3>
-        <p>Organize workspaces, spaces, programs, teams, and projects</p>
+        <h3>🏢 Organizations & Workspaces</h3>
+        <p>Personal or Org accounts, multi-workspace, programs, teams, projects</p>
       </td>
       <td align="center" width="33%">
         <h3>📋 Work Items</h3>
@@ -81,16 +81,16 @@
     </tr>
     <tr>
       <td align="center" width="33%">
-        <h3>💬 Collaboration</h3>
-        <p>Threaded comments, @mentions, notifications</p>
+        <h3>🤖 AI-Powered</h3>
+        <p>Smart suggestions, auto-docs, code analysis, natural language search</p>
       </td>
       <td align="center" width="33%">
         <h3>🐙 GitHub Integration</h3>
         <p>Repo links, commit sync, AI docs, code Q&A</p>
       </td>
       <td align="center" width="33%">
-        <h3>📊 Analytics</h3>
-        <p>Burndown, velocity, team performance, timelines</p>
+        <h3>📊 Analytics & Billing</h3>
+        <p>Burndown, velocity, usage-based billing, audit logs</p>
       </td>
     </tr>
   </table>
@@ -98,21 +98,24 @@
 
 ---
 
-## 🌟 Why Scrumpty?
+## 🌟 Why Fairlx?
 
-- **Enterprise-ready**: Multi-workspace, programs, teams, permissions.
+- **AI-first**: Smart task suggestions, auto-generated documentation, code analysis, and natural language search.
+- **Enterprise-ready**: Organizations, multi-workspace, programs, teams, RBAC permissions.
+- **Dual account types**: Personal accounts for individuals, Org accounts for teams with shared billing.
+- **Usage-based billing**: Flexible metering for traffic, storage, and compute.
 - **Flexible workflows**: Workspace/space/project-level customization.
 - **Custom fields**: Text, numbers, selects, users, dates, currency, labels.
 - **Built-in time tracking**: Estimates vs actuals, timesheets, exports.
-- **Integration-ready**: GitHub, notifications, storage.
+- **Integration-ready**: GitHub, AI services, notifications, storage.
 - **Self-host friendly**: Appwrite backend; full data ownership.
-- **Modern stack**: Next.js 14, TypeScript, Tailwind, Appwrite.
+- **Modern stack**: Next.js 15, TypeScript, Tailwind, Appwrite.
 
 ---
 
 ## 🛠️ Tech Stack
 
-**Frontend**: Next.js 14 (App Router, RSC), TypeScript, Tailwind CSS, Radix UI, shadcn/ui, Lucide, React Hook Form, Zod, TanStack Query, React Big Calendar, Recharts, Next Themes, Sonner.
+**Frontend**: Next.js 15 (App Router, RSC), TypeScript, Tailwind CSS, Radix UI, shadcn/ui, Lucide, React Hook Form, Zod, TanStack Query, React Big Calendar, Recharts, Next Themes, Sonner.
 
 **Backend**: Appwrite (Auth, DB, Storage, Functions, Realtime), Hono for API routes, Next.js Server Actions.
 
@@ -128,8 +131,8 @@
 
 ### Install
 ```bash
-git clone https://github.com/JaiVishalSingh/Scrumpty.git
-cd Scrumpty
+git clone https://github.com/yourorg/Fairlx.git
+cd Fairlx
 npm install  # or bun install
 ```
 
@@ -141,6 +144,8 @@ NEXT_PUBLIC_APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
 NEXT_PUBLIC_APPWRITE_PROJECT=your_project_id
 NEXT_APPWRITE_KEY=your_api_key
 NEXT_PUBLIC_APPWRITE_DATABASE_ID=your_database_id
+
+# Core Collections
 NEXT_PUBLIC_APPWRITE_WORKSPACES_ID=workspaces
 NEXT_PUBLIC_APPWRITE_MEMBERS_ID=members
 NEXT_PUBLIC_APPWRITE_PROJECTS_ID=projects
@@ -158,18 +163,44 @@ NEXT_PUBLIC_APPWRITE_COMMENTS_ID=comments
 NEXT_PUBLIC_APPWRITE_GITHUB_REPOS_ID=github_repos
 NEXT_PUBLIC_APPWRITE_CODE_DOCS_ID=code_docs
 NEXT_PUBLIC_APPWRITE_PROJECT_DOCS_ID=project_docs
+
+# Teams & Programs
 NEXT_PUBLIC_APPWRITE_TEAMS_ID=teams
 NEXT_PUBLIC_APPWRITE_TEAM_MEMBERS_ID=team_members
 NEXT_PUBLIC_APPWRITE_PROGRAMS_ID=programs
 NEXT_PUBLIC_APPWRITE_CUSTOM_ROLES_ID=custom_roles
+NEXT_PUBLIC_APPWRITE_PROJECT_MEMBERS_ID=project_members
+NEXT_PUBLIC_APPWRITE_PROJECT_ROLES_ID=project_roles
+
+# Spaces & Workflows
 NEXT_PUBLIC_APPWRITE_SPACES_ID=spaces
 NEXT_PUBLIC_APPWRITE_SPACE_MEMBERS_ID=space_members
 NEXT_PUBLIC_APPWRITE_WORKFLOWS_ID=workflows
 NEXT_PUBLIC_APPWRITE_WORKFLOW_STATUSES_ID=workflow_statuses
 NEXT_PUBLIC_APPWRITE_WORKFLOW_TRANSITIONS_ID=workflow_transitions
+
+# Custom Fields
+NEXT_PUBLIC_APPWRITE_CUSTOM_FIELDS_ID=custom_fields
+NEXT_PUBLIC_APPWRITE_CUSTOM_WORK_ITEM_TYPES_ID=custom_work_item_types
+NEXT_PUBLIC_APPWRITE_WORK_ITEM_LINKS_ID=work_item_links
+NEXT_PUBLIC_APPWRITE_SAVED_VIEWS_ID=saved_views
+
+# Organizations & Billing
+NEXT_PUBLIC_APPWRITE_ORGANIZATIONS_ID=organizations
+NEXT_PUBLIC_APPWRITE_ORGANIZATION_MEMBERS_ID=organization_members
+NEXT_PUBLIC_APPWRITE_ORGANIZATION_AUDIT_LOGS_ID=organization_audit_logs
+NEXT_PUBLIC_APPWRITE_USAGE_EVENTS_ID=usage_events
+NEXT_PUBLIC_APPWRITE_USAGE_AGGREGATIONS_ID=usage_aggregations
+NEXT_PUBLIC_APPWRITE_USAGE_ALERTS_ID=usage_alerts
+NEXT_PUBLIC_APPWRITE_STORAGE_SNAPSHOTS_ID=storage_snapshots
+NEXT_PUBLIC_APPWRITE_INVOICES_ID=invoices
+
+# Storage Buckets
 NEXT_PUBLIC_APPWRITE_IMAGES_BUCKET_ID=images
 NEXT_PUBLIC_APPWRITE_ATTACHMENTS_BUCKET_ID=attachments_bucket
 NEXT_PUBLIC_APPWRITE_PROJECT_DOCS_BUCKET_ID=project-docs
+
+# Email Configuration
 NEXT_PUBLIC_APPWRITE_SMTP_PROVIDER_ID=your_smtp_provider_id
 NEXT_PUBLIC_APPWRITE_EMAIL_TOPIC_ID=your_email_topic_id
 ```
@@ -187,19 +218,34 @@ npm run dev   # or bun dev
 ## 📁 Project Structure
 
 ```
-Scrumpty/
+Fairlx/
 ├── public/                # Static assets
 ├── docs/                  # Documentation
 ├── src/
 │   ├── app/               # Next.js App Router (auth, dashboard, api, oauth)
 │   ├── components/        # UI & shared components
-│   ├── features/          # Feature modules (workspaces, spaces, projects, tasks,
-│   │                      # sprints, teams, programs, workflows, custom-fields,
-│   │                      # time-tracking, comments, attachments, notifications,
-│   │                      # github-integration, project-docs, personal-backlog,
-│   │                      # subtasks, work-item-links, timeline, saved-views, audit-logs)
+│   ├── features/          # Feature modules:
+│   │   ├── auth/          # Authentication, signup, login, email verification
+│   │   ├── organizations/ # Organization management & billing
+│   │   ├── workspaces/    # Workspace CRUD
+│   │   ├── spaces/        # Spaces (project containers)
+│   │   ├── projects/      # Projects
+│   │   ├── tasks/         # Tasks & work items
+│   │   ├── sprints/       # Sprint management
+│   │   ├── teams/         # Teams
+│   │   ├── programs/      # Programs
+│   │   ├── members/       # Workspace membership
+│   │   ├── workflows/     # Custom workflows
+│   │   ├── custom-fields/ # Custom fields
+│   │   ├── time-logs/     # Time tracking
+│   │   ├── comments/      # Comments
+│   │   ├── attachments/   # File attachments
+│   │   ├── notifications/ # Notification system
+│   │   ├── github-integration/ # GitHub repo sync
+│   │   └── ...            # Additional features
 │   ├── hooks/             # Reusable hooks
 │   ├── lib/               # Appwrite client, RPC, utils, session middleware
+│   ├── schemas/           # Zod validation schemas
 │   ├── types/             # Shared types
 │   └── config.ts          # Environment config constants
 ├── CODE_OF_CONDUCT.md
@@ -216,7 +262,23 @@ Scrumpty/
 
 ## 🎯 Core Features (Detail)
 
-- **Organization**: Workspaces → Spaces → Projects; Programs and Teams with custom roles/permissions.
+### Account Types
+- **Personal Account**: Single-user workspace with personal billing
+- **Organization Account**: Multi-workspace teams with shared org-level billing
+
+### Organization Hierarchy
+```
+Organization (Org Account only)
+└── Workspaces
+    ├── Spaces
+    │   └── Work Items
+    ├── Projects
+    │   ├── Sprints
+    │   └── Tasks
+    └── Teams & Programs
+```
+
+### Key Capabilities
 - **Boards**: Scrum, Kanban, Hybrid; WIP limits; swimlanes; sprint metrics.
 - **Workflows**: Custom statuses and transitions per scope; rules, allowed roles, auto-assign.
 - **Work Items**: Stories/Tasks/Bugs/Epics/Subtasks; labels; components; relationships (blocks, relates, duplicates, split, clone, parent/child, causes).
@@ -229,6 +291,17 @@ Scrumpty/
 - **Timeline & Calendar**: Gantt-style timelines, calendar for due dates/milestones.
 - **Analytics**: Burndown, velocity, workload, project progress, risk signals.
 - **Security**: RBAC, space visibility, file validation, email verification.
+
+### 🤖 AI Features
+- **Smart Task Suggestions**: AI analyzes project context to suggest task breakdowns, estimates, and assignees.
+- **Auto-Generated Documentation**: Automatically generate PRDs, technical specs, and release notes from project data.
+- **Code Analysis & Q&A**: Ask questions about your codebase; AI provides answers with file references.
+- **Natural Language Search**: Find tasks, docs, and code using plain English queries.
+- **Sprint Planning Assistant**: AI recommends sprint capacity, identifies risks, and suggests task prioritization.
+- **Commit Summarization**: Auto-generate meaningful commit summaries and changelog entries.
+- **Duplicate Detection**: AI identifies potentially duplicate tasks and suggests merging.
+- **Effort Estimation**: ML-powered story point and time estimates based on historical data.
+- **Risk Prediction**: Proactive alerts for scope creep, deadline risks, and blockers.
 
 ---
 
@@ -247,14 +320,16 @@ npm run lint     # lint
 - Prefer Server Components; use client components only when needed.
 - Use Tailwind utilities and shadcn/ui primitives.
 - Validate inputs with Zod; keep components small and composable.
+- Use route utilities (`src/lib/route-utils.ts`) for safe navigation with ID validation.
 - Run lint before pushing.
 
 **Example**
 ```typescript
-export async function getWorkspaceById(workspaceId: string) {
-  const { databases } = await createSessionClient();
-  return databases.getDocument(DATABASE_ID, WORKSPACES_ID, workspaceId);
-}
+import { buildWorkspaceRoute } from "@/lib/route-utils";
+
+// Safe navigation with validated IDs
+const route = buildWorkspaceRoute(workspaceId, "/settings");
+router.push(route);
 ```
 
 ---
@@ -262,7 +337,7 @@ export async function getWorkspaceById(workspaceId: string) {
 ## 🚀 Deployment
 
 **Vercel (recommended)**
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/JaiVishalSingh/Scrumpty)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/yourorg/Fairlx)
 
 1) Import repo to Vercel
 2) Set env vars (see `.env.local`)
@@ -284,17 +359,44 @@ CMD ["npm", "start"]
 
 ## 🗺️ Roadmap
 
-**Completed**: Multi-workspace, Scrum/Kanban/Hybrid boards, custom workflows, custom fields, time tracking, teams/programs, work item links, GitHub integration, comments/attachments, notifications, timelines, analytics.
+**Completed**: 
+- Multi-workspace & organizations
+- Scrum/Kanban/Hybrid boards
+- Custom workflows & fields
+- Time tracking
+- Teams & programs
+- Work item links
+- GitHub integration
+- Comments & attachments
+- Notifications
+- Timelines & analytics
+- Usage-based billing foundation
+- Dual account types (Personal/Org)
 
-**In Progress**: Advanced reporting dashboard, automation rules, webhooks, mobile app.
+**In Progress**: 
+- Advanced reporting dashboard
+- Automation rules
+- Webhooks
+- Mobile app
 
-**Planned**: Jira import/export, Slack/Discord/Teams integration, approvals, capacity planning, portfolio mgmt, AI insights, custom widgets, i18n, advanced search, bulk ops, 2FA.
+**Planned**: 
+- Jira import/export
+- Slack/Discord/Teams integration
+- Approvals
+- Capacity planning
+- Portfolio management
+- AI insights
+- Custom widgets
+- i18n
+- Advanced search
+- Bulk operations
+- 2FA
 
 ---
 
 ## 📊 Database Snapshot
 
-- **Collections**: 26 (workspaces, spaces, space_members, programs, teams, team_members, custom_roles, projects, members, tasks, work_items, sprints, workflows, workflow_statuses, workflow_transitions, custom_columns, default_column_settings, time_logs, subtasks, comments, attachments, notifications, personal_backlog, github_repos, code_docs, project_docs)
+- **Collections**: 30+ (workspaces, spaces, space_members, programs, teams, team_members, custom_roles, projects, members, tasks, work_items, sprints, workflows, workflow_statuses, workflow_transitions, custom_columns, default_column_settings, time_logs, subtasks, comments, attachments, notifications, personal_backlog, github_repos, code_docs, project_docs, organizations, organization_members, usage_events, invoices, etc.)
 - **Buckets**: 3 (images, attachments_bucket, project-docs)
 
 Full attribute list, types, required flags, lengths, and indexes: see [APPWRITE_GUIDE.md](./APPWRITE_GUIDE.md).
@@ -305,8 +407,10 @@ Full attribute list, types, required flags, lengths, and indexes: see [APPWRITE_
 
 - Email verification required (configure SMTP provider & topic in Appwrite).
 - RBAC via workspace/member roles and custom team roles.
+- Organization-level permissions and audit logs.
 - Data encrypted at rest/in transit; secure sessions.
 - File validation on uploads; antivirus enabled on buckets (Appwrite settings).
+- Route utilities prevent navigation with undefined/invalid IDs.
 - Report vulnerabilities privately (not via public issues).
 
 ---
@@ -323,9 +427,8 @@ Full attribute list, types, required flags, lengths, and indexes: see [APPWRITE_
 
 ## 💬 Community & Support
 - Docs: [APPWRITE_GUIDE.md](./APPWRITE_GUIDE.md)
-- Issues: [Bugs](https://github.com/JaiVishalSingh/Scrumpty/issues/new?labels=bug) | [Features](https://github.com/JaiVishalSingh/Scrumpty/issues/new?labels=enhancement)
-- Discussions: [GitHub Discussions](https://github.com/JaiVishalSingh/Scrumpty/discussions)
-- Contact: support@scrumpty.com
+- Issues: [Bugs](https://github.com/yourorg/Fairlx/issues/new?labels=bug) | [Features](https://github.com/yourorg/Fairlx/issues/new?labels=enhancement)
+- Discussions: [GitHub Discussions](https://github.com/yourorg/Fairlx/discussions)
 
 <div align="center">
 

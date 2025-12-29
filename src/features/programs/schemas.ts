@@ -2,6 +2,20 @@ import { z } from "zod";
 import { ProgramStatus } from "./types";
 
 // Program Schemas
+// Reusable date string validator - accepts empty, null, undefined, or valid date string
+const optionalDateString = z.string().optional().or(z.literal("")).transform((val) => {
+  // Normalize empty strings to undefined
+  if (!val || val === "") return undefined;
+  return val;
+});
+
+// Reusable imageUrl validator - accepts empty, URL, or base64 data URLs (Issue 10)
+const optionalImageUrl = z.string().optional().or(z.literal("")).transform((val) => {
+  // Normalize empty strings to undefined
+  if (!val || val === "") return undefined;
+  return val;
+});
+
 export const createProgramSchema = z.object({
   name: z
     .string()
@@ -14,13 +28,24 @@ export const createProgramSchema = z.object({
     .optional(),
   workspaceId: z.string().min(1, "Workspace ID is required"),
   programLeadId: z.string().optional(),
-  imageUrl: z.string().url("Invalid image URL").optional().or(z.literal("")),
-  startDate: z.string().optional().or(z.literal("")),
-  endDate: z.string().optional().or(z.literal("")),
+  imageUrl: optionalImageUrl,
+  startDate: optionalDateString,
+  endDate: optionalDateString,
   status: z
     .nativeEnum(ProgramStatus)
     .default(ProgramStatus.PLANNING)
     .optional(),
+}).refine((data) => {
+  // Issue 12: Validate endDate is not before startDate
+  if (data.startDate && data.endDate) {
+    const start = new Date(data.startDate);
+    const end = new Date(data.endDate);
+    return end >= start;
+  }
+  return true;
+}, {
+  message: "End date must be on or after start date",
+  path: ["endDate"],
 });
 
 export const updateProgramSchema = z.object({
@@ -33,12 +58,24 @@ export const updateProgramSchema = z.object({
   description: z
     .string()
     .max(1000, "Description must be less than 1000 characters")
-    .optional(),
+    .optional()
+    .nullable(),
   programLeadId: z.string().optional().or(z.literal("")),
-  imageUrl: z.string().url("Invalid image URL").optional().or(z.literal("")),
-  startDate: z.string().datetime().optional().or(z.literal("")),
-  endDate: z.string().datetime().optional().or(z.literal("")),
+  imageUrl: optionalImageUrl,
+  startDate: optionalDateString,
+  endDate: optionalDateString,
   status: z.nativeEnum(ProgramStatus).optional(),
+}).refine((data) => {
+  // Issue 12: Validate endDate is not before startDate
+  if (data.startDate && data.endDate) {
+    const start = new Date(data.startDate);
+    const end = new Date(data.endDate);
+    return end >= start;
+  }
+  return true;
+}, {
+  message: "End date must be on or after start date",
+  path: ["endDate"],
 });
 
 export const getProgramSchema = z.object({
