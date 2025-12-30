@@ -6,31 +6,18 @@ export const loginSchema = z.object({
 });
 
 /**
- * Registration schema with account type selection
+ * Registration schema - simplified for POST-AUTH account type selection
  * 
- * WHY: Signup must require account type selection (per spec).
- * PERSONAL → exactly ONE workspace created
- * ORG → organization + default workspace created
+ * WHY: Account type is now selected AFTER authentication in onboarding.
+ * This allows OAuth users to also select their account type.
+ * The same email resolves to the same user regardless of auth method.
  */
 export const registerSchema = z.object({
   name: z.string().trim().min(1, "Name is required."),
   email: z.string().email(),
   password: z.string().min(8, "Password must be at least 8 characters."),
-  accountType: z.enum(["PERSONAL", "ORG"]).default("PERSONAL"),
-  organizationName: z.string().trim().max(128, "Organization name too long.").optional(),
-}).refine(
-  (data) => {
-    // If ORG account, organizationName is required
-    if (data.accountType === "ORG" && (!data.organizationName || data.organizationName.trim() === "")) {
-      return false;
-    }
-    return true;
-  },
-  {
-    message: "Organization name is required for organization accounts.",
-    path: ["organizationName"],
-  }
-);
+});
+
 
 export const updateProfileSchema = z.object({
   name: z.string().trim().min(1, "Name is required."),

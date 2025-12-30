@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {  Loader2, Mail, User, Trash2, Shield, Camera  } from "lucide-react";
+import { Loader2, Mail, User, Trash2, Shield, Camera } from "lucide-react";
 import { useUpdateProfile } from "../api/use-update-profile";
 import { useUploadProfileImage } from "../api/use-upload-profile-image";
 import { useDeleteAccount } from "../api/use-delete-account";
 import { DeleteAccountDialog } from "./delete-account-dialog";
+import { LinkedProviders } from "./linked-providers";
 import { Models } from "node-appwrite";
 import { toast } from "sonner";
 
@@ -104,45 +105,45 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
   return (
     <div className="h-full w-full p-6">
       <div className="max-w-4xl mx-auto space-y-6">
-      
+
 
         <div className="w-full p-5 rounded-xl border flex items-center justify-between">
-              <div className="flex items-start gap-5">
-                    <div className="relative group">
-                      <input
-                        id="profile-image-upload"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleImageUpload}
-                        disabled={isUploading}
-                      />
-                      <label htmlFor="profile-image-upload" className="cursor-pointer">
-                        <Avatar className="size-24 border-2 border-neutral-300 transition-all group-hover:border-primary">
-                          {profileImageUrl && (
-                            <AvatarImage src={profileImageUrl} alt={initialData.name} />
-                          )}
-                          <AvatarFallback className="bg-neutral-200 text-3xl font-medium text-neutral-500">
-                            {avatarFallback}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <Camera className="size-8 text-white" />
-                        </div>
-                        {isUploading && (
-                          <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
-                            <Loader2 className="size-8 text-white animate-spin" />
-                          </div>
-                        )}
-                      </label>
-                    </div>
+          <div className="flex items-start gap-5">
+            <div className="relative group">
+              <input
+                id="profile-image-upload"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageUpload}
+                disabled={isUploading}
+              />
+              <label htmlFor="profile-image-upload" className="cursor-pointer">
+                <Avatar className="size-24 border-2 border-neutral-300 transition-all group-hover:border-primary">
+                  {profileImageUrl && (
+                    <AvatarImage src={profileImageUrl} alt={initialData.name} />
+                  )}
+                  <AvatarFallback className="bg-neutral-200 text-3xl font-medium text-neutral-500">
+                    {avatarFallback}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <Camera className="size-8 text-white" />
+                </div>
+                {isUploading && (
+                  <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                    <Loader2 className="size-8 text-white animate-spin" />
+                  </div>
+                )}
+              </label>
+            </div>
 
-                    <div className="flex flex-col ">
-                           <h1 className="text-[22px] font-semibold">{initialData.name}</h1>
-                           <p className="text-[13px]">Team Manager</p>
-                          <p className="text-[13px]">{initialData.email}</p>
-                    </div>
-              </div>
+            <div className="flex flex-col ">
+              <h1 className="text-[22px] font-semibold">{initialData.name}</h1>
+              <p className="text-[13px]">Team Manager</p>
+              <p className="text-[13px]">{initialData.email}</p>
+            </div>
+          </div>
         </div>
 
         {/* Personal Information Section */}
@@ -189,7 +190,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
                 <Button
                   onClick={handleSave}
                   disabled={isUpdating}
-className="text-xs font-medium px-6 rounded-sm py-3" size={"xs"}                >
+                  className="text-xs font-medium px-6 rounded-sm py-3" size={"xs"}                >
                   {isUpdating ? (
                     <Loader2 className="size-4 animate-spin" />
                   ) : (
@@ -311,6 +312,9 @@ className="text-xs font-medium px-6 rounded-sm py-3" size={"xs"}                
             </div>
           </CardContent>
         </Card> */}
+
+        {/* Linked Accounts Section */}
+        <LinkedProviders />
 
         {/* Security Section */}
         <Card>

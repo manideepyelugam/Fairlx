@@ -79,7 +79,7 @@ const app = new Hono()
     }
   })
   .post("/register", zValidator("json", registerSchema), async (c) => {
-    const { name, email, password, accountType, organizationName } = c.req.valid("json");
+    const { name, email, password } = c.req.valid("json");
 
     try {
       const { account } = await createAdminClient();
@@ -98,13 +98,13 @@ const app = new Hono()
 
       const userAccount = new Account(userClient);
 
-      // Store account type and org name in user prefs for use after verification
-      // WHY: Workspace/org creation happens after email verification
-      // We need to persist this data between registration and verification
+      // Set initial prefs - account type will be selected in onboarding (POST-AUTH)
+      // WHY: Moving account type selection to onboarding allows:
+      // - Same flow for email/password and OAuth users
+      // - Same email always resolves to same user
       await userAccount.updatePrefs({
-        accountType: accountType || "PERSONAL",
-        pendingOrganizationName: organizationName || null,
-        signupCompletedAt: null, // Will be set after workspace/org creation
+        needsOnboarding: true,
+        signupCompletedAt: null,
       });
 
       // Send email verification using user session
@@ -151,6 +151,110 @@ const app = new Hono()
     await account.deleteSession("current");
 
     return c.json({ success: true });
+  })
+  /**
+   * DELETE /auth/account
+   * Permanently delete user account
+   * 
+   * CRITICAL: This is irreversible!
+   * ENTERPRISE GUARDS:
+   * - Blocks if user is last OWNER of any organization
+   * - Logs blocked deletion attempts to audit
+   * - Deletes all user sessions
+   * - Deletes user from Appwrite
+   * - Clears auth cookie
+   */
+  .delete("/account", sessionMiddleware, async (c) => {
+    const databases = c.get("databases");
+    const account = c.get("account");
+    const user = c.get("user");
+
+    try {
+      // ENTERPRISE GUARD: Check if user is last OWNER of any organization
+      const { Query } = await import("node-appwrite");
+      const { ORGANIZATION_MEMBERS_ID } = await import("@/config");
+
+      // Find all orgs where user is OWNER
+      const ownerMemberships = await databases.listDocuments(
+        DATABASE_ID,
+        ORGANIZATION_MEMBERS_ID,
+        [
+          Query.equal("userId", user.$id),
+          Query.equal("role", "OWNER"),
+        ]
+      );
+
+      // For each org where user is OWNER, check if they're the ONLY owner
+      for (const membership of ownerMemberships.documents) {
+        const orgId = membership.organizationId;
+
+        // Count total OWNERs in this org
+        const allOwners = await databases.listDocuments(
+          DATABASE_ID,
+          ORGANIZATION_MEMBERS_ID,
+          [
+            Query.equal("organizationId", orgId),
+            Query.equal("role", "OWNER"),
+          ]
+        );
+
+        if (allOwners.total === 1) {
+          // User is the ONLY owner - block deletion
+          console.warn(`[SECURITY] Blocked account deletion: user ${user.$id} is last OWNER of org ${orgId}`);
+
+          // Log to audit (non-blocking)
+          try {
+            const { logOrgAudit, OrgAuditAction } = await import("@/features/organizations/audit");
+            await logOrgAudit({
+              databases,
+              organizationId: orgId,
+              actorUserId: user.$id,
+              actionType: OrgAuditAction.ACCOUNT_DELETE_ATTEMPT_BLOCKED,
+              metadata: {
+                blocked: true,
+                reason: "last_owner",
+                organizationId: orgId,
+              },
+            });
+          } catch {
+            // Audit logging should never block the response
+          }
+
+          return c.json({
+            error: "Cannot delete account: You are the only owner of an organization. Transfer ownership first.",
+            code: "LAST_OWNER_BLOCK",
+            organizationId: orgId,
+          }, 403);
+        }
+      }
+
+      // Safe to delete - proceed
+
+      // Delete all sessions first
+      try {
+        await account.deleteSessions();
+      } catch {
+        // Session deletion might fail, continue with account deletion
+      }
+
+      // Use Admin SDK to delete user
+      const { users } = await createAdminClient();
+      await users.delete(user.$id);
+
+      // Clear auth cookie
+      deleteCookie(c, AUTH_COOKIE);
+
+      return c.json({
+        success: true,
+        message: "Account deleted successfully"
+      });
+    } catch (error: unknown) {
+      console.error("Delete account error:", error);
+      const appwriteError = error as { message?: string };
+      return c.json({
+        error: appwriteError.message || "Failed to delete account"
+      }, 500);
+    }
   })
   .patch(
     "/profile",
@@ -288,6 +392,47 @@ const app = new Hono()
 
         return c.json({
           error: appwriteError.message || "Failed to change password. Please try again."
+        }, 500);
+      }
+    }
+  )
+  /**
+   * POST /auth/set-password
+   * Set password for OAuth-only users who don't have password auth
+   * 
+   * SECURITY: Only works if user doesn't already have a password
+   */
+  .post(
+    "/set-password",
+    sessionMiddleware,
+    zValidator("json", z.object({ password: z.string().min(8) })),
+    async (c) => {
+      try {
+        const account = c.get("account");
+        const user = c.get("user");
+        const { password } = c.req.valid("json");
+
+        // Check if user already has a password
+        if (user.passwordUpdate) {
+          return c.json({
+            error: "You already have a password set. Use change password instead."
+          }, 400);
+        }
+
+        // For OAuth-only users, we can set password without old password
+        // This works because Appwrite allows setting initial password
+        await account.updatePassword(password);
+
+        return c.json({
+          success: true,
+          message: "Password set successfully"
+        });
+      } catch (error: unknown) {
+        console.error("Set password error:", error);
+        const appwriteError = error as { type?: string; message?: string };
+
+        return c.json({
+          error: appwriteError.message || "Failed to set password. Please try again."
         }, 500);
       }
     }
@@ -614,7 +759,8 @@ const app = new Hono()
         "primaryOrganizationId",
         "organizationSize",
         "signupCompletedAt",
-        "signupCompletedAt",
+        "needsOnboarding",
+        "accountType",
       ];
 
       for (const field of allowedFields) {
@@ -629,6 +775,105 @@ const app = new Hono()
     } catch (error) {
       console.error("[Auth] Update prefs error:", error);
       return c.json({ error: "Failed to update preferences" }, 500);
+    }
+  })
+  /**
+   * GET /auth/identities
+   * List linked OAuth providers for current user
+   * 
+   * Returns:
+   * - identities: Array of linked OAuth providers (google, github)
+   * - hasPassword: Whether user has password auth enabled
+   * - canUnlink: Whether any provider can be unlinked (requires 2+ methods)
+   */
+  .get("/identities", sessionMiddleware, async (c) => {
+    try {
+      const account = c.get("account");
+      const user = c.get("user");
+
+      // Get linked OAuth identities
+      const identitiesResult = await account.listIdentities();
+      const identities = identitiesResult.identities || [];
+
+      // Map to simplified format
+      const linkedProviders = identities.map((identity: {
+        $id: string;
+        provider: string;
+        providerEmail?: string;
+        $createdAt: string;
+      }) => ({
+        id: identity.$id,
+        provider: identity.provider,
+        email: identity.providerEmail || user.email,
+        linkedAt: identity.$createdAt,
+      }));
+
+      // Check if user has password authentication
+      // Password auth exists if user was created with email/password
+      // Appwrite doesn't expose this directly, so we check prefs or passwordUpdate
+      const hasPassword = !!user.passwordUpdate;
+
+      // Calculate total auth methods
+      const totalMethods = linkedProviders.length + (hasPassword ? 1 : 0);
+
+      return c.json({
+        data: {
+          identities: linkedProviders,
+          hasPassword,
+          totalMethods,
+          canUnlink: totalMethods > 1,
+        }
+      });
+    } catch (error) {
+      console.error("[Auth] List identities error:", error);
+      return c.json({ error: "Failed to list identities" }, 500);
+    }
+  })
+  /**
+   * DELETE /auth/identities/:identityId
+   * Unlink an OAuth provider from current user
+   * 
+   * Safety: Prevents unlinking if it's the last auth method
+   */
+  .delete("/identities/:identityId", sessionMiddleware, async (c) => {
+    try {
+      const account = c.get("account");
+      const user = c.get("user");
+      const { identityId } = c.req.param();
+
+      // Get current identities to verify this one exists
+      const identitiesResult = await account.listIdentities();
+      const identities = identitiesResult.identities || [];
+
+      // Check if identity exists
+      const targetIdentity = identities.find((i: { $id: string }) => i.$id === identityId);
+      if (!targetIdentity) {
+        return c.json({ error: "Identity not found" }, 404);
+      }
+
+      // Check if user has password auth
+      const hasPassword = !!user.passwordUpdate;
+
+      // Calculate methods remaining after unlink
+      const remainingMethods = (identities.length - 1) + (hasPassword ? 1 : 0);
+
+      // SAFETY: Prevent unlinking last auth method
+      if (remainingMethods < 1) {
+        return c.json({
+          error: "Cannot unlink your only authentication method. Add a password or link another provider first."
+        }, 400);
+      }
+
+      // Delete the identity
+      await account.deleteIdentity(identityId);
+
+      return c.json({
+        success: true,
+        message: `${(targetIdentity as { provider: string }).provider} account unlinked successfully`
+      });
+    } catch (error) {
+      console.error("[Auth] Delete identity error:", error);
+      return c.json({ error: "Failed to unlink provider" }, 500);
     }
   });
 

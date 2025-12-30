@@ -1,11 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { client } from "@/lib/rpc";
 
 /**
  * Hook to delete user account
  * 
- * TODO: Implement account deletion endpoint in auth/server/route.ts
- * Currently stubbed as the endpoint doesn't exist.
+ * CRITICAL: This permanently deletes the user account and all data.
+ * Cannot be undone.
  */
 export const useDeleteAccount = () => {
   const router = useRouter();
@@ -13,16 +14,20 @@ export const useDeleteAccount = () => {
 
   const mutation = useMutation<{ success: boolean }, Error>({
     mutationFn: async () => {
-      // TODO: Implement when account delete endpoint is added
-      // const response = await client.api.auth.account.$delete();
-      throw new Error("Account deletion is not yet implemented");
+      const response = await client.api.auth.account.$delete();
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error((error as { error?: string }).error || "Failed to delete account");
+      }
+
+      return response.json() as Promise<{ success: boolean }>;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["current"] });
+      queryClient.clear(); // Clear all cached data
       router.push("/sign-in");
     },
   });
 
   return mutation;
 };
-
