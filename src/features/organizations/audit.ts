@@ -28,6 +28,28 @@ export enum OrgAuditAction {
     MEMBER_REMOVED = "member_removed",
     /** Member role changed */
     MEMBER_ROLE_CHANGED = "member_role_changed",
+
+    // === AUTH AUDIT ACTIONS (Enterprise) ===
+    /** User logged in (method: password | google | github) */
+    AUTH_LOGIN = "auth_login",
+    /** OAuth provider linked to account */
+    AUTH_PROVIDER_LINKED = "auth_provider_linked",
+    /** OAuth provider unlinked from account */
+    AUTH_PROVIDER_UNLINKED = "auth_provider_unlinked",
+    /** User account deleted */
+    ACCOUNT_DELETED = "account_deleted",
+    /** Workspace deleted */
+    WORKSPACE_DELETED = "workspace_deleted",
+
+    // === ENTERPRISE HARDENING ACTIONS ===
+    /** User switched between PERSONAL and ORG context */
+    CONTEXT_SWITCH = "context_switch",
+    /** Member voluntarily left organization */
+    ORG_MEMBER_LEFT = "org_member_left",
+    /** Billing settings updated (payment method, plan, etc.) */
+    BILLING_UPDATED = "billing_updated",
+    /** Account deletion blocked due to ownership constraints */
+    ACCOUNT_DELETE_ATTEMPT_BLOCKED = "account_delete_attempt_blocked",
 }
 
 /**

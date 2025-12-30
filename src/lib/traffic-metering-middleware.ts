@@ -187,20 +187,15 @@ export const trafficMeteringMiddleware = createMiddleware<MeteringContext>(
                                 billingEntityType = 'organization';
                             }
                         }
-                    } catch (error) {
-                        console.error('[TrafficMetering] Could not determine billing entity:', error);
-                        // Fallback: try to get workspace userId
-                        try {
-                            const workspace = await databases.getDocument(
-                                DATABASE_ID,
-                                WORKSPACES_ID,
-                                workspaceId
-                            );
-                            billingEntityId = workspace.userId;
-                            billingEntityType = 'user';
-                        } catch {
-                            // Leave as null if can't determine
+                    } catch (error: unknown) {
+                        // Check if it's a 404 (workspace not found) - skip silently
+                        const appwriteError = error as { code?: number };
+                        if (appwriteError.code === 404) {
+                            // Workspace doesn't exist, skip metering (stale reference)
+                            return;
                         }
+                        // For other errors, log and continue without billing attribution
+                        console.warn('[TrafficMetering] Could not determine billing entity, skipping');
                     }
 
                     // Build event data

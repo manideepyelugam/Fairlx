@@ -9,6 +9,15 @@ import { useRouter } from "next/navigation";
 type ResponseType = InferResponseType<(typeof client.api.auth.login)["$post"]>;
 type RequestType = InferRequestType<(typeof client.api.auth.login)["$post"]>;
 
+/**
+ * Login hook with unified post-auth routing
+ * 
+ * After successful login, redirects to /auth/callback which handles:
+ * - Checking if user needs onboarding
+ * - Routing to appropriate workspace/organization
+ * - Same routing logic for all auth methods
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const useLogin = (returnUrl?: string) => {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -27,21 +36,10 @@ export const useLogin = (returnUrl?: string) => {
     onSuccess: (data) => {
       if ('success' in data && data.success) {
         toast.success("Logged in.");
-        router.refresh();
         queryClient.invalidateQueries({ queryKey: ["current"] });
 
-        // Check for post-verification redirect first
-        const postLoginRedirect = typeof window !== 'undefined'
-          ? sessionStorage.getItem('postLoginRedirect')
-          : null;
-
-        if (postLoginRedirect) {
-          sessionStorage.removeItem('postLoginRedirect');
-          router.push(postLoginRedirect);
-        } else if (returnUrl) {
-          router.push(returnUrl);
-        }
-        // If no redirect specified, router.refresh() will handle it
+        // Redirect to unified callback for post-auth routing
+        router.push("/auth/callback");
       }
     },
     onError: (error: { needsVerification?: boolean; error?: string; email?: string } | Error) => {

@@ -28,49 +28,54 @@ const mockUser = {
 };
 
 describe('Registration Schema Validation', () => {
-    it('should require accountType field', async () => {
+    it('should require name, email, and password', async () => {
         const { registerSchema } = await import('@/features/auth/schemas');
 
         const result = registerSchema.safeParse({
             name: 'Test',
             email: 'test@example.com',
             password: 'password123',
-            // Missing accountType
         });
 
-        // Should still pass with default PERSONAL
+        // Should pass with just name, email, password
+        // Account type selection now happens POST-AUTH in onboarding
         expect(result.success).toBe(true);
-        if (result.success) {
-            expect(result.data.accountType).toBe('PERSONAL');
-        }
     });
 
-    it('should require organizationName when accountType is ORG', async () => {
+    it('should reject invalid email', async () => {
         const { registerSchema } = await import('@/features/auth/schemas');
 
         const result = registerSchema.safeParse({
             name: 'Test',
-            email: 'test@example.com',
+            email: 'not-an-email',
             password: 'password123',
-            accountType: 'ORG',
-            // Missing organizationName
         });
 
         expect(result.success).toBe(false);
     });
 
-    it('should accept valid ORG registration', async () => {
+    it('should reject short password', async () => {
         const { registerSchema } = await import('@/features/auth/schemas');
 
         const result = registerSchema.safeParse({
             name: 'Test',
             email: 'test@example.com',
-            password: 'password123',
-            accountType: 'ORG',
-            organizationName: 'My Organization',
+            password: '123', // Too short
         });
 
-        expect(result.success).toBe(true);
+        expect(result.success).toBe(false);
+    });
+
+    it('should reject empty name', async () => {
+        const { registerSchema } = await import('@/features/auth/schemas');
+
+        const result = registerSchema.safeParse({
+            name: '',
+            email: 'test@example.com',
+            password: 'password123',
+        });
+
+        expect(result.success).toBe(false);
     });
 });
 

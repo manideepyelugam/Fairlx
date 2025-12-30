@@ -18,7 +18,11 @@ type RequestType = InferRequestType<
  * After successful verification:
  * - Backend creates session and sets cookie
  * - User is auto-logged in
- * - Redirects directly to onboarding/dashboard based on account type
+ * - Redirects to /auth/callback for unified post-auth routing
+ * 
+ * WHY redirect to callback:
+ * - Same routing logic for all auth methods
+ * - Callback determines if user needs onboarding
  */
 export const useVerifyEmail = () => {
   const router = useRouter();
@@ -36,20 +40,13 @@ export const useVerifyEmail = () => {
 
         // Check if auto-authenticated
         const autoAuthenticated = 'autoAuthenticated' in data && data.autoAuthenticated;
-        const accountType = 'accountType' in data ? data.accountType : "PERSONAL";
-        const orgSetupComplete = 'orgSetupComplete' in data ? data.orgSetupComplete : false;
 
         if (autoAuthenticated) {
-          // Session was created - redirect directly to appropriate route
           toast.success("Email verified!", {
-            description: "Welcome! Taking you to your dashboard...",
+            description: "Welcome! Setting up your account...",
           });
-
-          if (accountType === "ORG" && !orgSetupComplete) {
-            router.push("/onboarding/organization");
-          } else {
-            router.push("/");
-          }
+          // Redirect to unified callback for post-auth routing
+          router.push("/auth/callback");
         } else {
           // Fallback: redirect to sign-in
           toast.success("Email verified!", {
