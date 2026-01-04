@@ -21,18 +21,19 @@ import { ProjectActivityLogWidget } from "@/features/audit-logs/components/proje
 import { ProjectMembersWidget } from "@/features/members/components/project-members-widget";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 
-// Mini bar chart component for stat cards
+// Mini bar chart component for stat cards - uses semantic colors based on variant
 const MiniBarChart = ({ value, max, variant = "default" }: { value: number; max: number; variant?: "default" | "dotted" | "blocks" }) => {
   const bars = 12
   const filledBars = Math.round((value / Math.max(max, 1)) * bars)
   
+  // dotted variant - used for pending/warning states (amber)
   if (variant === "dotted") {
     return (
       <div className="flex items-end gap-0.5 h-8">
         {Array.from({ length: bars }).map((_, i) => (
           <div
             key={i}
-            className={`w-1.5 rounded-sm ${i < filledBars ? 'bg-blue-600 dark:bg-blue-500' : 'bg-blue-100 dark:bg-slate-700'}`}
+            className={`w-1.5 rounded-sm ${i < filledBars ? 'bg-amber-500 dark:bg-amber-400' : 'bg-amber-100 dark:bg-slate-700'}`}
             style={{ height: `${20 + (i * 5) % 30 + 20}%` }}
           />
         ))}
@@ -40,25 +41,27 @@ const MiniBarChart = ({ value, max, variant = "default" }: { value: number; max:
     )
   }
   
+  // blocks variant - used for completed/success states (emerald)
   if (variant === "blocks") {
     return (
       <div className="flex items-end gap-1 h-8">
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
-            className={`w-3 h-6 rounded-sm ${i < Math.ceil(filledBars / 2) ? 'bg-blue-600 dark:bg-blue-500' : 'bg-blue-100 dark:bg-slate-700'}`}
+            className={`w-3 h-6 rounded-sm ${i < Math.ceil(filledBars / 2) ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-emerald-100 dark:bg-slate-700'}`}
           />
         ))}
       </div>
     )
   }
   
+  // default variant - neutral/slate for totals
   return (
     <div className="flex items-end gap-0.5 h-8">
       {Array.from({ length: bars }).map((_, i) => (
         <div
           key={i}
-          className={`w-1 rounded-sm ${i < filledBars ? 'bg-blue-600 dark:bg-blue-500' : 'bg-blue-100 dark:bg-slate-700'}`}
+          className={`w-1 rounded-sm ${i < filledBars ? 'bg-slate-500 dark:bg-slate-400' : 'bg-slate-200 dark:bg-slate-700'}`}
           style={{ height: `${30 + (i * 7) % 40 + 30}%` }}
         />
       ))}
@@ -215,10 +218,10 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
   // Priority distribution (unused but kept for future use)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _priorityDistribution = useMemo(() => [
-    { name: "URGENT", count: tasks.filter(t => t.priority === TaskPriority.URGENT).length, fill: "#2563eb" },
-    { name: "HIGH", count: tasks.filter(t => t.priority === TaskPriority.HIGH).length, fill: "#3b82f6" },
-    { name: "MEDIUM", count: tasks.filter(t => t.priority === TaskPriority.MEDIUM).length, fill: "#60a5fa" },
-    { name: "LOW", count: tasks.filter(t => t.priority === TaskPriority.LOW).length, fill: "#93c5fd" },
+    { name: "URGENT", count: tasks.filter(t => t.priority === TaskPriority.URGENT).length, fill: "#ef4444" },
+    { name: "HIGH", count: tasks.filter(t => t.priority === TaskPriority.HIGH).length, fill: "#f97316" },
+    { name: "MEDIUM", count: tasks.filter(t => t.priority === TaskPriority.MEDIUM).length, fill: "#eab308" },
+    { name: "LOW", count: tasks.filter(t => t.priority === TaskPriority.LOW).length, fill: "#6b7280" },
   ], [tasks]);
 
   // Status overview for pie chart
@@ -230,11 +233,11 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
     const done = tasks.filter(t => t.status === TaskStatus.DONE).length;
 
     return [
-      { id: "done", name: "Done", value: done, color: "#2563eb" },
-      { id: "inProgress", name: "In Progress", value: inProgress, color: "#3b82f6" },
-      { id: "inReview", name: "In Review", value: inReview, color: "#60a5fa" },
-      { id: "todo", name: "To Do", value: todo, color: "#93c5fd" },
-       { id: "assigned", name: "Assigned", value: assigned, color: "#bfdbfe" },
+      { id: "done", name: "Done", value: done, color: "#10b981" },
+      { id: "inProgress", name: "In Progress", value: inProgress, color: "#eab308" },
+      { id: "inReview", name: "In Review", value: inReview, color: "#3b82f6" },
+      { id: "todo", name: "To Do", value: todo, color: "#9ca3af" },
+       { id: "assigned", name: "Assigned", value: assigned, color: "#f87171" },
     ].filter(s => s.value > 0);
   }, [tasks]);
 
@@ -246,11 +249,11 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
             {/* Top Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {/* Total Task Card */}
-              <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700">
+              <Card className="p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-sm font-normal text-slate-600 dark:text-slate-400">Total Tasks</span>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/20">
-                    <ArrowUpRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <ArrowUpRight className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                   </Button>
                 </div>
                 <div className="flex items-end justify-between">
@@ -260,11 +263,11 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
               </Card>
 
               {/* Pending Task Card */}
-              <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700">
+              <Card className="p-5 bg-white dark:bg-slate-800 border border-amber-200 dark:border-slate-700">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-sm font-normal text-slate-600 dark:text-slate-400">Pending Tasks</span>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/20">
-                    <ArrowUpRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-amber-50 dark:hover:bg-amber-900/20">
+                    <ArrowUpRight className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                   </Button>
                 </div>
                 <div className="flex items-end justify-between">
@@ -274,11 +277,11 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
               </Card>
 
               {/* Completed Task Card */}
-              <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700">
+              <Card className="p-5 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-slate-700">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-sm font-normal text-slate-600 dark:text-slate-400">Completed Tasks</span>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/20">
-                    <ArrowUpRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
+                    <ArrowUpRight className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                   </Button>
                 </div>
                 <div className="flex items-end justify-between">
@@ -288,11 +291,11 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
               </Card>
 
               {/* Flagged Task Card */}
-              <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700">
+              <Card className="p-5 bg-white dark:bg-slate-800 border border-rose-200 dark:border-slate-700">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-sm font-normal text-slate-600 dark:text-slate-400">Flagged</span>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/20">
-                    <Flag className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-rose-50 dark:hover:bg-rose-900/20">
+                    <Flag className="h-4 w-4 text-rose-600 dark:text-rose-400" />
                   </Button>
                 </div>
                 <div className="flex items-end justify-between">
@@ -308,7 +311,7 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Status Overview Pie Chart */}
-              <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+              <Card className="p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Status Overview</h3>
                 </div>
@@ -367,16 +370,16 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
             </div>
 
             {/* Task List Table */}
-            <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+            <Card className="p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Recent Tasks</h3>
-                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-slate-100 dark:hover:bg-slate-800">
                   <MoreHorizontal className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                 </Button>
               </div>
               
               {/* Table Header */}
-              <div className="grid grid-cols-12 gap-4 pb-3 border-b border-blue-100 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-400">
+              <div className="grid grid-cols-12 gap-4 pb-3 border-b border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-400">
                 <div className="col-span-5">Name</div>
                 <div className="col-span-3">Time</div>
                 <div className="col-span-2">Status</div>
@@ -384,12 +387,12 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
               </div>
 
               {/* Table Body */}
-              <div className="divide-y divide-blue-50 dark:divide-slate-700">
+              <div className="divide-y divide-slate-100 dark:divide-slate-700">
                 {recentTasks.length > 0 ? (
                   recentTasks.map((task) => (
                     <div
                       key={task.id}
-                      className="grid grid-cols-12 gap-4 py-3 items-center hover:bg-blue-50 dark:hover:bg-slate-700/50 -mx-5 px-5 transition-colors"
+                      className="grid grid-cols-12 gap-4 py-3 items-center hover:bg-slate-50 dark:hover:bg-slate-700/50 -mx-5 px-5 transition-colors"
                     >
                       <div className="col-span-5 flex items-center gap-3">
                         <MemberAvatar 
@@ -410,14 +413,14 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
                       <div className="col-span-2">
                         <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
                           task.status === "Completed" 
-                            ? "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400" 
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400" 
                             : task.status === "In Progress"
-                            ? "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300"
+                            ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300"
                             : "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
                         }`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${
-                            task.status === "Completed" ? "bg-blue-600" : 
-                            task.status === "In Progress" ? "bg-blue-400" : "bg-slate-400"
+                            task.status === "Completed" ? "bg-emerald-600" : 
+                            task.status === "In Progress" ? "bg-yellow-500" : "bg-slate-400"
                           }`} />
                           {task.status}
                         </span>
@@ -425,10 +428,10 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
                       <div className="col-span-2">
                         <span className={`text-xs font-medium px-2 py-1 rounded ${
                           task.priority === "URGENT" || task.priority === "HIGH" 
-                            ? "bg-blue-600 text-blue-100 dark:bg-blue-900 dark:text-blue-200" 
+                            ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200" 
                             : task.priority === "MEDIUM"
-                            ? "bg-blue-400 text-blue-900 dark:bg-blue-700 dark:text-blue-100"
-                            : "bg-blue-200 text-blue-800 dark:bg-blue-800 dark:text-blue-200"
+                            ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-700 dark:text-yellow-100"
+                            : "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200"
                         }`}>
                           {task.priority}
                         </span>
@@ -448,20 +451,20 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
           {/* Bottom Section - Due Alerts & Team Members */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Due Alerts Card */}
-            <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+            <Card className="p-5 bg-white dark:bg-slate-800 border border-amber-200 dark:border-slate-700 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Due Alerts</h3>
-                <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-blue-50 dark:hover:bg-blue-900/20">
-                  <PlusIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-amber-50 dark:hover:bg-amber-900/20">
+                  <PlusIcon className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                 </Button>
               </div>
               
               {dueAlerts.length > 0 ? (
                 <div className="space-y-2">
                   {dueAlerts.map((alert) => (
-                    <div key={alert.id} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors">
+                    <div key={alert.id} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg hover:bg-amber-50 dark:hover:bg-slate-700 transition-colors">
                       <div className="flex items-center gap-2 min-w-0">
-                        <Clock className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                        <Clock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
                         <span className="text-xs text-slate-700 dark:text-slate-300 truncate">{alert.title}</span>
                       </div>
                       <span className="text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap ml-2">

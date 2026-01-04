@@ -149,11 +149,11 @@ export const GitHubIntegrationClient = () => {
             <div className="relative flex justify-center lg:justify-end">
               <div className="group relative w-full max-w-sm">
                 <div className="absolute -inset-1  rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-300" />
-                <Card className="relative border-2 border-blue-500/20 hover:border-blue-500/40 transition-all duration-300 shadow-lg hover:shadow-xl">
+                <Card className="relative border-2 border-slate-400/20 hover:border-slate-500/40 transition-all duration-300 shadow-lg hover:shadow-xl">
                   <CardHeader className="pb-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center">
-                        <Github className="h-6 w-6 text-blue-500" />
+                      <div className="w-12 h-12 bg-slate-900/10 dark:bg-slate-100/10 rounded-xl flex items-center justify-center">
+                        <Github className="h-6 w-6 text-slate-900 dark:text-slate-100" />
                       </div>
                       <div>
                         <CardTitle className="text-lg">GitHub</CardTitle>
@@ -195,12 +195,12 @@ export const GitHubIntegrationClient = () => {
             <div className="relative flex justify-center">
               <div className="group relative w-full max-w-sm">
                 <div className="absolute -inset-1  rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-300" />
-                <Card className="relative border-2 border-purple-500/20 hover:border-purple-500/40 transition-all duration-300 shadow-lg hover:shadow-xl">
+                <Card className="relative border-2 border-indigo-500/20 hover:border-indigo-500/40 transition-all duration-300 shadow-lg hover:shadow-xl">
                   <CardHeader className="pb-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center relative overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 via-purple-500/20 to-purple-500/0 animate-shimmer" />
-                        <BookOpen className="h-6 w-6 text-purple-500 relative z-10" />
+                      <div className="w-12 h-12 bg-indigo-500/10 rounded-xl flex items-center justify-center relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/0 via-indigo-500/20 to-indigo-500/0 animate-shimmer" />
+                        <BookOpen className="h-6 w-6 text-indigo-500 relative z-10" />
                       </div>
                       <div>
                         <CardTitle className="text-lg">AI Process</CardTitle>
@@ -211,11 +211,11 @@ export const GitHubIntegrationClient = () => {
                   <CardContent>
                     <div className="space-y-2 text-xs text-muted-foreground">
                       <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
                         <span>Code Analysis</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
                         <span>Documentation</span>
                       </div>
                     </div>
@@ -260,12 +260,12 @@ export const GitHubIntegrationClient = () => {
 
         {/* Features Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-          <Card className="group relative overflow-hidden border-2 hover:border-blue-500/50 transition-all duration-300">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <Card className="group relative overflow-hidden border-2 hover:border-cyan-500/50 transition-all duration-300">
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <CardHeader>
               <div className="relative">
-                <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
-                  <BookOpen className="h-6 w-6 text-blue-500" />
+                <div className="w-12 h-12 bg-cyan-500/10 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                  <BookOpen className="h-6 w-6 text-cyan-600" />
                 </div>
                 <CardTitle className="text-lg">Auto Documentation</CardTitle>
               </div>
@@ -277,12 +277,12 @@ export const GitHubIntegrationClient = () => {
             </CardContent>
           </Card>
 
-          <Card className="group relative overflow-hidden border-2 hover:border-green-500/50 transition-all duration-300">
-            <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <Card className="group relative overflow-hidden border-2 hover:border-emerald-500/50 transition-all duration-300">
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <CardHeader>
               <div className="relative">
-                <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
-                  <MessageSquare className="h-6 w-6 text-green-500" />
+                <div className="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                  <MessageSquare className="h-6 w-6 text-emerald-600" />
                 </div>
                 <CardTitle className="text-lg">Ask Questions</CardTitle>
               </div>
@@ -294,12 +294,12 @@ export const GitHubIntegrationClient = () => {
             </CardContent>
           </Card>
 
-          <Card className="group relative overflow-hidden border-2 hover:border-purple-500/50 transition-all duration-300">
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <Card className="group relative overflow-hidden border-2 hover:border-amber-500/50 transition-all duration-300">
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <CardHeader>
               <div className="relative">
-                <div className="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
-                  <GitCommit className="h-6 w-6 text-purple-500" />
+                <div className="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                  <GitCommit className="h-6 w-6 text-amber-600" />
                 </div>
                 <CardTitle className="text-lg">Commit Insights</CardTitle>
               </div>

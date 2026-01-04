@@ -305,11 +305,11 @@ export const WorkspaceIdClient = () => {
             {/* Top Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Total Task Card */}
-              <Card className="p-5 bg-white  border border-blue-100">
+              <Card className="p-5 bg-white  border border-slate-200">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-sm font-normal text-slate-600 dark:text-slate-400">Total Tasks</span>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/20">
-                    <ArrowUpRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <ArrowUpRight className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                   </Button>
                 </div>
                 <div className="flex items-end justify-between">
@@ -319,11 +319,11 @@ export const WorkspaceIdClient = () => {
               </Card>
 
               {/* Pending Task Card */}
-              <Card className="p-5 bg-white border border-blue-100  ">
+              <Card className="p-5 bg-white border border-amber-200  ">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-sm font-normal text-slate-600 dark:text-slate-400">Pending Tasks</span>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/20">
-                    <ArrowUpRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-amber-50 dark:hover:bg-amber-900/20">
+                    <ArrowUpRight className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                   </Button>
                 </div>
                 <div className="flex items-end justify-between">
@@ -333,11 +333,11 @@ export const WorkspaceIdClient = () => {
               </Card>
 
               {/* Completed Task Card */}
-              <Card className="p-5 bg-white  border border-blue-100 ">
+              <Card className="p-5 bg-white  border border-emerald-200 ">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-sm font-normal text-slate-600 dark:text-slate-400">Completed Tasks</span>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/20">
-                    <ArrowUpRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
+                    <ArrowUpRight className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                   </Button>
                 </div>
                 <div className="flex items-end justify-between">
@@ -350,10 +350,10 @@ export const WorkspaceIdClient = () => {
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Project Overview Chart */}
-              <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+              <Card className="p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
                 <div className="flex items-center justify-between mb-8">
                   <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Project Overview</h3>
-                  <select className="text-xs bg-blue-50 dark:bg-slate-700 text-blue-900 dark:text-blue-100 px-2 py-1 rounded-md border border-blue-200 dark:border-slate-600 focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                  <select className="text-xs bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-slate-100 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-primary cursor-pointer">
                     <option>This Week</option>
                     <option>This Month</option>
                     <option>This Year</option>
@@ -391,14 +391,14 @@ export const WorkspaceIdClient = () => {
                         />
                         <Bar 
                           dataKey="total" 
-                          fill="#93c5fd"
+                          fill="#c7d2fe"
                           radius={[4, 4, 0, 0]}
                           maxBarSize={40}
                           name="Total"
                         />
                         <Bar 
                           dataKey="completed" 
-                          fill="#2563eb"
+                          fill="#10b981"
                           radius={[4, 4, 0, 0]}
                           maxBarSize={40}
                           name="Completed"
@@ -414,10 +414,10 @@ export const WorkspaceIdClient = () => {
               </Card>
 
               {/* Task Statistics Card */}
-              <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+              <Card className="p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Task Statistics</h3>
-                  <select className="text-xs bg-blue-50 dark:bg-slate-700 text-blue-900 dark:text-blue-100 px-2 py-1 rounded-md border border-blue-200 dark:border-slate-600 focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                  <select className="text-xs bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-slate-100 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-primary cursor-pointer">
                     <option>Monthly</option>
                     <option>Weekly</option>
                     <option>Daily</option>
@@ -755,10 +755,10 @@ export const WorkspaceIdClient = () => {
           {/* Bottom Row - Workload, Priority & Top Contributors */}
             <div className="grid grid-cols-1 w-full mt-4  lg:grid-cols-3 gap-4">
               {/* Workload Distribution */}
-              <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+              <Card className="p-5 bg-white dark:bg-slate-800 border border-violet-200 dark:border-slate-700 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Workload Distribution</h3>
-                  <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <Users className="h-4 w-4 text-violet-600 dark:text-violet-400" />
                 </div>
                 <div className="space-y-4">
                   {dynamicData.memberWorkload.length > 0 ? (
@@ -779,7 +779,7 @@ export const WorkspaceIdClient = () => {
                               </div>
                               <Progress 
                                 value={workloadPercentage} 
-                                className="h-2 bg-blue-100 dark:bg-slate-700 [&>div]:bg-blue-600" 
+                                className="h-2 bg-violet-100 dark:bg-slate-700 [&>div]:bg-violet-600" 
                               />
                             </div>
                           </div>
@@ -795,10 +795,10 @@ export const WorkspaceIdClient = () => {
               </Card>
 
               {/* Priority Distribution */}
-              <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+              <Card className="p-5 bg-white dark:bg-slate-800 border border-rose-200 dark:border-slate-700 shadow-sm">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Priority Distribution</h3>
-                  <Layers className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <Layers className="h-4 w-4 text-rose-600 dark:text-rose-400" />
                 </div>
                 <div className="h-[200px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -838,10 +838,10 @@ export const WorkspaceIdClient = () => {
               </Card>
 
               {/* Top Contributors */}
-              <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+              <Card className="p-5 bg-white dark:bg-slate-800 border border-cyan-200 dark:border-slate-700 shadow-sm">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Top Contributors</h3>
-                  <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <TrendingUp className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
                 </div>
                 {dynamicData.contributionData.length > 0 ? (
                   <div className="space-y-3">
