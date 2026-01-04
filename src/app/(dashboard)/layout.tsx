@@ -74,7 +74,7 @@ const DashboardContent = ({ children }: DashboardLayoutProps) => {
         </div>
         <div className="lg:pl-[264px] w-full flex flex-col min-h-screen">
           <Navbar />
-          <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900/50">
+          <div className="flex-1 overflow-y-auto bg-white dark:bg-slate-900/50">
             <div className="mx-auto max-w-screen-2xl">
               <main className={cn(
                 "flex flex-col",
