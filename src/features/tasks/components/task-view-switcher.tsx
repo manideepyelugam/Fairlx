@@ -267,7 +267,7 @@ export const TaskViewSwitcher = ({
               onClick={() => setCompleteSprintOpen(true)}
               size="xs"
               variant="outline"
-              className="w-full font-medium px-3 py-2 border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300 lg:w-auto"
+              className="w-full font-medium px-3 py-2 border-green-200 bg-green-50 text-green-700 hover:bg-green-100 hover:border-green-300 lg:w-auto"
             >
               Complete Sprint {setupState.activeSprint.name}
             </Button>

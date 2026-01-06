@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
-import { Github, BookOpen, MessageSquare, GitCommit, Loader2, ExternalLink, Settings, FileText } from "lucide-react";
+import { ArrowLeft, Github, BookOpen, MessageSquare, GitCommit, Loader2, ExternalLink, Settings, FileText } from "lucide-react";
 
 import { PageLoader } from "@/components/page-loader";
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
@@ -119,8 +119,16 @@ export const GitHubIntegrationClient = () => {
   if (!repository) {
     return (
       <div className="flex flex-col gap-y-6 max-w-7xl mx-auto">
+        {/* Back Button */}
+        <div className="flex items-center gap-4">
+          <Link href={`/workspaces/${workspaceId}/projects/${projectId}`}>
+            <Button variant="ghost" size="icon" className="size-9">
+              <ArrowLeft className="size-5" />
+            </Button>
+          </Link>
+        </div>
         {/* Header Section */}
-        <div className="text-center space-y-3 pt-8">
+        <div className="text-center space-y-3 pt-4">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-green-500/10 mb-4">
             <Github className="h-8 w-8 text-primary" />
           </div>
@@ -319,29 +327,35 @@ export const GitHubIntegrationClient = () => {
   return (
     <div className="flex flex-col gap-y-8">
       <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link href={`/workspaces/${workspaceId}/projects/${projectId}`}>
+            <Button variant="ghost" size="icon" className="size-9">
+              <ArrowLeft className="size-5" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              GitHub Integration
+            </h1>
+            <div className="flex items-center gap-2 mt-2">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Github className="h-4 w-4" />
+                <span className="font-medium text-sm">{repository.repositoryName}</span>
+                <span className="text-xs">•</span>
+                <span className="text-sm">Branch: {repository.branch}</span>
+                <span className="text-xs">•</span>
 
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            GitHub Integration
-          </h1>
-          <div className="flex items-center gap-2 mt-2">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Github className="h-4 w-4" />
-              <span className="font-medium text-sm">{repository.repositoryName}</span>
-              <span className="text-xs">•</span>
-              <span className="text-sm">Branch: {repository.branch}</span>
-              <span className="text-xs">•</span>
-
+              </div>
+              <a
+                href={repository.githubUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+              >
+                <ExternalLink className="h-3 w-3" />
+                View on GitHub
+              </a>
             </div>
-            <a
-              href={repository.githubUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
-            >
-              <ExternalLink className="h-3 w-3" />
-              View on GitHub
-            </a>
           </div>
         </div>
 
