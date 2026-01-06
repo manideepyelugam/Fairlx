@@ -9,6 +9,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface LabelBadgeProps {
   label: string;
@@ -235,28 +241,41 @@ export const LabelFilter = ({
   );
 
   return (
-    <div className="space-y-2">
-      {selectedLabels.length > 0 && (
-        <LabelsDisplay
-          labels={selectedLabels}
-          onRemove={(label) =>
-            onLabelsChange(selectedLabels.filter((l) => l !== label))
-          }
-        />
-      )}
-
+    <div>
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className="h-8 text-xs font-normal justify-start"
-          >
-            <Plus className="h-4 w-4 font-normal text-xs " />
-            {placeholder}
-          </Button>
-        </PopoverTrigger>
+        <TooltipProvider>
+          <Tooltip delayDuration={300}>
+            <TooltipTrigger asChild>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={open}
+                  className="h-8 text-xs font-normal justify-start relative"
+                >
+                  <Plus className="h-4 w-4 font-normal text-xs" />
+                  {placeholder}
+                  {selectedLabels.length > 0 && (
+                    <span className="ml-1.5 inline-flex items-center justify-center size-4 text-[10px] font-semibold rounded-full bg-primary text-primary-foreground">
+                      {selectedLabels.length}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+            </TooltipTrigger>
+            {selectedLabels.length > 0 && (
+              <TooltipContent side="bottom" className="max-w-xs">
+                <div className="flex flex-wrap gap-1">
+                  {selectedLabels.map((label) => (
+                    <Badge key={label} variant="secondary" className="text-xs">
+                      {label}
+                    </Badge>
+                  ))}
+                </div>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
 
         <PopoverContent className="w-80 !text-xs p-2">
           <div className="space-y-2">

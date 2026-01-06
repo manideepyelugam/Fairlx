@@ -214,12 +214,15 @@ export const CreateProgramForm = ({ onCancel }: CreateProgramFormProps) => {
                     <FormItem>
                       <FormLabel>Start Date (Optional)</FormLabel>
                       <FormControl>
-                        <Input
-                          type="date"
-                          disabled={isPending}
-                          {...field}
-                          value={field.value || ""}
-                        />
+                        <div className="relative">
+                          <Input
+                            type="date"
+                            disabled={isPending}
+                            {...field}
+                            value={field.value || ""}
+                            className="w-full pr-3"
+                          />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -233,12 +236,15 @@ export const CreateProgramForm = ({ onCancel }: CreateProgramFormProps) => {
                     <FormItem>
                       <FormLabel>End Date (Optional)</FormLabel>
                       <FormControl>
-                        <Input
-                          type="date"
-                          disabled={isPending}
-                          {...field}
-                          value={field.value || ""}
-                        />
+                        <div className="relative">
+                          <Input
+                            type="date"
+                            disabled={isPending}
+                            {...field}
+                            value={field.value || ""}
+                            className="w-full pr-3"
+                          />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>

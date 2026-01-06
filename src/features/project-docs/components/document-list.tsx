@@ -199,8 +199,8 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
         </div>
 
         <Select value={selectedCategory} onValueChange={(v) => setSelectedCategory(v as DocumentCategory | "all")}>
-          <SelectTrigger className="w-[140px] h-9 text-xs font-light bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 rounded-lg">
-            <SelectValue placeholder="All categories" />
+          <SelectTrigger className="w-[180px] h-9 text-xs font-light bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 rounded-lg">
+            <SelectValue placeholder="All categories" className="truncate" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all" className="text-xs">All categories</SelectItem>

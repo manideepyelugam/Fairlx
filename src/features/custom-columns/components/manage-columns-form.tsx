@@ -450,18 +450,8 @@ export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
                     </div>
                     <div>
                       <p className="font-medium text-sm">No custom columns yet</p>
-                      <p className="text-xs text-muted-foreground">Create your first custom column to get started</p>
+                      <p className="text-xs text-muted-foreground">Click &ldquo;Add Column&rdquo; above to get started</p>
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowCreateForm(true)}
-                      className="mt-2"
-                    >
-                      <PlusIcon className="size-4 mr-2" />
-                      Add Your First Column
-                    </Button>
                   </div>
                 </div>
               )

@@ -2,7 +2,6 @@
 
 import { useState, useRef } from "react";
 import {
-  Paperclip,
   Plus,
   ChevronDown,
   ChevronRight,
@@ -326,15 +325,11 @@ export const TaskAttachments = ({ taskId, workspaceId, onPreview }: TaskAttachme
               <span className="text-xs text-gray-400">Loading...</span>
             </div>
           ) : attachmentCount === 0 ? (
-            <button
-              onClick={() => setUploadOpen(true)}
-              className="flex items-center gap-3 px-2 py-2 hover:bg-gray-100 rounded-md w-full text-left transition-colors"
-            >
-              <Paperclip className="size-4 text-gray-400" />
-              <span className="text-[13px] font-normal text-gray-500">
-                Add attachment
+            <div className="flex items-center justify-center py-4 text-center">
+              <span className="text-[12px] text-gray-400">
+                No attachments yet
               </span>
-            </button>
+            </div>
           ) : (
             attachments?.map((attachment) => (
               <AttachmentItem
