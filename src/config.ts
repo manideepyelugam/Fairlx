@@ -88,3 +88,15 @@ export const ORG_DELETE_GRACE_PERIOD_DAYS = parseInt(process.env.ORG_DELETE_GRAC
 export const USAGE_RATE_TRAFFIC_GB = parseFloat(process.env.USAGE_RATE_TRAFFIC_GB || "0.10");
 export const USAGE_RATE_STORAGE_GB_MONTH = parseFloat(process.env.USAGE_RATE_STORAGE_GB_MONTH || "0.05");
 export const USAGE_RATE_COMPUTE_UNIT = parseFloat(process.env.USAGE_RATE_COMPUTE_UNIT || "0.001");
+
+// ===============================
+// Billing & Payments Collections
+// ===============================
+export const BILLING_ACCOUNTS_ID = process.env.NEXT_PUBLIC_APPWRITE_BILLING_ACCOUNTS_ID!;
+export const BILLING_AUDIT_LOGS_ID = process.env.NEXT_PUBLIC_APPWRITE_BILLING_AUDIT_LOGS_ID!;
+
+// ===============================
+// Billing Configuration
+// ===============================
+export const BILLING_GRACE_PERIOD_DAYS = parseInt(process.env.BILLING_GRACE_PERIOD_DAYS || "14");
+export const BILLING_CURRENCY = process.env.BILLING_CURRENCY || "INR";

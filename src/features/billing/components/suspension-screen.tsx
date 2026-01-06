@@ -1,0 +1,152 @@
+"use client";
+
+import { AlertCircle, CreditCard, Mail, Phone, ExternalLink } from "lucide-react";
+import Link from "next/link";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+interface SuspensionScreenProps {
+    organizationId?: string;
+    organizationName?: string;
+    invoiceAmount?: number;
+    currency?: string;
+    invoiceId?: string;
+    gracePeriodExpiredAt?: string;
+}
+
+/**
+ * Suspension Screen
+ * 
+ * Full-screen overlay displayed when account is suspended.
+ * Shows clear recovery instructions and only allows access to billing page.
+ * 
+ * CRITICAL: This blocks all other UI and forces user to billing page.
+ */
+export function SuspensionScreen({
+    organizationId,
+    organizationName,
+    invoiceAmount,
+    currency = "INR",
+    invoiceId,
+    gracePeriodExpiredAt,
+}: SuspensionScreenProps) {
+    const billingUrl = organizationId
+        ? `/organization/settings/billing`
+        : "/settings/billing";
+
+    const formatAmount = (amount: number) => {
+        return new Intl.NumberFormat("en-IN", {
+            style: "currency",
+            currency: currency,
+        }).format(amount);
+    };
+
+    const formatDate = (dateString: string) => {
+        return new Date(dateString).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+        });
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm">
+            <div className="w-full max-w-2xl px-4">
+                <Card className="border-red-200 dark:border-red-900 shadow-2xl">
+                    <CardHeader className="text-center pb-2">
+                        <div className="mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/30 p-4">
+                            <AlertCircle className="h-12 w-12 text-red-600 dark:text-red-400" />
+                        </div>
+                        <CardTitle className="text-2xl text-red-700 dark:text-red-400">
+                            Account Suspended
+                        </CardTitle>
+                        <CardDescription className="text-lg">
+                            {organizationName ? (
+                                <>Your organization <strong>{organizationName}</strong> has been suspended</>
+                            ) : (
+                                <>Your account has been suspended</>
+                            )} due to an unpaid invoice.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        {/* Invoice Details */}
+                        {invoiceAmount !== undefined && (
+                            <div className="rounded-lg border bg-muted/50 p-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Outstanding Balance</p>
+                                        <p className="text-2xl font-bold">{formatAmount(invoiceAmount)}</p>
+                                        {invoiceId && (
+                                            <p className="text-xs text-muted-foreground">Invoice: {invoiceId}</p>
+                                        )}
+                                    </div>
+                                    {gracePeriodExpiredAt && (
+                                        <div className="text-right">
+                                            <p className="text-sm text-muted-foreground">Suspended on</p>
+                                            <p className="text-sm font-medium">{formatDate(gracePeriodExpiredAt)}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* What's Blocked */}
+                        <div className="space-y-2">
+                            <h3 className="font-semibold">While suspended, you cannot:</h3>
+                            <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                                <li>Create or update projects, tasks, or work items</li>
+                                <li>Upload files or documents</li>
+                                <li>Use API access</li>
+                                <li>Invite or manage team members</li>
+                            </ul>
+                        </div>
+
+                        {/* Data Safety Notice */}
+                        <div className="rounded-lg border border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950/30 p-4">
+                            <p className="text-sm text-green-700 dark:text-green-400">
+                                <strong>Your data is safe.</strong> All your projects, tasks, and files are preserved.
+                                Once you update your payment method and pay the outstanding balance, full access will be restored immediately.
+                            </p>
+                        </div>
+
+                        {/* Recovery Actions */}
+                        <div className="flex flex-col gap-3">
+                            <Button asChild size="lg" className="w-full">
+                                <Link href={billingUrl}>
+                                    <CreditCard className="mr-2 h-5 w-5" />
+                                    Update Payment Method
+                                </Link>
+                            </Button>
+
+                            <div className="flex gap-3">
+                                <Button asChild variant="outline" size="sm" className="flex-1">
+                                    <a href="mailto:support@fairlx.com">
+                                        <Mail className="mr-2 h-4 w-4" />
+                                        Contact Support
+                                    </a>
+                                </Button>
+                                <Button asChild variant="outline" size="sm" className="flex-1">
+                                    <a href="tel:+1-800-FAIRLX">
+                                        <Phone className="mr-2 h-4 w-4" />
+                                        Call Us
+                                    </a>
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* View Invoices Link */}
+                        <div className="text-center">
+                            <Button asChild variant="ghost" size="sm">
+                                <Link href={`${billingUrl}?tab=invoices`}>
+                                    <ExternalLink className="mr-2 h-3 w-3" />
+                                    View All Invoices
+                                </Link>
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    );
+}
