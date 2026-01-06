@@ -117,6 +117,10 @@ const app = new Hono()
                     await handlePaymentCaptured(databases, event, eventId);
                     break;
 
+                case "payment.authorized":
+                    await handlePaymentAuthorized(databases, event, eventId);
+                    break;
+
                 case "payment.failed":
                     await handlePaymentFailed(databases, event, eventId);
                     break;
@@ -131,6 +135,14 @@ const app = new Hono()
 
                 case "subscription.cancelled":
                     await handleSubscriptionCancelled(databases, event, eventId);
+                    break;
+
+                case "refund.processed":
+                    await handleRefundProcessed(databases, event, eventId);
+                    break;
+
+                case "refund.failed":
+                    await handleRefundFailed(databases, event, eventId);
                     break;
 
                 default:
@@ -380,6 +392,7 @@ async function handlePaymentFailed(
 async function handleSubscriptionCharged(
     databases: Awaited<ReturnType<typeof createAdminClient>>["databases"],
     event: RazorpayWebhookEvent,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _eventId: string
 ) {
     const subscription = event.payload.subscription?.entity;
@@ -521,6 +534,135 @@ async function handleSubscriptionCancelled(
     );
 
     console.log(`[Webhook] Processed subscription.cancelled for account ${billingAccountId}`);
+}
+
+/**
+ * Handle payment.authorized event
+ * 
+ * Called when a payment is authorized (before capture).
+ * Used for tracking and audit purposes.
+ */
+async function handlePaymentAuthorized(
+    databases: Awaited<ReturnType<typeof createAdminClient>>["databases"],
+    event: RazorpayWebhookEvent,
+    eventId: string
+) {
+    const payment = event.payload.payment?.entity;
+    if (!payment) {
+        console.warn("[Webhook] payment.authorized missing payment entity");
+        return;
+    }
+
+    const billingAccountId = payment.notes?.fairlx_billing_account_id;
+    if (!billingAccountId) {
+        // Not a Fairlx payment, skip
+        console.log("[Webhook] payment.authorized - not a Fairlx payment, skipping");
+        return;
+    }
+
+    // Log audit event for tracking
+    await databases.createDocument(
+        DATABASE_ID,
+        BILLING_AUDIT_LOGS_ID,
+        ID.unique(),
+        {
+            billingAccountId,
+            eventType: BillingAuditEventType.PAYMENT_AUTHORIZED,
+            razorpayEventId: eventId,
+            metadata: JSON.stringify({
+                paymentId: payment.id,
+                amount: payment.amount,
+                currency: payment.currency,
+            }),
+        }
+    );
+
+    console.log(`[Webhook] Processed payment.authorized for account ${billingAccountId}`);
+}
+
+/**
+ * Handle refund.processed event
+ * 
+ * Called when a refund is successfully processed.
+ */
+async function handleRefundProcessed(
+    databases: Awaited<ReturnType<typeof createAdminClient>>["databases"],
+    event: RazorpayWebhookEvent,
+    eventId: string
+) {
+    const refund = event.payload.refund?.entity;
+    if (!refund) {
+        console.warn("[Webhook] refund.processed missing refund entity");
+        return;
+    }
+
+    const billingAccountId = refund.notes?.fairlx_billing_account_id;
+    if (!billingAccountId) {
+        console.log("[Webhook] refund.processed - not a Fairlx refund, skipping");
+        return;
+    }
+
+    // Log audit event
+    await databases.createDocument(
+        DATABASE_ID,
+        BILLING_AUDIT_LOGS_ID,
+        ID.unique(),
+        {
+            billingAccountId,
+            eventType: BillingAuditEventType.REFUND_PROCESSED,
+            razorpayEventId: eventId,
+            metadata: JSON.stringify({
+                refundId: refund.id,
+                paymentId: refund.payment_id,
+                amount: refund.amount,
+                reason: refund.notes?.reason || "Not specified",
+            }),
+        }
+    );
+
+    console.log(`[Webhook] Processed refund.processed for account ${billingAccountId}`);
+}
+
+/**
+ * Handle refund.failed event
+ * 
+ * Called when a refund fails.
+ */
+async function handleRefundFailed(
+    databases: Awaited<ReturnType<typeof createAdminClient>>["databases"],
+    event: RazorpayWebhookEvent,
+    eventId: string
+) {
+    const refund = event.payload.refund?.entity;
+    if (!refund) {
+        console.warn("[Webhook] refund.failed missing refund entity");
+        return;
+    }
+
+    const billingAccountId = refund.notes?.fairlx_billing_account_id;
+    if (!billingAccountId) {
+        console.log("[Webhook] refund.failed - not a Fairlx refund, skipping");
+        return;
+    }
+
+    // Log audit event
+    await databases.createDocument(
+        DATABASE_ID,
+        BILLING_AUDIT_LOGS_ID,
+        ID.unique(),
+        {
+            billingAccountId,
+            eventType: BillingAuditEventType.REFUND_FAILED,
+            razorpayEventId: eventId,
+            metadata: JSON.stringify({
+                refundId: refund.id,
+                paymentId: refund.payment_id,
+                amount: refund.amount,
+            }),
+        }
+    );
+
+    console.log(`[Webhook] Processed refund.failed for account ${billingAccountId}`);
 }
 
 export default app;

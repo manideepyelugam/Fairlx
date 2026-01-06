@@ -53,7 +53,7 @@ async function createBillingAccountsCollection() {
             { key: 'razorpayCustomerId', type: 'string', size: 255, required: true },
             { key: 'razorpaySubscriptionId', type: 'string', size: 255, required: false },
             { key: 'razorpayMandateId', type: 'string', size: 255, required: false },
-            { key: 'billingStatus', type: 'string', size: 20, required: true, default: 'ACTIVE' },
+            { key: 'billingStatus', type: 'string', size: 20, required: true },
             { key: 'billingCycleStart', type: 'datetime', required: true },
             { key: 'billingCycleEnd', type: 'datetime', required: true },
             { key: 'gracePeriodEnd', type: 'datetime', required: false },

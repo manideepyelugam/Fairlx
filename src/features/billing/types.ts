@@ -71,6 +71,16 @@ export enum BillingAuditEventType {
     SUBSCRIPTION_UPDATED = "SUBSCRIPTION_UPDATED",
     SUBSCRIPTION_CANCELLED = "SUBSCRIPTION_CANCELLED",
 
+    // Billing Account Events
+    BILLING_ACCOUNT_CREATED = "BILLING_ACCOUNT_CREATED",
+
+    // Payment Events
+    PAYMENT_AUTHORIZED = "PAYMENT_AUTHORIZED",
+
+    // Refund Events
+    REFUND_PROCESSED = "REFUND_PROCESSED",
+    REFUND_FAILED = "REFUND_FAILED",
+
     // Webhook Events
     WEBHOOK_RECEIVED = "WEBHOOK_RECEIVED",
     WEBHOOK_PROCESSED = "WEBHOOK_PROCESSED",
@@ -374,6 +384,9 @@ export type RazorpayWebhookEvent = {
         subscription?: {
             entity: RazorpaySubscriptionEntity;
         };
+        refund?: {
+            entity: RazorpayRefundEntity;
+        };
     };
     created_at: number;
 };
@@ -403,6 +416,19 @@ export type RazorpaySubscriptionEntity = {
     current_start: number;
     current_end: number;
     notes?: Record<string, string>;
+};
+
+export type RazorpayRefundEntity = {
+    id: string;
+    entity: "refund";
+    amount: number;
+    currency: string;
+    payment_id: string;
+    status: "processed" | "failed" | "pending";
+    speed_requested: "normal" | "optimum";
+    speed_processed: "normal" | "instant";
+    notes?: Record<string, string>;
+    created_at: number;
 };
 
 // ===============================
