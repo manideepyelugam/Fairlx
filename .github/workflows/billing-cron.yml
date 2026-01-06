@@ -1,0 +1,114 @@
+name: Billing Cron Jobs
+
+on:
+  schedule:
+    # Process billing cycle - 1st of each month at midnight UTC
+    - cron: '0 0 1 * *'
+    # Enforce grace periods - daily at 1 AM UTC
+    - cron: '0 1 * * *'
+    # Send reminders - daily at 9 AM UTC
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+    inputs:
+      job:
+        description: 'Job to run (process-cycle, enforce-grace, send-reminders)'
+        required: true
+        default: 'enforce-grace'
+        type: choice
+        options:
+          - process-cycle
+          - enforce-grace
+          - send-reminders
+
+env:
+  API_BASE_URL: ${{ secrets.API_BASE_URL }}
+  CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
+jobs:
+  billing-cron:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine job to run
+        id: job
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "job=${{ github.event.inputs.job }}" >> $GITHUB_OUTPUT
+          else
+            # Determine based on schedule
+            HOUR=$(date -u +%H)
+            DAY=$(date -u +%d)
+            
+            if [ "$DAY" == "01" ] && [ "$HOUR" == "00" ]; then
+              echo "job=process-cycle" >> $GITHUB_OUTPUT
+            elif [ "$HOUR" == "01" ]; then
+              echo "job=enforce-grace" >> $GITHUB_OUTPUT
+            elif [ "$HOUR" == "09" ]; then
+              echo "job=send-reminders" >> $GITHUB_OUTPUT
+            else
+              echo "job=none" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Run billing cycle processing
+        if: steps.job.outputs.job == 'process-cycle'
+        run: |
+          echo "📅 Running monthly billing cycle processing..."
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            "$API_BASE_URL/api/cron/billing/process-cycle")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "Response: $body"
+          
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Failed with status $http_code"
+            exit 1
+          fi
+          echo "✅ Billing cycle processed successfully"
+
+      - name: Run grace period enforcement
+        if: steps.job.outputs.job == 'enforce-grace'
+        run: |
+          echo "⏰ Running daily grace period enforcement..."
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            "$API_BASE_URL/api/cron/billing/enforce-grace")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "Response: $body"
+          
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Failed with status $http_code"
+            exit 1
+          fi
+          echo "✅ Grace periods enforced successfully"
+
+      - name: Send reminder emails
+        if: steps.job.outputs.job == 'send-reminders'
+        run: |
+          echo "📧 Sending grace period reminder emails..."
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            "$API_BASE_URL/api/cron/billing/send-reminders")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "Response: $body"
+          
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Failed with status $http_code"
+            exit 1
+          fi
+          echo "✅ Reminders sent successfully"
+
+      - name: Skip (no matching job)
+        if: steps.job.outputs.job == 'none'
+        run: echo "⏭️ No job matched current schedule, skipping..."

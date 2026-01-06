@@ -37,6 +37,7 @@ import organizations from "@/features/organizations/server/route";
 // Billing & Payment
 import billing from "@/features/billing/server/route";
 import webhooks from "@/features/billing/server/webhook";
+import cron from "@/features/billing/server/cron";
 // Global Traffic Metering
 import { trafficMeteringMiddleware } from "@/lib/traffic-metering-middleware";
 
@@ -83,7 +84,9 @@ const routes = app
   .route("/organizations", organizations)
   // Billing & Payment
   .route("/billing", billing)
-  .route("/webhooks", webhooks);
+  .route("/webhooks", webhooks)
+  // Scheduled Jobs (protected by CRON_SECRET)
+  .route("/cron", cron);
 
 export const GET = handle(app);
 export const POST = handle(app);

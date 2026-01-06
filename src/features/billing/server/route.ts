@@ -119,8 +119,10 @@ const app = new Hono()
         zValidator("query", getBillingAccountSchema),
         async (c) => {
             const user = c.get("user");
-            const databases = c.get("databases");
             const { userId, organizationId } = c.req.valid("query");
+
+            // Use admin client for billing collection access
+            const { databases: adminDatabases } = await createAdminClient();
 
             // Determine which entity to query
             const queryUserId = userId || (organizationId ? undefined : user.$id);
@@ -141,7 +143,7 @@ const app = new Hono()
                 return c.json({ error: "userId or organizationId required" }, 400);
             }
 
-            const billingAccounts = await databases.listDocuments<BillingAccount>(
+            const billingAccounts = await adminDatabases.listDocuments<BillingAccount>(
                 DATABASE_ID,
                 BILLING_ACCOUNTS_ID,
                 [...queries, Query.limit(1)]
@@ -189,7 +191,6 @@ const app = new Hono()
         zValidator("json", setupBillingSchema),
         async (c) => {
             const user = c.get("user");
-            const databases = c.get("databases");
             const { type, userId, organizationId, billingEmail, contactName, contactPhone } = c.req.valid("json");
 
             // Verify authorization
@@ -199,12 +200,15 @@ const app = new Hono()
 
             // TODO: For ORG, verify user is OWNER or ADMIN of the organization
 
+            // Use admin client for billing operations
+            const { databases: adminDatabases } = await createAdminClient();
+
             // Check if billing account already exists
             const queries = type === BillingAccountType.ORG
                 ? [Query.equal("organizationId", organizationId!), Query.equal("type", type)]
                 : [Query.equal("userId", userId!), Query.equal("type", type)];
 
-            const existing = await databases.listDocuments(
+            const existing = await adminDatabases.listDocuments(
                 DATABASE_ID,
                 BILLING_ACCOUNTS_ID,
                 [...queries, Query.limit(1)]
@@ -212,28 +216,34 @@ const app = new Hono()
 
             if (existing.total > 0) {
                 return c.json({
-                    error: "Billing account already exists",
                     data: existing.documents[0],
-                }, 400);
+                });
             }
 
             // Create Razorpay customer
-            const razorpayCustomer = await createCustomer({
-                name: contactName,
-                email: billingEmail,
-                contact: contactPhone,
-                notes: {
-                    fairlx_type: type,
-                    fairlx_entity_id: type === BillingAccountType.ORG ? organizationId! : userId!,
-                    fairlx_user_id: user.$id,
-                },
-            });
+            let razorpayCustomer;
+            try {
+                razorpayCustomer = await createCustomer({
+                    name: contactName,
+                    email: billingEmail,
+                    contact: contactPhone,
+                    notes: {
+                        fairlx_type: type,
+                        fairlx_entity_id: type === BillingAccountType.ORG ? organizationId! : userId!,
+                        fairlx_user_id: user.$id,
+                    },
+                });
+            } catch (error: unknown) {
+                console.error("Razorpay customer creation failed:", error);
+                return c.json({
+                    error: (error instanceof Error ? error.message : "Failed to create payment customer record")
+                }, 500);
+            }
 
             // Calculate billing cycle
             const { start, end } = calculateBillingCycle();
 
             // Create billing account
-            const { databases: adminDatabases } = await createAdminClient();
             const billingAccount = await adminDatabases.createDocument<BillingAccount>(
                 DATABASE_ID,
                 BILLING_ACCOUNTS_ID,
@@ -279,8 +289,10 @@ const app = new Hono()
         zValidator("query", getBillingAccountSchema),
         async (c) => {
             const user = c.get("user");
-            const databases = c.get("databases");
             const { userId, organizationId } = c.req.valid("query");
+
+            // Use admin client for billing collection access
+            const { databases: adminDatabases } = await createAdminClient();
 
             // Get billing account
             const queryUserId = userId || (organizationId ? undefined : user.$id);
@@ -301,7 +313,7 @@ const app = new Hono()
                 return c.json({ error: "userId or organizationId required" }, 400);
             }
 
-            const billingAccounts = await databases.listDocuments<BillingAccount>(
+            const billingAccounts = await adminDatabases.listDocuments<BillingAccount>(
                 DATABASE_ID,
                 BILLING_ACCOUNTS_ID,
                 [...queries, Query.limit(1)]
@@ -327,7 +339,6 @@ const app = new Hono()
             });
 
             // Update billing account with subscription ID
-            const { databases: adminDatabases } = await createAdminClient();
             await adminDatabases.updateDocument(
                 DATABASE_ID,
                 BILLING_ACCOUNTS_ID,
@@ -626,8 +637,10 @@ const app = new Hono()
         zValidator("query", getBillingAccountSchema),
         async (c) => {
             const user = c.get("user");
-            const databases = c.get("databases");
             const { userId, organizationId } = c.req.valid("query");
+
+            // Use admin client for billing collection access
+            const { databases: adminDatabases } = await createAdminClient();
 
             const queryUserId = userId || (organizationId ? undefined : user.$id);
             const queryOrgId = organizationId;
@@ -647,7 +660,7 @@ const app = new Hono()
                 return c.json({ status: BillingStatus.ACTIVE, needsSetup: true });
             }
 
-            const billingAccounts = await databases.listDocuments<BillingAccount>(
+            const billingAccounts = await adminDatabases.listDocuments<BillingAccount>(
                 DATABASE_ID,
                 BILLING_ACCOUNTS_ID,
                 [...queries, Query.limit(1)]

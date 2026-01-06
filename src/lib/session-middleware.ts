@@ -54,8 +54,17 @@ export const sessionMiddleware = createMiddleware<AdditionalContext>(
       c.set("user", user);
 
       await next();
-    } catch {
-      return c.json({ error: "Session expired or invalid" }, 401);
+    } catch (error: unknown) {
+      // Only return 401 for authentication errors
+      // Only return 401 for authentication errors
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const isAuthError = (error as any)?.code === 401 || (error as any)?.message?.includes("Unauthorized");
+      if (isAuthError) {
+        return c.json({ error: "Session expired or invalid" }, 401);
+      }
+
+      // Re-throw other errors (like database or Razorpay errors) so they can be handled by the route or global error handler
+      throw error;
     }
   }
 );

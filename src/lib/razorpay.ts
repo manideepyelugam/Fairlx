@@ -185,13 +185,35 @@ export interface CreateCustomerOptions {
 export async function createCustomer(options: CreateCustomerOptions) {
     const razorpay = getRazorpay();
 
-    return razorpay.customers.create({
-        name: options.name,
-        email: options.email,
-        contact: options.contact,
-        notes: options.notes,
-        fail_existing: 0, // Don't fail if customer exists
-    });
+    try {
+        return await razorpay.customers.create({
+            name: options.name,
+            email: options.email,
+            contact: options.contact,
+            notes: options.notes,
+            fail_existing: 0, // Should return existing, but sometimes throws
+        });
+    } catch (error: unknown) {
+        // Check if customer already exists error
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const apiError = error as any; // Razorpay error structure is custom
+        if (apiError.error?.description === "Customer already exists for the merchant" ||
+            apiError.error?.code === "BAD_REQUEST_ERROR") {
+
+            console.log(`[Razorpay] Customer exists, fetching by email: ${options.email}`);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const customers: any = await razorpay.customers.all({
+                email: options.email,
+                count: 1,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            } as any);
+
+            if (customers.items && customers.items.length > 0) {
+                return customers.items[0];
+            }
+        }
+        throw error;
+    }
 }
 
 /**
@@ -233,6 +255,7 @@ export async function createSubscription(options: CreateSubscriptionOptions) {
         total_count: options.totalCount || 120, // 10 years of monthly billing
         customer_notify: 1,
         notes: options.notes,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 }
 
@@ -252,7 +275,8 @@ export async function cancelSubscription(
     cancelAtCycleEnd: boolean = true
 ) {
     const razorpay = getRazorpay();
-    return razorpay.subscriptions.cancel(subscriptionId, cancelAtCycleEnd);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return razorpay.subscriptions.cancel(subscriptionId, cancelAtCycleEnd as any);
 }
 
 // ===============================
@@ -327,7 +351,7 @@ export async function getOrCreateBasePlan() {
         interval: 1,
         item: {
             name: "Fairlx Usage-Based Billing",
-            amount: 0, // Base amount is 0, usage charges added
+            amount: 100, // 1 INR base fee (Razorpay requires >= 1 INR)
             currency: "INR",
             description: "Monthly usage-based billing for Fairlx",
         },
@@ -352,7 +376,7 @@ export function getPublicKey(): string {
 /**
  * Format amount for Razorpay (convert to paisa/cents)
  */
-export function formatAmount(amount: number, _currency: string = "INR"): number {
+export function formatAmount(amount: number): number {
     // Razorpay expects amount in smallest currency unit
     // INR: paisa (multiply by 100)
     // USD: cents (multiply by 100)
@@ -362,6 +386,6 @@ export function formatAmount(amount: number, _currency: string = "INR"): number 
 /**
  * Parse amount from Razorpay (convert from paisa/cents)
  */
-export function parseAmount(amount: number, _currency: string = "INR"): number {
+export function parseAmount(amount: number): number {
     return amount / 100;
 }
