@@ -69,9 +69,9 @@ const app = new Hono()
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      // Only admins can create spaces
-      if (member.role !== MemberRole.ADMIN) {
-        return c.json({ error: "Only admins can create spaces" }, 403);
+      // Only owners and admins can create spaces
+      if (member.role !== MemberRole.OWNER && member.role !== MemberRole.ADMIN) {
+        return c.json({ error: "Only owners and admins can create spaces" }, 403);
       }
 
       // Check if key is unique within workspace
