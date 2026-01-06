@@ -34,6 +34,9 @@ import projectMembers from "@/features/project-members/server/route";
 import usage from "@/features/usage/server/route";
 // Organizations & Account Management
 import organizations from "@/features/organizations/server/route";
+// Billing & Payment
+import billing from "@/features/billing/server/route";
+import webhooks from "@/features/billing/server/webhook";
 // Global Traffic Metering
 import { trafficMeteringMiddleware } from "@/lib/traffic-metering-middleware";
 
@@ -77,7 +80,10 @@ const routes = app
   // Usage-Based Billing
   .route("/usage", usage)
   // Organizations & Account Management
-  .route("/organizations", organizations);
+  .route("/organizations", organizations)
+  // Billing & Payment
+  .route("/billing", billing)
+  .route("/webhooks", webhooks);
 
 export const GET = handle(app);
 export const POST = handle(app);
@@ -85,3 +91,4 @@ export const PATCH = handle(app);
 export const DELETE = handle(app);
 
 export type AppType = typeof routes;
+
