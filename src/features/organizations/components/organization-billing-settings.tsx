@@ -1,23 +1,74 @@
 "use client";
 
-import { useState } from "react";
-import { CreditCard, DollarSign, FileText, ExternalLink, Calendar, Loader2 } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { CreditCard, DollarSign, FileText, ExternalLink, Calendar, Loader2, CheckCircle2, AlertTriangle, Info } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { useEffect } from "react";
 import Link from "next/link";
+import Script from "next/script";
 
 import { cn } from "@/lib/utils";
 import { useGetOrganization } from "../api/use-get-organization";
 import { useGetOrgMembers } from "../api/use-get-org-members";
 import { useUpdateOrganization } from "../api/use-update-organization";
 import { useGetInvoices } from "@/features/usage/api";
+
+// Billing API hooks
+import {
+    useGetBillingAccount,
+    useGetBillingStatus,
+    useGetCheckoutOptions,
+    useUpdatePaymentMethod,
+    useSetupBilling
+} from "@/features/billing/api";
+import { BillingStatus, BillingAccountType } from "@/features/billing/types";
+import { BillingWarningBanner } from "@/features/billing/components/billing-warning-banner";
+
+// Extend Window for Razorpay
+declare global {
+    interface Window {
+        Razorpay: new (options: RazorpayCheckoutConfig) => RazorpayCheckoutInstance;
+    }
+}
+
+interface RazorpayCheckoutConfig {
+    key: string;
+    subscription_id?: string;
+    order_id?: string;
+    name: string;
+    description: string;
+    prefill: {
+        name?: string;
+        email?: string;
+        contact?: string;
+    };
+    theme: {
+        color: string;
+    };
+    handler: (response: RazorpayResponse) => void;
+    modal?: {
+        ondismiss?: () => void;
+    };
+}
+
+interface RazorpayCheckoutInstance {
+    open: () => void;
+    close: () => void;
+}
+
+interface RazorpayResponse {
+    razorpay_payment_id: string;
+    razorpay_subscription_id?: string;
+    razorpay_order_id?: string;
+    razorpay_signature: string;
+}
 
 interface OrganizationBillingSettingsProps {
     organizationId: string;
@@ -36,10 +87,27 @@ export function OrganizationBillingSettings({
     });
     const { mutate: updateOrganization } = useUpdateOrganization();
 
+    // Billing hooks
+    const { data: billingAccountData, isLoading: isBillingLoading } = useGetBillingAccount({
+        organizationId,
+        enabled: !!organizationId
+    });
+    const { data: billingStatus } = useGetBillingStatus({
+        organizationId,
+        enabled: !!organizationId
+    });
+    const { refetch: refetchCheckoutOptions } = useGetCheckoutOptions({
+        organizationId,
+        enabled: false // Only fetch when needed
+    });
+    const { mutateAsync: updatePaymentMethod } = useUpdatePaymentMethod();
+    const { mutateAsync: setupBilling } = useSetupBilling();
+
     const [billingEmailValue, setBillingEmailValue] = useState("");
     const [alternativeEmailValue, setAlternativeEmailValue] = useState("");
     const [isSaving, setIsSaving] = useState(false);
     const [isAddingPayment, setIsAddingPayment] = useState(false);
+    const [isScriptLoaded, setIsScriptLoaded] = useState(false);
 
     // Sync state with organization data
     useEffect(() => {
@@ -57,22 +125,20 @@ export function OrganizationBillingSettings({
     // Find organization owner email
     const ownerEmail = membersDoc?.documents.find(m => m.role === "OWNER")?.email;
 
-    const hasPaymentMethod = false; // Mock for now
+    // Billing account data
+    const billingAccount = billingAccountData?.data;
+    const hasPaymentMethod = billingAccountData?.hasPaymentMethod || false;
 
     const invoices = invoicesDoc?.documents || [];
-    const isLoading = isOrgLoading; // Main page loading is still just org loading
+    const isLoading = isOrgLoading || isBillingLoading;
 
-    if (isLoading) {
-        return (
-            <div className="flex flex-col items-center justify-center p-12 space-y-4">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Loading billing settings...</p>
-            </div>
-        );
-    }
+    // Payment method display
+    const paymentMethodDisplay = billingAccount?.paymentMethodBrand
+        ? `${billingAccount.paymentMethodBrand} ending in ${billingAccount.paymentMethodLast4}`
+        : billingAccount?.paymentMethodType || "Card";
 
-    // Issue 9: Handler for save billing settings
-    const handleSaveBillingSettings = async () => {
+    // Handler for save billing settings - must be defined before any conditional returns
+    const handleSaveBillingSettings = useCallback(async () => {
         if (!organizationId) {
             toast.error("Organization ID is required");
             return;
@@ -80,13 +146,11 @@ export function OrganizationBillingSettings({
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-        // Validate primary email if it was overridden/set
         if (billingEmailValue && !emailRegex.test(billingEmailValue)) {
             toast.error("Please enter a valid primary email address");
             return;
         }
 
-        // Validate alternative email if provided
         if (alternativeEmailValue && !emailRegex.test(alternativeEmailValue)) {
             toast.error("Please enter a valid alternative email address");
             return;
@@ -113,320 +177,490 @@ export function OrganizationBillingSettings({
                 setIsSaving(false);
             }
         });
-    };
+    }, [organizationId, billingEmailValue, alternativeEmailValue, ownerEmail, updateOrganization]);
 
-    // Issue 9: Handler for add payment method
-    const handleAddPaymentMethod = async () => {
+    // Handler for add/update payment method - must be defined before any conditional returns
+    const handleAddPaymentMethod = useCallback(async () => {
         if (!organizationId) {
             toast.error("Organization ID is required");
             return;
         }
 
+        if (!isScriptLoaded) {
+            toast.error("Payment system not ready. Please refresh the page.");
+            return;
+        }
+
         setIsAddingPayment(true);
+
         try {
-            // TODO: Replace with actual payment provider integration (Stripe, etc.)
-            toast.info("Payment method integration is not yet implemented.");
+            // First ensure billing account exists
+            if (!billingAccountData?.data) {
+                try {
+                    await setupBilling({
+                        json: {
+                            type: BillingAccountType.ORG,
+                            organizationId,
+                            billingEmail: billingEmailValue || organization?.email || ownerEmail || "",
+                            contactName: organization?.name || "Organization Admin",
+                            contactPhone: "", // Optional
+                        }
+                    });
+                } catch (error) {
+                    console.error("Failed to auto-setup billing account:", error);
+                    toast.error("Failed to initialize billing account. Please contact support.");
+                    setIsAddingPayment(false);
+                    return;
+                }
+            }
+
+            // Fetch checkout options
+            const result = await refetchCheckoutOptions();
+            const checkoutOptions = result.data?.data;
+
+            if (!checkoutOptions) {
+                toast.error("Failed to initialize payment configuration. Please try again.");
+                setIsAddingPayment(false);
+                return;
+            }
+
+            // Open Razorpay checkout
+            const razorpayOptions: RazorpayCheckoutConfig = {
+                key: checkoutOptions.key,
+                subscription_id: checkoutOptions.subscriptionId,
+                name: checkoutOptions.name,
+                description: checkoutOptions.description,
+                prefill: {
+                    name: checkoutOptions.prefill.name,
+                    email: checkoutOptions.prefill.email,
+                    contact: checkoutOptions.prefill.contact,
+                },
+                theme: {
+                    color: checkoutOptions.theme.color,
+                },
+                handler: async (response: RazorpayResponse) => {
+                    // Payment completed - update payment method
+                    try {
+                        await updatePaymentMethod({
+                            razorpayPaymentId: response.razorpay_payment_id,
+                            razorpaySubscriptionId: response.razorpay_subscription_id,
+                            razorpaySignature: response.razorpay_signature,
+                        });
+                        // Success toast is handled by the mutation
+                    } catch (error) {
+                        console.error("Failed to update payment method:", error);
+                        toast.error("Payment recorded but failed to update. Please contact support.");
+                    }
+                    setIsAddingPayment(false);
+                },
+                modal: {
+                    ondismiss: () => {
+                        setIsAddingPayment(false);
+                    },
+                },
+            };
+
+            const razorpay = new window.Razorpay(razorpayOptions);
+            razorpay.open();
         } catch (error) {
             console.error("Failed to add payment method:", error);
-            toast.error("Failed to add payment method");
-        } finally {
+            toast.error("Failed to initialize payment. Please try again.");
             setIsAddingPayment(false);
         }
-    };
+    }, [organizationId, isScriptLoaded, refetchCheckoutOptions, updatePaymentMethod, billingAccountData?.data, billingEmailValue, organization?.email, organization?.name, ownerEmail, setupBilling]);
+
+    if (isLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center p-12 space-y-4">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">Loading billing settings...</p>
+            </div>
+        );
+    }
 
     return (
-        <div className="space-y-6">
-            {/* Billing Overview */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <DollarSign className="h-5 w-5" />
-                        Billing Overview
-                    </CardTitle>
-                    <CardDescription>
-                        Organization-level billing information and settings
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    {/* Billing Timeline - Item 4.6 */}
-                    <div className="rounded-lg border p-5 bg-blue-50/50 dark:bg-blue-950/20 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-3 opacity-10">
-                            <Calendar className="h-16 w-16" />
-                        </div>
+        <>
+            {/* Load Razorpay Script */}
+            <Script
+                src="https://checkout.razorpay.com/v1/checkout.js"
+                onLoad={() => setIsScriptLoaded(true)}
+                onError={() => {
+                    console.error("Failed to load Razorpay script");
+                }}
+            />
 
-                        <h4 className="text-sm font-semibold flex items-center gap-2 mb-4 text-blue-700 dark:text-blue-400">
-                            <Calendar className="h-4 w-4" />
-                            Billing Lifecycle
-                        </h4>
+            <div className="space-y-6">
+                {/* Billing Warning Banner - shows during grace period */}
+                {billingStatus?.status === BillingStatus.DUE && (
+                    <BillingWarningBanner
+                        billingStatus={BillingStatus.DUE}
+                        daysUntilSuspension={billingStatus.daysUntilSuspension}
+                        organizationId={organizationId}
+                    />
+                )}
 
-                        <div className="relative pl-6 space-y-6">
-                            {/* Vertical Line Connector */}
-                            <div className="absolute left-[7px] top-2 bottom-2 w-[2px] bg-blue-100 dark:bg-blue-900/50" />
+                {/* Billing Overview */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <DollarSign className="h-5 w-5" />
+                            Billing Overview
+                        </CardTitle>
+                        <CardDescription>
+                            Organization-level billing information and settings
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {/* Billing Status Alert */}
+                        {billingStatus?.status === BillingStatus.SUSPENDED && (
+                            <Alert variant="destructive">
+                                <AlertTriangle className="h-4 w-4" />
+                                <AlertDescription>
+                                    <strong>Account Suspended</strong> - Your organization has been suspended due to an unpaid invoice.
+                                    Please update your payment method below to restore access.
+                                </AlertDescription>
+                            </Alert>
+                        )}
 
-                            {/* Personal Phase */}
-                            <div className="relative">
-                                <div className="absolute -left-[23px] top-1.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-950 bg-slate-300 dark:bg-slate-700 z-10" />
-                                <div className="space-y-1">
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-medium text-slate-900 dark:text-slate-100">Personal Account Usage</span>
-                                        <Badge variant="outline" className="text-[10px] h-4 px-1.5 uppercase tracking-wider font-bold bg-white/50 dark:bg-black/20">Historic</Badge>
+                        {/* Billing Timeline - Item 4.6 */}
+                        <div className="rounded-lg border p-5 bg-blue-50/50 dark:bg-blue-950/20 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-3 opacity-10">
+                                <Calendar className="h-16 w-16" />
+                            </div>
+
+                            <h4 className="text-sm font-semibold flex items-center gap-2 mb-4 text-blue-700 dark:text-blue-400">
+                                <Calendar className="h-4 w-4" />
+                                Billing Lifecycle
+                            </h4>
+
+                            <div className="relative pl-6 space-y-6">
+                                {/* Vertical Line Connector */}
+                                <div className="absolute left-[7px] top-2 bottom-2 w-[2px] bg-blue-100 dark:bg-blue-900/50" />
+
+                                {/* Personal Phase */}
+                                <div className="relative">
+                                    <div className="absolute -left-[23px] top-1.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-950 bg-slate-300 dark:bg-slate-700 z-10" />
+                                    <div className="space-y-1">
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-medium text-slate-900 dark:text-slate-100">Personal Account Usage</span>
+                                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 uppercase tracking-wider font-bold bg-white/50 dark:bg-black/20">Historic</Badge>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground leading-relaxed">
+                                            All activity prior to organization creation. Billed directly to your personal payment method.
+                                        </p>
                                     </div>
-                                    <p className="text-xs text-muted-foreground leading-relaxed">
-                                        All activity prior to organization creation. Billed directly to your personal payment method.
-                                    </p>
+                                </div>
+
+                                {/* Organization Phase */}
+                                <div className="relative">
+                                    <div className="absolute -left-[23px] top-1.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-950 bg-blue-600 z-10 shadow-[0_0_8px_rgba(37,99,235,0.4)]" />
+                                    <div className="space-y-1">
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-medium text-blue-700 dark:text-blue-400">Organization Managed Billing</span>
+                                            <Badge variant="secondary" className="text-[10px] h-4 px-1.5 uppercase tracking-wider font-bold bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">Active</Badge>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-xs text-blue-600/80 dark:text-blue-400/80 font-medium">
+                                            <span>Started on {organization?.billingStartAt ? format(new Date(organization.billingStartAt), "PPP") : "Creation"}</span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground leading-relaxed">
+                                            All shared workspaces and team activity are consolidated into this organization&apos;s billing cycle.
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Organization Phase */}
-                            <div className="relative">
-                                <div className="absolute -left-[23px] top-1.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-950 bg-blue-600 z-10 shadow-[0_0_8px_rgba(37,99,235,0.4)]" />
-                                <div className="space-y-1">
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-medium text-blue-700 dark:text-blue-400">Organization Managed Billing</span>
-                                        <Badge variant="secondary" className="text-[10px] h-4 px-1.5 uppercase tracking-wider font-bold bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">Active</Badge>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-xs text-blue-600/80 dark:text-blue-400/80 font-medium">
-                                        <span>Started on {organization?.billingStartAt ? format(new Date(organization.billingStartAt), "PPP") : "Creation"}</span>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground leading-relaxed">
-                                        All shared workspaces and team activity are consolidated into this organization&apos;s billing cycle.
-                                    </p>
-                                </div>
+                            <div className="mt-4 pt-4 border-t border-blue-100 dark:border-blue-900/40 flex items-center justify-between">
+                                <p className="text-[11px] text-blue-600/70 dark:text-blue-400/70 italic">
+                                    * The transition occurred when your account was converted to an organization.
+                                </p>
+                                <Button variant="ghost" size="sm" asChild className="text-blue-600 dark:text-blue-400 font-semibold h-7 px-2 hover:bg-blue-100 dark:hover:bg-blue-900/40">
+                                    <Link href="/organization/usage">
+                                        View Detailed Usage
+                                        <ExternalLink className="ml-1.5 h-3 w-3" />
+                                    </Link>
+                                </Button>
                             </div>
                         </div>
 
-                        <div className="mt-4 pt-4 border-t border-blue-100 dark:border-blue-900/40 flex items-center justify-between">
-                            <p className="text-[11px] text-blue-600/70 dark:text-blue-400/70 italic">
-                                * The transition occurred when your account was converted to an organization.
-                            </p>
-                            <Button variant="ghost" size="sm" asChild className="text-blue-600 dark:text-blue-400 font-semibold h-7 px-2 hover:bg-blue-100 dark:hover:bg-blue-900/40">
-                                <Link href="/organization/usage">
-                                    View Detailed Usage
-                                    <ExternalLink className="ml-1.5 h-3 w-3" />
+                        <Separator />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Billing Entity</Label>
+                                <div className="flex items-center gap-2">
+                                    <Input value={organization?.name || organizationName} disabled className="flex-1" />
+                                    <Badge variant="default">Organization</Badge>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    All workspaces in this organization share billing
+                                </p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Billing Status</Label>
+                                <div className="flex items-center gap-2">
+                                    <Badge
+                                        variant={
+                                            billingStatus?.status === BillingStatus.ACTIVE ? "default" :
+                                                billingStatus?.status === BillingStatus.DUE ? "secondary" :
+                                                    "destructive"
+                                        }
+                                        className={cn(
+                                            billingStatus?.status === BillingStatus.ACTIVE && "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400",
+                                            billingStatus?.status === BillingStatus.DUE && "bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400"
+                                        )}
+                                    >
+                                        {billingStatus?.status || "ACTIVE"}
+                                    </Badge>
+                                    {billingStatus?.status === BillingStatus.DUE && billingStatus.daysUntilSuspension !== undefined && (
+                                        <span className="text-xs text-orange-600">
+                                            ({billingStatus.daysUntilSuspension} days until suspension)
+                                        </span>
+                                    )}
+                                </div>
+                                {billingAccount?.billingCycleEnd && (
+                                    <p className="text-xs text-muted-foreground">
+                                        Next billing: {format(new Date(billingAccount.billingCycleEnd), "PPP")}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        <Separator />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="billingEmail">Primary Billing Email</Label>
+                                <Input
+                                    id="billingEmail"
+                                    type="email"
+
+                                    value={billingEmailValue}
+                                    onChange={(e) => setBillingEmailValue(e.target.value)}
+                                    placeholder={ownerEmail || "owner@example.com"}
+                                    disabled={isSaving}
+                                />
+                                <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+                                    {billingEmailValue ? (
+                                        <span>Custom billing email active</span>
+                                    ) : (
+                                        <>
+                                            <Badge variant="outline" className="text-[9px] h-3.5 px-1 uppercase font-bold">Default</Badge>
+                                            <span>Using owner: {ownerEmail || "loading..."}</span>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="alternativeEmail">Alternative Billing Email (Optional)</Label>
+                                <Input
+                                    id="alternativeEmail"
+                                    type="email"
+                                    value={alternativeEmailValue}
+                                    onChange={(e) => setAlternativeEmailValue(e.target.value)}
+                                    placeholder="finance@company.com"
+                                    disabled={isSaving}
+                                />
+                                <p className="text-[11px] text-muted-foreground">
+                                    Secondary contact for billing notifications
+                                </p>
+                            </div>
+                        </div>
+
+                        <Button onClick={handleSaveBillingSettings} disabled={isSaving}>
+                            {isSaving ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Saving...
+                                </>
+                            ) : (
+                                "Save Billing Settings"
+                            )}
+                        </Button>
+                    </CardContent>
+                </Card>
+
+                {/* Payment Method */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <CreditCard className="h-5 w-5" />
+                            Payment Method
+                        </CardTitle>
+                        <CardDescription>
+                            Manage your organization&apos;s payment method for auto-billing
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {/* Auto-debit explanation */}
+                        <Alert>
+                            <Info className="h-4 w-4" />
+                            <AlertDescription>
+                                <strong>How auto-billing works:</strong> Your payment method will be charged automatically
+                                at the end of each billing cycle based on your usage. We never store your card details directly.
+                            </AlertDescription>
+                        </Alert>
+
+                        {hasPaymentMethod ? (
+                            <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/50">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/30">
+                                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                    </div>
+                                    <div>
+                                        <div className="font-medium">{paymentMethodDisplay}</div>
+                                        <div className="text-sm text-muted-foreground">
+                                            {billingAccount?.lastPaymentAt
+                                                ? `Last payment: ${format(new Date(billingAccount.lastPaymentAt), "PPP")}`
+                                                : "Auto-billing enabled"
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleAddPaymentMethod}
+                                    disabled={isAddingPayment}
+                                >
+                                    {isAddingPayment ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        "Update"
+                                    )}
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 border rounded-lg border-dashed">
+                                <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                                <p className="text-muted-foreground mb-4">
+                                    No payment method configured
+                                </p>
+                                <Button
+                                    onClick={handleAddPaymentMethod}
+                                    disabled={isAddingPayment || !isScriptLoaded}
+                                    size="lg"
+                                >
+                                    {isAddingPayment ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Setting up...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CreditCard className="mr-2 h-4 w-4" />
+                                            Add Payment Method
+                                        </>
+                                    )}
+                                </Button>
+                                <p className="text-xs text-muted-foreground mt-3">
+                                    Payments processed securely by Razorpay
+                                </p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Invoice History */}
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle className="flex items-center gap-2">
+                                    <FileText className="h-5 w-5" />
+                                    Invoice History
+                                </CardTitle>
+                                <CardDescription>
+                                    View and download past invoices
+                                </CardDescription>
+                            </div>
+                            <Button variant="outline" size="sm" asChild>
+                                <Link href={`/organization/settings/billing?tab=invoices`}>
+                                    View All Invoices
+                                    <ExternalLink className="ml-2 h-3 w-3" />
                                 </Link>
                             </Button>
                         </div>
-                    </div>
-
-                    <Separator />
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    </CardHeader>
+                    <CardContent>
                         <div className="space-y-2">
-                            <Label>Billing Entity</Label>
-                            <div className="flex items-center gap-2">
-                                <Input value={organization?.name || organizationName} disabled className="flex-1" />
-                                <Badge variant="default">Organization</Badge>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                All workspaces in this organization share billing
-                            </p>
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Organization ID</Label>
-                            <Input value={organizationId} disabled className="font-mono text-sm" />
-                        </div>
-                    </div>
-
-                    <Separator />
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label htmlFor="billingEmail">Primary Billing Email</Label>
-                            <Input
-                                id="billingEmail"
-                                type="email"
-
-                                value={billingEmailValue}
-                                onChange={(e) => setBillingEmailValue(e.target.value)}
-                                placeholder={ownerEmail || "owner@example.com"}
-                                disabled={isSaving}
-                            />
-                            <div className="text-[11px] text-muted-foreground flex items-center gap-1">
-                                {billingEmailValue ? (
-                                    <span>Custom billing email active</span>
-                                ) : (
-                                    <>
-                                        <Badge variant="outline" className="text-[9px] h-3.5 px-1 uppercase font-bold">Default</Badge>
-                                        <span>Using owner: {ownerEmail || "loading..."}</span>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="alternativeEmail">Alternative Billing Email (Optional)</Label>
-                            <Input
-                                id="alternativeEmail"
-                                type="email"
-                                value={alternativeEmailValue}
-                                onChange={(e) => setAlternativeEmailValue(e.target.value)}
-                                placeholder="finance@company.com"
-                                disabled={isSaving}
-                            />
-                            <p className="text-[11px] text-muted-foreground">
-                                Secondary contact for billing notifications
-                            </p>
-                        </div>
-                    </div>
-
-                    <Button onClick={handleSaveBillingSettings} disabled={isSaving}>
-                        {isSaving ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Saving...
-                            </>
-                        ) : (
-                            "Save Billing Settings"
-                        )}
-                    </Button>
-                </CardContent>
-            </Card>
-
-            {/* Payment Method */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <CreditCard className="h-5 w-5" />
-                        Payment Method
-                    </CardTitle>
-                    <CardDescription>
-                        Manage your organization&apos;s payment method
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {hasPaymentMethod ? (
-                        <div className="flex items-center justify-between p-3 rounded-lg border">
-                            <div className="flex items-center gap-3">
-                                <CreditCard className="h-5 w-5 text-muted-foreground" />
-                                <div>
-                                    <div className="font-medium">Visa ending in 4242</div>
-                                    <div className="text-sm text-muted-foreground">Expires 12/2025</div>
+                            {isInvoicesLoading ? (
+                                <div className="flex flex-col items-center justify-center py-10 space-y-2">
+                                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                                    <p className="text-xs text-muted-foreground">Loading invoices...</p>
                                 </div>
-                            </div>
-                            <Button variant="outline" size="sm">Update</Button>
+                            ) : invoices.length === 0 ? (
+                                <div className="text-center py-10 border rounded-lg border-dashed">
+                                    <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-50" />
+                                    <p className="text-sm text-muted-foreground">No invoices found for this organization yet.</p>
+                                    <p className="text-xs text-muted-foreground mt-1">Invoices are generated at the end of each billing cycle.</p>
+                                </div>
+                            ) : (
+                                invoices.map((invoice) => (
+                                    <div
+                                        key={invoice.$id}
+                                        className="flex items-center justify-between p-3 rounded-lg border"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <FileText className="h-4 w-4 text-muted-foreground" />
+                                            <div>
+                                                <div className="font-medium">{invoice.invoiceId}</div>
+                                                <div className="text-sm text-muted-foreground flex items-center gap-1">
+                                                    <Calendar className="h-3 w-3" />
+                                                    {format(new Date(invoice.createdAt), "PPP")}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <div className="text-right">
+                                                <div className="font-semibold">
+                                                    {new Intl.NumberFormat("en-IN", {
+                                                        style: "currency",
+                                                        currency: "INR",
+                                                    }).format(invoice.totalCost)}
+                                                </div>
+                                                <Badge
+                                                    variant={invoice.status === 'paid' ? 'default' : 'outline'}
+                                                    className={cn(
+                                                        "text-[10px] h-4 px-1.5 uppercase",
+                                                        invoice.status === 'paid' && "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800",
+                                                        invoice.status === 'draft' && "bg-gray-100 dark:bg-gray-900/40 text-gray-700 dark:text-gray-400 border-gray-200 dark:border-gray-800"
+                                                    )}
+                                                >
+                                                    {invoice.status}
+                                                </Badge>
+                                            </div>
+                                            <Button variant="ghost" size="sm">
+                                                Download
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
                         </div>
-                    ) : (
-                        <div className="text-center py-6">
-                            <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                            <p className="text-muted-foreground mb-4">
-                                No payment method configured
-                            </p>
-                            <Button onClick={handleAddPaymentMethod} disabled={isAddingPayment}>
-                                {isAddingPayment ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Adding...
-                                    </>
-                                ) : (
-                                    "Add Payment Method"
-                                )}
+                    </CardContent>
+                </Card>
+
+                {/* Usage Dashboard Link */}
+                <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border-blue-200 dark:border-blue-800">
+                    <CardContent className="py-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="font-semibold">View Detailed Usage</h3>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                    Monitor your organization&apos;s usage metrics and costs
+                                </p>
+                            </div>
+                            <Button asChild>
+                                <Link href="/organization/usage">
+                                    <DollarSign className="mr-2 h-4 w-4" />
+                                    Usage Dashboard
+                                </Link>
                             </Button>
-                            <p className="text-xs text-muted-foreground mt-2">
-                                Add a payment method to enable automatic billing
-                            </p>
                         </div>
-                    )}
-                </CardContent>
-            </Card>
-
-            {/* Invoice History */}
-            <Card>
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle className="flex items-center gap-2">
-                                <FileText className="h-5 w-5" />
-                                Invoice History
-                            </CardTitle>
-                            <CardDescription>
-                                View and download past invoices
-                            </CardDescription>
-                        </div>
-                        <Button variant="outline" size="sm" asChild>
-                            <a href="#">
-                                View All Invoices
-                                <ExternalLink className="ml-2 h-3 w-3" />
-                            </a>
-                        </Button>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-2">
-                        {isInvoicesLoading ? (
-                            <div className="flex flex-col items-center justify-center py-10 space-y-2">
-                                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                                <p className="text-xs text-muted-foreground">Loading invoices...</p>
-                            </div>
-                        ) : invoices.length === 0 ? (
-                            <div className="text-center py-10 border rounded-lg border-dashed">
-                                <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-50" />
-                                <p className="text-sm text-muted-foreground">No invoices found for this organization yet.</p>
-                                <p className="text-xs text-muted-foreground mt-1">Invoices are generated at the end of each billing cycle.</p>
-                            </div>
-                        ) : (
-                            invoices.map((invoice) => (
-                                <div
-                                    key={invoice.$id}
-                                    className="flex items-center justify-between p-3 rounded-lg border"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <FileText className="h-4 w-4 text-muted-foreground" />
-                                        <div>
-                                            <div className="font-medium">{invoice.invoiceId}</div>
-                                            <div className="text-sm text-muted-foreground flex items-center gap-1">
-                                                <Calendar className="h-3 w-3" />
-                                                {format(new Date(invoice.createdAt), "PPP")}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <div className="text-right">
-                                            <div className="font-semibold">
-                                                {new Intl.NumberFormat("en-US", {
-                                                    style: "currency",
-                                                    currency: "USD",
-                                                }).format(invoice.totalCost)}
-                                            </div>
-                                            <Badge
-                                                variant={invoice.status === 'paid' ? 'default' : 'outline'}
-                                                className={cn(
-                                                    "text-[10px] h-4 px-1.5 uppercase",
-                                                    invoice.status === 'paid' && "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800"
-                                                )}
-                                            >
-                                                {invoice.status}
-                                            </Badge>
-                                        </div>
-                                        <Button variant="ghost" size="sm">
-                                            Download
-                                        </Button>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Usage Dashboard Link */}
-            <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border-blue-200 dark:border-blue-800">
-                <CardContent className="py-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h3 className="font-semibold">View Detailed Usage</h3>
-                            <p className="text-sm text-muted-foreground mt-1">
-                                Monitor your organization&apos;s usage metrics and costs
-                            </p>
-                        </div>
-                        <Button asChild>
-                            <Link href="/organization/usage">
-                                <DollarSign className="mr-2 h-4 w-4" />
-                                Usage Dashboard
-                            </Link>
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        </>
     );
 }
