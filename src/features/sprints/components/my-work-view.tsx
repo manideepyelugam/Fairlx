@@ -242,18 +242,6 @@ export const MyWorkView = () => {
               Work items assigned to you across all projects
             </p>
           </div>
-          <Tabs value={view} onValueChange={setView}>
-            <TabsList className="h-8">
-              <TabsTrigger value="board" className="gap-1.5 text-xs h-7 px-2.5">
-                <LayoutGrid className="size-3.5" />
-                Board
-              </TabsTrigger>
-              <TabsTrigger value="list" className="gap-1.5 text-xs h-7 px-2.5">
-                <List className="size-3.5" />
-                List
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
         </div>
 
         {/* Stats Cards - Beautiful card design */}
@@ -324,8 +312,12 @@ export const MyWorkView = () => {
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap gap-2 items-center">
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-hidden">
+        {/* Filters - placed above the table/board */}
+        <div className="flex flex-wrap gap-2 items-center px-4 py-3 border-b bg-background">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
             <Input
@@ -373,11 +365,22 @@ export const MyWorkView = () => {
               ))}
             </SelectContent>
           </Select>
-        </div>
-      </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-hidden">
+          <div className="ml-auto">
+            <Tabs value={view} onValueChange={setView}>
+              <TabsList className="h-8">
+                <TabsTrigger value="board" className="gap-1.5 text-xs h-7 px-2.5">
+                  <LayoutGrid className="size-3.5" />
+                  Board
+                </TabsTrigger>
+                <TabsTrigger value="list" className="gap-1.5 text-xs h-7 px-2.5">
+                  <List className="size-3.5" />
+                  List
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </div>
         {filteredWorkItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-8">
             <div className="flex items-center justify-center size-12 rounded-full bg-muted mb-3">
