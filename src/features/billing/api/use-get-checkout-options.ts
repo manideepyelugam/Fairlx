@@ -5,6 +5,8 @@ import { RazorpayCheckoutOptions } from "../types";
 interface UseGetCheckoutOptionsParams {
     userId?: string;
     organizationId?: string;
+    /** Phone number - REQUIRED for Razorpay recurring payments */
+    phone?: string;
     enabled?: boolean;
 }
 
@@ -13,16 +15,25 @@ interface CheckoutOptionsResponse {
 }
 
 /**
- * Hook to get Razorpay checkout options
- * Call this before opening the payment checkout dialog
+ * Hook to get Razorpay checkout options for mandate authorization
+ * 
+ * IMPORTANT: phone is required for recurring payments.
+ * Call this with a valid phone before opening the payment checkout dialog.
  */
 export function useGetCheckoutOptions(options: UseGetCheckoutOptionsParams = {}) {
-    const { userId, organizationId, enabled = true } = options;
+    const { userId, organizationId, phone, enabled = true } = options;
+
+    // Don't enable query if phone is missing (required for recurring)
+    const isEnabled = enabled && Boolean(phone);
 
     return useQuery<CheckoutOptionsResponse>({
-        queryKey: ["billing-checkout-options", { userId, organizationId }],
+        queryKey: ["billing-checkout-options", { userId, organizationId, phone }],
         queryFn: async () => {
-            const params: Record<string, string> = {};
+            if (!phone) {
+                throw new Error("Phone number is required for auto-debit setup");
+            }
+
+            const params = { phone } as { phone: string; userId?: string; organizationId?: string };
             if (userId) params.userId = userId;
             if (organizationId) params.organizationId = organizationId;
 
@@ -37,8 +48,9 @@ export function useGetCheckoutOptions(options: UseGetCheckoutOptionsParams = {})
 
             return response.json() as Promise<CheckoutOptionsResponse>;
         },
-        enabled,
-        // Don't cache - always get fresh subscription ID
+        enabled: isEnabled,
+        // Don't cache - always get fresh order ID
         staleTime: 0,
     });
 }
+

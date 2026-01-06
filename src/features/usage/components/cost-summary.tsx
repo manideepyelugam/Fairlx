@@ -18,15 +18,27 @@ import {
 interface CostSummaryProps {
     summary: UsageSummary | null;
     isLoading: boolean;
+    /** Display currency code (e.g., "USD", "INR") */
+    currency?: string;
+    /** Exchange rate from USD to display currency */
+    exchangeRate?: number;
 }
 
-export function CostSummary({ summary, isLoading }: CostSummaryProps) {
-    const formatCurrency = (amount: number) => {
+export function CostSummary({
+    summary,
+    isLoading,
+    currency = "USD",
+    exchangeRate = 1,
+}: CostSummaryProps) {
+    // Convert USD to display currency and format
+    const formatCurrency = (amountUsd: number) => {
+        const converted = amountUsd * exchangeRate;
         return new Intl.NumberFormat("en-US", {
             style: "currency",
-            currency: "USD",
-            minimumFractionDigits: 4,
-        }).format(amount);
+            currency,
+            minimumFractionDigits: currency === "USD" ? 4 : 2,
+            maximumFractionDigits: currency === "USD" ? 4 : 2,
+        }).format(converted);
     };
 
     if (isLoading) {

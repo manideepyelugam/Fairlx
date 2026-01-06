@@ -38,6 +38,8 @@ import organizations from "@/features/organizations/server/route";
 import billing from "@/features/billing/server/route";
 import webhooks from "@/features/billing/server/webhook";
 import cron from "@/features/billing/server/cron";
+// Currency Conversion
+import currency from "@/features/currency/server/route";
 // Global Traffic Metering
 import { trafficMeteringMiddleware } from "@/lib/traffic-metering-middleware";
 
@@ -85,6 +87,8 @@ const routes = app
   // Billing & Payment
   .route("/billing", billing)
   .route("/webhooks", webhooks)
+  // Currency Conversion (for admin panel)
+  .route("/currency", currency)
   // Scheduled Jobs (protected by CRON_SECRET)
   .route("/cron", cron);
 

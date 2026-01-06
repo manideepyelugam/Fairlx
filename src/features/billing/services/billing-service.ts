@@ -18,6 +18,7 @@ import { createAdminClient } from "@/lib/appwrite";
 import {
     BillingStatus,
     BillingAccountType,
+    MandateStatus,
     BillingAccount,
     BillingInvoice,
     BillingAuditEventType,
@@ -249,17 +250,19 @@ export async function generateInvoice(
 /**
  * Process billing cycle for all active accounts
  * 
- * This should be called by a scheduled job at the end of each billing period.
- * 
- * Steps:
+ * E-MANDATE POSTPAID BILLING FLOW:
  * 1. Find all accounts where billing cycle has ended
- * 2. Generate invoices for each
+ * 2. Generate invoices for each (INVOICE FIRST - no charge yet)
  * 3. Advance billing cycle dates
- * 4. Trigger auto-debit if subscription is active
+ * 4. Attempt auto-debit using saved mandate token
+ * 
+ * This should be called by a scheduled job at the end of each billing period.
  */
 export async function processBillingCycle(): Promise<{
     processed: number;
     invoices: string[];
+    paymentsAttempted: number;
+    paymentsFailed: number;
     errors: string[];
 }> {
     const { databases } = await createAdminClient();
@@ -279,16 +282,18 @@ export async function processBillingCycle(): Promise<{
     const results = {
         processed: 0,
         invoices: [] as string[],
+        paymentsAttempted: 0,
+        paymentsFailed: 0,
         errors: [] as string[],
     };
 
     for (const account of accounts.documents) {
         try {
-            // Generate invoice
+            // 1. GENERATE INVOICE FIRST (postpaid billing - invoice before charge)
             const invoice = await generateInvoice(account.$id);
             results.invoices.push(invoice.invoiceId);
 
-            // Advance billing cycle
+            // 2. Advance billing cycle
             const newCycleStart = new Date(account.billingCycleEnd);
             newCycleStart.setDate(newCycleStart.getDate() + 1);
 
@@ -304,6 +309,40 @@ export async function processBillingCycle(): Promise<{
                 }
             );
 
+            // 3. ATTEMPT AUTO-DEBIT using mandate (if authorized)
+            if (account.razorpayTokenId && account.mandateStatus === MandateStatus.AUTHORIZED) {
+                try {
+                    results.paymentsAttempted++;
+
+                    // Import dynamically to avoid circular dependencies
+                    const { createRecurringPayment } = await import("@/lib/razorpay");
+
+                    await createRecurringPayment({
+                        customerId: account.razorpayCustomerId,
+                        tokenId: account.razorpayTokenId,
+                        amount: invoice.amount,
+                        invoiceId: invoice.invoiceId,
+                        description: `Fairlx Invoice ${invoice.invoiceId}`,
+                        notes: {
+                            fairlx_billing_account_id: account.$id,
+                            fairlx_invoice_id: invoice.invoiceId,
+                        },
+                    });
+
+                    console.log(`[Billing] Auto-debit initiated for invoice ${invoice.invoiceId}`);
+                } catch (paymentError) {
+                    results.paymentsFailed++;
+                    console.error(`[Billing] Auto-debit failed for account ${account.$id}:`, paymentError);
+
+                    // Start grace period on payment failure
+                    await startGracePeriod(databases, account.$id);
+                }
+            } else {
+                // No mandate authorized - start grace period immediately
+                console.log(`[Billing] No mandate for account ${account.$id}, starting grace period`);
+                await startGracePeriod(databases, account.$id);
+            }
+
             results.processed++;
         } catch (error) {
             console.error(`[Billing] Failed to process account ${account.$id}:`, error);
@@ -311,9 +350,44 @@ export async function processBillingCycle(): Promise<{
         }
     }
 
-    console.log(`[Billing] Processed ${results.processed} accounts, generated ${results.invoices.length} invoices`);
+    console.log(`[Billing] Processed ${results.processed} accounts, generated ${results.invoices.length} invoices, ${results.paymentsAttempted} payments attempted, ${results.paymentsFailed} failed`);
 
     return results;
+}
+
+/**
+ * Start grace period for a billing account
+ */
+async function startGracePeriod(databases: Databases, billingAccountId: string): Promise<void> {
+    const GRACE_PERIOD_DAYS = 14;
+    const gracePeriodEnd = new Date();
+    gracePeriodEnd.setDate(gracePeriodEnd.getDate() + GRACE_PERIOD_DAYS);
+
+    await databases.updateDocument(
+        DATABASE_ID,
+        BILLING_ACCOUNTS_ID,
+        billingAccountId,
+        {
+            billingStatus: BillingStatus.DUE,
+            gracePeriodEnd: gracePeriodEnd.toISOString(),
+            lastPaymentFailedAt: new Date().toISOString(),
+        }
+    );
+
+    // Log audit event
+    await databases.createDocument(
+        DATABASE_ID,
+        BILLING_AUDIT_LOGS_ID,
+        ID.unique(),
+        {
+            billingAccountId,
+            eventType: BillingAuditEventType.GRACE_PERIOD_STARTED,
+            metadata: JSON.stringify({
+                gracePeriodEnd: gracePeriodEnd.toISOString(),
+                daysRemaining: GRACE_PERIOD_DAYS,
+            }),
+        }
+    );
 }
 
 // ============================================================================

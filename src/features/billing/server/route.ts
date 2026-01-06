@@ -15,15 +15,15 @@ import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
 import {
     createCustomer,
-    createSubscription,
-    getOrCreateBasePlan,
+    createMandateAuthorizationOrder,
     getPublicKey,
-    verifySubscriptionSignature,
+    ensureCustomerContact,
 } from "@/lib/razorpay";
 
 import {
     BillingStatus,
     BillingAccountType,
+    MandateStatus,
     BillingAccount,
     BillingInvoice,
     BillingAuditEventType,
@@ -33,6 +33,7 @@ import {
 import {
     setupBillingSchema,
     getBillingAccountSchema,
+    checkoutOptionsSchema,
     updatePaymentMethodSchema,
     getInvoicesSchema,
     retryPaymentSchema,
@@ -158,7 +159,7 @@ const app = new Hono()
             }
 
             const account = billingAccounts.documents[0];
-            const hasPaymentMethod = !!account.razorpaySubscriptionId || !!account.razorpayMandateId;
+            const hasPaymentMethod = !!account.razorpaySubscriptionId || !!account.razorpayMandateId || !!account.razorpayTokenId;
 
             // Calculate days until suspension if in DUE status
             let daysUntilSuspension: number | undefined;
@@ -184,6 +185,10 @@ const app = new Hono()
     /**
      * POST /billing/setup
      * Create billing account and Razorpay customer
+     * 
+     * E-MANDATE FLOW: This does NOT charge the user.
+     * It only creates the billing account with mandateStatus: PENDING.
+     * The user must complete mandate authorization separately.
      */
     .post(
         "/setup",
@@ -243,7 +248,8 @@ const app = new Hono()
             // Calculate billing cycle
             const { start, end } = calculateBillingCycle();
 
-            // Create billing account
+            // Create billing account with PENDING mandate status
+            // billingStatus remains ACTIVE for now - will be enforced after first invoice
             const billingAccount = await adminDatabases.createDocument<BillingAccount>(
                 DATABASE_ID,
                 BILLING_ACCOUNTS_ID,
@@ -253,6 +259,10 @@ const app = new Hono()
                     userId: type === BillingAccountType.PERSONAL ? userId : null,
                     organizationId: type === BillingAccountType.ORG ? organizationId : null,
                     razorpayCustomerId: razorpayCustomer.id,
+                    // Mandate fields - pending authorization
+                    mandateStatus: MandateStatus.PENDING,
+                    mandateMaxAmount: 10000000, // ₹1,00,000 max (in paise)
+                    // Billing status - ACTIVE until first invoice fails
                     billingStatus: BillingStatus.ACTIVE,
                     billingCycleStart: start,
                     billingCycleEnd: end,
@@ -264,13 +274,14 @@ const app = new Hono()
             await logBillingAudit(
                 adminDatabases,
                 billingAccount.$id,
-                BillingAuditEventType.SUBSCRIPTION_CREATED,
+                BillingAuditEventType.PAYMENT_METHOD_ADDED,
                 {
                     actorUserId: user.$id,
                     metadata: {
                         razorpayCustomerId: razorpayCustomer.id,
                         billingEmail,
                         type,
+                        mandateStatus: MandateStatus.PENDING,
                     },
                 }
             );
@@ -282,14 +293,16 @@ const app = new Hono()
     /**
      * GET /billing/checkout-options
      * Get Razorpay checkout options for frontend
+     * 
+     * REQUIRES: phone parameter (for Razorpay recurring payments)
      */
     .get(
         "/checkout-options",
         sessionMiddleware,
-        zValidator("query", getBillingAccountSchema),
+        zValidator("query", checkoutOptionsSchema),
         async (c) => {
             const user = c.get("user");
-            const { userId, organizationId } = c.req.valid("query");
+            const { userId, organizationId, phone } = c.req.valid("query");
 
             // Use admin client for billing collection access
             const { databases: adminDatabases } = await createAdminClient();
@@ -325,42 +338,40 @@ const app = new Hono()
 
             const account = billingAccounts.documents[0];
 
-            // Get or create the base plan
-            const plan = await getOrCreateBasePlan();
+            // Update Razorpay customer with phone (REQUIRED for recurring payments)
+            await ensureCustomerContact(account.razorpayCustomerId, phone);
 
-            // Create subscription for the customer
-            const subscription = await createSubscription({
-                planId: plan.id,
+            // Create mandate authorization order (₹1 auth, not captured)
+            const order = await createMandateAuthorizationOrder({
                 customerId: account.razorpayCustomerId,
-                notes: {
+                maxAmount: account.mandateMaxAmount || 10000000, // ₹1,00,000 default
+                tokenNotes: {
                     fairlx_billing_account_id: account.$id,
                     fairlx_type: account.type,
                 },
             });
 
-            // Update billing account with subscription ID
-            await adminDatabases.updateDocument(
-                DATABASE_ID,
-                BILLING_ACCOUNTS_ID,
-                account.$id,
-                { razorpaySubscriptionId: subscription.id }
-            );
-
-            // Return checkout options for frontend
+            // Return checkout options for frontend (mandate authorization)
+            // NOTE: contact is REQUIRED for recurring payments (e-Mandate)
             return c.json({
                 data: {
                     key: getPublicKey(),
-                    subscriptionId: subscription.id,
-                    name: "Fairlx Billing",
-                    description: "Monthly usage-based billing",
+                    orderId: order.id,
+                    customerId: account.razorpayCustomerId,
+                    name: "Fairlx Auto-Debit Authorization",
+                    description: "Authorize automatic billing for your usage (no charge today)",
                     prefill: {
                         name: user.name || "",
                         email: account.billingEmail || user.email,
+                        // Phone from query parameter (validated by schema)
+                        contact: phone,
                     },
                     theme: {
                         color: "#3b82f6", // Fairlx blue
                     },
-                    currency: BILLING_CURRENCY,
+                    // Recurring payment config
+                    recurring: true,
+                    subscription_card_change: false,
                 },
             });
         }
@@ -368,7 +379,10 @@ const app = new Hono()
 
     /**
      * POST /billing/payment-method
-     * Update payment method after Razorpay checkout completes
+     * Activate e-Mandate after Razorpay checkout completes
+     * 
+     * E-MANDATE FLOW: This confirms mandate authorization.
+     * No payment is captured - just saves the token for future auto-debits.
      */
     .post(
         "/payment-method",
@@ -376,54 +390,55 @@ const app = new Hono()
         zValidator("json", updatePaymentMethodSchema),
         async (c) => {
             const user = c.get("user");
-            const { razorpayPaymentId, razorpaySubscriptionId, razorpaySignature } = c.req.valid("json");
+            const { razorpayPaymentId, razorpaySignature } = c.req.valid("json");
 
-            if (!razorpaySubscriptionId) {
-                return c.json({ error: "subscriptionId is required" }, 400);
+            // Get billing account from payment notes
+            const { getPayment, verifyPaymentSignature } = await import("@/lib/razorpay");
+            const payment = await getPayment(razorpayPaymentId);
+
+            // Get order ID from payment to verify signature
+            const orderId = payment.order_id;
+            if (!orderId) {
+                return c.json({ error: "Payment missing order reference" }, 400);
             }
 
-            // Verify signature
-            const isValid = verifySubscriptionSignature(
-                razorpaySubscriptionId,
-                razorpayPaymentId,
-                razorpaySignature
-            );
-
+            // Verify signature using order+payment
+            const isValid = verifyPaymentSignature(orderId, razorpayPaymentId, razorpaySignature);
             if (!isValid) {
                 return c.json({ error: "Invalid payment signature" }, 400);
             }
 
-            // Find billing account by subscription ID
-            const { databases: adminDatabases } = await createAdminClient();
-            const billingAccounts = await adminDatabases.listDocuments<BillingAccount>(
-                DATABASE_ID,
-                BILLING_ACCOUNTS_ID,
-                [
-                    Query.equal("razorpaySubscriptionId", razorpaySubscriptionId),
-                    Query.limit(1),
-                ]
-            );
-
-            if (billingAccounts.total === 0) {
-                return c.json({ error: "Billing account not found" }, 404);
+            // Get billing account ID from payment notes
+            const billingAccountId = payment.notes?.fairlx_billing_account_id;
+            if (!billingAccountId) {
+                return c.json({ error: "Payment missing billing account reference" }, 400);
             }
 
-            const account = billingAccounts.documents[0];
+            const { databases: adminDatabases } = await createAdminClient();
 
-            // Get payment details to extract card info
-            const { getPayment } = await import("@/lib/razorpay");
-            const payment = await getPayment(razorpayPaymentId);
+            // Get billing account
+            const account = await adminDatabases.getDocument<BillingAccount>(
+                DATABASE_ID,
+                BILLING_ACCOUNTS_ID,
+                billingAccountId
+            );
 
-            // Update billing account with payment method info
+            // Extract token/mandate info from payment
+            const tokenId = payment.token_id;
+
+            // Update billing account with mandate info
             const updateData: Partial<BillingAccount> = {
-                lastPaymentAt: new Date().toISOString(),
+                razorpayTokenId: tokenId || undefined,
+                mandateStatus: MandateStatus.AUTHORIZED,
                 paymentMethodType: payment.method,
             };
 
-            // Extract card details if available
+            // Extract card/bank details if available
             if (payment.card) {
                 updateData.paymentMethodLast4 = payment.card.last4;
                 updateData.paymentMethodBrand = payment.card.network;
+            } else if (payment.bank) {
+                updateData.paymentMethodBrand = payment.bank;
             }
 
             // If account was suspended, restore it
@@ -439,7 +454,7 @@ const app = new Hono()
                 updateData
             );
 
-            // Log audit event
+            // Log audit event - mandate activated
             await logBillingAudit(
                 adminDatabases,
                 account.$id,
@@ -448,8 +463,9 @@ const app = new Hono()
                     actorUserId: user.$id,
                     metadata: {
                         paymentId: razorpayPaymentId,
+                        tokenId,
                         method: payment.method,
-                        last4: payment.card?.last4,
+                        mandateStatus: MandateStatus.AUTHORIZED,
                     },
                 }
             );
@@ -467,7 +483,11 @@ const app = new Hono()
                 );
             }
 
-            return c.json({ data: updatedAccount, restored: account.billingStatus === BillingStatus.SUSPENDED });
+            return c.json({
+                data: updatedAccount,
+                mandateActivated: true,
+                restored: account.billingStatus === BillingStatus.SUSPENDED
+            });
         }
     )
 
@@ -524,7 +544,9 @@ const app = new Hono()
 
     /**
      * POST /billing/retry-payment
-     * Retry payment for a failed invoice
+     * Retry payment for a failed invoice using e-Mandate
+     * 
+     * E-MANDATE FLOW: Uses saved mandate token to attempt auto-debit.
      */
     .post(
         "/retry-payment",
@@ -572,17 +594,14 @@ const app = new Hono()
 
             const account = billingAccounts.documents[0];
 
-            if (!account.razorpaySubscriptionId) {
+            // Check for valid mandate
+            if (!account.razorpayTokenId || account.mandateStatus !== MandateStatus.AUTHORIZED) {
                 return c.json({
-                    error: "No payment method configured",
+                    error: "No authorized payment method configured",
                     needsPaymentMethod: true,
+                    mandateStatus: account.mandateStatus,
                 }, 400);
             }
-
-            // For subscription-based billing, the retry happens via Razorpay
-            // We return the checkout options for the user to complete payment
-            const { getSubscription } = await import("@/lib/razorpay");
-            const subscription = await getSubscription(account.razorpaySubscriptionId);
 
             // Log retry attempt
             const { databases: adminDatabases } = await createAdminClient();
@@ -609,21 +628,37 @@ const app = new Hono()
                 { retryCount: invoice.retryCount + 1 }
             );
 
-            return c.json({
-                data: {
-                    subscriptionStatus: subscription.status,
-                    checkoutRequired: subscription.status === "halted",
-                    checkoutOptions: subscription.status === "halted" ? {
-                        key: getPublicKey(),
-                        subscriptionId: account.razorpaySubscriptionId,
-                        name: "Fairlx Billing",
-                        description: `Payment for invoice ${invoiceId}`,
-                        prefill: {
-                            email: account.billingEmail,
-                        },
-                    } : undefined,
-                },
-            });
+            // Attempt recurring payment using mandate
+            try {
+                const { createRecurringPayment } = await import("@/lib/razorpay");
+                const result = await createRecurringPayment({
+                    customerId: account.razorpayCustomerId,
+                    tokenId: account.razorpayTokenId,
+                    amount: invoice.amount,
+                    invoiceId: invoice.invoiceId,
+                    description: `Invoice ${invoice.invoiceId} - Retry`,
+                    notes: {
+                        fairlx_billing_account_id: account.$id,
+                    },
+                });
+
+                return c.json({
+                    data: {
+                        paymentInitiated: true,
+                        orderId: result.order.id,
+                        paymentId: result.payment?.id,
+                    },
+                });
+            } catch (error: unknown) {
+                console.error("Retry payment failed:", error);
+                return c.json({
+                    data: {
+                        paymentInitiated: false,
+                        error: error instanceof Error ? error.message : "Payment failed",
+                        needsManualPayment: true,
+                    },
+                });
+            }
         }
     )
 

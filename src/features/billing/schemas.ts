@@ -51,6 +51,22 @@ export const getBillingAccountSchema = z.object({
 );
 
 /**
+ * Schema for getting checkout options (mandate authorization)
+ * Phone is REQUIRED for recurring payments (Razorpay requirement)
+ */
+export const checkoutOptionsSchema = z.object({
+    userId: z.string().optional(),
+    organizationId: z.string().optional(),
+    phone: z.string().min(10, "Phone number must be at least 10 digits").regex(
+        /^[+]?[0-9]{10,15}$/,
+        "Invalid phone number format"
+    ),
+}).refine(
+    (data) => data.userId || data.organizationId,
+    { message: "Either userId or organizationId is required" }
+);
+
+/**
  * Schema for updating billing account
  */
 export const updateBillingAccountSchema = z.object({

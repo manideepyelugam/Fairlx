@@ -15,6 +15,7 @@ import { verifyWebhookSignature } from "@/lib/razorpay";
 
 import {
     BillingStatus,
+    MandateStatus,
     BillingAccount,
     BillingInvoice,
     BillingAuditEventType,
@@ -30,6 +31,8 @@ import {
  * Events Handled:
  * - payment.captured: Payment successful
  * - payment.failed: Payment failed
+ * - token.confirmed: E-Mandate authorized
+ * - token.rejected/cancelled: E-Mandate failed
  * - subscription.charged: Subscription charged successfully
  * - subscription.halted: Subscription halted (mandate failed)
  * - subscription.cancelled: Subscription cancelled
@@ -143,6 +146,16 @@ const app = new Hono()
 
                 case "refund.failed":
                     await handleRefundFailed(databases, event, eventId);
+                    break;
+
+                // E-Mandate events
+                case "token.confirmed":
+                    await handleTokenConfirmed(databases, event, eventId);
+                    break;
+
+                case "token.rejected":
+                case "token.cancelled":
+                    await handleTokenFailed(databases, event, eventId);
                     break;
 
                 default:
@@ -663,6 +676,162 @@ async function handleRefundFailed(
     );
 
     console.log(`[Webhook] Processed refund.failed for account ${billingAccountId}`);
+}
+
+// ============================================================================
+// E-MANDATE TOKEN HANDLERS
+// ============================================================================
+
+/**
+ * Handle token.confirmed webhook
+ * 
+ * Called when e-Mandate authorization is confirmed by the bank/NPCI.
+ * Updates billing account with mandate status AUTHORIZED.
+ */
+async function handleTokenConfirmed(
+    databases: Awaited<ReturnType<typeof createAdminClient>>["databases"],
+    event: RazorpayWebhookEvent,
+    eventId: string
+): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const token = (event.payload as any)?.token?.entity;
+    if (!token) {
+        console.warn("[Webhook] token.confirmed missing token entity");
+        return;
+    }
+
+    const customerId = token.customer_id;
+    if (!customerId) {
+        console.warn("[Webhook] token.confirmed missing customer_id");
+        return;
+    }
+
+    // Find billing account by customer ID
+    const billingAccounts = await databases.listDocuments<BillingAccount>(
+        DATABASE_ID,
+        BILLING_ACCOUNTS_ID,
+        [
+            Query.equal("razorpayCustomerId", customerId),
+            Query.limit(1),
+        ]
+    );
+
+    if (billingAccounts.total === 0) {
+        console.log("[Webhook] token.confirmed - billing account not found for customer:", customerId);
+        return;
+    }
+
+    const account = billingAccounts.documents[0];
+
+    // Update billing account with mandate authorization
+    await databases.updateDocument(
+        DATABASE_ID,
+        BILLING_ACCOUNTS_ID,
+        account.$id,
+        {
+            razorpayTokenId: token.id,
+            razorpayMandateId: token.id,
+            mandateStatus: MandateStatus.AUTHORIZED,
+            paymentMethodType: token.method || "emandate",
+            paymentMethodBrand: token.bank || token.issuer || undefined,
+            paymentMethodLast4: token.last4 || undefined,
+        }
+    );
+
+    // Log audit event
+    await databases.createDocument(
+        DATABASE_ID,
+        BILLING_AUDIT_LOGS_ID,
+        ID.unique(),
+        {
+            billingAccountId: account.$id,
+            eventType: BillingAuditEventType.PAYMENT_METHOD_ADDED,
+            razorpayEventId: eventId,
+            metadata: JSON.stringify({
+                tokenId: token.id,
+                method: token.method,
+                bank: token.bank,
+                mandateStatus: MandateStatus.AUTHORIZED,
+            }),
+        }
+    );
+
+    console.log(`[Webhook] Processed token.confirmed for account ${account.$id}`);
+}
+
+/**
+ * Handle token.rejected / token.cancelled webhook
+ * 
+ * Called when e-Mandate authorization fails or is cancelled.
+ * Updates billing account with mandate status FAILED or CANCELLED.
+ */
+async function handleTokenFailed(
+    databases: Awaited<ReturnType<typeof createAdminClient>>["databases"],
+    event: RazorpayWebhookEvent,
+    eventId: string
+): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const token = (event.payload as any)?.token?.entity;
+    if (!token) {
+        console.warn("[Webhook] token.failed missing token entity");
+        return;
+    }
+
+    const customerId = token.customer_id;
+    if (!customerId) {
+        console.warn("[Webhook] token.failed missing customer_id");
+        return;
+    }
+
+    // Find billing account by customer ID
+    const billingAccounts = await databases.listDocuments<BillingAccount>(
+        DATABASE_ID,
+        BILLING_ACCOUNTS_ID,
+        [
+            Query.equal("razorpayCustomerId", customerId),
+            Query.limit(1),
+        ]
+    );
+
+    if (billingAccounts.total === 0) {
+        console.log("[Webhook] token.failed - billing account not found for customer:", customerId);
+        return;
+    }
+
+    const account = billingAccounts.documents[0];
+
+    const newStatus = event.event === "token.cancelled"
+        ? MandateStatus.CANCELLED
+        : MandateStatus.FAILED;
+
+    // Update billing account with failed/cancelled status
+    await databases.updateDocument(
+        DATABASE_ID,
+        BILLING_ACCOUNTS_ID,
+        account.$id,
+        {
+            mandateStatus: newStatus,
+        }
+    );
+
+    // Log audit event
+    await databases.createDocument(
+        DATABASE_ID,
+        BILLING_AUDIT_LOGS_ID,
+        ID.unique(),
+        {
+            billingAccountId: account.$id,
+            eventType: BillingAuditEventType.PAYMENT_METHOD_REMOVED,
+            razorpayEventId: eventId,
+            metadata: JSON.stringify({
+                tokenId: token.id,
+                reason: token.error_description || event.event,
+                mandateStatus: newStatus,
+            }),
+        }
+    );
+
+    console.log(`[Webhook] Processed ${event.event} for account ${account.$id}`);
 }
 
 export default app;
