@@ -54,8 +54,8 @@ export const Spaces = () => {
   }, {} as Record<string, typeof spaces>);
 
   return (
-    <div className="flex flex-col px-3 py-4 border-t border-neutral-200">
-      <div className="flex items-center justify-between pb-2">
+    <div className="flex flex-col px-3 py-4  border-neutral-200">
+      <div className="flex items-center justify-between ">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
           className="flex items-center gap-1 text-[13px] tracking-normal font-medium pl-2 text-primary hover:text-primary/80"

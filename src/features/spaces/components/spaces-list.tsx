@@ -47,12 +47,10 @@ export const SpacesList = () => {
   return (
     <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-lg font-semibold flex items-center gap-2">
-          <Folder className="size-5" />
-          Spaces
-        </CardTitle>
-        <Button variant="teritary" size="sm" onClick={open}>
-          <Plus className="size-4 mr-1" />
+        <CardTitle className="text-lg font-medium flex-1">All Spaces</CardTitle>
+       
+        <Button variant="teritary" size="xs" onClick={open}>
+          <Plus className="size-3 " />
           New Space
         </Button>
       </CardHeader>
@@ -85,16 +83,16 @@ export const SpacesList = () => {
                 onClick={() => handleSpaceClick(space.$id)}
                 className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent cursor-pointer transition-colors"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
                   <SpaceAvatar
                     name={space.name}
                     image={space.imageUrl ?? undefined}
                     color={space.color ?? undefined}
                     className="size-10"
                   />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{space.name}</span>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4">
+                      <span className="font-base text-sm">{space.name}</span>
                       <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                         {space.key}
                       </span>
@@ -104,7 +102,7 @@ export const SpacesList = () => {
                         <Globe className="size-3 text-muted-foreground" />
                       )}
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground mt-0.5">
                       <span className="flex items-center gap-1">
                         <UsersRound className="size-3" />
                         {space.teamCount ?? 0} {(space.teamCount ?? 0) === 1 ? 'team' : 'teams'}
