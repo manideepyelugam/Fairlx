@@ -3,14 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { client } from "@/lib/rpc";
 import { QUERY_CONFIG } from "@/lib/query-config";
 
-import { WorkItemType, WorkItemStatus, WorkItemPriority } from "../types";
+import { WorkItemType, WorkItemPriority } from "../types";
 
 interface UseGetWorkItemsProps {
   workspaceId: string;
   projectId?: string;
   sprintId?: string | null;
   type?: WorkItemType;
-  status?: WorkItemStatus;
+  status?: string; // Changed to string to support custom column IDs
   priority?: WorkItemPriority;
   assigneeId?: string;
   epicId?: string | null;

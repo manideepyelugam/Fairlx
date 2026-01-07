@@ -46,12 +46,12 @@ async function checkWorkflowPermission(
   workspaceId: string,
   userId: string,
   spaceId?: string | null
-): Promise<{ hasPermission: boolean; member: Models.Document | null }> {
-  const member = await getMember({
+): Promise<{ hasPermission: boolean; member: { role?: string } | null }> {
+  const member = (await getMember({
     databases,
     workspaceId,
     userId,
-  });
+  })) as { role?: string } | undefined;
 
   if (!member) {
     return { hasPermission: false, member: null };
@@ -1125,6 +1125,160 @@ const app = new Hono()
           workflow: workflow,
         },
       });
+    }
+  )
+
+  // ============ Sync workflow and project statuses with conflict resolution ============
+  .post(
+    "/:workflowId/sync-with-resolution/:projectId",
+    sessionMiddleware,
+    zValidator(
+      "json",
+      z.object({
+        resolution: z.enum(["workflow", "project"]),
+      })
+    ),
+    async (c) => {
+      const databases = c.get("databases");
+      const user = c.get("user");
+      const { workflowId, projectId } = c.req.param();
+      const { resolution } = c.req.valid("json");
+
+      // Get the workflow with statuses
+      const workflow = await databases.getDocument<Workflow>(
+        DATABASE_ID,
+        WORKFLOWS_ID,
+        workflowId
+      );
+
+      const member = await getMember({
+        databases,
+        workspaceId: workflow.workspaceId,
+        userId: user.$id,
+      });
+
+      if (!member || member.role !== MemberRole.ADMIN) {
+        return c.json({ error: "Only admins can sync workflow and project" }, 403);
+      }
+
+      // Get workflow statuses
+      const workflowStatuses = await databases.listDocuments<WorkflowStatus>(
+        DATABASE_ID,
+        WORKFLOW_STATUSES_ID,
+        [Query.equal("workflowId", workflowId), Query.orderAsc("position")]
+      );
+
+      // Get the project
+      const project = await databases.getDocument(
+        DATABASE_ID,
+        PROJECTS_ID,
+        projectId
+      );
+
+      if (project.workspaceId !== workflow.workspaceId) {
+        return c.json({ error: "Project and workflow must be in the same workspace" }, 400);
+      }
+
+      const projectCustomTypes = (project.customWorkItemTypes || []) as Array<{
+        key: string;
+        label: string;
+        icon: string;
+        color: string;
+      }>;
+
+      if (resolution === "workflow") {
+        // Workflow takes priority
+        // Update project's customWorkItemTypes to match workflow statuses
+        // Statuses on canvas (with positions) become visible columns
+        // Statuses not on canvas (position 0,0) become hidden
+        
+        const newCustomTypes = workflowStatuses.documents.map((status) => {
+          // Check if this status has a canvas position (visible)
+          const hasCanvasPosition = 
+            (status.positionX !== undefined && status.positionX > 0) || 
+            (status.positionY !== undefined && status.positionY > 0);
+          
+          return {
+            key: status.key,
+            label: status.name,
+            icon: status.icon,
+            color: status.color,
+            // Add visibility flag based on canvas position
+            visible: hasCanvasPosition,
+          };
+        });
+
+        await databases.updateDocument(
+          DATABASE_ID,
+          PROJECTS_ID,
+          projectId,
+          {
+            workflowId: workflowId,
+            customWorkItemTypes: newCustomTypes,
+          }
+        );
+
+        return c.json({
+          data: {
+            message: "Project synced to workflow statuses",
+            resolution: "workflow",
+            statusCount: newCustomTypes.length,
+          },
+        });
+      } else {
+        // Project takes priority
+        // Add missing project statuses to workflow
+        const workflowStatusKeys = new Set(
+          workflowStatuses.documents.map((s) => s.key)
+        );
+
+        // Find project statuses not in workflow
+        const missingInWorkflow = projectCustomTypes.filter(
+          (t) => !workflowStatusKeys.has(t.key)
+        );
+
+        // Add missing statuses to workflow
+        let position = workflowStatuses.total;
+        for (const missingStatus of missingInWorkflow) {
+          await databases.createDocument<WorkflowStatus>(
+            DATABASE_ID,
+            WORKFLOW_STATUSES_ID,
+            ID.unique(),
+            {
+              workflowId,
+              name: missingStatus.label,
+              key: missingStatus.key,
+              icon: missingStatus.icon || "Circle",
+              color: missingStatus.color || "#6B7280",
+              statusType: StatusType.OPEN, // Default to OPEN for new statuses
+              description: null,
+              position: position++,
+              positionX: 0, // Not on canvas initially
+              positionY: 0,
+              isInitial: false,
+              isFinal: false,
+            }
+          );
+        }
+
+        // Update project to use this workflow
+        await databases.updateDocument(
+          DATABASE_ID,
+          PROJECTS_ID,
+          projectId,
+          {
+            workflowId: workflowId,
+          }
+        );
+
+        return c.json({
+          data: {
+            message: "Workflow synced from project statuses",
+            resolution: "project",
+            addedStatuses: missingInWorkflow.length,
+          },
+        });
+      }
     }
   )
 
