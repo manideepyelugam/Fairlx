@@ -75,6 +75,34 @@ import { SprintSettingsSheet } from "./sprint-settings-sheet";
 import { CreateEpicDialog } from "./create-epic-dialog";
 import { WorkItemIcon } from "@/features/timeline/components/work-item-icon";
 import { useGetProject } from "@/features/projects/api/use-get-project";
+import { useGetCustomColumns } from "@/features/custom-columns/api/use-get-custom-columns";
+import { SelectSeparator } from "@/components/ui/select";
+import { snakeCaseToTitleCase } from "@/lib/utils";
+import * as Icons from "react-icons/ai";
+import * as BiIcons from "react-icons/bi";
+import * as BsIcons from "react-icons/bs";
+import * as FaIcons from "react-icons/fa";
+import * as FiIcons from "react-icons/fi";
+import * as HiIcons from "react-icons/hi";
+import * as IoIcons from "react-icons/io5";
+import * as MdIcons from "react-icons/md";
+import * as RiIcons from "react-icons/ri";
+import * as TbIcons from "react-icons/tb";
+import { CircleIcon } from "lucide-react";
+
+// Combine all icon sets for custom columns
+const allIcons = {
+  ...Icons,
+  ...BiIcons,
+  ...BsIcons,
+  ...FaIcons,
+  ...FiIcons,
+  ...HiIcons,
+  ...IoIcons,
+  ...MdIcons,
+  ...RiIcons,
+  ...TbIcons,
+};
 
 interface EnhancedBacklogScreenProps {
   workspaceId: string;
@@ -110,6 +138,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   const { data: epicsData } = useGetEpics({ workspaceId, projectId });
   const { data: membersData } = useGetMembers({ workspaceId });
   const { data: project } = useGetProject({ projectId }); // Fetch project settings
+  const { data: customColumnsData } = useGetCustomColumns({ workspaceId, projectId });
+  const customColumns = customColumnsData?.documents || [];
 
   const { mutate: createSprint, isPending: isCreatingSprint } = useCreateSprint();
   const { mutate: updateSprint } = useUpdateSprint();
@@ -289,11 +319,25 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     setIsDrawerOpen(true);
   };
 
-  const handleStatusChange = (itemId: string, status: WorkItemStatus) => {
+  const handleStatusChange = (itemId: string, status: string) => {
     updateWorkItem({
       param: { workItemId: itemId },
       json: { status },
     });
+  };
+
+  // Helper function to get display name for a status
+  const getStatusDisplayName = (status: string): string => {
+    // Check if it's a default status
+    if (Object.values(WorkItemStatus).includes(status as WorkItemStatus)) {
+      return snakeCaseToTitleCase(status);
+    }
+    // Check if it's a custom column
+    const customColumn = customColumns.find(col => col.$id === status);
+    if (customColumn) {
+      return customColumn.name;
+    }
+    return status;
   };
 
   const handleDragEnd = (result: DropResult) => {
@@ -844,13 +888,15 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                         {/* Status Dropdown */}
                                         <Select
                                           value={item.status}
-                                          onValueChange={(value: WorkItemStatus) => handleStatusChange(item.$id, value)}
+                                          onValueChange={(value: string) => handleStatusChange(item.$id, value)}
                                         >
                                           <SelectTrigger
                                             className="w-[120px] h-7 text-xs flex-shrink-0"
                                             onClick={(e) => e.stopPropagation()}
                                           >
-                                            <SelectValue />
+                                            <SelectValue>
+                                              {getStatusDisplayName(item.status)}
+                                            </SelectValue>
                                           </SelectTrigger>
                                           <SelectContent>
                                             <SelectItem value={WorkItemStatus.TODO}>To Do</SelectItem>
@@ -858,6 +904,26 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                             <SelectItem value={WorkItemStatus.IN_PROGRESS}>In Progress</SelectItem>
                                             <SelectItem value={WorkItemStatus.IN_REVIEW}>In Review</SelectItem>
                                             <SelectItem value={WorkItemStatus.DONE}>Done</SelectItem>
+                                            {customColumns.length > 0 && (
+                                              <>
+                                                <SelectSeparator />
+                                                {customColumns.map((column) => {
+                                                  const IconComponent = allIcons[column.icon as keyof typeof allIcons] as React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+                                                  return (
+                                                    <SelectItem key={column.$id} value={column.$id}>
+                                                      <div className="flex items-center gap-2">
+                                                        {IconComponent ? (
+                                                          <IconComponent className="size-4" style={{ color: column.color }} />
+                                                        ) : (
+                                                          <CircleIcon className="size-4" style={{ color: column.color }} />
+                                                        )}
+                                                        {column.name}
+                                                      </div>
+                                                    </SelectItem>
+                                                  );
+                                                })}
+                                              </>
+                                            )}
                                           </SelectContent>
                                         </Select>
 
@@ -1186,13 +1252,15 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                   {/* Status Dropdown */}
                                   <Select
                                     value={item.status}
-                                    onValueChange={(value: WorkItemStatus) => handleStatusChange(item.$id, value)}
+                                    onValueChange={(value: string) => handleStatusChange(item.$id, value)}
                                   >
                                     <SelectTrigger
                                       className="w-[120px] h-7 text-xs flex-shrink-0"
                                       onClick={(e) => e.stopPropagation()}
                                     >
-                                      <SelectValue />
+                                      <SelectValue>
+                                        {getStatusDisplayName(item.status)}
+                                      </SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
                                       <SelectItem value={WorkItemStatus.TODO}>To Do</SelectItem>
@@ -1200,6 +1268,26 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                       <SelectItem value={WorkItemStatus.IN_PROGRESS}>In Progress</SelectItem>
                                       <SelectItem value={WorkItemStatus.IN_REVIEW}>In Review</SelectItem>
                                       <SelectItem value={WorkItemStatus.DONE}>Done</SelectItem>
+                                      {customColumns.length > 0 && (
+                                        <>
+                                          <SelectSeparator />
+                                          {customColumns.map((column) => {
+                                            const IconComponent = allIcons[column.icon as keyof typeof allIcons] as React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+                                            return (
+                                              <SelectItem key={column.$id} value={column.$id}>
+                                                <div className="flex items-center gap-2">
+                                                  {IconComponent ? (
+                                                    <IconComponent className="size-4" style={{ color: column.color }} />
+                                                  ) : (
+                                                    <CircleIcon className="size-4" style={{ color: column.color }} />
+                                                  )}
+                                                  {column.name}
+                                                </div>
+                                              </SelectItem>
+                                            );
+                                          })}
+                                        </>
+                                      )}
                                     </SelectContent>
                                   </Select>
 

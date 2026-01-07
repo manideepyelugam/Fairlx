@@ -354,13 +354,26 @@ export const STATUS_COLORS = [
 // ===================================
 // Helper Functions
 // ===================================
+
+/**
+ * Check if a status has a valid canvas position (not in sidebar)
+ * Statuses with positionX=0 AND positionY=0 are considered "in sidebar"
+ */
+export function hasCanvasPosition(status: WorkflowStatus): boolean {
+  return (status.positionX !== undefined && status.positionX > 0) || 
+         (status.positionY !== undefined && status.positionY > 0);
+}
+
 export function convertStatusesToNodes(
   statuses: WorkflowStatus[],
   onEdit: (id: string) => void,
   onDelete: (id: string) => void,
   onRemove?: (id: string) => void
 ): StatusNode[] {
-  return statuses.map((status) => ({
+  // Only render statuses that have valid canvas positions
+  const canvasStatuses = statuses.filter(hasCanvasPosition);
+  
+  return canvasStatuses.map((status) => ({
     id: status.$id,
     type: "statusNode",
     position: { x: status.positionX || status.position * 280, y: status.positionY || 150 },

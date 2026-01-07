@@ -24,6 +24,7 @@ import {
   Connection,
   Node,
   BackgroundVariant,
+  useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
@@ -46,6 +47,7 @@ import { useDeleteTransition } from "@/features/workflows/api/use-delete-transit
 import { useGetProjects } from "@/features/projects/api/use-get-projects";
 import { useUpdateProject } from "@/features/projects/api/use-update-project";
 import { useSyncFromProject } from "@/features/workflows/api/use-sync-from-project";
+import { useSyncWithResolution } from "@/features/workflows/api/use-sync-with-resolution";
 import { useConfirm } from "@/hooks/use-confirm";
 import { PageLoader } from "@/components/page-loader";
 
@@ -65,6 +67,7 @@ import { StatusEditDialog } from "@/features/workflows/components/status-edit-di
 import { TransitionEditDialog } from "@/features/workflows/components/transition-edit-dialog";
 import { WorkflowSimpleView } from "@/features/workflows/components/workflow-simple-view";
 import { ConnectProjectDialog } from "@/features/workflows/components/connect-project-dialog";
+import { ResolutionStrategy } from "@/features/workflows/components/workflow-conflict-dialog";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const nodeTypes: Record<string, any> = {
@@ -97,6 +100,7 @@ const WorkflowEditor = () => {
   const { mutateAsync: deleteTransitionMutation } = useDeleteTransition();
   const { mutate: updateProject, isPending: isUpdatingProject } = useUpdateProject();
   const { mutate: syncFromProject, isPending: isSyncing } = useSyncFromProject();
+  const { mutate: syncWithResolution } = useSyncWithResolution();
 
   // Get projects for this space
   const projects = useMemo(() => {
@@ -147,6 +151,9 @@ const WorkflowEditor = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState<StatusNodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<TransitionEdgeType>([]);
 
+  // React Flow instance for coordinate conversion
+  const reactFlowInstance = useReactFlow();
+
   // Use refs to avoid dependency issues in callbacks
   const workflowRef = useRef(workflow);
   workflowRef.current = workflow;
@@ -156,6 +163,46 @@ const WorkflowEditor = () => {
 
   const confirmDeleteTransitionRef = useRef(confirmDeleteTransition);
   confirmDeleteTransitionRef.current = confirmDeleteTransition;
+
+  // Handle drag over for the canvas drop zone
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  }, []);
+
+  // Handle drop on canvas - place status from sidebar onto canvas
+  const onDrop = useCallback(
+    async (event: React.DragEvent) => {
+      event.preventDefault();
+
+      const data = event.dataTransfer.getData("application/reactflow");
+      if (!data) return;
+
+      try {
+        const { type, status } = JSON.parse(data);
+        if (type !== "statusNode" || !status) return;
+
+        // Get the position where the node was dropped
+        const reactFlowBounds = event.currentTarget.getBoundingClientRect();
+        const position = reactFlowInstance.screenToFlowPosition({
+          x: event.clientX - reactFlowBounds.left,
+          y: event.clientY - reactFlowBounds.top,
+        });
+
+        // Update the status position in the database
+        await updateStatus({
+          param: { workflowId, statusId: status.$id },
+          json: {
+            positionX: Math.round(position.x),
+            positionY: Math.round(position.y),
+          },
+        });
+      } catch (error) {
+        console.error("Failed to place status on canvas:", error);
+      }
+    },
+    [workflowId, updateStatus, reactFlowInstance]
+  );
 
   // Status edit/delete handlers for nodes - use refs to avoid infinite loops
   const handleNodeEdit = useCallback((statusId: string) => {
@@ -234,19 +281,29 @@ const WorkflowEditor = () => {
     );
   };
 
-  // Connect project to workflow
-  const handleConnectProject = useCallback((projectId: string) => {
+  // Connect project to workflow with optional resolution strategy
+  const handleConnectProject = useCallback((projectId: string, resolution?: ResolutionStrategy) => {
+    // If a resolution strategy is provided, use the sync-with-resolution endpoint
+    if (resolution) {
+      syncWithResolution({
+        param: { workflowId, projectId },
+        json: { resolution },
+      });
+      setConnectProjectOpen(false);
+      return;
+    }
+
+    // No conflict, just connect and sync
     updateProject(
       { param: { projectId }, form: { workflowId } },
       { 
         onSuccess: () => {
           setConnectProjectOpen(false);
-          // Auto-sync statuses from the connected project
           syncFromProject({ param: { workflowId, projectId } });
         } 
       }
     );
-  }, [workflowId, updateProject, syncFromProject]);
+  }, [workflowId, updateProject, syncFromProject, syncWithResolution]);
 
   // Disconnect project from workflow
   const handleDisconnectProject = useCallback(async (projectId: string) => {
@@ -502,6 +559,8 @@ const WorkflowEditor = () => {
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             onNodeDragStop={onNodeDragStop}
+            onDrop={onDrop}
+            onDragOver={onDragOver}
             onMove={(_, viewport) => setZoomLevel(Math.round(viewport.zoom * 100))}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}

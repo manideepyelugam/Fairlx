@@ -7,7 +7,18 @@ import {
   ChevronRight,
   Users,
   Layers,
+  CircleIcon,
 } from "lucide-react";
+import * as Icons from "react-icons/ai";
+import * as BiIcons from "react-icons/bi";
+import * as BsIcons from "react-icons/bs";
+import * as FaIcons from "react-icons/fa";
+import * as FiIcons from "react-icons/fi";
+import * as HiIcons from "react-icons/hi";
+import * as IoIcons from "react-icons/io5";
+import * as MdIcons from "react-icons/md";
+import * as RiIcons from "react-icons/ri";
+import * as TbIcons from "react-icons/tb";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -23,9 +34,10 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectSeparator,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { cn, snakeCaseToTitleCase } from "@/lib/utils";
 
 import { useUpdateWorkItem } from "../api/use-update-work-item";
 import { WorkItemOptionsMenu } from "./work-item-options-menu";
@@ -38,6 +50,21 @@ import {
   WorkItemPriority,
   WorkItemType,
 } from "../types";
+import { useGetCustomColumns } from "@/features/custom-columns/api/use-get-custom-columns";
+
+// Combine all icon sets for custom columns
+const allIcons = {
+  ...Icons,
+  ...BiIcons,
+  ...BsIcons,
+  ...FaIcons,
+  ...FiIcons,
+  ...HiIcons,
+  ...IoIcons,
+  ...MdIcons,
+  ...RiIcons,
+  ...TbIcons,
+};
 
 interface WorkItemCardProps {
   workItem: PopulatedWorkItem;
@@ -69,6 +96,27 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails }
   const [splitDialogOpen, setSplitDialogOpen] = useState(false);
   const [assigneePopoverOpen, setAssigneePopoverOpen] = useState(false);
   const { mutate: updateWorkItem } = useUpdateWorkItem();
+  
+  // Fetch custom columns for this project
+  const { data: customColumnsData } = useGetCustomColumns({ 
+    workspaceId, 
+    projectId: projectId || workItem.projectId 
+  });
+  const customColumns = customColumnsData?.documents || [];
+
+  // Helper function to get display name for a status
+  const getStatusDisplayName = (status: string): string => {
+    // Check if it's a default status
+    if (Object.values(WorkItemStatus).includes(status as WorkItemStatus)) {
+      return snakeCaseToTitleCase(status);
+    }
+    // Check if it's a custom column
+    const customColumn = customColumns.find(col => col.$id === status);
+    if (customColumn) {
+      return customColumn.name;
+    }
+    return status;
+  };
 
   const handleStatusChange = (status: string) => {
     updateWorkItem({
@@ -152,7 +200,9 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails }
               onValueChange={handleStatusChange}
             >
               <SelectTrigger className="h-7 w-32 text-xs">
-                <SelectValue />
+                <SelectValue>
+                  {getStatusDisplayName(workItem.status)}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={WorkItemStatus.TODO}>To Do</SelectItem>
@@ -164,6 +214,26 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails }
                 </SelectItem>
                 <SelectItem value={WorkItemStatus.DONE}>Done</SelectItem>
                 <SelectItem value={WorkItemStatus.ASSIGNED}>Assigned</SelectItem>
+                {customColumns.length > 0 && (
+                  <>
+                    <SelectSeparator />
+                    {customColumns.map((column) => {
+                      const IconComponent = allIcons[column.icon as keyof typeof allIcons] as React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+                      return (
+                        <SelectItem key={column.$id} value={column.$id}>
+                          <div className="flex items-center gap-2">
+                            {IconComponent ? (
+                              <IconComponent className="size-4" style={{ color: column.color }} />
+                            ) : (
+                              <CircleIcon className="size-4" style={{ color: column.color }} />
+                            )}
+                            {column.name}
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </>
+                )}
               </SelectContent>
             </Select>
 
