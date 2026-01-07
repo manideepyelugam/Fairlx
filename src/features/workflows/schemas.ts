@@ -74,9 +74,9 @@ export const createWorkflowTransitionSchema = z.object({
   requiresApproval: z.boolean().default(false),
   approverTeamIds: z.array(z.string()).optional(),
   
-  // Automation
-  autoTransition: z.boolean().default(false),
-  conditions: transitionConditionSchema,
+  // Automation (not yet implemented in database)
+  // autoTransition: z.boolean().default(false),
+  // conditions: transitionConditionSchema,
 });
 
 // Update a transition
@@ -92,9 +92,9 @@ export const updateWorkflowTransitionSchema = z.object({
   requiresApproval: z.boolean().optional(),
   approverTeamIds: z.array(z.string()).optional().nullable(),
   
-  // Automation
-  autoTransition: z.boolean().optional(),
-  conditions: transitionConditionSchema,
+  // Automation (not yet implemented in database)
+  // autoTransition: z.boolean().optional(),
+  // conditions: transitionConditionSchema,
 });
 
 // Validate a status transition (for work item updates)

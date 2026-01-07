@@ -1,10 +1,11 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
-import { ID, Query } from "node-appwrite";
+import { ID, Query, type Databases } from "node-appwrite";
 import { z } from "zod";
 
 import { getMember } from "@/features/members/utils";
 import { MemberRole } from "@/features/members/types";
+import { SpaceRole, SpaceMember } from "@/features/spaces/types";
 
 import {
   DATABASE_ID,
@@ -13,6 +14,7 @@ import {
   WORKFLOW_TRANSITIONS_ID,
   PROJECTS_ID,
   TEAM_MEMBERS_ID,
+  SPACE_MEMBERS_ID,
 } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 
@@ -32,6 +34,52 @@ import {
   DEFAULT_SOFTWARE_WORKFLOW,
   StatusType,
 } from "../types";
+
+/**
+ * Helper function to check if user has permission to manage workflows
+ * Permissions:
+ * - Workspace OWNER or ADMIN can manage all workflows
+ * - Space ADMIN (Master) can manage workflows in their space
+ */
+async function checkWorkflowPermission(
+  databases: Databases,
+  workspaceId: string,
+  userId: string,
+  spaceId?: string | null
+): Promise<{ hasPermission: boolean; member: any }> {
+  const member = await getMember({
+    databases,
+    workspaceId,
+    userId,
+  });
+
+  if (!member) {
+    return { hasPermission: false, member: null };
+  }
+
+  // Workspace OWNER or ADMIN can always manage workflows
+  if (member.role === MemberRole.OWNER || member.role === MemberRole.ADMIN) {
+    return { hasPermission: true, member };
+  }
+
+  // If it's a space-level workflow, check if user is Space Master
+  if (spaceId) {
+    const spaceMembership = await databases.listDocuments<SpaceMember>(
+      DATABASE_ID,
+      SPACE_MEMBERS_ID,
+      [
+        Query.equal("spaceId", spaceId),
+        Query.equal("userId", userId),
+      ]
+    );
+
+    if (spaceMembership.total > 0 && spaceMembership.documents[0].role === SpaceRole.ADMIN) {
+      return { hasPermission: true, member };
+    }
+  }
+
+  return { hasPermission: false, member };
+}
 
 const app = new Hono()
   // Create a new workflow
@@ -53,14 +101,18 @@ const app = new Hono()
         copyFromWorkflowId,
       } = c.req.valid("json");
 
-      const member = await getMember({
+      const { hasPermission } = await checkWorkflowPermission(
         databases,
         workspaceId,
-        userId: user.$id,
-      });
+        user.$id,
+        spaceId
+      );
 
-      if (!member || member.role !== MemberRole.ADMIN) {
-        return c.json({ error: "Only admins can create workflows" }, 403);
+      if (!hasPermission) {
+        return c.json(
+          { error: "Only workspace owners, admins, or space masters can create workflows" },
+          403
+        );
       }
 
       // Create the workflow
@@ -137,7 +189,6 @@ const app = new Hono()
                 allowedMemberRoles: transition.allowedMemberRoles,
                 requiresApproval: transition.requiresApproval,
                 approverTeamIds: transition.approverTeamIds,
-                autoTransition: transition.autoTransition,
               }
             );
           }
@@ -188,7 +239,6 @@ const app = new Hono()
                   name: transitionDef.name || null,
                   allowedTeamIds: transitionDef.allowedTeamIds || null,
                   requiresApproval: transitionDef.requiresApproval || false,
-                  autoTransition: false,
                 }
               );
             }
@@ -328,14 +378,15 @@ const app = new Hono()
         return c.json({ error: "Cannot modify system workflows" }, 400);
       }
 
-      const member = await getMember({
+      const { hasPermission } = await checkWorkflowPermission(
         databases,
-        workspaceId: workflow.workspaceId,
-        userId: user.$id,
-      });
+        workflow.workspaceId,
+        user.$id,
+        workflow.spaceId
+      );
 
-      if (!member || member.role !== MemberRole.ADMIN) {
-        return c.json({ error: "Only admins can update workflows" }, 403);
+      if (!hasPermission) {
+        return c.json({ error: "Only workspace owners, admins, or space masters can update workflows" }, 403);
       }
 
       const updatedWorkflow = await databases.updateDocument<Workflow>(
@@ -365,14 +416,15 @@ const app = new Hono()
       return c.json({ error: "Cannot delete system workflows" }, 400);
     }
 
-    const member = await getMember({
+    const { hasPermission } = await checkWorkflowPermission(
       databases,
-      workspaceId: workflow.workspaceId,
-      userId: user.$id,
-    });
+      workflow.workspaceId,
+      user.$id,
+      workflow.spaceId
+    );
 
-    if (!member || member.role !== MemberRole.ADMIN) {
-      return c.json({ error: "Only admins can delete workflows" }, 403);
+    if (!hasPermission) {
+      return c.json({ error: "Only workspace owners, admins, or space masters can delete workflows" }, 403);
     }
 
     // Delete all statuses and transitions
@@ -426,14 +478,15 @@ const app = new Hono()
         return c.json({ error: "Cannot modify system workflows" }, 400);
       }
 
-      const member = await getMember({
+      const { hasPermission } = await checkWorkflowPermission(
         databases,
-        workspaceId: workflow.workspaceId,
-        userId: user.$id,
-      });
+        workflow.workspaceId,
+        user.$id,
+        workflow.spaceId
+      );
 
-      if (!member || member.role !== MemberRole.ADMIN) {
-        return c.json({ error: "Only admins can add statuses" }, 403);
+      if (!hasPermission) {
+        return c.json({ error: "Only workspace owners, admins, or space masters can add statuses" }, 403);
       }
 
       // Check for duplicate key
@@ -535,14 +588,15 @@ const app = new Hono()
         return c.json({ error: "Cannot modify system workflows" }, 400);
       }
 
-      const member = await getMember({
+      const { hasPermission } = await checkWorkflowPermission(
         databases,
-        workspaceId: workflow.workspaceId,
-        userId: user.$id,
-      });
+        workflow.workspaceId,
+        user.$id,
+        workflow.spaceId
+      );
 
-      if (!member || member.role !== MemberRole.ADMIN) {
-        return c.json({ error: "Only admins can update statuses" }, 403);
+      if (!hasPermission) {
+        return c.json({ error: "Only workspace owners, admins, or space masters can update statuses" }, 403);
       }
 
       const updatedStatus = await databases.updateDocument<WorkflowStatus>(
@@ -572,14 +626,15 @@ const app = new Hono()
       return c.json({ error: "Cannot modify system workflows" }, 400);
     }
 
-    const member = await getMember({
+    const { hasPermission } = await checkWorkflowPermission(
       databases,
-      workspaceId: workflow.workspaceId,
-      userId: user.$id,
-    });
+      workflow.workspaceId,
+      user.$id,
+      workflow.spaceId
+    );
 
-    if (!member || member.role !== MemberRole.ADMIN) {
-      return c.json({ error: "Only admins can delete statuses" }, 403);
+    if (!hasPermission) {
+      return c.json({ error: "Only workspace owners, admins, or space masters can delete statuses" }, 403);
     }
 
     // Delete associated transitions
@@ -630,14 +685,15 @@ const app = new Hono()
         return c.json({ error: "Cannot modify system workflows" }, 400);
       }
 
-      const member = await getMember({
+      const { hasPermission } = await checkWorkflowPermission(
         databases,
-        workspaceId: workflow.workspaceId,
-        userId: user.$id,
-      });
+        workflow.workspaceId,
+        user.$id,
+        workflow.spaceId
+      );
 
-      if (!member || member.role !== MemberRole.ADMIN) {
-        return c.json({ error: "Only admins can add transitions" }, 403);
+      if (!hasPermission) {
+        return c.json({ error: "Only workspace owners, admins, or space masters can add transitions" }, 403);
       }
 
       // Check if transition already exists
@@ -669,8 +725,6 @@ const app = new Hono()
           allowedMemberRoles: transitionData.allowedMemberRoles || null,
           requiresApproval: transitionData.requiresApproval || false,
           approverTeamIds: transitionData.approverTeamIds || null,
-          autoTransition: transitionData.autoTransition || false,
-          conditions: transitionData.conditions || null,
         }
       );
 
@@ -731,27 +785,22 @@ const app = new Hono()
         return c.json({ error: "Cannot modify system workflows" }, 400);
       }
 
-      const member = await getMember({
+      const { hasPermission } = await checkWorkflowPermission(
         databases,
-        workspaceId: workflow.workspaceId,
-        userId: user.$id,
-      });
+        workflow.workspaceId,
+        user.$id,
+        workflow.spaceId
+      );
 
-      if (!member || member.role !== MemberRole.ADMIN) {
-        return c.json({ error: "Only admins can update transitions" }, 403);
+      if (!hasPermission) {
+        return c.json({ error: "Only workspace owners, admins, or space masters can update transitions" }, 403);
       }
-
-      // Serialize conditions to JSON string if provided
-      const dataToUpdate = {
-        ...updates,
-        conditions: updates.conditions ? JSON.stringify(updates.conditions) : null,
-      };
 
       const updatedTransition = await databases.updateDocument<WorkflowTransition>(
         DATABASE_ID,
         WORKFLOW_TRANSITIONS_ID,
         transitionId,
-        dataToUpdate
+        updates
       );
 
       return c.json({ data: updatedTransition });
@@ -774,14 +823,15 @@ const app = new Hono()
       return c.json({ error: "Cannot modify system workflows" }, 400);
     }
 
-    const member = await getMember({
+    const { hasPermission } = await checkWorkflowPermission(
       databases,
-      workspaceId: workflow.workspaceId,
-      userId: user.$id,
-    });
+      workflow.workspaceId,
+      user.$id,
+      workflow.spaceId
+    );
 
-    if (!member || member.role !== MemberRole.ADMIN) {
-      return c.json({ error: "Only admins can delete transitions" }, 403);
+    if (!hasPermission) {
+      return c.json({ error: "Only workspace owners, admins, or space masters can delete transitions" }, 403);
     }
 
     await databases.deleteDocument(DATABASE_ID, WORKFLOW_TRANSITIONS_ID, transitionId);
