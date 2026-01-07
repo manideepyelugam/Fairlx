@@ -51,8 +51,11 @@ async function createBillingAccountsCollection() {
             { key: 'userId', type: 'string', size: 36, required: false },
             { key: 'organizationId', type: 'string', size: 36, required: false },
             { key: 'razorpayCustomerId', type: 'string', size: 255, required: true },
-            { key: 'razorpaySubscriptionId', type: 'string', size: 255, required: false },
+            // E-Mandate fields (RBI-compliant postpaid billing)
+            { key: 'razorpayTokenId', type: 'string', size: 255, required: false },
             { key: 'razorpayMandateId', type: 'string', size: 255, required: false },
+            { key: 'mandateMaxAmount', type: 'integer', required: false },
+            { key: 'mandateStatus', type: 'string', size: 20, required: false },
             { key: 'billingStatus', type: 'string', size: 20, required: true },
             { key: 'billingCycleStart', type: 'datetime', required: true },
             { key: 'billingCycleEnd', type: 'datetime', required: true },
@@ -82,6 +85,16 @@ async function createBillingAccountsCollection() {
                         collectionId,
                         attr.key,
                         attr.required
+                    );
+                } else if (attr.type === 'integer') {
+                    await databases.createIntegerAttribute(
+                        databaseId,
+                        collectionId,
+                        attr.key,
+                        attr.required,
+                        undefined, // min
+                        undefined, // max
+                        undefined  // default
                     );
                 }
                 console.log(`  Created attribute: ${attr.key}`);

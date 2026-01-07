@@ -42,6 +42,8 @@ import {
 } from "@/features/usage/components";
 import { BillingEntityBadge } from "@/components/billing-entity-badge";
 import { ResourceType, UsageSource } from "@/features/usage/types";
+// import { CurrencyRatePanel } from "@/features/currency/components/currency-rate-panel";
+import { CurrencySelector, useDisplayCurrency } from "@/features/currency/components/currency-selector";
 
 export function UsageDashboardClient() {
     const workspaceId = useWorkspaceId();
@@ -54,6 +56,9 @@ export function UsageDashboardClient() {
     const { canEdit: isOrgAdmin, isLoading: isOrgMemberLoading } = useCurrentOrgMember({
         organizationId: primaryOrganizationId || ""
     });
+
+    // Currency display hook
+    const { currency, setCurrency, rate, rates } = useDisplayCurrency();
 
     // Get current org for ORG accounts
     const currentOrg = isOrg && primaryOrganizationId
@@ -219,6 +224,13 @@ export function UsageDashboardClient() {
                             <Shield className="h-3.5 w-3.5" />
                             <span className="font-medium">Admin Only</span>
                         </div>
+                        {/* Currency Selector with live rate */}
+                        <CurrencySelector
+                            value={currency}
+                            onChange={setCurrency}
+                            rates={rates}
+                            showRates={true}
+                        />
                     </div>
                     <div className="flex items-center gap-2">
                         {/* Date Range Picker */}
@@ -341,8 +353,13 @@ export function UsageDashboardClient() {
 
                     {/* Right Sidebar (3 columns) - Matching workspace dashboard */}
                     <div className="col-span-12 xl:col-span-3 flex flex-col space-y-4">
-                        {/* Cost Summary */}
-                        <CostSummary summary={summary} isLoading={isSummaryLoading} />
+                        {/* Cost Summary - with selected currency */}
+                        <CostSummary
+                            summary={summary}
+                            isLoading={isSummaryLoading}
+                            currency={currency}
+                            exchangeRate={rate}
+                        />
 
                         {/* Alerts Manager */}
                         <UsageAlertsManager
@@ -352,6 +369,13 @@ export function UsageDashboardClient() {
                         />
                     </div>
                 </div>
+
+                {/* Currency Rate Panel - ORG accounts only, for billing conversion visibility
+                {isOrg && (
+                    <div className="mt-6">
+                        <CurrencyRatePanel />
+                    </div>
+                )} */}
             </div>
         </div>
     );

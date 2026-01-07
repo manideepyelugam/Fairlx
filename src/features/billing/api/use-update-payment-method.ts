@@ -19,7 +19,8 @@ export function useUpdatePaymentMethod() {
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                throw new Error((errorData as { error?: string }).error || "Failed to update payment method");
+                const errorMessage = (errorData as { error?: string }).error || JSON.stringify(errorData) || "Failed to update payment method";
+                throw new Error(errorMessage);
             }
 
             return response.json();

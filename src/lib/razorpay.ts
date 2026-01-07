@@ -224,59 +224,182 @@ export async function getCustomer(customerId: string) {
     return razorpay.customers.fetch(customerId);
 }
 
-// ===============================
-// Subscription Operations
-// ===============================
-
-export interface CreateSubscriptionOptions {
-    planId: string;
-    customerId: string;
-    totalCount?: number;
-    notes?: Record<string, string>;
-    notifyInfo?: {
-        notify_email?: string;
-        notify_phone?: string;
-    };
+/**
+ * Update a Razorpay customer
+ * 
+ * NOTE: contact is REQUIRED for recurring payments (e-Mandate).
+ * This function ensures the customer has a contact before mandate setup.
+ */
+export async function updateCustomer(
+    customerId: string,
+    updates: { contact?: string; name?: string; email?: string }
+) {
+    const razorpay = getRazorpay();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (razorpay.customers as any).edit(customerId, updates);
 }
 
 /**
- * Create a Razorpay subscription
- * 
- * For usage-based billing, we create a subscription with
- * add-ons added at billing cycle end.
+ * Ensure customer has contact (required for recurring payments)
  */
-export async function createSubscription(options: CreateSubscriptionOptions) {
+export async function ensureCustomerContact(
+    customerId: string,
+    contact: string
+): Promise<void> {
+    if (!contact) {
+        throw new Error("Phone number is required for recurring payments");
+    }
+
+    try {
+        const customer = await getCustomer(customerId);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if (!(customer as any).contact) {
+            await updateCustomer(customerId, { contact });
+            console.log(`[Razorpay] Updated customer ${customerId} with contact`);
+        }
+    } catch (error) {
+        console.error(`[Razorpay] Failed to update customer contact:`, error);
+        throw error;
+    }
+}
+
+// ===============================
+// E-Mandate Operations (RBI-Compliant Postpaid Billing)
+// ===============================
+
+/**
+ * E-MANDATE BILLING FLOW:
+ * 
+ * 1. Customer authorizes e-Mandate (no charge)
+ * 2. We aggregate usage at cycle end
+ * 3. We generate invoice BEFORE charging
+ * 4. We debit the invoice amount using the mandate
+ * 
+ * This is RBI-compliant postpaid billing.
+ */
+
+export interface CreateMandateOrderOptions {
+    customerId: string;
+    maxAmount: number; // Maximum debit amount in paise
+    authType?: "netbanking" | "debitcard" | "emandate" | "upi";
+    tokenNotes?: Record<string, string>;
+    receiptPrefix?: string;
+}
+
+/**
+ * Create an order for e-Mandate authorization
+ * 
+ * This creates a ₹1 authorization order that registers the customer's
+ * payment method for future auto-debits up to maxAmount.
+ * 
+ * NOTE: Razorpay requires minimum ₹1 (100 paise) for orders.
+ * This ₹1 is authorized but NOT captured - it's released automatically.
+ */
+export async function createMandateAuthorizationOrder(options: CreateMandateOrderOptions) {
     const razorpay = getRazorpay();
 
+    const receipt = `${options.receiptPrefix || "mandate"}_${Date.now()}`;
+
+    // Create order with recurring payment token
+    // Razorpay requires:
+    // 1. Minimum amount of 100 paise (₹1)
+    // 2. customer_id when using token field
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return razorpay.subscriptions.create({
-        plan_id: options.planId,
-        customer_id: options.customerId,
-        total_count: options.totalCount || 120, // 10 years of monthly billing
-        customer_notify: 1,
-        notes: options.notes,
+    return razorpay.orders.create({
+        amount: 100, // ₹1 minimum (in paise) - auth only, not captured
+        currency: "INR",
+        receipt,
+        payment_capture: false, // Don't capture - this is auth only
+        customer_id: options.customerId, // REQUIRED when using token field
+        notes: options.tokenNotes,
+        // Token configuration for recurring payments
+        token: {
+            max_amount: options.maxAmount,
+            expire_at: Math.floor(Date.now() / 1000) + (10 * 365 * 24 * 60 * 60), // 10 years
+            frequency: "as_presented", // Charge as needed (usage-based)
+        },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 }
 
-/**
- * Get a Razorpay subscription by ID
- */
-export async function getSubscription(subscriptionId: string) {
-    const razorpay = getRazorpay();
-    return razorpay.subscriptions.fetch(subscriptionId);
+export interface CreateRecurringPaymentOptions {
+    customerId: string;
+    tokenId: string; // Saved mandate token from authorization
+    amount: number; // Amount in paise
+    invoiceId: string;
+    description: string;
+    notes?: Record<string, string>;
 }
 
 /**
- * Cancel a Razorpay subscription
+ * Create a recurring payment using saved mandate
+ * 
+ * CRITICAL: This is called AFTER invoice is generated.
+ * The invoice must exist before we attempt to charge.
  */
-export async function cancelSubscription(
-    subscriptionId: string,
-    cancelAtCycleEnd: boolean = true
-) {
+export async function createRecurringPayment(options: CreateRecurringPaymentOptions) {
+    const razorpay = getRazorpay();
+
+    const receipt = `inv_${options.invoiceId}_${Date.now()}`;
+
+    // Create order for the recurring payment
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const order = await razorpay.orders.create({
+        amount: options.amount,
+        currency: "INR",
+        receipt,
+        notes: {
+            ...options.notes,
+            fairlx_invoice_id: options.invoiceId,
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+
+    // Create payment using the saved token (mandate)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const payment = await (razorpay.payments as any).createRecurringPayment({
+        email: "", // Will be fetched from customer
+        contact: "",
+        amount: options.amount,
+        currency: "INR",
+        order_id: order.id,
+        customer_id: options.customerId,
+        token: options.tokenId,
+        recurring: "1",
+        description: options.description,
+        notes: {
+            fairlx_invoice_id: options.invoiceId,
+        },
+    });
+
+    return { order, payment };
+}
+
+/**
+ * Get all saved tokens (mandates) for a customer
+ */
+export async function getCustomerTokens(customerId: string) {
     const razorpay = getRazorpay();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return razorpay.subscriptions.cancel(subscriptionId, cancelAtCycleEnd as any);
+    return (razorpay.customers as any).fetchTokens(customerId);
+}
+
+/**
+ * Get a specific token by ID
+ */
+export async function getToken(customerId: string, tokenId: string) {
+    const razorpay = getRazorpay();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (razorpay.customers as any).fetchToken(customerId, tokenId);
+}
+
+/**
+ * Delete (revoke) a saved token/mandate
+ */
+export async function deleteToken(customerId: string, tokenId: string) {
+    const razorpay = getRazorpay();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (razorpay.customers as any).deleteToken(customerId, tokenId);
 }
 
 // ===============================

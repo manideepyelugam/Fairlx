@@ -33,6 +33,25 @@ export enum BillingAccountType {
 }
 
 // ===============================
+// Mandate Status Enum
+// ===============================
+
+/**
+ * MandateStatus - tracks e-Mandate authorization state
+ * 
+ * PENDING: Mandate authorization started but not completed
+ * AUTHORIZED: Mandate successfully authorized, ready for auto-debit
+ * FAILED: Mandate authorization failed
+ * CANCELLED: Mandate was cancelled by user or expired
+ */
+export enum MandateStatus {
+    PENDING = "PENDING",
+    AUTHORIZED = "AUTHORIZED",
+    FAILED = "FAILED",
+    CANCELLED = "CANCELLED",
+}
+
+// ===============================
 // Billing Audit Event Types
 // ===============================
 
@@ -124,11 +143,17 @@ export type BillingAccount = Models.Document & {
     /** Razorpay Customer ID */
     razorpayCustomerId: string;
 
-    /** Razorpay Subscription ID (for auto-debit) */
-    razorpaySubscriptionId?: string;
+    /** Razorpay Token ID (saved mandate for auto-debit) */
+    razorpayTokenId?: string;
 
-    /** Razorpay Mandate ID (alternative to subscription) */
+    /** Razorpay Mandate ID (reference for the mandate) */
     razorpayMandateId?: string;
+
+    /** Maximum auto-debit amount authorized (in paise) */
+    mandateMaxAmount?: number;
+
+    /** Mandate authorization status */
+    mandateStatus?: MandateStatus;
 
     /** Current billing status */
     billingStatus: BillingStatus;
@@ -151,7 +176,7 @@ export type BillingAccount = Models.Document & {
     /** Last 4 digits of payment method (for display) */
     paymentMethodLast4?: string;
 
-    /** Type of payment method (card, upi, etc.) */
+    /** Type of payment method (card, upi, netbanking, etc.) */
     paymentMethodType?: string;
 
     /** Payment method brand (visa, mastercard, etc.) */
@@ -363,6 +388,8 @@ export type RazorpayCheckoutOptions = {
         color: string;
     };
     notifyUrl?: string;
+    recurring?: boolean;
+    subscription_card_change?: boolean;
 };
 
 // ===============================

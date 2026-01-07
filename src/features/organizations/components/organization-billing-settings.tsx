@@ -31,44 +31,7 @@ import {
 import { BillingStatus, BillingAccountType } from "@/features/billing/types";
 import { BillingWarningBanner } from "@/features/billing/components/billing-warning-banner";
 
-// Extend Window for Razorpay
-declare global {
-    interface Window {
-        Razorpay: new (options: RazorpayCheckoutConfig) => RazorpayCheckoutInstance;
-    }
-}
 
-interface RazorpayCheckoutConfig {
-    key: string;
-    subscription_id?: string;
-    order_id?: string;
-    name: string;
-    description: string;
-    prefill: {
-        name?: string;
-        email?: string;
-        contact?: string;
-    };
-    theme: {
-        color: string;
-    };
-    handler: (response: RazorpayResponse) => void;
-    modal?: {
-        ondismiss?: () => void;
-    };
-}
-
-interface RazorpayCheckoutInstance {
-    open: () => void;
-    close: () => void;
-}
-
-interface RazorpayResponse {
-    razorpay_payment_id: string;
-    razorpay_subscription_id?: string;
-    razorpay_order_id?: string;
-    razorpay_signature: string;
-}
 
 interface OrganizationBillingSettingsProps {
     organizationId: string;
@@ -96,8 +59,12 @@ export function OrganizationBillingSettings({
         organizationId,
         enabled: !!organizationId
     });
+    const [billingPhone, setBillingPhone] = useState("");
+
+    // Checkout options - requires phone for e-Mandate
     const { refetch: refetchCheckoutOptions } = useGetCheckoutOptions({
         organizationId,
+        phone: billingPhone,
         enabled: false // Only fetch when needed
     });
     const { mutateAsync: updatePaymentMethod } = useUpdatePaymentMethod();
@@ -108,6 +75,7 @@ export function OrganizationBillingSettings({
     const [isSaving, setIsSaving] = useState(false);
     const [isAddingPayment, setIsAddingPayment] = useState(false);
     const [isScriptLoaded, setIsScriptLoaded] = useState(false);
+    const [showPhoneInput, setShowPhoneInput] = useState(false);
 
     // Sync state with organization data
     useEffect(() => {
@@ -186,6 +154,13 @@ export function OrganizationBillingSettings({
             return;
         }
 
+        // Phone is REQUIRED for Razorpay e-Mandate recurring payments
+        if (!billingPhone || billingPhone.length < 10) {
+            setShowPhoneInput(true);
+            toast.error("Please enter a valid phone number for auto-debit setup");
+            return;
+        }
+
         if (!isScriptLoaded) {
             toast.error("Payment system not ready. Please refresh the page.");
             return;
@@ -203,7 +178,7 @@ export function OrganizationBillingSettings({
                             organizationId,
                             billingEmail: billingEmailValue || organization?.email || ownerEmail || "",
                             contactName: organization?.name || "Organization Admin",
-                            contactPhone: "", // Optional
+                            contactPhone: billingPhone, // Required for e-Mandate
                         }
                     });
                 } catch (error) {
@@ -225,9 +200,12 @@ export function OrganizationBillingSettings({
             }
 
             // Open Razorpay checkout
+            // Open Razorpay checkout
             const razorpayOptions: RazorpayCheckoutConfig = {
                 key: checkoutOptions.key,
                 subscription_id: checkoutOptions.subscriptionId,
+                order_id: checkoutOptions.orderId, // Required for e-Mandate
+                recurring: checkoutOptions.recurring, // Required for e-Mandate
                 name: checkoutOptions.name,
                 description: checkoutOptions.description,
                 prefill: {
@@ -267,7 +245,7 @@ export function OrganizationBillingSettings({
             toast.error("Failed to initialize payment. Please try again.");
             setIsAddingPayment(false);
         }
-    }, [organizationId, isScriptLoaded, refetchCheckoutOptions, updatePaymentMethod, billingAccountData?.data, billingEmailValue, organization?.email, organization?.name, ownerEmail, setupBilling]);
+    }, [organizationId, isScriptLoaded, refetchCheckoutOptions, updatePaymentMethod, billingAccountData?.data, billingEmailValue, organization?.email, organization?.name, ownerEmail, setupBilling, billingPhone]);
 
     if (isLoading) {
         return (
@@ -531,31 +509,53 @@ export function OrganizationBillingSettings({
                                 </Button>
                             </div>
                         ) : (
-                            <div className="text-center py-8 border rounded-lg border-dashed">
-                                <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                                <p className="text-muted-foreground mb-4">
-                                    No payment method configured
-                                </p>
-                                <Button
-                                    onClick={handleAddPaymentMethod}
-                                    disabled={isAddingPayment || !isScriptLoaded}
-                                    size="lg"
-                                >
-                                    {isAddingPayment ? (
-                                        <>
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Setting up...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <CreditCard className="mr-2 h-4 w-4" />
-                                            Add Payment Method
-                                        </>
-                                    )}
-                                </Button>
-                                <p className="text-xs text-muted-foreground mt-3">
-                                    Payments processed securely by Razorpay
-                                </p>
+                            <div className="border rounded-lg border-dashed p-6">
+                                {/* Phone Input - Required for e-Mandate */}
+                                <div className="mb-6">
+                                    <Label htmlFor="billing-phone" className="text-sm font-medium mb-2 block">
+                                        Phone Number <span className="text-red-500">*</span>
+                                    </Label>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            id="billing-phone"
+                                            type="tel"
+                                            placeholder="+91 9876543210"
+                                            value={billingPhone}
+                                            onChange={(e) => setBillingPhone(e.target.value)}
+                                            className={`flex-1 ${showPhoneInput && (!billingPhone || billingPhone.length < 10) ? 'border-red-500' : ''}`}
+                                        />
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Required for auto-debit authorization (Razorpay mandate)
+                                    </p>
+                                </div>
+
+                                <div className="text-center py-4">
+                                    <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                                    <p className="text-muted-foreground mb-4">
+                                        No payment method configured
+                                    </p>
+                                    <Button
+                                        onClick={handleAddPaymentMethod}
+                                        disabled={isAddingPayment || !isScriptLoaded || !billingPhone || billingPhone.length < 10}
+                                        size="lg"
+                                    >
+                                        {isAddingPayment ? (
+                                            <>
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                Setting up...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <CreditCard className="mr-2 h-4 w-4" />
+                                                Add Payment Method
+                                            </>
+                                        )}
+                                    </Button>
+                                    <p className="text-xs text-muted-foreground mt-3">
+                                        Payments processed securely by Razorpay
+                                    </p>
+                                </div>
                             </div>
                         )}
                     </CardContent>
