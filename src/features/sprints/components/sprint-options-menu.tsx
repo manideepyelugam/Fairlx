@@ -2,8 +2,11 @@
 
 import {
   MoreHorizontal,
-  Trash,
-  Circle,
+  Trash2,
+  Zap,
+  Clock,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -32,19 +35,27 @@ interface SprintOptionsMenuProps {
 const statusConfig = {
   [SprintStatus.PLANNED]: {
     label: "Planned",
-    color: "text-gray-600",
+    icon: Clock,
+    color: "text-slate-600 dark:text-slate-400",
+    dotColor: "bg-slate-400",
   },
   [SprintStatus.ACTIVE]: {
     label: "Active",
-    color: "text-blue-600",
+    icon: Zap,
+    color: "text-blue-600 dark:text-blue-400",
+    dotColor: "bg-blue-500",
   },
   [SprintStatus.COMPLETED]: {
     label: "Completed",
-    color: "text-green-600",
+    icon: CheckCircle2,
+    color: "text-green-600 dark:text-green-400",
+    dotColor: "bg-green-500",
   },
   [SprintStatus.CANCELLED]: {
     label: "Cancelled",
-    color: "text-red-600",
+    icon: XCircle,
+    color: "text-red-600 dark:text-red-400",
+    dotColor: "bg-red-500",
   },
 };
 
@@ -86,50 +97,57 @@ export const SprintOptionsMenu = ({
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 w-6 p-0 hover:bg-gray-100"
+            className="h-6 w-6 p-0 rounded-md  group-hover:opacity-100 transition-opacity"
           >
-            <MoreHorizontal className="size-4 text-gray-600" />
+            <MoreHorizontal className="size-4 text-slate-800" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuLabel className="text-xs font-semibold text-gray-700">
+        <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuLabel className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider px-2 py-1.5">
             Update Status
           </DropdownMenuLabel>
 
-          {Object.values(SprintStatus).map((status) => {
+          {Object.entries(statusConfig).map(([status, config]) => {
+            const StatusIcon = config.icon;
+            
             // Permission Checks
             if (status === SprintStatus.ACTIVE && !can(PERMISSIONS.SPRINT_START)) return null;
             if (status === SprintStatus.COMPLETED && !can(PERMISSIONS.SPRINT_COMPLETE)) return null;
-            // For other statuses, we generally assume update permission or specific ones?
-            // Assuming PROJECT_UPDATE or SPRINT_CREATE allows basic updates.
-            // But let's stick to specific ones if they exist.
+
+            const isDisabled = isUpdating || (status === SprintStatus.ACTIVE && hasActiveSprint && sprint.status !== SprintStatus.ACTIVE);
+            const isCurrentStatus = sprint.status === status;
 
             return (
               <DropdownMenuItem
                 key={status}
-                onClick={() => handleStatusChange(status)}
-                disabled={isUpdating || (status === SprintStatus.ACTIVE && hasActiveSprint && sprint.status !== SprintStatus.ACTIVE)}
-                className="text-xs cursor-pointer"
-                title={status === SprintStatus.ACTIVE && hasActiveSprint && sprint.status !== SprintStatus.ACTIVE ? "Another sprint is already active" : undefined}
+                onClick={() => handleStatusChange(status as SprintStatus)}
+                disabled={isDisabled}
+                className={cn(
+                  "text-xs cursor-pointer py-1.5 px-2",
+                  isCurrentStatus && "bg-slate-50 dark:bg-slate-800"
+                )}
+                title={isDisabled && status === SprintStatus.ACTIVE ? "Another sprint is already active" : undefined}
               >
-                <Circle className={cn("size-2.5 mr-2", statusConfig[status].color)} />
-                <span>{statusConfig[status].label}</span>
-                {sprint.status === status && (
-                  <span className="ml-auto text-gray-400">✓</span>
+                <div className="flex items-center gap-2 flex-1">
+                  <StatusIcon className={cn("size-3.5", config.color)} />
+                  <span className={cn(isCurrentStatus && "font-medium")}>{config.label}</span>
+                </div>
+                {isCurrentStatus && (
+                  <CheckCircle2 className="size-3.5 text-blue-600 ml-auto" />
                 )}
               </DropdownMenuItem>
             )
           })}
 
-          <DropdownMenuSeparator />
+          <DropdownMenuSeparator className="my-1" />
 
           {can(PERMISSIONS.SPRINT_DELETE) && (
             <DropdownMenuItem
               onClick={handleDelete}
               disabled={isDeleting}
-              className="text-destructive focus:text-destructive text-xs cursor-pointer"
+              className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/20 text-xs cursor-pointer py-1.5 px-2"
             >
-              <Trash className="size-4 mr-2" />
+              <Trash2 className="size-3.5 mr-2" />
               Delete Sprint
             </DropdownMenuItem>
           )}

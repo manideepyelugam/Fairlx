@@ -2,13 +2,13 @@
 
 import {
   MoreHorizontal,
-  Trash,
-  Copy,
+  Trash2,
+  Link2,
   Flag,
   Users,
-  AlertCircle,
   Layers,
   GitBranch,
+  Hash,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -23,11 +23,39 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 import { useDeleteWorkItem } from "../api/use-delete-work-item";
 import { useUpdateWorkItem } from "../api/use-update-work-item";
 import { useConfirm } from "@/hooks/use-confirm";
 import { PopulatedWorkItem, WorkItemPriority } from "../types";
+
+interface WorkItemOptionsMenuProps {
+  workItem: PopulatedWorkItem;
+  onSplit?: () => void;
+  onAssignEpic?: () => void;
+  onAssignAssignee?: () => void;
+  onEditStoryPoints?: () => void;
+}
+
+const priorityConfig = {
+  [WorkItemPriority.LOW]: { 
+    label: "Low",
+    dotColor: "bg-slate-400",
+  },
+  [WorkItemPriority.MEDIUM]: { 
+    label: "Medium",
+    dotColor: "bg-amber-500",
+  },
+  [WorkItemPriority.HIGH]: { 
+    label: "High",
+    dotColor: "bg-orange-500",
+  },
+  [WorkItemPriority.URGENT]: { 
+    label: "Urgent",
+    dotColor: "bg-red-500",
+  },
+};
 
 interface WorkItemOptionsMenuProps {
   workItem: PopulatedWorkItem;
@@ -90,83 +118,80 @@ export const WorkItemOptionsMenu = ({
       <DeleteDialog />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm">
-            <MoreHorizontal className="size-4" />
+          <Button 
+            variant="ghost" 
+            size="sm"
+            className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 hover:bg-slate-100 dark:hover:bg-slate-700 transition-opacity"
+          >
+            <MoreHorizontal className="size-3.5 text-slate-500" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem onClick={handleCopyLink}>
-            <Copy className="size-4 mr-2" />
+        <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuItem onClick={handleCopyLink} className="text-xs py-1.5 cursor-pointer">
+            <Link2 className="size-3.5 mr-2 text-slate-500" />
             Copy Link
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleCopyKey}>
-            <Copy className="size-4 mr-2" />
-            Copy Key ({workItem.key})
+          <DropdownMenuItem onClick={handleCopyKey} className="text-xs py-1.5 cursor-pointer">
+            <Hash className="size-3.5 mr-2 text-slate-500" />
+            Copy Key
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleToggleFlag}>
+          <DropdownMenuSeparator className="my-1" />
+          <DropdownMenuItem onClick={handleToggleFlag} className="text-xs py-1.5 cursor-pointer">
             <Flag
-              className={`size-4 mr-2 ${workItem.flagged ? "fill-red-500 text-red-500" : ""}`}
+              className={cn(
+                "size-3.5 mr-2",
+                workItem.flagged ? "fill-red-500 text-red-500" : "text-slate-500"
+              )}
             />
             {workItem.flagged ? "Remove Flag" : "Add Flag"}
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={onAssignAssignee}>
-            <Users className="size-4 mr-2" />
-            Assign Assignee
+          <DropdownMenuSeparator className="my-1" />
+          <DropdownMenuItem onClick={onAssignAssignee} className="text-xs py-1.5 cursor-pointer">
+            <Users className="size-3.5 mr-2 text-slate-500" />
+            Assign Members
           </DropdownMenuItem>
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
-              <AlertCircle className="size-4 mr-2" />
+            <DropdownMenuSubTrigger className="text-xs py-1.5">
+              <div className={cn("size-2 rounded-full mr-2", priorityConfig[workItem.priority].dotColor)} />
               Set Priority
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              <DropdownMenuItem
-                onClick={() => handleSetPriority(WorkItemPriority.LOW)}
-                disabled={isUpdating}
-              >
-                Low
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleSetPriority(WorkItemPriority.MEDIUM)}
-                disabled={isUpdating}
-              >
-                Medium
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleSetPriority(WorkItemPriority.HIGH)}
-                disabled={isUpdating}
-              >
-                High
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleSetPriority(WorkItemPriority.URGENT)}
-                disabled={isUpdating}
-              >
-                Urgent
-              </DropdownMenuItem>
+            <DropdownMenuSubContent className="w-32">
+              {Object.entries(priorityConfig).map(([priority, config]) => (
+                <DropdownMenuItem
+                  key={priority}
+                  onClick={() => handleSetPriority(priority as WorkItemPriority)}
+                  disabled={isUpdating}
+                  className={cn(
+                    "text-xs py-1.5 cursor-pointer",
+                    workItem.priority === priority && "bg-slate-50 dark:bg-slate-800"
+                  )}
+                >
+                  <div className={cn("size-2 rounded-full mr-2", config.dotColor)} />
+                  {config.label}
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuSubContent>
           </DropdownMenuSub>
-          <DropdownMenuItem onClick={onAssignEpic}>
-            <Layers className="size-4 mr-2" />
-            Assign Parent Epic
+          <DropdownMenuItem onClick={onAssignEpic} className="text-xs py-1.5 cursor-pointer">
+            <Layers className="size-3.5 mr-2 text-purple-500" />
+            Link to Epic
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={onEditStoryPoints}>
-            <AlertCircle className="size-4 mr-2" />
-            Edit Story Points
+          <DropdownMenuItem onClick={onEditStoryPoints} className="text-xs py-1.5 cursor-pointer">
+            <Hash className="size-3.5 mr-2 text-slate-500" />
+            Edit Points
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={onSplit}>
-            <GitBranch className="size-4 mr-2" />
-            Split Work Item
+          <DropdownMenuSeparator className="my-1" />
+          <DropdownMenuItem onClick={onSplit} className="text-xs py-1.5 cursor-pointer">
+            <GitBranch className="size-3.5 mr-2 text-slate-500" />
+            Split Item
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
+          <DropdownMenuSeparator className="my-1" />
           <DropdownMenuItem
             onClick={handleDelete}
             disabled={isDeleting}
-            className="text-destructive focus:text-destructive"
+            className="text-xs py-1.5 cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/20"
           >
-            <Trash className="size-4 mr-2" />
+            <Trash2 className="size-3.5 mr-2" />
             Delete Item
           </DropdownMenuItem>
         </DropdownMenuContent>

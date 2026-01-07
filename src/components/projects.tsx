@@ -2,6 +2,8 @@
 
 import { useRouter, useParams } from "next/navigation";
 import { RiAddCircleFill } from "react-icons/ri";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { useState } from "react";
 
 import { useGetProjects } from "@/features/projects/api/use-get-projects";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
@@ -31,6 +33,7 @@ export const Projects = () => {
 
   const { data } = useGetProjects({ workspaceId });
   const { isAdmin } = useCurrentMember({ workspaceId });
+  const [isExpanded, setIsExpanded] = useState(true);
 
   const projectId = params.projectId as string;
 
@@ -45,9 +48,19 @@ export const Projects = () => {
   };
 
   return (
-    <div className="flex flex-col px-3 py-4">
-      <div className="flex items-center justify-between pb-4">
-        <p className="text-[13px] tracking-normal font-medium pl-2 text-primary">Projects</p>
+    <div className="flex flex-col px-3 py-4 border-neutral-200">
+      <div className="flex items-center justify-between ">
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-1 text-[13px] tracking-normal font-medium pl-2 text-primary hover:text-primary/80"
+        >
+          {isExpanded ? (
+            <ChevronDown className="size-3" />
+          ) : (
+            <ChevronRight className="size-3" />
+          )}
+          Projects
+        </button>
         {isAdmin && (
           <RiAddCircleFill
             onClick={() => open()}
@@ -56,33 +69,35 @@ export const Projects = () => {
         )}
       </div>
 
-      <Select onValueChange={onSelect} value={projectId}>
-        <SelectTrigger className="w-full font-medium text-sm">
-          <SelectValue placeholder="No project selected." />
-        </SelectTrigger>
+      {isExpanded && (
+        <Select onValueChange={onSelect} value={projectId}>
+          <SelectTrigger className="w-full font-medium text-sm">
+            <SelectValue placeholder="No project selected." />
+          </SelectTrigger>
 
-        <SelectContent>
-          {data?.documents.map((project) => (
-            <SelectItem
-              key={project.$id}
-              value={project.$id}
-              onPointerDown={(e: React.PointerEvent) => {
-                // Allow clicking on already selected item
-                e.stopPropagation();
-                handleProjectClick(project.$id);
-              }}
-            >
-              <div className="flex justify-start items-center gap-3 font-medium">
-                <ProjectAvatar
-                  name={project.name}
-                  image={project.imageUrl}
-                />
-                <span className="truncate">{project.name}</span>
-              </div>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+          <SelectContent>
+            {data?.documents.map((project) => (
+              <SelectItem
+                key={project.$id}
+                value={project.$id}
+                onPointerDown={(e: React.PointerEvent) => {
+                  // Allow clicking on already selected item
+                  e.stopPropagation();
+                  handleProjectClick(project.$id);
+                }}
+              >
+                <div className="flex justify-start items-center gap-3 font-medium">
+                  <ProjectAvatar
+                    name={project.name}
+                    image={project.imageUrl}
+                  />
+                  <span className="truncate">{project.name}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
     </div>
   );
 };

@@ -94,26 +94,27 @@ export const CreateSprintDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Create New Sprint</DialogTitle>
+      <DialogContent className="sm:max-w-[480px]">
+        <DialogHeader className="pb-3 border-b border-slate-100 dark:border-slate-700">
+          <DialogTitle className="text-base font-semibold">Create New Sprint</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
             <FormField
               control={form.control}
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Sprint Name</FormLabel>
+                  <FormLabel className="text-xs font-medium">Sprint Name</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
                       placeholder="e.g., Sprint 1, Q1 2024"
                       disabled={isPending}
+                      className="h-9 text-sm"
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-xs" />
                 </FormItem>
               )}
             />
@@ -123,15 +124,16 @@ export const CreateSprintDialog = ({
               name="goal"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Sprint Goal (Optional)</FormLabel>
+                  <FormLabel className="text-xs font-medium">Sprint Goal <span className="text-muted-foreground font-normal">(Optional)</span></FormLabel>
                   <FormControl>
                     <Textarea
                       {...field}
                       placeholder="What do you want to achieve in this sprint?"
                       disabled={isPending}
+                      className="min-h-[70px] text-sm resize-none"
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-xs" />
                 </FormItem>
               )}
             />
@@ -141,40 +143,40 @@ export const CreateSprintDialog = ({
               name="status"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Status</FormLabel>
+                  <FormLabel className="text-xs font-medium">Status</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-9 text-xs">
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value={SprintStatus.PLANNED}>Planned</SelectItem>
-                      <SelectItem value={SprintStatus.ACTIVE}>Active</SelectItem>
-                      <SelectItem value={SprintStatus.COMPLETED}>Completed</SelectItem>
+                      <SelectItem value={SprintStatus.PLANNED} className="text-xs">Planned</SelectItem>
+                      <SelectItem value={SprintStatus.ACTIVE} className="text-xs">Active</SelectItem>
+                      <SelectItem value={SprintStatus.COMPLETED} className="text-xs">Completed</SelectItem>
                     </SelectContent>
                   </Select>
-                  <FormMessage />
+                  <FormMessage className="text-xs" />
                 </FormItem>
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <FormField
                 control={form.control}
                 name="startDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Start Date</FormLabel>
+                    <FormLabel className="text-xs font-medium">Start Date</FormLabel>
                     <DatePicker
                       value={field.value}
                       onChange={field.onChange}
                       placeholder="Select start date"
                     />
-                    <FormMessage />
+                    <FormMessage className="text-xs" />
                   </FormItem>
                 )}
               />
@@ -184,29 +186,36 @@ export const CreateSprintDialog = ({
                 name="endDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>End Date</FormLabel>
+                    <FormLabel className="text-xs font-medium">End Date</FormLabel>
                     <DatePicker
                       value={field.value}
                       onChange={field.onChange}
                       placeholder="Select end date"
                     />
-                    <FormMessage />
+                    <FormMessage className="text-xs" />
                   </FormItem>
                 )}
               />
             </div>
 
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
               <Button
                 type="button"
                 variant="outline"
+                size="sm"
                 onClick={onClose}
                 disabled={isPending}
+                className="h-8 px-3 text-xs"
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isPending}>
-                Create Sprint
+              <Button 
+                type="submit" 
+                disabled={isPending}
+                size="sm"
+                className="h-8 px-4 text-xs bg-blue-600 hover:bg-blue-700"
+              >
+                {isPending ? "Creating..." : "Create Sprint"}
               </Button>
             </div>
           </form>

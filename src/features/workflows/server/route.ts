@@ -1,6 +1,6 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
-import { ID, Query, type Databases } from "node-appwrite";
+import { ID, Query, type Databases, Models } from "node-appwrite";
 import { z } from "zod";
 
 import { getMember } from "@/features/members/utils";
@@ -46,7 +46,7 @@ async function checkWorkflowPermission(
   workspaceId: string,
   userId: string,
   spaceId?: string | null
-): Promise<{ hasPermission: boolean; member: any }> {
+): Promise<{ hasPermission: boolean; member: Models.Document | null }> {
   const member = await getMember({
     databases,
     workspaceId,

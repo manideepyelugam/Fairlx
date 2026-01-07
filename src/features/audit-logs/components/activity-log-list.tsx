@@ -86,7 +86,7 @@ export const ActivityLogItem = ({
     : "??";
 
   return (
-    <div className="flex items-start gap-3 p-4 hover:bg-muted/50 rounded-lg transition-colors border-b border-border/40 last:border-0">
+    <div className="flex items-start gap-3 p-4 hover:bg-muted/50 rounded-lg transition-colors border-b last:border-0">
       <Avatar className="h-9 w-9 mt-0.5 border-2 border-background shadow-sm">
         <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">
           {initials}
@@ -95,7 +95,7 @@ export const ActivityLogItem = ({
       
       <div className="flex-1 min-w-0 space-y-2">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-4 flex-wrap">
             <span className="text-sm font-medium text-foreground">
               {userName || "Unknown User"}
             </span>
@@ -105,8 +105,9 @@ export const ActivityLogItem = ({
             >
               {action}
             </Badge>
-            <Icon className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground capitalize">
+           
+            <span className="text-xs text-muted-foreground flex gap-1 capitalize">
+               <Icon className="h-4 w-4 text-muted-foreground" />
               {type}
             </span>
           </div>
@@ -218,8 +219,7 @@ export const ActivityLogCard = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Activity className="h-5 w-5" />
+        <CardTitle className="flex font-medium items-center gap-2">
           {title}
         </CardTitle>
       </CardHeader>

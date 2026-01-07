@@ -145,7 +145,7 @@ export const ActivityTableView = ({ activities }: ActivityTableViewProps) => {
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col min-w-0">
-                      <span className="text-sm font-medium truncate">
+                      <span className="text-xs font-medium truncate">
                         {displayName}
                       </span>
                       {!isCurrentUser && activity.userEmail && (
@@ -160,7 +160,7 @@ export const ActivityTableView = ({ activities }: ActivityTableViewProps) => {
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Icon className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm capitalize">{activity.type}</span>
+                    <span className="text-xs capitalize">{activity.type}</span>
                   </div>
                 </TableCell>
                 
@@ -175,7 +175,7 @@ export const ActivityTableView = ({ activities }: ActivityTableViewProps) => {
                 
                 <TableCell>
                   <div className="flex flex-col">
-                    <span className="text-sm font-medium">
+                    <span className="text-xs font-medium">
                       {activity.entityName || "N/A"}
                     </span>
                   </div>
