@@ -2,12 +2,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { client } from "@/lib/rpc";
-import { WorkItemStatus } from "../types";
 
 interface BulkUpdateWorkItemsRequest {
   workItems: {
     $id: string;
-    status: WorkItemStatus;
+    status: string; // Changed from WorkItemStatus to string to support custom column IDs
     position: number;
   }[];
 }

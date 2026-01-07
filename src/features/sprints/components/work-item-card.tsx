@@ -3,26 +3,36 @@
 import { useState } from "react";
 import {
   Flag,
-  ChevronDown,
-  ChevronRight,
   Users,
   Layers,
+  Bookmark,
+  Bug,
+  CheckSquare,
+  ListTodo,
+  CircleIcon,
 } from "lucide-react";
+import * as Icons from "react-icons/ai";
+import * as BiIcons from "react-icons/bi";
+import * as BsIcons from "react-icons/bs";
+import * as FaIcons from "react-icons/fa";
+import * as FiIcons from "react-icons/fi";
+import * as HiIcons from "react-icons/hi";
+import * as IoIcons from "react-icons/io5";
+import * as MdIcons from "react-icons/md";
+import * as RiIcons from "react-icons/ri";
+import * as TbIcons from "react-icons/tb";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectSeparator,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -38,6 +48,20 @@ import {
   WorkItemPriority,
   WorkItemType,
 } from "../types";
+import { useGetCustomColumns } from "@/features/custom-columns/api/use-get-custom-columns";
+
+const allIcons = {
+  ...Icons,
+  ...BiIcons,
+  ...BsIcons,
+  ...FaIcons,
+  ...FiIcons,
+  ...HiIcons,
+  ...IoIcons,
+  ...MdIcons,
+  ...RiIcons,
+  ...TbIcons,
+};
 
 interface WorkItemCardProps {
   workItem: PopulatedWorkItem;
@@ -46,248 +70,168 @@ interface WorkItemCardProps {
   onViewDetails?: () => void;
 }
 
-const typeColors = {
-  [WorkItemType.STORY]: "bg-blue-500",
-  [WorkItemType.BUG]: "bg-red-500",
-  [WorkItemType.TASK]: "bg-green-500",
-  [WorkItemType.EPIC]: "bg-purple-500",
-  [WorkItemType.SUBTASK]: "bg-gray-500",
+const typeConfig = {
+  [WorkItemType.STORY]: { icon: Bookmark, color: "text-blue-600", bg: "bg-blue-500", light: "bg-blue-50 dark:bg-blue-900/20" },
+  [WorkItemType.BUG]: { icon: Bug, color: "text-red-600", bg: "bg-red-500", light: "bg-red-50 dark:bg-red-900/20" },
+  [WorkItemType.TASK]: { icon: CheckSquare, color: "text-green-600", bg: "bg-green-500", light: "bg-green-50 dark:bg-green-900/20" },
+  [WorkItemType.EPIC]: { icon: Layers, color: "text-purple-600", bg: "bg-purple-500", light: "bg-purple-50 dark:bg-purple-900/20" },
+  [WorkItemType.SUBTASK]: { icon: ListTodo, color: "text-slate-600", bg: "bg-slate-500", light: "bg-slate-50 dark:bg-slate-800" },
 };
 
-const priorityColors = {
-  [WorkItemPriority.LOW]: "text-gray-500",
-  [WorkItemPriority.MEDIUM]: "text-yellow-500",
-  [WorkItemPriority.HIGH]: "text-orange-500",
-  [WorkItemPriority.URGENT]: "text-red-500",
+const priorityConfig = {
+  [WorkItemPriority.LOW]: { label: "Low", color: "text-slate-600", bg: "bg-slate-100 dark:bg-slate-700", border: "border-slate-200 dark:border-slate-600" },
+  [WorkItemPriority.MEDIUM]: { label: "Medium", color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-900/20", border: "border-amber-200 dark:border-amber-700" },
+  [WorkItemPriority.HIGH]: { label: "High", color: "text-orange-600", bg: "bg-orange-50 dark:bg-orange-900/20", border: "border-orange-200 dark:border-orange-700" },
+  [WorkItemPriority.URGENT]: { label: "Urgent", color: "text-red-600", bg: "bg-red-50 dark:bg-red-900/20", border: "border-red-200 dark:border-red-700" },
+};
+
+const statusConfig = {
+  [WorkItemStatus.TODO]: { label: "To Do", dot: "bg-slate-400", bg: "bg-slate-100 dark:bg-slate-700", text: "text-slate-600" },
+  [WorkItemStatus.ASSIGNED]: { label: "Assigned", dot: "bg-blue-500", bg: "bg-blue-50 dark:bg-blue-900/30", text: "text-blue-600" },
+  [WorkItemStatus.IN_PROGRESS]: { label: "In Progress", dot: "bg-amber-500", bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-600" },
+  [WorkItemStatus.IN_REVIEW]: { label: "In Review", dot: "bg-purple-500", bg: "bg-purple-50 dark:bg-purple-900/30", text: "text-purple-600" },
+  [WorkItemStatus.DONE]: { label: "Done", dot: "bg-green-500", bg: "bg-green-50 dark:bg-green-900/30", text: "text-green-600" },
 };
 
 export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails }: WorkItemCardProps) => {
-  const [showChildren, setShowChildren] = useState(false);
-  const [editingStoryPoints, setEditingStoryPoints] = useState(false);
+  const [editingPoints, setEditingPoints] = useState(false);
   const [assignAssigneeOpen, setAssignAssigneeOpen] = useState(false);
   const [assignEpicOpen, setAssignEpicOpen] = useState(false);
-  const [splitDialogOpen, setSplitDialogOpen] = useState(false);
-  const [assigneePopoverOpen, setAssigneePopoverOpen] = useState(false);
+  const [splitOpen, setSplitOpen] = useState(false);
+
   const { mutate: updateWorkItem } = useUpdateWorkItem();
+
+  const { data } = useGetCustomColumns({
+    workspaceId,
+    projectId: projectId || workItem.projectId,
+  });
+
+  const customColumns = data?.documents || [];
+
+  const TypeIcon = typeConfig[workItem.type].icon;
+  const priority = priorityConfig[workItem.priority];
+  const status = statusConfig[workItem.status];
 
   const handleStatusChange = (status: string) => {
     updateWorkItem({
       param: { workItemId: workItem.$id },
-      json: { status: status as WorkItemStatus },
+      json: { status },
     });
   };
 
-  const handleStoryPointsSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handlePointsSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const points = formData.get("storyPoints") as string;
+    const points = Number(new FormData(e.currentTarget).get("points")) || 0;
     updateWorkItem({
       param: { workItemId: workItem.$id },
-      json: { storyPoints: parseInt(points) || 0 },
+      json: { storyPoints: points },
     });
-    setEditingStoryPoints(false);
+    setEditingPoints(false);
   };
 
   return (
-    <div className=" border rounded-lg p-2.5 bg-background hover:shadow-md transition-shadow">
-      <div className="flex items-start gap-2.5">
-        {/* Type Indicator */}
-        <div
-          className={cn(
-            "w-1 h-full rounded-full",
-            typeColors[workItem.type]
-          )}
-        />
+    <div className="border rounded-lg bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+      <div className="flex">
+        <div className={cn("w-1 rounded-l-lg", typeConfig[workItem.type].bg)} />
+        <div className="flex-1 p-3 space-y-2">
 
-        <div className="flex-1 py-2">
-          {/* Header Row */}
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2 mb-6 flex-1">
-              {workItem.childrenCount! > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowChildren(!showChildren)}
-                  className="h-6 w-6 p-0"
-                >
-                  {showChildren ? (
-                    <ChevronDown className="size-4" />
-                  ) : (
-                    <ChevronRight className="size-4" />
-                  )}
-                </Button>
-              )}
-              <button
-                onClick={onViewDetails}
-                className="text-sm font-medium hover:underline text-left"
-              >
-                {workItem.key}: <span className="text-sm font-normal ">{workItem.title}</span>
-              </button>
-              {workItem.flagged && (
-                <Flag className="size-4 fill-red-500 text-red-500" />
-              )}
+          {/* Header */}
+          <div className="flex items-start gap-2">
+            <div className={cn("p-1.5 rounded", typeConfig[workItem.type].light)}>
+              <TypeIcon className={cn("size-3.5", typeConfig[workItem.type].color)} />
             </div>
+
+            <button onClick={onViewDetails} className="flex-1 text-left truncate">
+              <span className="text-xs font-semibold text-blue-600">{workItem.key}</span>{" "}
+              <span className="text-xs">{workItem.title}</span>
+            </button>
+
+            {workItem.flagged && <Flag className="size-4 text-red-500 fill-red-500" />}
+
             <WorkItemOptionsMenu
               workItem={workItem}
-              onSplit={() => setSplitDialogOpen(true)}
-              onAssignEpic={() => setAssignEpicOpen(true)}
               onAssignAssignee={() => setAssignAssigneeOpen(true)}
-              onEditStoryPoints={() => setEditingStoryPoints(true)}
+              onAssignEpic={() => setAssignEpicOpen(true)}
+              onSplit={() => setSplitOpen(true)}
+              onEditStoryPoints={() => setEditingPoints(true)}
             />
           </div>
 
-          {/* Epic Badge */}
-          {workItem.epic && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Layers className="size-3" />
-              <span>{workItem.epic.key}: {workItem.epic.title}</span>
-            </div>
-          )}
-
-          {/* Controls Row */}
+          {/* Controls */}
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Status Dropdown */}
-            <Select
-              value={workItem.status}
-              onValueChange={handleStatusChange}
-            >
-              <SelectTrigger className="h-7 w-32 text-xs">
-                <SelectValue />
+
+            {/* Status */}
+            <Select value={workItem.status} onValueChange={handleStatusChange}>
+              <SelectTrigger className={cn("h-6 px-2 text-[10px]", status.bg, status.text)}>
+                <div className="flex items-center gap-1">
+                  <span className={cn("size-1.5 rounded-full", status.dot)} />
+                  <SelectValue />
+                </div>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={WorkItemStatus.TODO}>To Do</SelectItem>
-                <SelectItem value={WorkItemStatus.IN_PROGRESS}>
-                  In Progress
-                </SelectItem>
-                <SelectItem value={WorkItemStatus.IN_REVIEW}>
-                  In Review
-                </SelectItem>
-                <SelectItem value={WorkItemStatus.DONE}>Done</SelectItem>
-                <SelectItem value={WorkItemStatus.ASSIGNED}>Assigned</SelectItem>
+                {Object.entries(statusConfig).map(([key, s]) => (
+                  <SelectItem key={key} value={key}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+                {customColumns.length > 0 && (
+                  <>
+                    <SelectSeparator />
+                    {customColumns.map((c) => {
+                      const Icon = allIcons[c.icon as keyof typeof allIcons];
+                      return (
+                        <SelectItem key={c.$id} value={c.$id}>
+                          <div className="flex items-center gap-2">
+                            {Icon ? <Icon style={{ color: c.color }} /> : <CircleIcon />}
+                            {c.name}
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </>
+                )}
               </SelectContent>
             </Select>
 
-            {/* Priority Badge */}
-            <Badge variant="outline" className={cn("text-xs", priorityColors[workItem.priority])}>
-              {workItem.priority}
+            {/* Priority */}
+            <Badge className={cn("text-[10px]", priority.bg, priority.color, priority.border)}>
+              {priority.label}
             </Badge>
 
             {/* Story Points */}
-            {editingStoryPoints ? (
-              <form onSubmit={handleStoryPointsSubmit} className="flex items-center gap-1">
+            {editingPoints ? (
+              <form onSubmit={handlePointsSubmit}>
                 <Input
-                  name="storyPoints"
-                  type="number"
+                  name="points"
                   defaultValue={workItem.storyPoints || 0}
-                  className="h-7 w-16 text-xs"
+                  className="h-6 w-12 text-[10px]"
                   autoFocus
-                  onBlur={() => setEditingStoryPoints(false)}
+                  onBlur={() => setEditingPoints(false)}
                 />
               </form>
             ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={() => setEditingStoryPoints(true)}
-              >
+              <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => setEditingPoints(true)}>
                 {workItem.storyPoints || 0} pts
               </Button>
             )}
 
             {/* Assignees */}
-            {workItem.assignees && workItem.assignees.length > 0 ? (
-              <Popover open={assigneePopoverOpen} onOpenChange={setAssigneePopoverOpen}>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex items-center -space-x-2 cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2"
-                    onMouseEnter={() => setAssigneePopoverOpen(true)}
-                    onMouseLeave={() => setAssigneePopoverOpen(false)}
-                    onClick={() => setAssignAssigneeOpen(true)}
-                  >
-                    {workItem.assignees.slice(0, 3).map((assignee) => (
-                      <Avatar key={assignee.$id} className="size-6 border-2 border-background">
-                        <AvatarImage src={assignee.profileImageUrl || undefined} />
-                        <AvatarFallback className="text-xs">
-                          {assignee.name.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                    ))}
-                    {workItem.assignees.length > 3 && (
-                      <div className="flex items-center justify-center size-6 rounded-full bg-muted border-2 border-background text-xs">
-                        +{workItem.assignees.length - 3}
-                      </div>
-                    )}
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent
-                  align="center"
-                  className="w-64 p-3"
-                  onMouseEnter={() => setAssigneePopoverOpen(true)}
-                  onMouseLeave={() => setAssigneePopoverOpen(false)}
-                >
-                  <div className="space-y-2">
-                    {workItem.assignees.map((assignee) => (
-                      <div key={assignee.$id} className="flex items-center gap-2">
-                        <Avatar className="size-8">
-                          <AvatarImage src={assignee.profileImageUrl || undefined} />
-                          <AvatarFallback className="text-sm">
-                            {assignee.name.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex flex-col">
-                          <span className="text-sm font-medium leading-none">
-                            {assignee.name}
-                          </span>
-                          {assignee.email && (
-                            <span className="text-xs text-muted-foreground">
-                              {assignee.email}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
+            {workItem.assignees?.length ? (
+              workItem.assignees.slice(0, 3).map((a) => (
+                <Avatar key={a.$id} className="size-5">
+                  <AvatarImage src={a.profileImageUrl || undefined} />
+                  <AvatarFallback>{a.name[0]}</AvatarFallback>
+                </Avatar>
+              ))
             ) : (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-6 px-2"
-                onClick={() => setAssignAssigneeOpen(true)}
-              >
-                <Users className="size-3" />
+              <Button size="icon" variant="ghost" onClick={() => setAssignAssigneeOpen(true)}>
+                <Users className="size-4" />
               </Button>
-            )}
-
-            {/* Children Count */}
-            {workItem.childrenCount! > 0 && (
-              <Badge variant="secondary" className="text-xs">
-                {workItem.childrenCount} subtasks
-              </Badge>
             )}
           </div>
         </div>
       </div>
 
-      {/* Children (if expanded) */}
-      {showChildren && workItem.children && workItem.children.length > 0 && (
-        <div className="ml-6 mt-2 space-y-2 border-l-2 pl-3">
-          {workItem.children.map((child) => (
-            <WorkItemCard 
-              key={child.$id} 
-              workItem={child} 
-              workspaceId={workspaceId}
-              projectId={projectId}
-              onViewDetails={onViewDetails} 
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Assign Assignee Dialog */}
       <AssignAssigneeDialog
         isOpen={assignAssigneeOpen}
         onClose={() => setAssignAssigneeOpen(false)}
@@ -295,7 +239,6 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails }
         workspaceId={workspaceId}
       />
 
-      {/* Assign Epic Dialog */}
       {projectId && (
         <AssignEpicDialog
           open={assignEpicOpen}
@@ -306,11 +249,10 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails }
         />
       )}
 
-      {/* Split Work Item Dialog */}
       <SplitWorkItemDialog
+        open={splitOpen}
+        onClose={() => setSplitOpen(false)}
         workItem={workItem}
-        open={splitDialogOpen}
-        onClose={() => setSplitDialogOpen(false)}
       />
     </div>
   );

@@ -31,7 +31,8 @@ import { useTaskFilters } from "../hooks/use-task-filters";
 import { TaskStatus, TaskPriority, PopulatedTask } from "../types";
 
 // Map WorkItemStatus to TaskStatus for compatibility with existing components
-const workItemStatusToTaskStatus = (status: WorkItemStatus | string): TaskStatus => {
+// For custom column IDs (strings not in the default map), pass them through directly
+const workItemStatusToTaskStatus = (status: WorkItemStatus | string): TaskStatus | string => {
   const statusMap: Record<WorkItemStatus, TaskStatus> = {
     [WorkItemStatus.TODO]: TaskStatus.TODO,
     [WorkItemStatus.ASSIGNED]: TaskStatus.ASSIGNED,
@@ -39,11 +40,13 @@ const workItemStatusToTaskStatus = (status: WorkItemStatus | string): TaskStatus
     [WorkItemStatus.IN_REVIEW]: TaskStatus.IN_REVIEW,
     [WorkItemStatus.DONE]: TaskStatus.DONE,
   };
-  return statusMap[status as WorkItemStatus] || TaskStatus.TODO;
+  // If it's a known WorkItemStatus, map it; otherwise, pass through as-is (custom column ID)
+  return statusMap[status as WorkItemStatus] ?? status;
 };
 
 // Map TaskStatus to WorkItemStatus for saving
-const taskStatusToWorkItemStatus = (status: TaskStatus | string): WorkItemStatus => {
+// For custom column IDs (strings that aren't in the default map), pass them through directly
+const taskStatusToWorkItemStatus = (status: TaskStatus | string): WorkItemStatus | string => {
   const statusMap: Record<TaskStatus, WorkItemStatus> = {
     [TaskStatus.TODO]: WorkItemStatus.TODO,
     [TaskStatus.ASSIGNED]: WorkItemStatus.ASSIGNED,
@@ -51,7 +54,8 @@ const taskStatusToWorkItemStatus = (status: TaskStatus | string): WorkItemStatus
     [TaskStatus.IN_REVIEW]: WorkItemStatus.IN_REVIEW,
     [TaskStatus.DONE]: WorkItemStatus.DONE,
   };
-  return statusMap[status as TaskStatus] || WorkItemStatus.TODO;
+  // If it's a known TaskStatus, map it; otherwise, pass it through as-is (custom column ID)
+  return statusMap[status as TaskStatus] ?? status;
 };
 
 // Convert WorkItem to Task format for existing components

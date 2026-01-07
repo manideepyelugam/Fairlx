@@ -4,12 +4,11 @@ import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import {
     Building2, Users, Settings2, Shield, Trash2, Crown,
-    CreditCard, AlertTriangle, FileText, Loader2
+    CreditCard, AlertTriangle, FileText, Loader2, Clock, Hash
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -145,13 +144,21 @@ export const OrganizationSettingsClient = () => {
 
     if (!isOrg) {
         return (
-            <div className="flex flex-col items-center justify-center h-full gap-4 p-6">
-                <Building2 className="h-16 w-16 text-muted-foreground" />
-                <h2 className="text-xl font-semibold">Organization Features</h2>
-                <p className="text-muted-foreground text-center max-w-md">
-                    Upgrade to an Organization account to access these features.
-                </p>
-                <Button>Upgrade to Organization</Button>
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 p-8">
+                <div className="p-4 rounded-full bg-muted">
+                    <Building2 className="size-12 text-muted-foreground" />
+                </div>
+                <div className="text-center space-y-2">
+                    <h2 className="text-xl font-semibold">Organization Features</h2>
+                    <p className="text-muted-foreground text-sm max-w-md">
+                        Upgrade to an Organization account to unlock team collaboration, 
+                        advanced billing, and enterprise features.
+                    </p>
+                </div>
+                <Button size="lg" className="gap-2">
+                    <Building2 className="size-4" />
+                    Upgrade to Organization
+                </Button>
             </div>
         );
     }
@@ -159,69 +166,90 @@ export const OrganizationSettingsClient = () => {
     const isLoading = isLoadingOrg || isLoadingRole;
 
     return (
-        <div className="flex flex-col gap-6 p-6">
+        <div className="flex flex-col gap-6 w-full">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                 <div className="flex items-center gap-3">
-                    <Building2 className="h-8 w-8 text-primary" />
+                   
                     <div>
                         {isLoadingOrg ? (
-                            <Skeleton className="h-8 w-48" />
+                            <Skeleton className="h-7 w-48 mb-1" />
                         ) : (
-                            <h1 className="text-2xl font-bold">
+                            <h1 className="text-2xl font-semibold tracking-tight">
                                 {organization?.name || "Organization Settings"}
                             </h1>
                         )}
-                        <p className="text-muted-foreground">
+                        <p className="text-sm mt-0.5 mb-4 text-muted-foreground">
                             Manage your organization settings, members, and billing
                         </p>
                     </div>
                 </div>
-                <Badge variant="default">Organization</Badge>
+                <Badge variant="secondary" className="self-start text-blue-600 bg-blue-100 text-xs px-2.5 py-1">
+                    <Building2  className="size-3 text-blue-600 mr-1" />
+                    Organization
+                </Badge>
             </div>
 
-            <Separator />
+           
 
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-5">
-                    <TabsTrigger value="general">
-                        <Settings2 className="h-4 w-4 mr-2" />
+                <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent">
+                    <TabsTrigger 
+                        value="general" 
+                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
+                    >
+                        <Settings2 className="size-4 mr-2" />
                         General
                     </TabsTrigger>
-                    <TabsTrigger value="members">
-                        <Users className="h-4 w-4 mr-2" />
+                    <TabsTrigger 
+                        value="members"
+                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
+                    >
+                        <Users className="size-4 mr-2" />
                         Members
+                        <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">
+                            {members.length}
+                        </Badge>
                     </TabsTrigger>
-                    <TabsTrigger value="security">
-                        <Shield className="h-4 w-4 mr-2" />
+                    <TabsTrigger 
+                        value="security"
+                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
+                    >
+                        <Shield className="size-4 mr-2" />
                         Security
                     </TabsTrigger>
-                    <TabsTrigger value="billing">
-                        <CreditCard className="h-4 w-4 mr-2" />
+                    <TabsTrigger 
+                        value="billing"
+                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
+                    >
+                        <CreditCard className="size-4 mr-2" />
                         Billing
                     </TabsTrigger>
-                    <TabsTrigger value="audit">
-                        <FileText className="h-4 w-4 mr-2" />
+                    <TabsTrigger 
+                        value="audit"
+                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
+                    >
+                        <FileText className="size-4 mr-2" />
                         Audit
                     </TabsTrigger>
                 </TabsList>
 
                 {/* ==================== GENERAL TAB ==================== */}
                 <TabsContent value="general" className="space-y-4 mt-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Settings2 className="h-5 w-5" />
+                    <Card className="border shadow-sm">
+                        <CardHeader className="pb-4">
+                            <CardTitle className="text-base font-semibold flex items-center gap-2">
+                                <Settings2 className="size-4" />
                                 Organization Details
                             </CardTitle>
-                            <CardDescription>
+                            <CardDescription className="text-xs">
                                 {canEdit
                                     ? "Update your organization information"
                                     : "View your organization information"}
                             </CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="space-y-5">
                             {isLoading ? (
                                 <div className="space-y-4">
                                     <Skeleton className="h-10 w-full" />
@@ -231,45 +259,56 @@ export const OrganizationSettingsClient = () => {
                                 <>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label htmlFor="orgName">Organization Name</Label>
+                                            <Label htmlFor="orgName" className="text-xs font-medium">Organization Name</Label>
                                             <Input
                                                 id="orgName"
                                                 value={orgName}
                                                 onChange={(e) => setOrgName(e.target.value)}
                                                 placeholder="Organization name"
                                                 disabled={!canEdit}
+                                                className="h-9"
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="orgId">Organization ID</Label>
+                                            <Label htmlFor="orgId" className="text-xs font-medium flex items-center gap-1.5">
+                                                <Hash className="size-3" />
+                                                Organization ID
+                                            </Label>
                                             <Input
                                                 id="orgId"
                                                 value={primaryOrganizationId || ""}
                                                 disabled
-                                                className="font-mono text-sm"
+                                                className="font-mono text-xs h-9 bg-muted/50"
                                             />
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label>Created</Label>
+                                            <Label className="text-xs font-medium flex items-center gap-1.5">
+                                                <Clock className="size-3" />
+                                                Created
+                                            </Label>
                                             <Input
                                                 value={organization?.$createdAt
-                                                    ? format(new Date(organization.$createdAt), "MMM d, yyyy")
+                                                    ? format(new Date(organization.$createdAt), "MMMM d, yyyy")
                                                     : "-"
                                                 }
                                                 disabled
+                                                className="h-9 bg-muted/50"
                                             />
                                         </div>
                                     </div>
                                     {canEdit && (
-                                        <Button
-                                            onClick={handleSaveOrg}
-                                            disabled={!hasChanges || isUpdating}
-                                        >
-                                            {isUpdating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                                            Save Changes
-                                        </Button>
+                                        <div className="pt-2">
+                                            <Button
+                                                onClick={handleSaveOrg}
+                                                disabled={!hasChanges || isUpdating}
+                                                size="sm"
+                                            >
+                                                {isUpdating && <Loader2 className="size-3.5 mr-2 animate-spin" />}
+                                                Save Changes
+                                            </Button>
+                                        </div>
                                     )}
                                 </>
                             )}
@@ -279,15 +318,15 @@ export const OrganizationSettingsClient = () => {
 
                 {/* ==================== MEMBERS TAB ==================== */}
                 <TabsContent value="members" className="space-y-4 mt-6">
-                    <Card>
-                        <CardHeader>
+                    <Card className="border shadow-sm">
+                        <CardHeader className="pb-4">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <Users className="h-5 w-5" />
+                                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                                        <Users className="size-4" />
                                         Organization Members
                                     </CardTitle>
-                                    <CardDescription>
+                                    <CardDescription className="text-xs mt-0.5">
                                         {members.length} member{members.length !== 1 ? "s" : ""} in your organization
                                     </CardDescription>
                                 </div>
@@ -296,11 +335,11 @@ export const OrganizationSettingsClient = () => {
                         </CardHeader>
                         <CardContent>
                             {isLoadingMembers ? (
-                                <div className="space-y-3">
+                                <div className="space-y-2">
                                     {[1, 2, 3].map((i) => (
                                         <div key={i} className="flex items-center gap-3 p-3 border rounded-lg">
-                                            <Skeleton className="h-10 w-10 rounded-full" />
-                                            <div className="flex-1 space-y-2">
+                                            <Skeleton className="size-9 rounded-full" />
+                                            <div className="flex-1 space-y-1.5">
                                                 <Skeleton className="h-4 w-32" />
                                                 <Skeleton className="h-3 w-48" />
                                             </div>
@@ -309,34 +348,38 @@ export const OrganizationSettingsClient = () => {
                                     ))}
                                 </div>
                             ) : (
-                                <div className="space-y-3">
+                                <div className="space-y-2">
                                     {members.map((member: OrgMember) => (
                                         <div
                                             key={member.$id}
-                                            className="flex items-center justify-between p-3 rounded-lg border"
+                                            className="flex items-center justify-between p-3 rounded-lg border hover:border-primary/30 hover:bg-accent/30 transition-all"
                                         >
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="h-10 w-10">
-                                                    <AvatarImage src={member.profileImageUrl || undefined} />
-                                                    <AvatarFallback>
-                                                        {(member.name || member.email || "?")
-                                                            .split(" ")
-                                                            .map(n => n[0])
-                                                            .join("")
-                                                            .toUpperCase()
-                                                            .slice(0, 2)}
-                                                    </AvatarFallback>
-                                                </Avatar>
+                                                <div className="relative">
+                                                    <Avatar className="size-9">
+                                                        <AvatarImage src={member.profileImageUrl || undefined} />
+                                                        <AvatarFallback className="text-xs font-medium">
+                                                            {(member.name || member.email || "?")
+                                                                .split(" ")
+                                                                .map(n => n[0])
+                                                                .join("")
+                                                                .toUpperCase()
+                                                                .slice(0, 2)}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    {member.role === "OWNER" && (
+                                                        <div className="absolute -bottom-0.5 -right-0.5 p-0.5 rounded-full bg-amber-500 border-2 border-background">
+                                                            <Crown className="size-2.5 text-white" />
+                                                        </div>
+                                                    )}
+                                                </div>
                                                 <div>
                                                     <div className="flex items-center gap-2">
-                                                        <span className="font-medium">
+                                                        <span className="text-sm font-medium">
                                                             {member.name || member.email || "Unknown"}
                                                         </span>
-                                                        {member.role === "OWNER" && (
-                                                            <Crown className="h-4 w-4 text-yellow-500" />
-                                                        )}
                                                     </div>
-                                                    <span className="text-sm text-muted-foreground">
+                                                    <span className="text-xs text-muted-foreground">
                                                         {member.email || member.userId}
                                                     </span>
                                                 </div>
@@ -351,7 +394,7 @@ export const OrganizationSettingsClient = () => {
                                                         }
                                                         disabled={isUpdatingRole || (member.role === "OWNER" && ownerCount === 1)}
                                                     >
-                                                        <SelectTrigger className="w-28">
+                                                        <SelectTrigger className="w-24 h-8 text-xs">
                                                             <SelectValue />
                                                         </SelectTrigger>
                                                         <SelectContent>
@@ -361,10 +404,18 @@ export const OrganizationSettingsClient = () => {
                                                         </SelectContent>
                                                     </Select>
                                                 ) : (
-                                                    <Badge variant={
-                                                        member.role === "OWNER" ? "default" :
-                                                            member.role === "ADMIN" ? "secondary" : "outline"
-                                                    }>
+                                                    <Badge 
+                                                        variant="outline" 
+                                                        className={`text-xs ${
+                                                            member.role === "OWNER" 
+                                                                ? "bg-amber-500/10 text-amber-700 border-amber-500/20" 
+                                                                : member.role === "ADMIN" 
+                                                                    ? "bg-purple-500/10 text-purple-700 border-purple-500/20" 
+                                                                    : ""
+                                                        }`}
+                                                    >
+                                                        {member.role === "OWNER" && <Crown className="size-3 mr-1" />}
+                                                        {member.role === "ADMIN" && <Shield className="size-3 mr-1" />}
                                                         {member.role}
                                                     </Badge>
                                                 )}
@@ -376,10 +427,10 @@ export const OrganizationSettingsClient = () => {
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
-                                                                className="h-8 w-8 text-destructive"
+                                                                className="size-8 text-muted-foreground hover:text-destructive"
                                                                 disabled={isRemoving}
                                                             >
-                                                                <Trash2 className="h-4 w-4" />
+                                                                <Trash2 className="size-3.5" />
                                                             </Button>
                                                         </AlertDialogTrigger>
                                                         <AlertDialogContent>
@@ -413,26 +464,26 @@ export const OrganizationSettingsClient = () => {
 
                 {/* ==================== SECURITY TAB (with Danger Zone) ==================== */}
                 <TabsContent value="security" className="space-y-4 mt-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Shield className="h-5 w-5" />
-                                Security
+                    <Card className="border shadow-sm">
+                        <CardHeader className="pb-4">
+                            <CardTitle className="text-base font-semibold flex items-center gap-2">
+                                <Shield className="size-4" />
+                                Security Settings
                             </CardTitle>
-                            <CardDescription>
+                            <CardDescription className="text-xs">
                                 Organization security and access settings
                             </CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-center justify-between p-3 rounded-lg border">
+                        <CardContent className="space-y-3">
+                            <div className="flex items-center justify-between p-3 rounded-lg border hover:border-primary/30 transition-all">
                                 <div>
-                                    <div className="font-medium">Workspace Creation</div>
-                                    <div className="text-sm text-muted-foreground">
+                                    <div className="text-sm font-medium">Workspace Creation</div>
+                                    <div className="text-xs text-muted-foreground">
                                         Who can create new workspaces in this organization
                                     </div>
                                 </div>
                                 <Select defaultValue="admins" disabled={!canEdit}>
-                                    <SelectTrigger className="w-40">
+                                    <SelectTrigger className="w-36 h-8 text-xs">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -442,15 +493,15 @@ export const OrganizationSettingsClient = () => {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="flex items-center justify-between p-3 rounded-lg border">
+                            <div className="flex items-center justify-between p-3 rounded-lg border hover:border-primary/30 transition-all">
                                 <div>
-                                    <div className="font-medium">Member Invitations</div>
-                                    <div className="text-sm text-muted-foreground">
+                                    <div className="text-sm font-medium">Member Invitations</div>
+                                    <div className="text-xs text-muted-foreground">
                                         Who can invite new members to the organization
                                     </div>
                                 </div>
                                 <Select defaultValue="admins" disabled={!canEdit}>
-                                    <SelectTrigger className="w-40">
+                                    <SelectTrigger className="w-36 h-8 text-xs">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -464,35 +515,36 @@ export const OrganizationSettingsClient = () => {
 
                     {/* Danger Zone - OWNER ONLY */}
                     {isOwner && (
-                        <Card className="border-destructive/50">
-                            <CardHeader>
-                                <CardTitle className="text-destructive flex items-center gap-2">
-                                    <AlertTriangle className="h-5 w-5" />
+                        <Card className="border border-destructive/30 shadow-sm">
+                            <CardHeader className="pb-4">
+                                <CardTitle className="text-base font-semibold text-destructive flex items-center gap-2">
+                                    <AlertTriangle className="size-4" />
                                     Danger Zone
                                 </CardTitle>
-                                <CardDescription>
+                                <CardDescription className="text-xs">
                                     Irreversible and destructive actions
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <div className="flex items-center justify-between p-3 rounded-lg border border-destructive/30 bg-destructive/5">
-                                    <div>
-                                        <div className="font-medium">Delete Organization</div>
-                                        <div className="text-sm text-muted-foreground">
+                                <div className="flex items-center justify-between p-4 rounded-lg border border-destructive/20 bg-destructive/5">
+                                    <div className="flex-1">
+                                        <div className="text-sm font-medium text-destructive">Delete Organization</div>
+                                        <div className="text-xs text-muted-foreground mt-0.5">
                                             Data will be retained for 30 days before permanent deletion.
                                             Billing will be frozen immediately.
                                         </div>
                                     </div>
                                     <Dialog>
                                         <DialogTrigger asChild>
-                                            <Button variant="destructive" size="sm">
-                                                <Trash2 className="h-4 w-4 mr-2" />
+                                            <Button variant="destructive" size="sm" className="shrink-0 ml-4">
+                                                <Trash2 className="size-3.5 mr-1.5" />
                                                 Delete
                                             </Button>
                                         </DialogTrigger>
                                         <DialogContent>
                                             <DialogHeader>
-                                                <DialogTitle className="text-destructive">
+                                                <DialogTitle className="text-destructive flex items-center gap-2">
+                                                    <AlertTriangle className="size-5" />
                                                     Delete Organization
                                                 </DialogTitle>
                                                 <DialogDescription>
@@ -502,26 +554,28 @@ export const OrganizationSettingsClient = () => {
                                             </DialogHeader>
                                             <div className="space-y-4 py-4">
                                                 <div className="space-y-2">
-                                                    <Label>
-                                                        Type <strong>{organization?.name}</strong> to confirm:
+                                                    <Label className="text-sm">
+                                                        Type <span className="font-semibold">{organization?.name}</span> to confirm:
                                                     </Label>
                                                     <Input
                                                         value={deleteConfirmName}
                                                         onChange={(e) => setDeleteConfirmName(e.target.value)}
                                                         placeholder="Organization name"
+                                                        className="h-9"
                                                     />
                                                 </div>
                                             </div>
                                             <DialogFooter>
                                                 <DialogClose asChild>
-                                                    <Button variant="outline">Cancel</Button>
+                                                    <Button variant="outline" size="sm">Cancel</Button>
                                                 </DialogClose>
                                                 <Button
                                                     variant="destructive"
+                                                    size="sm"
                                                     onClick={handleDeleteOrg}
                                                     disabled={!canDeleteOrg || isDeleting}
                                                 >
-                                                    {isDeleting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                                                    {isDeleting && <Loader2 className="size-3.5 mr-2 animate-spin" />}
                                                     Delete Organization
                                                 </Button>
                                             </DialogFooter>

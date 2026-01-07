@@ -14,6 +14,8 @@ import {
   WORKSPACES_ID,
   CUSTOM_COLUMNS_ID,
   DEFAULT_COLUMN_SETTINGS_ID,
+  SPACES_ID,
+  ORGANIZATIONS_ID,
 } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { generateInviteCode } from "@/lib/utils";
@@ -73,6 +75,7 @@ const app = new Hono()
   })
   .get("/:workspaceId/info", sessionMiddleware, async (c) => {
     const databases = c.get("databases");
+    const user = c.get("user");
     const { workspaceId } = c.req.param();
 
     const workspace = await databases.getDocument<Workspace>(
@@ -81,11 +84,58 @@ const app = new Hono()
       workspaceId
     );
 
+    // Check if user is already a member
+    const existingMember = await getMember({
+      databases,
+      workspaceId,
+      userId: user.$id,
+    });
+
+    // Get member count
+    const members = await databases.listDocuments(DATABASE_ID, MEMBERS_ID, [
+      Query.equal("workspaceId", workspaceId),
+    ]);
+
+    // Get spaces count
+    const spaces = await databases.listDocuments(DATABASE_ID, SPACES_ID, [
+      Query.equal("workspaceId", workspaceId),
+    ]);
+
+    // Get projects count
+    const projects = await databases.listDocuments(DATABASE_ID, PROJECTS_ID, [
+      Query.equal("workspaceId", workspaceId),
+    ]);
+
+    // Get organization info if workspace belongs to an org
+    let organization = null;
+    if (workspace.organizationId) {
+      try {
+        const org = await databases.getDocument(
+          DATABASE_ID,
+          ORGANIZATIONS_ID,
+          workspace.organizationId
+        );
+        organization = {
+          $id: org.$id,
+          name: org.name,
+          imageUrl: org.imageUrl,
+        };
+      } catch (error) {
+        // Organization might not exist or user doesn't have access
+        console.error("Failed to fetch organization:", error);
+      }
+    }
+
     return c.json({
       data: {
         $id: workspace.$id,
         name: workspace.name,
         imageUrl: workspace.imageUrl,
+        memberCount: members.total,
+        spacesCount: spaces.total,
+        projectsCount: projects.total,
+        organization,
+        isMember: !!existingMember,
       },
     });
   })
