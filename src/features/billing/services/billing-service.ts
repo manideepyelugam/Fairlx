@@ -169,6 +169,11 @@ function generateInvoiceId(): string {
  * 
  * This aggregates usage for the billing period and creates an invoice document.
  * 
+ * PRODUCTION HARDENING: Idempotent invoice generation
+ * - Uses billing cycle dates as idempotency key
+ * - Returns existing invoice if already generated for this cycle
+ * - Prevents duplicate charges
+ * 
  * @param billingAccountId - The billing account to generate invoice for
  * @returns The created invoice
  */
@@ -176,6 +181,7 @@ export async function generateInvoice(
     billingAccountId: string
 ): Promise<BillingInvoice> {
     const { databases } = await createAdminClient();
+    const { isEventProcessed, markEventProcessed } = await import("@/lib/processed-events-registry");
 
     // Get billing account
     const billingAccount = await databases.getDocument<BillingAccount>(
@@ -183,6 +189,31 @@ export async function generateInvoice(
         BILLING_ACCOUNTS_ID,
         billingAccountId
     );
+
+    // IDEMPOTENCY CHECK: Generate key from billing cycle dates
+    const invoiceIdempotencyKey = `invoice:${billingAccountId}:${billingAccount.billingCycleStart}:${billingAccount.billingCycleEnd}`;
+
+    // Check if invoice already generated for this cycle
+    if (await isEventProcessed(databases, invoiceIdempotencyKey, "invoice")) {
+        console.log(`[Billing] Invoice already exists for cycle ${billingAccount.billingCycleStart} to ${billingAccount.billingCycleEnd}`);
+
+        // Return existing invoice
+        const existingInvoices = await databases.listDocuments<BillingInvoice>(
+            DATABASE_ID,
+            INVOICES_ID,
+            [
+                Query.equal("billingAccountId", billingAccountId),
+                Query.equal("periodStart", billingAccount.billingCycleStart),
+                Query.equal("periodEnd", billingAccount.billingCycleEnd),
+                Query.limit(1),
+            ]
+        );
+
+        if (existingInvoices.total > 0) {
+            return existingInvoices.documents[0];
+        }
+        // Fall through if invoice record not found (edge case)
+    }
 
     // Aggregate usage
     const usageBreakdown = await aggregateUsageForBillingPeriod(databases, billingAccount);
@@ -218,6 +249,13 @@ export async function generateInvoice(
             retryCount: 0,
         }
     );
+
+    // Mark as processed for idempotency
+    await markEventProcessed(databases, invoiceIdempotencyKey, "invoice", {
+        invoiceId: invoice.$id,
+        invoiceNumber: invoiceId,
+        amount: totalCost,
+    });
 
     // Log audit event
     await databases.createDocument(
@@ -289,6 +327,11 @@ export async function processBillingCycle(): Promise<{
 
     for (const account of accounts.documents) {
         try {
+            // 0. LOCK THE BILLING CYCLE FIRST
+            // CRITICAL: This prevents late usage events from modifying this period
+            const { lockBillingCycle, unlockBillingCycle } = await import("@/lib/billing-primitives");
+            await lockBillingCycle(databases, account.$id);
+
             // 1. GENERATE INVOICE FIRST (postpaid billing - invoice before charge)
             const invoice = await generateInvoice(account.$id);
             results.invoices.push(invoice.invoiceId);
@@ -308,6 +351,9 @@ export async function processBillingCycle(): Promise<{
                     billingCycleEnd: newCycleEnd.toISOString(),
                 }
             );
+
+            // 3. UNLOCK for new cycle (new usage can now be recorded)
+            await unlockBillingCycle(databases, account.$id);
 
             // 3. ATTEMPT AUTO-DEBIT using mandate (if authorized)
             if (account.razorpayTokenId && account.mandateStatus === MandateStatus.AUTHORIZED) {

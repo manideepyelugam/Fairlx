@@ -184,6 +184,16 @@ export type BillingAccount = Models.Document & {
 
     /** Email for billing notifications */
     billingEmail?: string;
+
+    // ============================================================================
+    // BILLING CYCLE LOCKING (Production Hardening)
+    // ============================================================================
+
+    /** Whether current billing cycle is locked (no new usage writes) */
+    isBillingCycleLocked?: boolean;
+
+    /** When the cycle was locked */
+    billingCycleLockedAt?: string;
 };
 
 /**

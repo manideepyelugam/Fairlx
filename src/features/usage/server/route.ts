@@ -663,6 +663,11 @@ const app = new Hono()
     //
     // CRITICAL FIX IMPLEMENTED: Filters events by billing entity
     // Aggregations respect billing entity boundaries for accurate org/user split
+    //
+    // PRODUCTION HARDENING:
+    // - Checks billing status (suspended accounts cannot recalculate)
+    // - Finalized periods are immutable
+    // - Uses isFinalized flag to prevent concurrent modifications
     .post(
         "/aggregations/calculate",
         sessionMiddleware,
@@ -671,6 +676,17 @@ const app = new Hono()
             const user = c.get("user");
             const databases = c.get("databases");
             const { workspaceId, period, billingEntityId } = c.req.valid("json");
+
+            // PRODUCTION HARDENING: Check billing status
+            const { assertBillingNotSuspended } = await import("@/lib/billing-primitives");
+            try {
+                await assertBillingNotSuspended(databases, { workspaceId });
+            } catch {
+                return c.json({
+                    error: "Account suspended - cannot calculate aggregations",
+                    code: "BILLING_SUSPENDED"
+                }, 403);
+            }
 
             // Check admin access
             const isAdmin = await checkAdminAccess(databases, workspaceId, user.$id);

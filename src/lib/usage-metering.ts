@@ -40,6 +40,11 @@ export interface LogUsageOptions {
 
 /**
  * Log traffic usage (API requests, file transfers, webhooks, etc.)
+ * 
+ * PRODUCTION HARDENING: Delegates to usage-ledger.ts for:
+ * - Idempotency enforcement
+ * - Billing cycle validation
+ * - Suspension checks
  */
 export async function logTrafficUsage(
     options: LogUsageOptions & {
@@ -47,29 +52,32 @@ export async function logTrafficUsage(
     }
 ): Promise<void> {
     try {
-        await options.databases.createDocument(
-            DATABASE_ID,
-            USAGE_EVENTS_ID,
-            ID.unique(),
-            {
-                workspaceId: options.workspaceId,
-                projectId: options.projectId || null,
-                resourceType: ResourceType.TRAFFIC,
-                units: options.units,
-                // Store billing entity in metadata until schema is updated
-                metadata: JSON.stringify({
-                    ...options.metadata,
-                    billingEntityId: options.billingEntityId || null,
-                    billingEntityType: options.billingEntityType || null,
-                    sourceContext: options.sourceContext ?? {
-                        type: options.projectId ? 'project' : 'workspace',
-                        displayName: 'Unknown',
-                    },
-                }),
-                timestamp: new Date().toISOString(),
-                source: options.source,
-            }
+        const { writeUsageEvent, generateTrafficIdempotencyKey } = await import("./usage-ledger");
+
+        // Generate idempotency key for traffic
+        const idempotencyKey = generateTrafficIdempotencyKey(
+            options.workspaceId,
+            (options.metadata?.endpoint as string) || "unknown",
+            (options.metadata?.method as string) || "GET"
         );
+
+        await writeUsageEvent(options.databases, {
+            idempotencyKey,
+            workspaceId: options.workspaceId,
+            projectId: options.projectId,
+            resourceType: ResourceType.TRAFFIC,
+            units: options.units,
+            source: options.source,
+            billingEntityId: options.billingEntityId,
+            billingEntityType: options.billingEntityType,
+            metadata: {
+                ...options.metadata,
+                sourceContext: options.sourceContext ?? {
+                    type: options.projectId ? 'project' : 'workspace',
+                    displayName: 'Unknown',
+                },
+            },
+        });
     } catch (error) {
         // Log error but don't throw - metering should not block operations
         console.error("[UsageMetering] Failed to log traffic usage:", error);
@@ -78,37 +86,43 @@ export async function logTrafficUsage(
 
 /**
  * Log storage usage (file uploads, downloads, deletions)
+ * 
+ * PRODUCTION HARDENING: Delegates to usage-ledger.ts
  */
 export async function logStorageUsage(
     options: LogUsageOptions & {
         operation: "upload" | "download" | "delete";
+        fileId?: string;
     }
 ): Promise<void> {
     try {
-        await options.databases.createDocument(
-            DATABASE_ID,
-            USAGE_EVENTS_ID,
-            ID.unique(),
-            {
-                workspaceId: options.workspaceId,
-                projectId: options.projectId || null,
-                resourceType: ResourceType.STORAGE,
-                units: options.units,
-                // Store billing entity in metadata until schema is updated
-                metadata: JSON.stringify({
-                    ...options.metadata,
-                    operation: options.operation,
-                    billingEntityId: options.billingEntityId || null,
-                    billingEntityType: options.billingEntityType || null,
-                    sourceContext: options.sourceContext ?? {
-                        type: options.projectId ? 'project' : 'workspace',
-                        displayName: 'Unknown',
-                    },
-                }),
-                timestamp: new Date().toISOString(),
-                source: UsageSource.FILE,
-            }
+        const { writeUsageEvent, generateStorageIdempotencyKey } = await import("./usage-ledger");
+
+        // Generate idempotency key for storage
+        const idempotencyKey = generateStorageIdempotencyKey(
+            options.workspaceId,
+            options.operation,
+            options.fileId || `${Date.now()}`
         );
+
+        await writeUsageEvent(options.databases, {
+            idempotencyKey,
+            workspaceId: options.workspaceId,
+            projectId: options.projectId,
+            resourceType: ResourceType.STORAGE,
+            units: options.units,
+            source: UsageSource.FILE,
+            billingEntityId: options.billingEntityId,
+            billingEntityType: options.billingEntityType,
+            metadata: {
+                ...options.metadata,
+                operation: options.operation,
+                sourceContext: options.sourceContext ?? {
+                    type: options.projectId ? 'project' : 'workspace',
+                    displayName: 'Unknown',
+                },
+            },
+        });
     } catch (error) {
         console.error("[UsageMetering] Failed to log storage usage:", error);
     }
@@ -121,9 +135,12 @@ export async function logStorageUsage(
  * AI operations cost more than simple CRUD. We store both raw and
  * weighted units to enable accurate billing while maintaining audit trail.
  * 
- * IDEMPOTENCY: Uses setTimeout + idempotency key to:
- * 1. Defer metering to avoid blocking main operations
- * 2. Prevent duplicate events from retries
+ * PRODUCTION HARDENING: Delegates to usage-ledger.ts for:
+ * - Idempotency enforcement
+ * - Billing cycle validation
+ * - Suspension checks
+ * 
+ * Uses setTimeout to defer metering and avoid blocking main operations.
  */
 
 export async function logComputeUsage(
@@ -137,54 +154,42 @@ export async function logComputeUsage(
     // This prevents connection pool exhaustion during high-frequency updates
     setTimeout(async () => {
         try {
+            const { writeUsageEvent, generateComputeIdempotencyKey } = await import("./usage-ledger");
+
             // Calculate weighted units based on job type
             const baseUnits = options.units;
             const weight = getComputeUnits(options.jobType);
             const weightedUnits = baseUnits * weight;
 
-            // Generate idempotency key to prevent duplicate events
-            // Format: workspaceId:jobType:operationId OR workspaceId:jobType:timestamp
+            // Generate idempotency key
             const idempotencyKey = options.operationId
-                ? `${options.workspaceId}:${options.jobType}:${options.operationId}`
-                : `${options.workspaceId}:${options.jobType}:${Date.now()}`;
+                ? `compute:${options.jobType}:${options.workspaceId}:${options.operationId}`
+                : generateComputeIdempotencyKey(options.workspaceId, options.jobType, `${Date.now()}`);
 
-            await options.databases.createDocument(
-                DATABASE_ID,
-                USAGE_EVENTS_ID,
-                ID.unique(),
-                {
-                    workspaceId: options.workspaceId,
-                    projectId: options.projectId || null,
-                    resourceType: ResourceType.COMPUTE,
-                    units: weightedUnits,           // Use weighted units for billing
-                    // Store billing entity in metadata until schema is updated
-                    metadata: JSON.stringify({
-                        ...options.metadata,
-                        jobType: options.jobType,
-                        isAI: options.isAI || false,
-                        weight: weight,
-                        baseUnits: baseUnits,
-                        weightedUnits: weightedUnits,
-                        idempotencyKey: idempotencyKey,
-                        billingEntityId: options.billingEntityId || null,
-                        billingEntityType: options.billingEntityType || null,
-                        sourceContext: options.sourceContext ?? {
-                            type: options.projectId ? 'project' : 'workspace',
-                            displayName: 'Unknown',
-                        },
-                    }),
-                    timestamp: new Date().toISOString(),
-                    source: options.isAI ? UsageSource.AI : UsageSource.JOB,
-                }
-            );
+            await writeUsageEvent(options.databases, {
+                idempotencyKey,
+                workspaceId: options.workspaceId,
+                projectId: options.projectId,
+                resourceType: ResourceType.COMPUTE,
+                units: weightedUnits,
+                source: options.isAI ? UsageSource.AI : UsageSource.JOB,
+                billingEntityId: options.billingEntityId,
+                billingEntityType: options.billingEntityType,
+                metadata: {
+                    ...options.metadata,
+                    jobType: options.jobType,
+                    isAI: options.isAI || false,
+                    weight: weight,
+                    baseUnits: baseUnits,
+                    weightedUnits: weightedUnits,
+                    sourceContext: options.sourceContext ?? {
+                        type: options.projectId ? 'project' : 'workspace',
+                        displayName: 'Unknown',
+                    },
+                },
+            });
         } catch (error: unknown) {
-            // Check for duplicate key error - silently ignore
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            if (errorMessage.includes('duplicate') || errorMessage.includes('unique')) {
-                // Silently skip duplicate - idempotency working as intended
-                return;
-            }
-            // Log other errors but don't throw - metering should never block operations
+            // Log errors but don't throw - metering should never block operations
             console.error("[UsageMetering] Failed to log compute usage:", error);
         }
     }, 100); // Small delay to let main operation complete first
