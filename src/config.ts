@@ -94,6 +94,7 @@ export const USAGE_RATE_COMPUTE_UNIT = parseFloat(process.env.USAGE_RATE_COMPUTE
 // ===============================
 export const BILLING_ACCOUNTS_ID = process.env.NEXT_PUBLIC_APPWRITE_BILLING_ACCOUNTS_ID!;
 export const BILLING_AUDIT_LOGS_ID = process.env.NEXT_PUBLIC_APPWRITE_BILLING_AUDIT_LOGS_ID!;
+export const PROCESSED_EVENTS_ID = process.env.NEXT_PUBLIC_APPWRITE_PROCESSED_EVENTS_ID!;
 
 // ===============================
 // Billing Configuration

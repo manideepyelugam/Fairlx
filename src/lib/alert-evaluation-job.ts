@@ -143,6 +143,9 @@ async function sendWebhookNotification(
 
 /**
  * Evaluate a single alert
+ * 
+ * PRODUCTION HARDENING: Checks billing status before evaluation.
+ * Suspended accounts do not get alerts (they can't take action anyway).
  */
 export async function evaluateAlert(
     databases: Databases,
@@ -159,6 +162,16 @@ export async function evaluateAlert(
     };
 
     try {
+        // PRODUCTION HARDENING: Check billing status
+        const { getBillingAccount } = await import("./billing-primitives");
+        const { BillingStatus } = await import("@/features/billing/types");
+
+        const account = await getBillingAccount(databases, { workspaceId: alert.workspaceId });
+        if (account?.billingStatus === BillingStatus.SUSPENDED) {
+            result.error = "Account suspended - skipping alert evaluation";
+            return result;
+        }
+
         // Get current usage
         result.currentUsage = await getCurrentMonthUsage(
             databases,

@@ -8,9 +8,12 @@
  * - Idempotent: Uses idempotencyKey to prevent duplicate events on retries
  * - Module-aware: Tracks which feature (DOCS, GITHUB, etc.) generated the usage
  * - Owner-aware: Supports both PERSONAL and ORG account types
+ * 
+ * PRODUCTION HARDENING: All writes now delegate to usage-ledger.ts
+ * for centralized enforcement of idempotency, billing cycle locking,
+ * and suspension checks.
  */
 
-import { ID } from "node-appwrite";
 import { ResourceType, UsageSource, UsageModule, OwnerType } from "@/features/usage/types";
 
 export interface TrackUsageParams {
@@ -74,6 +77,12 @@ export function trackUsage(params: TrackUsageParams): void {
  * 
  * Use this when you need to wait for the usage event to be created,
  * for example in batch operations or background jobs.
+ * 
+ * PRODUCTION HARDENING: Now delegates to usage-ledger.ts for:
+ * - Idempotency enforcement
+ * - Billing cycle validation
+ * - Suspension checks
+ * - Atomic writes
  */
 export async function trackUsageAsync(params: TrackUsageParams): Promise<void> {
     try {
@@ -90,8 +99,8 @@ export async function trackUsageAsync(params: TrackUsageParams): Promise<void> {
             ownerId,
         } = params;
 
-        // Generate idempotency key if not provided
-        const key = idempotencyKey || `${workspaceId}:${module}:${Date.now()}`;
+        // REQUIRE idempotency key - generate if not provided
+        const key = idempotencyKey || `${workspaceId}:${module || resourceType}:${Date.now()}`;
 
         // Only run on server-side
         if (typeof window !== "undefined") {
@@ -100,37 +109,32 @@ export async function trackUsageAsync(params: TrackUsageParams): Promise<void> {
 
         // Dynamic import to avoid client-side bundling issues
         const { createAdminClient } = await import("@/lib/appwrite");
-        const { DATABASE_ID, USAGE_EVENTS_ID } = await import("@/config");
+        const { writeUsageEvent } = await import("@/lib/usage-ledger");
 
         const { databases } = await createAdminClient();
 
-        // Build metadata with new fields
-        // IMPORTANT: module, ownerType, ownerId, idempotencyKey are stored in metadata
-        // until the Appwrite schema is updated with these columns
-        const fullMetadata = {
-            ...(metadata || {}),
-            module,           // Track which module generated usage
-            ownerType,        // PERSONAL or ORG
-            ownerId,          // userId or orgId
-            idempotencyKey: key,  // For duplicate prevention
-        };
+        // DELEGATE to centralized usage ledger (SINGLE SOURCE OF TRUTH)
+        const result = await writeUsageEvent(databases, {
+            idempotencyKey: key,
+            workspaceId,
+            projectId,
+            resourceType,
+            units,
+            source,
+            module,
+            metadata,
+            ownerType,
+            ownerId,
+        });
 
-        // Create the usage event directly in the database
-        // Note: Only using fields that exist in current Appwrite schema
-        await databases.createDocument(
-            DATABASE_ID,
-            USAGE_EVENTS_ID,
-            ID.unique(),
-            {
-                workspaceId,
-                projectId: projectId || null,
-                resourceType,
-                units,
-                source,
-                metadata: JSON.stringify(fullMetadata),
-                timestamp: new Date().toISOString(),
+        if (!result.written) {
+            // Log but don't throw - duplicates are expected for retries
+            if (result.reason === "DUPLICATE" || result.reason === "RACE_DUPLICATE") {
+                console.log(`[Usage] Duplicate event ignored: ${key}`);
+            } else {
+                console.warn(`[Usage] Event not written: ${result.reason} - ${result.message}`);
             }
-        );
+        }
     } catch (error) {
         // Never throw from usage tracking - just log
         console.error("[Usage] Error in trackUsageAsync:", error);

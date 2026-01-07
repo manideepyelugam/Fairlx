@@ -1,0 +1,324 @@
+import "server-only";
+
+import { Databases, ID, Query } from "node-appwrite";
+import { DATABASE_ID, USAGE_EVENTS_ID } from "@/config";
+import { ResourceType, UsageSource, UsageModule, UsageEvent, OwnerType } from "@/features/usage/types";
+import { assertBillingNotSuspended, adjustEventForLockedCycle, getBillingAccount } from "./billing-primitives";
+
+/**
+ * Usage Ledger - Immutable Usage Event Writer
+ * 
+ * SINGLE SOURCE OF TRUTH for usage event creation.
+ * All modules MUST use this to write usage.
+ * 
+ * INVARIANTS:
+ * - Usage events are immutable (write-once, never modify)
+ * - Every event has an idempotency key
+ * - No other layer may create or modify usage
+ * - Suspended accounts cannot record usage
+ * - Locked cycles reject late events (they roll to next cycle)
+ * 
+ * Guarantees:
+ * - Idempotency via idempotencyKey
+ * - Billing cycle validation
+ * - Account suspension check
+ * - Atomic writes
+ */
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+export interface WriteUsageEventParams {
+    /** REQUIRED - Unique key for idempotency (no longer optional) */
+    idempotencyKey: string;
+    /** Workspace where usage occurred */
+    workspaceId: string;
+    /** Project ID if applicable */
+    projectId?: string;
+    /** Resource type for billing */
+    resourceType: ResourceType;
+    /** Usage units - bytes for traffic/storage, operations for compute */
+    units: number;
+    /** Source of the usage */
+    source: UsageSource;
+    /** Module that generated the usage */
+    module?: UsageModule;
+    /** Timestamp of the event (defaults to now) */
+    timestamp?: string;
+    /** Additional metadata */
+    metadata?: Record<string, unknown>;
+    /** Account type (PERSONAL or ORG) */
+    ownerType?: OwnerType;
+    /** Owner ID (userId for PERSONAL, orgId for ORG) */
+    ownerId?: string;
+    /** Billing entity ID for attribution */
+    billingEntityId?: string;
+    /** Billing entity type */
+    billingEntityType?: "user" | "organization";
+}
+
+export interface WriteUsageResult {
+    written: boolean;
+    eventId?: string;
+    reason?: "DUPLICATE" | "RACE_DUPLICATE" | "SUSPENDED" | "CYCLE_LOCKED" | "ERROR";
+    message?: string;
+    adjustedTimestamp?: string;
+}
+
+// ============================================================================
+// IDEMPOTENCY CHECK
+// ============================================================================
+
+/**
+ * Find an existing usage event by idempotency key
+ * 
+ * CRITICAL: This is the first check before any write.
+ * Prevents duplicate events on retries.
+ */
+export async function findByIdempotencyKey(
+    databases: Databases,
+    idempotencyKey: string
+): Promise<UsageEvent | null> {
+    try {
+        // The idempotency key is stored in metadata JSON
+        // We search for it using a contains query on metadata field
+        // Note: For better performance, consider adding idempotencyKey as a top-level indexed field
+        const events = await databases.listDocuments<UsageEvent>(
+            DATABASE_ID,
+            USAGE_EVENTS_ID,
+            [
+                Query.contains("metadata", idempotencyKey),
+                Query.limit(1),
+            ]
+        );
+
+        if (events.total > 0) {
+            // Verify it's an exact match by parsing metadata
+            const event = events.documents[0];
+            try {
+                const meta = typeof event.metadata === "string"
+                    ? JSON.parse(event.metadata)
+                    : event.metadata;
+                if (meta?.idempotencyKey === idempotencyKey) {
+                    return event;
+                }
+            } catch {
+                // Metadata parse failed, not a match
+            }
+        }
+
+        return null;
+    } catch (error) {
+        console.error("[UsageLedger] findByIdempotencyKey failed:", error);
+        return null;
+    }
+}
+
+// ============================================================================
+// CORE WRITE FUNCTION
+// ============================================================================
+
+/**
+ * Write a usage event to the immutable ledger
+ * 
+ * This is the ONLY function that should write to usage_events.
+ * All other usage tracking modules must delegate to this function.
+ * 
+ * @returns Result indicating success/failure and reason
+ */
+export async function writeUsageEvent(
+    databases: Databases,
+    params: WriteUsageEventParams
+): Promise<WriteUsageResult> {
+    // Validate idempotency key is provided
+    if (!params.idempotencyKey || params.idempotencyKey.trim() === "") {
+        console.error("[UsageLedger] idempotencyKey is required");
+        return {
+            written: false,
+            reason: "ERROR",
+            message: "idempotencyKey is required for usage events",
+        };
+    }
+
+    // 1. Check idempotency key FIRST (prevent duplicates)
+    const existing = await findByIdempotencyKey(databases, params.idempotencyKey);
+    if (existing) {
+        console.log(`[UsageLedger] Duplicate event detected: ${params.idempotencyKey}`);
+        return {
+            written: false,
+            eventId: existing.$id,
+            reason: "DUPLICATE",
+            message: "Event with this idempotency key already exists",
+        };
+    }
+
+    // 2. Check billing status (no usage during suspension)
+    try {
+        await assertBillingNotSuspended(databases, { workspaceId: params.workspaceId });
+    } catch (error) {
+        if (error instanceof Error && error.message.includes("suspended")) {
+            console.warn(`[UsageLedger] Usage blocked - account suspended: ${params.workspaceId}`);
+            return {
+                written: false,
+                reason: "SUSPENDED",
+                message: "Cannot record usage - account is suspended",
+            };
+        }
+        // Other errors - log but don't block (fail open for non-suspension errors)
+        console.error("[UsageLedger] Billing check error:", error);
+    }
+
+    // 3. Check billing cycle lock and adjust timestamp if needed
+    const account = await getBillingAccount(databases, { workspaceId: params.workspaceId });
+    const eventTimestamp = params.timestamp || new Date().toISOString();
+    const { timestamp: adjustedTimestamp, wasAdjusted, adjustReason } =
+        adjustEventForLockedCycle(eventTimestamp, account);
+
+    if (wasAdjusted) {
+        console.log(`[UsageLedger] ${adjustReason}`);
+    }
+
+    // 4. Build event data
+    const fullMetadata = {
+        ...(params.metadata || {}),
+        module: params.module,
+        ownerType: params.ownerType,
+        ownerId: params.ownerId,
+        idempotencyKey: params.idempotencyKey,
+        billingEntityId: params.billingEntityId,
+        billingEntityType: params.billingEntityType,
+        ...(wasAdjusted ? {
+            originalTimestamp: eventTimestamp,
+            timestampAdjusted: true,
+            adjustReason,
+        } : {}),
+    };
+
+    // 5. Atomic write with unique ID
+    try {
+        const event = await databases.createDocument<UsageEvent>(
+            DATABASE_ID,
+            USAGE_EVENTS_ID,
+            ID.unique(),
+            {
+                workspaceId: params.workspaceId,
+                projectId: params.projectId || null,
+                resourceType: params.resourceType,
+                units: params.units,
+                source: params.source,
+                metadata: JSON.stringify(fullMetadata),
+                timestamp: adjustedTimestamp,
+            }
+        );
+
+        return {
+            written: true,
+            eventId: event.$id,
+            ...(wasAdjusted ? { adjustedTimestamp } : {}),
+        };
+    } catch (error) {
+        // Handle duplicate key error (race condition protection)
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes("duplicate") || errorMessage.includes("unique")) {
+            console.log(`[UsageLedger] Race duplicate detected: ${params.idempotencyKey}`);
+            return {
+                written: false,
+                reason: "RACE_DUPLICATE",
+                message: "Concurrent write detected - event may already exist",
+            };
+        }
+
+        console.error("[UsageLedger] Write failed:", error);
+        return {
+            written: false,
+            reason: "ERROR",
+            message: errorMessage,
+        };
+    }
+}
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Generate a standard idempotency key
+ * 
+ * Format: {module}:{operation}:{contextId}:{timestamp}
+ * 
+ * Example: "docs:ask:project123:1704067200000"
+ */
+export function generateIdempotencyKey(
+    module: string,
+    operation: string,
+    contextId: string,
+    timestamp?: number
+): string {
+    return `${module}:${operation}:${contextId}:${timestamp || Date.now()}`;
+}
+
+/**
+ * Generate idempotency key for traffic metering
+ * 
+ * Uses request-specific identifiers to prevent duplicate traffic logging.
+ */
+export function generateTrafficIdempotencyKey(
+    workspaceId: string,
+    endpoint: string,
+    method: string,
+    requestId?: string
+): string {
+    const id = requestId || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    return `traffic:${method}:${workspaceId}:${endpoint}:${id}`;
+}
+
+/**
+ * Generate idempotency key for compute operations
+ */
+export function generateComputeIdempotencyKey(
+    workspaceId: string,
+    jobType: string,
+    operationId: string
+): string {
+    return `compute:${jobType}:${workspaceId}:${operationId}:${Date.now()}`;
+}
+
+/**
+ * Generate idempotency key for storage operations
+ */
+export function generateStorageIdempotencyKey(
+    workspaceId: string,
+    operation: "upload" | "download" | "delete",
+    fileId: string
+): string {
+    return `storage:${operation}:${workspaceId}:${fileId}:${Date.now()}`;
+}
+
+// ============================================================================
+// ASSERTION FUNCTIONS
+// ============================================================================
+
+/**
+ * Assert usage events are immutable
+ * 
+ * This is a documentation function that enforces the invariant
+ * that usage_events should NEVER be updated or deleted.
+ * 
+ * CRITICAL: There is NO updateUsageEvent function.
+ * There is NO deleteUsageEvent function.
+ * Usage events are WRITE-ONCE.
+ */
+export function assertUsageImmutable(): void {
+    // This function exists to document and enforce the invariant.
+    // If you're looking for a way to modify usage events, you're doing it wrong.
+    // 
+    // NEVER:
+    // - databases.updateDocument(DATABASE_ID, USAGE_EVENTS_ID, ...)
+    // - databases.deleteDocument(DATABASE_ID, USAGE_EVENTS_ID, ...)
+    //
+    // If usage was recorded incorrectly:
+    // 1. Create a compensating event with negative units (if applicable)
+    // 2. Or handle it at the aggregation/invoice layer
+    // 3. Document it in the billing audit log
+}

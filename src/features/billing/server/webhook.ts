@@ -12,6 +12,7 @@ import {
 } from "@/config";
 import { createAdminClient } from "@/lib/appwrite";
 import { verifyWebhookSignature } from "@/lib/razorpay";
+import { isEventProcessed, markEventProcessed } from "@/lib/processed-events-registry";
 
 import {
     BillingStatus,
@@ -39,36 +40,22 @@ import {
  * 
  * SECURITY:
  * - All webhooks are signature-verified
- * - Event IDs are stored for idempotency
+ * - Event IDs are stored in DATABASE for persistent idempotency
  * - All events are audit-logged
+ * 
+ * CRITICAL INVARIANT: Webhooks may ONLY modify:
+ * - Invoice status
+ * - Billing account status (billingStatus, mandateStatus)
+ * - Mandate/token information
+ * 
+ * Webhooks MUST NEVER:
+ * - Touch usage_events
+ * - Modify usage_aggregations
+ * - Infer or calculate usage
  */
 
-// Store processed event IDs to prevent duplicate processing
-// In production, this should be in a database or Redis
-const processedEvents = new Set<string>();
-
-/**
- * Check if event was already processed (idempotency)
- */
-function isEventProcessed(eventId: string): boolean {
-    return processedEvents.has(eventId);
-}
-
-/**
- * Mark event as processed
- */
-function markEventProcessed(eventId: string): void {
-    processedEvents.add(eventId);
-
-    // Cleanup old events (keep last 10000)
-    if (processedEvents.size > 10000) {
-        const iterator = processedEvents.values();
-        for (let i = 0; i < 1000; i++) {
-            const oldest = iterator.next().value;
-            if (oldest) processedEvents.delete(oldest);
-        }
-    }
-}
+// NOTE: Idempotency now handled by @/lib/processed-events-registry
+// Database-backed for persistence across restarts
 
 const app = new Hono()
     /**
@@ -103,15 +90,15 @@ const app = new Hono()
         // Generate event ID from payload for idempotency
         const eventId = `${event.event}-${event.created_at}-${event.payload?.payment?.entity?.id || event.payload?.subscription?.entity?.id || "unknown"}`;
 
-        // Check idempotency
-        if (isEventProcessed(eventId)) {
+        const { databases } = await createAdminClient();
+
+        // Check idempotency (database-backed for production safety)
+        if (await isEventProcessed(databases, eventId, "webhook")) {
             console.log(`[Webhook] Skipping duplicate event: ${eventId}`);
             return c.json({ status: "already_processed" });
         }
 
         console.log(`[Webhook] Processing event: ${event.event}`);
-
-        const { databases } = await createAdminClient();
 
         try {
             // Route to appropriate handler
@@ -162,8 +149,8 @@ const app = new Hono()
                     console.log(`[Webhook] Unhandled event type: ${event.event}`);
             }
 
-            // Mark as processed
-            markEventProcessed(eventId);
+            // Mark as processed (persisted to database)
+            await markEventProcessed(databases, eventId, "webhook");
 
             return c.json({ status: "processed" });
         } catch (error) {

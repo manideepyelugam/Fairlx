@@ -33,6 +33,9 @@ export interface StorageSnapshotResult {
 
 /**
  * Capture storage snapshot for a single workspace
+ * 
+ * PRODUCTION HARDENING: Checks billing status before capturing.
+ * Suspended accounts do not get their storage tracked.
  */
 export async function captureWorkspaceStorageSnapshot(
     databases: Databases,
@@ -42,6 +45,21 @@ export async function captureWorkspaceStorageSnapshot(
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
     try {
+        // PRODUCTION HARDENING: Check billing status
+        const { getBillingAccount } = await import("./billing-primitives");
+        const { BillingStatus } = await import("@/features/billing/types");
+
+        const account = await getBillingAccount(databases, { workspaceId });
+        if (account?.billingStatus === BillingStatus.SUSPENDED) {
+            return {
+                workspaceId,
+                storageGB: 0,
+                date: today,
+                success: false,
+                error: "Account suspended - skipping snapshot",
+            };
+        }
+
         // Check if snapshot already exists for today (idempotency)
         const existing = await databases.listDocuments<StorageDailySnapshot>(
             DATABASE_ID,
