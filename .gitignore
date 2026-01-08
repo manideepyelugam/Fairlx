@@ -17,6 +17,9 @@ pnpm-lock.yaml
 /coverage
 /.nyc_output
 
+#scripts & migrations
+/scripts
+
 # next.js
 /.next/
 /out/
