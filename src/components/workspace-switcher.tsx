@@ -108,17 +108,16 @@ export const WorkspaceSwitcher = () => {
 
   return (
     <TooltipProvider>
-      <div className="flex flex-col px-3 pt-5 pb-8 border-t-[1.5px] border-neutral-200">
+      <div className="flex flex-col px-3 pt-3 pb-4 border-t-[1.5px] border-neutral-200">
         <ConfirmDialog />
 
         {/* Organization indicator for ORG accounts with refresh */}
-        {hasOrg && currentOrg && (
+        {/* {hasOrg && currentOrg && (
           <div className="flex items-center justify-between px-2 pb-3">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Building2 className="h-3.5 w-3.5" />
               <span className="truncate font-medium">{(currentOrg as { name: string }).name}</span>
             </div>
-            {/* Refresh button */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -134,7 +133,7 @@ export const WorkspaceSwitcher = () => {
               <TooltipContent>Refresh data</TooltipContent>
             </Tooltip>
           </div>
-        )}
+        )} */}
 
         <div className="flex items-center justify-between pb-4">
           <p className="text-[13px] tracking-normal font-medium  pl-2 text-primary">Workspaces</p>
@@ -185,7 +184,7 @@ export const WorkspaceSwitcher = () => {
 
         <Select onValueChange={onSelect} value={selectedWorkspaceId}>
 
-          <SelectTrigger className="w-full  font-medium text-sm ">
+          <SelectTrigger className="w-full p-2 font-medium text-xs ">
             <SelectValue placeholder="No workspace selected." />
           </SelectTrigger>
 

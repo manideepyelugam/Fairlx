@@ -78,7 +78,7 @@ export const Spaces = () => {
                   <Info className="size-4" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="right" align="start">
+              <TooltipContent side="right" className="text-xs" align="start">
                 Click for Spaces guide
               </TooltipContent>
             </Tooltip>
@@ -92,7 +92,7 @@ export const Spaces = () => {
         </div>
       </div>
 
-      {isExpanded && (
+      <div className={`transition-all duration-700 overflow-hidden mt-2 ${isExpanded ? 'max-h-screen' : 'max-h-0'}`}>
         <div className="space-y-1">
           {rootSpaces.length === 0 ? (
             <p className="text-xs text-muted-foreground px-2 py-1">No spaces yet</p>
@@ -109,7 +109,7 @@ export const Spaces = () => {
             ))
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 };
@@ -138,10 +138,10 @@ const SpaceItem = ({ space, childSpaces, selectedSpaceId, onSelect, level }: Spa
   const isSelected = selectedSpaceId === space.$id;
 
   return (
-    <div>
+    <div >
       <div
         className={cn(
-          "flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer text-sm transition-colors",
+          "flex items-center gap-2 pl-0 py-1.5 rounded-md  cursor-pointer text-sm transition-colors",
           isSelected ? "bg-accent text-accent-foreground" : "hover:bg-accent/50",
         )}
         style={{ paddingLeft: `${8 + level * 12}px` }}
@@ -168,8 +168,8 @@ const SpaceItem = ({ space, childSpaces, selectedSpaceId, onSelect, level }: Spa
           className="size-3 rounded-sm flex-shrink-0"
           style={{ backgroundColor: space.color || "#6366f1" }}
         />
-        <span className="truncate flex-1">{space.name}</span>
-        <span className="text-xs text-muted-foreground">{space.key}</span>
+        <span className="truncate flex-1 text-sm">{space.name}</span>
+        {/* <span className="text-xs text-muted-foreground">{space.key}</span> */}
       </div>
 
       {hasChildren && isOpen && (

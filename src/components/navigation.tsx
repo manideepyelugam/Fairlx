@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Settings, User, FolderKanban, Users2, Calendar, Clock as ClockIcon, Activity, Layers, Shield, Building2, CreditCard } from "lucide-react";
+import { Settings, FolderKanban, Users2, Calendar, Layers, Building2 } from "lucide-react";
 import Link from "next/link";
 import {
   GoCheckCircle,
@@ -22,7 +22,20 @@ import { useCurrentOrgMember } from "@/features/organizations/api/use-current-or
  * - workspaceScoped: true = requires active workspace (hidden when no workspace)
  * - orgRoute: true = uses dashboard-level route (not workspace-prefixed)
  */
-const routes = [
+
+interface RouteConfig {
+  label: string;
+  href: string;
+  icon: any;
+  activeIcon: any;
+  workspaceScoped?: boolean;
+  adminOnly?: boolean;
+  orgOnly?: boolean;
+  orgAdminOnly?: boolean;
+  orgRoute?: boolean;
+}
+
+const routes: RouteConfig[] = [
   {
     label: "Home",
     href: "",
@@ -44,13 +57,7 @@ const routes = [
     activeIcon: FolderKanban,
     workspaceScoped: true,
   },
-  {
-    label: "Spaces",
-    href: "/spaces",
-    icon: Layers,
-    activeIcon: Layers,
-    workspaceScoped: true,
-  },
+
   {
     label: "Teams",
     href: "/teams",
@@ -66,33 +73,10 @@ const routes = [
     workspaceScoped: true,
   },
   {
-    label: "Time Tracking",
-    href: "/time-tracking",
-    icon: ClockIcon,
-    activeIcon: ClockIcon,
-    workspaceScoped: true,
-  },
-  {
-    label: "Audit Log",
-    href: "/audit-logs",
-    icon: Activity,
-    activeIcon: Activity,
-    workspaceScoped: true,
-  },
-  {
-    label: "Admin Panel",
-    href: "/admin/usage",
-    icon: Shield,
-    activeIcon: Shield,
-    adminOnly: true,
-    workspaceScoped: true,
-  },
-  {
-    label: "Billing",
-    href: "/billing",
-    icon: CreditCard,
-    activeIcon: CreditCard,
-    adminOnly: true,
+    label: "Settings",
+    href: "/settings",
+    icon: Settings,
+    activeIcon: Settings,
     workspaceScoped: true,
   },
   {
@@ -103,20 +87,6 @@ const routes = [
     orgOnly: true, // Only show for ORG accounts
     orgAdminOnly: true, // Requires org admin/owner role
     orgRoute: true, // Uses dashboard-level route (not workspace-prefixed)
-  },
-  {
-    label: "Settings",
-    href: "/settings",
-    icon: Settings,
-    activeIcon: Settings,
-    workspaceScoped: true,
-  },
-  {
-    label: "Members",
-    href: "/members",
-    icon: User,
-    activeIcon: User,
-    workspaceScoped: true,
   },
 ];
 
@@ -143,7 +113,7 @@ export const Navigation = ({ hasWorkspaces = true }: NavigationProps) => {
   });
 
   // Filter routes based on permissions, account type, and workspace existence
-  const visibleRoutes = routes.filter(route => {
+  const visibleRoutes = routes.filter((route: RouteConfig) => {
     // Hide workspace-scoped routes ONLY if user has no workspaces at all
     if (route.workspaceScoped && !hasWorkspaces) return false;
     // Hide workspace admin-only routes for non-admins (when in workspace context)

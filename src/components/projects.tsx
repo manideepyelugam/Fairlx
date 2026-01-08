@@ -48,11 +48,11 @@ export const Projects = () => {
   };
 
   return (
-    <div className="flex flex-col px-3 py-4 border-neutral-200">
+    <div className="flex flex-col px-3 py-2  border-neutral-200">
       <div className="flex items-center justify-between ">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-1 text-[13px] tracking-normal font-medium pl-2 text-primary hover:text-primary/80"
+          className="flex items-center gap-1  text-[13px] tracking-normal font-medium pl-2 text-primary hover:text-primary/80"
         >
           {isExpanded ? (
             <ChevronDown className="size-3" />
@@ -69,15 +69,16 @@ export const Projects = () => {
         )}
       </div>
 
-      {isExpanded && (
+      <div className={`transition-all duration-700 pl-2   overflow-hidden ${isExpanded ? 'max-h-96 mt-2' : ' mt-0 max-h-0'}`}>
         <Select onValueChange={onSelect} value={projectId}>
-          <SelectTrigger className="w-full font-medium text-sm">
+          <SelectTrigger className={`w-full p-2 font-medium text-xs`}>
             <SelectValue placeholder="No project selected." />
           </SelectTrigger>
 
           <SelectContent>
             {data?.documents.map((project) => (
               <SelectItem
+            
                 key={project.$id}
                 value={project.$id}
                 onPointerDown={(e: React.PointerEvent) => {
@@ -86,18 +87,18 @@ export const Projects = () => {
                   handleProjectClick(project.$id);
                 }}
               >
-                <div className="flex justify-start items-center gap-3 font-medium">
+                <div className="flex justify-start  items-center gap-3 font-medium">
                   <ProjectAvatar
                     name={project.name}
                     image={project.imageUrl}
                   />
-                  <span className="truncate">{project.name}</span>
+                  <span className="truncate text-xs">{project.name}</span>
                 </div>
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-      )}
+      </div>
     </div>
   );
 };
