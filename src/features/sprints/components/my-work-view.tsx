@@ -46,6 +46,7 @@ import {
   WorkItemPriority,
   PopulatedWorkItem
 } from "../types";
+import { useGetCustomColumns } from "@/features/custom-columns/api/use-get-custom-columns";
 import { cn } from "@/lib/utils";
 import { isBefore, format } from "date-fns";
 
@@ -67,8 +68,8 @@ const statusLabels: Record<WorkItemStatus, string> = {
   [WorkItemStatus.DONE]: "Done",
 };
 
-// Board order for kanban view
-const boardOrder: WorkItemStatus[] = [
+// Board order for kanban view (default columns)
+const defaultBoardOrder: WorkItemStatus[] = [
   WorkItemStatus.TODO,
   WorkItemStatus.ASSIGNED,
   WorkItemStatus.IN_PROGRESS,
@@ -76,10 +77,16 @@ const boardOrder: WorkItemStatus[] = [
   WorkItemStatus.DONE,
 ];
 
-// Type for grouped items state
-type ItemsState = {
-  [key in WorkItemStatus]: PopulatedWorkItem[];
-};
+// Type for grouped items state - now supports dynamic keys
+type ItemsState = Record<string, PopulatedWorkItem[]>;
+
+// Column info for rendering
+interface ColumnInfo {
+  id: string;
+  name: string;
+  icon: React.ReactNode;
+  isCustom: boolean;
+}
 
 export const MyWorkView = () => {
   const workspaceId = useWorkspaceId();
@@ -92,6 +99,17 @@ export const MyWorkView = () => {
 
   const { data: projects } = useGetProjects({ workspaceId });
   const { mutate: updateWorkItem } = useUpdateWorkItem();
+  
+  // Fetch custom columns for all projects in the workspace
+  const { data: customColumnsData } = useGetCustomColumns({ workspaceId, fetchAll: true });
+  const customColumns = useMemo(
+    () => (customColumnsData?.documents || []).map(doc => ({
+      $id: doc.$id,
+      name: doc.name,
+      color: doc.color
+    })),
+    [customColumnsData]
+  );
 
   // Fetch work items assigned to current user
   const { data: workItems, isLoading } = useGetWorkItems({
@@ -99,14 +117,8 @@ export const MyWorkView = () => {
     assigneeId: currentMember?.$id,
   });
 
-  // State for kanban board items
-  const [itemsByStatus, setItemsByStatus] = useState<ItemsState>({
-    [WorkItemStatus.TODO]: [],
-    [WorkItemStatus.ASSIGNED]: [],
-    [WorkItemStatus.IN_PROGRESS]: [],
-    [WorkItemStatus.IN_REVIEW]: [],
-    [WorkItemStatus.DONE]: [],
-  });
+  // State for kanban board items - dynamic keys
+  const [itemsByStatus, setItemsByStatus] = useState<ItemsState>({});
 
   // Filter and organize work items
   const filteredWorkItems = useMemo(() => {
@@ -144,22 +156,69 @@ export const MyWorkView = () => {
 
   // Update itemsByStatus when filteredWorkItems changes
   useEffect(() => {
-    const grouped: ItemsState = {
-      [WorkItemStatus.TODO]: [],
-      [WorkItemStatus.ASSIGNED]: [],
-      [WorkItemStatus.IN_PROGRESS]: [],
-      [WorkItemStatus.IN_REVIEW]: [],
-      [WorkItemStatus.DONE]: [],
-    };
+    const grouped: ItemsState = {};
 
+    // Group items by their actual status (including custom column IDs)
     filteredWorkItems.forEach((item) => {
-      if (grouped[item.status as WorkItemStatus]) {
-        grouped[item.status as WorkItemStatus].push(item);
+      const status = item.status;
+      if (!grouped[status]) {
+        grouped[status] = [];
       }
+      grouped[status].push(item);
     });
 
     setItemsByStatus(grouped);
   }, [filteredWorkItems]);
+
+  // Compute visible board columns
+  const visibleColumns = useMemo((): ColumnInfo[] => {
+    const columns: ColumnInfo[] = [];
+    const addedStatuses = new Set<string>();
+
+    // Get all statuses that have items
+    const statusesWithItems = Object.keys(itemsByStatus).filter(
+      status => itemsByStatus[status] && itemsByStatus[status].length > 0
+    );
+
+    // Build columns: default columns always visible; insert custom columns after IN_PROGRESS
+    defaultBoardOrder.forEach((status) => {
+      // Push the default column
+      columns.push({
+        id: status,
+        name: statusLabels[status],
+        icon: statusIconMap[status],
+        isCustom: false,
+      });
+      addedStatuses.add(status);
+
+      // After IN_PROGRESS, insert any custom columns that have items
+      if (status === WorkItemStatus.IN_PROGRESS) {
+        statusesWithItems.forEach((s) => {
+          if (!addedStatuses.has(s)) {
+            const customColumn = customColumns.find((col) => col.$id === s);
+            if (customColumn) {
+              columns.push({
+                id: customColumn.$id,
+                name: customColumn.name,
+                icon: <CircleIcon className="size-4" style={{ color: customColumn.color || '#6b7280' }} />,
+                isCustom: true,
+              });
+            } else {
+              columns.push({
+                id: s,
+                name: s,
+                icon: <CircleIcon className="size-4 text-gray-500" />,
+                isCustom: true,
+              });
+            }
+            addedStatuses.add(s);
+          }
+        });
+      }
+    });
+
+    return columns;
+  }, [itemsByStatus, customColumns]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -184,34 +243,39 @@ export const MyWorkView = () => {
       if (!result.destination) return;
 
       const { source, destination } = result;
-      const sourceStatus = source.droppableId as WorkItemStatus;
-      const destStatus = destination.droppableId as WorkItemStatus;
+      const sourceStatus = source.droppableId;
+      const destStatus = destination.droppableId;
 
       setItemsByStatus((prev) => {
         const newItems = { ...prev };
 
         // Remove from source
-        const sourceColumn = [...newItems[sourceStatus]];
+        const sourceColumn = [...(newItems[sourceStatus] || [])];
         const [movedItem] = sourceColumn.splice(source.index, 1);
 
         if (!movedItem) return prev;
 
         // Update the item's status
-        const updatedItem = { ...movedItem, status: destStatus };
+        const updatedItem = { ...movedItem, status: destStatus as WorkItemStatus };
 
         // Add to destination
-        const destColumn = [...newItems[destStatus]];
+        const destColumn = [...(newItems[destStatus] || [])];
         destColumn.splice(destination.index, 0, updatedItem);
 
         newItems[sourceStatus] = sourceColumn;
         newItems[destStatus] = destColumn;
+
+        // Clean up empty columns
+        if (newItems[sourceStatus].length === 0) {
+          delete newItems[sourceStatus];
+        }
 
         return newItems;
       });
 
       // If status changed, update in the database
       if (sourceStatus !== destStatus) {
-        const movedItem = itemsByStatus[sourceStatus][source.index];
+        const movedItem = itemsByStatus[sourceStatus]?.[source.index];
         if (movedItem) {
           updateWorkItem({
             param: { workItemId: movedItem.$id },
@@ -397,19 +461,19 @@ export const MyWorkView = () => {
           /* Board View - Kanban Style with drag and drop */
           <DragDropContext onDragEnd={onDragEnd}>
             <div className="flex overflow-x-auto gap-4 p-4 h-full pb-4">
-              {boardOrder.map((status) => {
-                const items = itemsByStatus[status];
+              {visibleColumns.map((column) => {
+                const items = itemsByStatus[column.id] || [];
                 return (
                   <div
-                    key={status}
+                    key={column.id}
                     className="flex-shrink-0 w-[280px] bg-gray-50 dark:bg-muted/30 rounded-xl flex flex-col h-[500px]"
                   >
                     {/* Column Header */}
                     <div className="px-3 py-2.5 flex items-center justify-between rounded-t-xl">
                       <div className="flex items-center gap-2">
-                        {statusIconMap[status]}
+                        {column.icon}
                         <span className="text-xs font-medium text-foreground">
-                          {statusLabels[status]}
+                          {column.name}
                         </span>
                         <Badge
                           variant="secondary"
@@ -420,7 +484,7 @@ export const MyWorkView = () => {
                       </div>
                     </div>
                     {/* Column Content with Droppable */}
-                    <Droppable droppableId={status}>
+                    <Droppable droppableId={column.id}>
                       {(provided, snapshot) => (
                         <div
                           ref={provided.innerRef}
@@ -486,6 +550,7 @@ export const MyWorkView = () => {
                     key={item.$id}
                     workItem={item}
                     workspaceId={workspaceId}
+                    customColumns={customColumns}
                   />
                 ))}
               </div>
@@ -535,7 +600,7 @@ const MyWorkKanbanCard = ({ workItem, isDragging }: MyWorkKanbanCardProps) => {
               <Flag className="size-3 fill-red-500 text-red-500" />
             )}
           </div>
-          <WorkItemOptionsMenu workItem={workItem} />
+          <WorkItemOptionsMenu workItem={workItem} hideAssignAssignee />
         </div>
 
         {/* Title */}
@@ -581,13 +646,40 @@ const MyWorkKanbanCard = ({ workItem, isDragging }: MyWorkKanbanCardProps) => {
 interface MyWorkListItemProps {
   workItem: PopulatedWorkItem;
   workspaceId: string;
+  customColumns: Array<{ $id: string; name: string; color: string }>;
 }
 
-const MyWorkListItem = ({ workItem }: MyWorkListItemProps) => {
+const MyWorkListItem = ({ workItem, customColumns }: MyWorkListItemProps) => {
   const today = new Date();
   const isOverdue = workItem.dueDate &&
     workItem.status !== WorkItemStatus.DONE &&
     isBefore(new Date(workItem.dueDate), today);
+
+  // Get status display info - check if it's a custom column
+  const getStatusDisplay = () => {
+    const standardStatus = workItem.status as WorkItemStatus;
+    if (statusLabels[standardStatus]) {
+      return {
+        icon: statusIconMap[standardStatus],
+        label: statusLabels[standardStatus],
+      };
+    }
+    // Check custom columns
+    const customColumn = customColumns.find((c) => c.$id === workItem.status);
+    if (customColumn) {
+      return {
+        icon: <CircleIcon className="size-4" style={{ color: customColumn.color || '#6b7280' }} />,
+        label: customColumn.name,
+      };
+    }
+    // Fallback
+    return {
+      icon: <CircleIcon className="size-4 text-gray-400" />,
+      label: workItem.status,
+    };
+  };
+
+  const statusDisplay = getStatusDisplay();
 
   return (
     <div className="grid grid-cols-12 gap-2 px-3 py-2.5 hover:bg-muted/30 transition-colors cursor-pointer items-center group">
@@ -603,9 +695,9 @@ const MyWorkListItem = ({ workItem }: MyWorkListItemProps) => {
 
       {/* Status */}
       <div className="col-span-2 flex items-center gap-1.5">
-        {statusIconMap[workItem.status as WorkItemStatus]}
+        {statusDisplay.icon}
         <span className="text-xs text-muted-foreground">
-          {statusLabels[workItem.status as WorkItemStatus]}
+          {statusDisplay.label}
         </span>
       </div>
 
@@ -637,7 +729,7 @@ const MyWorkListItem = ({ workItem }: MyWorkListItemProps) => {
           {workItem.storyPoints || "—"}
         </span>
         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-          <WorkItemOptionsMenu workItem={workItem} />
+          <WorkItemOptionsMenu workItem={workItem} hideAssignAssignee />
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Settings, FolderKanban, Users2, Calendar, Layers, Building2 } from "lucide-react";
+import { Settings, FolderKanban, Users2, Calendar, Building2 } from "lucide-react";
 import Link from "next/link";
 import {
   GoCheckCircle,
@@ -26,8 +26,8 @@ import { useCurrentOrgMember } from "@/features/organizations/api/use-current-or
 interface RouteConfig {
   label: string;
   href: string;
-  icon: any;
-  activeIcon: any;
+  icon: React.ComponentType<{ className?: string }>;
+  activeIcon: React.ComponentType<{ className?: string }>;
   workspaceScoped?: boolean;
   adminOnly?: boolean;
   orgOnly?: boolean;

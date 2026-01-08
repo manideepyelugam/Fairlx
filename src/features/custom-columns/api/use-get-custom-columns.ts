@@ -6,11 +6,13 @@ interface UseGetCustomColumnsProps {
   workspaceId: string;
   projectId?: string;
   workflowId?: string;
+  /** If true, fetch all custom columns for the workspace even without projectId/workflowId */
+  fetchAll?: boolean;
 }
 
-export const useGetCustomColumns = ({ workspaceId, projectId, workflowId }: UseGetCustomColumnsProps) => {
+export const useGetCustomColumns = ({ workspaceId, projectId, workflowId, fetchAll }: UseGetCustomColumnsProps) => {
   const query = useQuery({
-    queryKey: ["custom-columns", workspaceId, projectId, workflowId],
+    queryKey: ["custom-columns", workspaceId, projectId, workflowId, fetchAll],
     queryFn: async () => {
       const response = await client.api["custom-columns"]["$get"]({
         query: { 
@@ -27,7 +29,7 @@ export const useGetCustomColumns = ({ workspaceId, projectId, workflowId }: UseG
       const { data } = await response.json();
       return data;
     },
-    enabled: !!workspaceId && (!!projectId || !!workflowId),
+    enabled: !!workspaceId && (!!projectId || !!workflowId || !!fetchAll),
   });
 
   return query;
