@@ -63,6 +63,7 @@ interface WorkItemOptionsMenuProps {
   onAssignEpic?: () => void;
   onAssignAssignee?: () => void;
   onEditStoryPoints?: () => void;
+  hideAssignAssignee?: boolean;
 }
 
 export const WorkItemOptionsMenu = ({
@@ -71,6 +72,7 @@ export const WorkItemOptionsMenu = ({
   onAssignEpic,
   onAssignAssignee,
   onEditStoryPoints,
+  hideAssignAssignee,
 }: WorkItemOptionsMenuProps) => {
   const [DeleteDialog, confirmDelete] = useConfirm(
     "Delete Work Item",
@@ -146,10 +148,12 @@ export const WorkItemOptionsMenu = ({
             {workItem.flagged ? "Remove Flag" : "Add Flag"}
           </DropdownMenuItem>
           <DropdownMenuSeparator className="my-1" />
-          <DropdownMenuItem onClick={onAssignAssignee} className="text-xs py-1.5 cursor-pointer">
-            <Users className="size-3.5 mr-2 text-slate-500" />
-            Assign Members
-          </DropdownMenuItem>
+          {!hideAssignAssignee && (
+            <DropdownMenuItem onClick={onAssignAssignee} className="text-xs py-1.5 cursor-pointer">
+              <Users className="size-3.5 mr-2 text-slate-500" />
+              Assign Members
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className="text-xs py-1.5">
               <div className={cn("size-2 rounded-full mr-2", priorityConfig[workItem.priority].dotColor)} />

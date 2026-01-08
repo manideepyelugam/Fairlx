@@ -39,6 +39,8 @@ import { useGetCustomRoles } from "@/features/teams/api/use-get-custom-roles";
 import { useCreateCustomRole } from "@/features/teams/api/use-create-custom-role";
 import { useUpdateCustomRole } from "@/features/teams/api/use-update-custom-role";
 import { useDeleteCustomRole } from "@/features/teams/api/use-delete-custom-role";
+import { useUpdateTeam } from "@/features/teams/api/use-update-team";
+import { useDeleteTeam } from "@/features/teams/api/use-delete-team";
 import { PageLoader } from "@/components/page-loader";
 import { PageError } from "@/components/page-error";
 import { useConfirm } from "@/hooks/use-confirm";
@@ -85,6 +87,8 @@ export const TeamIdClient = ({ teamId }: TeamIdClientProps) => {
   const { mutate: createCustomRole } = useCreateCustomRole();
   const { mutate: updateCustomRole } = useUpdateCustomRole();
   const { mutate: deleteCustomRole } = useDeleteCustomRole();
+  const { mutate: updateTeam } = useUpdateTeam();
+  const { mutate: deleteTeam } = useDeleteTeam();
 
   const customRoles = (customRolesData?.data?.documents || []) as CustomRole[];
 
@@ -145,6 +149,22 @@ export const TeamIdClient = ({ teamId }: TeamIdClientProps) => {
         onOpenChange={setIsSettingsOpen}
         team={team}
         customRoles={customRoles}
+        onUpdateTeam={(data) =>
+          updateTeam({
+            param: { teamId },
+            json: data,
+          })
+        }
+        onDeleteTeam={() =>
+          deleteTeam(
+            { param: { teamId } },
+            {
+              onSuccess: () => {
+                router.push(`/workspaces/${workspaceId}/teams`);
+              },
+            }
+          )
+        }
         onCreateRole={(role) =>
           createCustomRole({
             param: { teamId },

@@ -24,19 +24,20 @@ export const useUpdateTeam = () => {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to update team.");
+        const errorData = await response.json().catch(() => ({ error: "Failed to update team" }));
+        throw new Error((errorData as { error?: string }).error || "Failed to update team");
       }
 
       return await response.json();
     },
     onSuccess: ({ data }) => {
-      toast.success("Team updated.");
+      toast.success("Team updated successfully");
       queryClient.invalidateQueries({ queryKey: ["teams"] });
       queryClient.invalidateQueries({ queryKey: ["teams", data.$id] });
       queryClient.invalidateQueries({ queryKey: ["programs"] });
     },
-    onError: () => {
-      toast.error("Failed to update team.");
+    onError: (error) => {
+      toast.error(error.message || "Failed to update team");
     },
   });
 

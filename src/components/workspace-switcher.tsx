@@ -1,7 +1,7 @@
 "use client";
 
 import { RiAddCircleFill } from "react-icons/ri";
-import { LogOut, Plus, Building2, RefreshCcw } from "lucide-react";
+import { LogOut, Plus } from "lucide-react";
 
 import { useGetWorkspaces } from "@/features/workspaces/api/use-get-workspaces";
 import { WorkspaceAvatar } from "@/features/workspaces/components/workspace-avatar";
@@ -9,9 +9,7 @@ import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useCreateWorkspaceModal } from "@/features/workspaces/hooks/use-create-workspace-modal";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { useDeleteMember } from "@/features/members/api/use-delete-member";
-import { useGetOrganizations } from "@/features/organizations/api/use-get-organizations";
 import { useConfirm } from "@/hooks/use-confirm";
-import { useAppRefresh } from "@/hooks/use-app-refresh";
 
 import {
   Select,
@@ -42,12 +40,9 @@ export const WorkspaceSwitcher = () => {
   const router = useRouter();
   const { data: workspaces } = useGetWorkspaces();
   const { open } = useCreateWorkspaceModal();
-  const { refresh, isRefreshing } = useAppRefresh();
 
   const { lifecycleState: state } = useAccountLifecycle();
   const {
-    hasOrg,
-    activeOrgId,
     activeWorkspaceId,
     user
   } = state;
@@ -58,13 +53,6 @@ export const WorkspaceSwitcher = () => {
 
   const { member } = useCurrentMember({ workspaceId: selectedWorkspaceId });
   const { mutate: deleteMember } = useDeleteMember();
-
-  const { data: organizations } = useGetOrganizations();
-
-  // Get current organization for ORG accounts
-  const currentOrg = hasOrg && activeOrgId
-    ? organizations?.documents?.find((o: { $id: string }) => o.$id === activeOrgId)
-    : null;
 
   // PERSONAL accounts can only have one workspace
   const accountType = user?.prefs?.accountType || "PERSONAL";
@@ -108,17 +96,16 @@ export const WorkspaceSwitcher = () => {
 
   return (
     <TooltipProvider>
-      <div className="flex flex-col px-3 pt-5 pb-8 border-t-[1.5px] border-neutral-200">
+      <div className="flex flex-col px-3 pt-3 pb-4 border-t-[1.5px] border-neutral-200">
         <ConfirmDialog />
 
         {/* Organization indicator for ORG accounts with refresh */}
-        {hasOrg && currentOrg && (
+        {/* {hasOrg && currentOrg && (
           <div className="flex items-center justify-between px-2 pb-3">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Building2 className="h-3.5 w-3.5" />
               <span className="truncate font-medium">{(currentOrg as { name: string }).name}</span>
             </div>
-            {/* Refresh button */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -134,7 +121,7 @@ export const WorkspaceSwitcher = () => {
               <TooltipContent>Refresh data</TooltipContent>
             </Tooltip>
           </div>
-        )}
+        )} */}
 
         <div className="flex items-center justify-between pb-4">
           <p className="text-[13px] tracking-normal font-medium  pl-2 text-primary">Workspaces</p>
@@ -185,7 +172,7 @@ export const WorkspaceSwitcher = () => {
 
         <Select onValueChange={onSelect} value={selectedWorkspaceId}>
 
-          <SelectTrigger className="w-full  font-medium text-sm ">
+          <SelectTrigger className="w-full p-2 font-medium text-xs ">
             <SelectValue placeholder="No workspace selected." />
           </SelectTrigger>
 
