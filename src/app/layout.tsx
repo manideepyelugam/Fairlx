@@ -16,8 +16,9 @@ export const metadata: Metadata = {
   title: "Fairlx",
   description: "A simple and efficient project management tool.",
   icons: {
-    icon: '/favicon.ico',
-    apple: '/apple-icon.png',
+    icon: '/favicon.png',
+    shortcut: '/favicon.png',
+    apple: '/apple-touch-icon.png',
   },
 };
 
