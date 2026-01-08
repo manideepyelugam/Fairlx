@@ -1,7 +1,7 @@
 "use client";
 
 import { RiAddCircleFill } from "react-icons/ri";
-import { LogOut, Plus, Building2, RefreshCcw } from "lucide-react";
+import { LogOut, Plus } from "lucide-react";
 
 import { useGetWorkspaces } from "@/features/workspaces/api/use-get-workspaces";
 import { WorkspaceAvatar } from "@/features/workspaces/components/workspace-avatar";
@@ -9,9 +9,7 @@ import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useCreateWorkspaceModal } from "@/features/workspaces/hooks/use-create-workspace-modal";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { useDeleteMember } from "@/features/members/api/use-delete-member";
-import { useGetOrganizations } from "@/features/organizations/api/use-get-organizations";
 import { useConfirm } from "@/hooks/use-confirm";
-import { useAppRefresh } from "@/hooks/use-app-refresh";
 
 import {
   Select,
@@ -42,12 +40,9 @@ export const WorkspaceSwitcher = () => {
   const router = useRouter();
   const { data: workspaces } = useGetWorkspaces();
   const { open } = useCreateWorkspaceModal();
-  const { refresh, isRefreshing } = useAppRefresh();
 
   const { lifecycleState: state } = useAccountLifecycle();
   const {
-    hasOrg,
-    activeOrgId,
     activeWorkspaceId,
     user
   } = state;
@@ -58,13 +53,6 @@ export const WorkspaceSwitcher = () => {
 
   const { member } = useCurrentMember({ workspaceId: selectedWorkspaceId });
   const { mutate: deleteMember } = useDeleteMember();
-
-  const { data: organizations } = useGetOrganizations();
-
-  // Get current organization for ORG accounts
-  const currentOrg = hasOrg && activeOrgId
-    ? organizations?.documents?.find((o: { $id: string }) => o.$id === activeOrgId)
-    : null;
 
   // PERSONAL accounts can only have one workspace
   const accountType = user?.prefs?.accountType || "PERSONAL";

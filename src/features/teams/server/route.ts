@@ -805,14 +805,18 @@ const app = new Hono()
         }
 
         // Create the custom role in the database
+        // Extract teamId from data to avoid duplicating from URL param
+        const { teamId: _unusedBodyTeamId, ...roleData } = data;
+        void _unusedBodyTeamId; // Explicitly mark as intentionally unused
         const customRole = await databases.createDocument(
           DATABASE_ID,
           CUSTOM_ROLES_ID,
           ID.unique(),
           {
-            ...data,
+            ...roleData,
+            teamId, // Use URL param teamId
             workspaceId: team.workspaceId, // Add workspaceId from team
-            roleName: data.name, // Map name to roleName for backwards compatibility
+            roleName: roleData.name, // Map name to roleName for backwards compatibility
             createdBy: user.$id,
             lastModifiedBy: user.$id,
           }

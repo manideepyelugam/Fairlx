@@ -24,7 +24,8 @@ export const useAssignProjectToTeam = () => {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to assign project to team");
+        const errorData = await response.json().catch(() => ({ error: "Failed to assign project to team" }));
+        throw new Error((errorData as { error?: string }).error || "Failed to assign project to team");
       }
 
       return await response.json();

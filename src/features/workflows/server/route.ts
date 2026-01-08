@@ -1,6 +1,6 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
-import { ID, Query, type Databases, Models } from "node-appwrite";
+import { ID, Query, type Databases } from "node-appwrite";
 import { z } from "zod";
 
 import { getMember } from "@/features/members/utils";

@@ -525,44 +525,77 @@ const app = new Hono()
       const databases = c.get("databases");
       const { projectId, teamId } = c.req.param();
 
-      // Get project
-      const project = await databases.getDocument<Project>(
-        DATABASE_ID,
-        PROJECTS_ID,
-        projectId
-      );
+      try {
+        // Get project
+        const project = await databases.getDocument<Project>(
+          DATABASE_ID,
+          PROJECTS_ID,
+          projectId
+        );
 
-      if (!project) {
-        return c.json({ error: "Project not found" }, 404);
-      }
-
-      // Verify admin access
-      const member = await getMember({
-        databases,
-        workspaceId: project.workspaceId,
-        userId: user.$id,
-      });
-
-      if (!member || member.role !== MemberRole.ADMIN) {
-        return c.json({ error: "Only workspace admins can assign projects to teams" }, 403);
-      }
-
-      // Assign team
-      const currentTeamIds = project.assignedTeamIds || [];
-      if (!currentTeamIds.includes(teamId)) {
-        currentTeamIds.push(teamId);
-      }
-
-      const updatedProject = await databases.updateDocument(
-        DATABASE_ID,
-        PROJECTS_ID,
-        projectId,
-        {
-          assignedTeamIds: currentTeamIds,
+        if (!project) {
+          return c.json({ error: "Project not found" }, 404);
         }
-      );
 
-      return c.json({ data: transformProject(updatedProject) });
+        // Verify admin access or team lead access
+        const member = await getMember({
+          databases,
+          workspaceId: project.workspaceId,
+          userId: user.$id,
+        });
+
+        if (!member) {
+          return c.json({ error: "Unauthorized - Not a workspace member" }, 403);
+        }
+
+        // Check if user is admin OR team lead of the team being assigned
+        const isAdmin = member.role === MemberRole.ADMIN;
+        
+        // Check if user is team lead of this team
+        let isTeamLead = false;
+        if (!isAdmin) {
+          const { TEAM_MEMBERS_ID } = await import("@/config");
+          const { Query } = await import("node-appwrite");
+          const teamMembers = await databases.listDocuments(
+            DATABASE_ID,
+            TEAM_MEMBERS_ID,
+            [
+              Query.equal("teamId", teamId),
+              Query.equal("memberId", member.$id),
+              Query.equal("role", "LEAD"),
+              Query.equal("isActive", true),
+            ]
+          );
+          isTeamLead = teamMembers.total > 0;
+        }
+
+        if (!isAdmin && !isTeamLead) {
+          return c.json({ error: "Only workspace admins or team leads can assign projects to teams" }, 403);
+        }
+
+        // Assign team
+        const currentTeamIds = project.assignedTeamIds || [];
+        if (!currentTeamIds.includes(teamId)) {
+          currentTeamIds.push(teamId);
+        }
+
+        const updatedProject = await databases.updateDocument(
+          DATABASE_ID,
+          PROJECTS_ID,
+          projectId,
+          {
+            assignedTeamIds: currentTeamIds,
+          }
+        );
+
+        return c.json({ data: transformProject(updatedProject) });
+      } catch (error) {
+        console.error("Error assigning project to team:", error);
+        return c.json({ 
+          error: "Failed to assign project to team",
+          details: error instanceof Error ? error.message : String(error)
+        }, 400);
+      }
     }
   )
   .delete(
@@ -573,42 +606,75 @@ const app = new Hono()
       const databases = c.get("databases");
       const { projectId, teamId } = c.req.param();
 
-      // Get the project
-      const project = await databases.getDocument<Project>(
-        DATABASE_ID,
-        PROJECTS_ID,
-        projectId
-      );
+      try {
+        // Get the project
+        const project = await databases.getDocument<Project>(
+          DATABASE_ID,
+          PROJECTS_ID,
+          projectId
+        );
 
-      if (!project) {
-        return c.json({ error: "Project not found" }, 404);
-      }
-
-      // Check if user is workspace admin
-      const member = await getMember({
-        databases,
-        workspaceId: project.workspaceId,
-        userId: user.$id,
-      });
-
-      if (!member || member.role !== MemberRole.ADMIN) {
-        return c.json({ error: "Only workspace admins can unassign projects from teams" }, 403);
-      }
-
-      // Unassign team
-      const currentTeamIds = project.assignedTeamIds || [];
-      const updatedTeamIds = currentTeamIds.filter((id) => id !== teamId);
-
-      const updatedProject = await databases.updateDocument(
-        DATABASE_ID,
-        PROJECTS_ID,
-        projectId,
-        {
-          assignedTeamIds: updatedTeamIds,
+        if (!project) {
+          return c.json({ error: "Project not found" }, 404);
         }
-      );
 
-      return c.json({ data: transformProject(updatedProject) });
+        // Check if user is workspace member
+        const member = await getMember({
+          databases,
+          workspaceId: project.workspaceId,
+          userId: user.$id,
+        });
+
+        if (!member) {
+          return c.json({ error: "Unauthorized - Not a workspace member" }, 403);
+        }
+
+        // Check if user is admin OR team lead of the team being unassigned
+        const isAdmin = member.role === MemberRole.ADMIN;
+        
+        // Check if user is team lead of this team
+        let isTeamLead = false;
+        if (!isAdmin) {
+          const { TEAM_MEMBERS_ID } = await import("@/config");
+          const { Query } = await import("node-appwrite");
+          const teamMembers = await databases.listDocuments(
+            DATABASE_ID,
+            TEAM_MEMBERS_ID,
+            [
+              Query.equal("teamId", teamId),
+              Query.equal("memberId", member.$id),
+              Query.equal("role", "LEAD"),
+              Query.equal("isActive", true),
+            ]
+          );
+          isTeamLead = teamMembers.total > 0;
+        }
+
+        if (!isAdmin && !isTeamLead) {
+          return c.json({ error: "Only workspace admins or team leads can unassign projects from teams" }, 403);
+        }
+
+        // Unassign team
+        const currentTeamIds = project.assignedTeamIds || [];
+        const updatedTeamIds = currentTeamIds.filter((id) => id !== teamId);
+
+        const updatedProject = await databases.updateDocument(
+          DATABASE_ID,
+          PROJECTS_ID,
+          projectId,
+          {
+            assignedTeamIds: updatedTeamIds,
+          }
+        );
+
+        return c.json({ data: transformProject(updatedProject) });
+      } catch (error) {
+        console.error("Error unassigning project from team:", error);
+        return c.json({ 
+          error: "Failed to unassign project from team",
+          details: error instanceof Error ? error.message : String(error)
+        }, 400);
+      }
     }
   )
   .post(

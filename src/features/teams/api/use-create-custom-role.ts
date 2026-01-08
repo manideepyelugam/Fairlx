@@ -22,7 +22,8 @@ export const useCreateCustomRole = () => {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to create custom role");
+        const errorData = await response.json().catch(() => ({ error: "Failed to create custom role" }));
+        throw new Error((errorData as { error?: string }).error || "Failed to create custom role");
       }
 
       return await response.json();
@@ -31,8 +32,8 @@ export const useCreateCustomRole = () => {
       toast.success("Custom role created successfully");
       queryClient.invalidateQueries({ queryKey: ["custom-roles", data.teamId] });
     },
-    onError: () => {
-      toast.error("Failed to create custom role");
+    onError: (error) => {
+      toast.error(error.message || "Failed to create custom role");
     },
   });
 
