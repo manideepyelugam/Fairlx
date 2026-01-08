@@ -8,6 +8,7 @@ import { WorkspaceSwitcher } from "./workspace-switcher";
 import { Projects } from "./projects";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { Spaces } from "./spaces";
+import { Tools } from "./tools";
 import { useAccountLifecycle } from "@/components/account-lifecycle-provider";
 
 export const Sidebar = () => {
@@ -39,6 +40,7 @@ export const Sidebar = () => {
         {/* Workspace-scoped content: Only shown when a workspace is active AND not on an org route */}
         {showWorkspaceContent && (
           <>
+            <Tools />
             <Projects />
             <Spaces />
           </>
