@@ -10,7 +10,7 @@ import { EditTeamModal } from "@/features/teams/components/edit-team-modal";
 import { CreateProgramModal } from "@/features/programs/components/create-program-modal";
 import { EditProgramModal } from "@/features/programs/components/edit-program-modal";
 import { ProjectAIChatWrapper } from "@/features/project-docs/components";
-import { CreateSpaceModal } from "@/features/spaces/components/create-space-modal";
+import { CreateSpaceModal } from "@/features/spaces/components";
 import { CreateWorkflowModal } from "@/features/workflows/components/create-workflow-modal";
 import { CreateLinkModal } from "@/features/work-item-links/components/create-link-modal";
 import { CreateTaskModal } from "@/features/tasks/components/create-task-modal";
