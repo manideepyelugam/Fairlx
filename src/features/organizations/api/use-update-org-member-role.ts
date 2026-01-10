@@ -2,11 +2,12 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { OrganizationRole } from "../types";
 
 interface UpdateOrgMemberRoleData {
     organizationId: string;
     userId: string;
-    role: "OWNER" | "ADMIN" | "MEMBER";
+    role: OrganizationRole;
 }
 
 /**

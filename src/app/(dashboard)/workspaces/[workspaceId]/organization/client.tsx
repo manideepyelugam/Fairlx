@@ -151,7 +151,7 @@ export const OrganizationSettingsClient = () => {
                 <div className="text-center space-y-2">
                     <h2 className="text-xl font-semibold">Organization Features</h2>
                     <p className="text-muted-foreground text-sm max-w-md">
-                        Upgrade to an Organization account to unlock team collaboration, 
+                        Upgrade to an Organization account to unlock team collaboration,
                         advanced billing, and enterprise features.
                     </p>
                 </div>
@@ -170,7 +170,7 @@ export const OrganizationSettingsClient = () => {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                 <div className="flex items-center gap-3">
-                   
+
                     <div>
                         {isLoadingOrg ? (
                             <Skeleton className="h-7 w-48 mb-1" />
@@ -185,24 +185,24 @@ export const OrganizationSettingsClient = () => {
                     </div>
                 </div>
                 <Badge variant="secondary" className="self-start text-blue-600 bg-blue-100 text-xs px-2.5 py-1">
-                    <Building2  className="size-3 text-blue-600 mr-1" />
+                    <Building2 className="size-3 text-blue-600 mr-1" />
                     Organization
                 </Badge>
             </div>
 
-           
+
 
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent">
-                    <TabsTrigger 
-                        value="general" 
+                    <TabsTrigger
+                        value="general"
                         className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
                     >
                         <Settings2 className="size-4 mr-2" />
                         General
                     </TabsTrigger>
-                    <TabsTrigger 
+                    <TabsTrigger
                         value="members"
                         className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
                     >
@@ -212,21 +212,21 @@ export const OrganizationSettingsClient = () => {
                             {members.length}
                         </Badge>
                     </TabsTrigger>
-                    <TabsTrigger 
+                    <TabsTrigger
                         value="security"
                         className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
                     >
                         <Shield className="size-4 mr-2" />
                         Security
                     </TabsTrigger>
-                    <TabsTrigger 
+                    <TabsTrigger
                         value="billing"
                         className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
                     >
                         <CreditCard className="size-4 mr-2" />
                         Billing
                     </TabsTrigger>
-                    <TabsTrigger 
+                    <TabsTrigger
                         value="audit"
                         className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
                     >
@@ -400,19 +400,19 @@ export const OrganizationSettingsClient = () => {
                                                         <SelectContent>
                                                             <SelectItem value="OWNER">Owner</SelectItem>
                                                             <SelectItem value="ADMIN">Admin</SelectItem>
+                                                            <SelectItem value="MODERATOR">Moderator</SelectItem>
                                                             <SelectItem value="MEMBER">Member</SelectItem>
                                                         </SelectContent>
                                                     </Select>
                                                 ) : (
-                                                    <Badge 
-                                                        variant="outline" 
-                                                        className={`text-xs ${
-                                                            member.role === "OWNER" 
-                                                                ? "bg-amber-500/10 text-amber-700 border-amber-500/20" 
-                                                                : member.role === "ADMIN" 
-                                                                    ? "bg-purple-500/10 text-purple-700 border-purple-500/20" 
+                                                    <Badge
+                                                        variant="outline"
+                                                        className={`text-xs ${member.role === "OWNER"
+                                                                ? "bg-amber-500/10 text-amber-700 border-amber-500/20"
+                                                                : member.role === "ADMIN"
+                                                                    ? "bg-purple-500/10 text-purple-700 border-purple-500/20"
                                                                     : ""
-                                                        }`}
+                                                            }`}
                                                     >
                                                         {member.role === "OWNER" && <Crown className="size-3 mr-1" />}
                                                         {member.role === "ADMIN" && <Shield className="size-3 mr-1" />}

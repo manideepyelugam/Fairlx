@@ -20,7 +20,7 @@ import {
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { generateInviteCode } from "@/lib/utils";
 
-import { MemberRole } from "@/features/members/types";
+import { MemberRole, WorkspaceMemberRole } from "@/features/members/types";
 import { getMember } from "@/features/members/utils";
 import { TaskStatus } from "@/features/tasks/types";
 
@@ -237,8 +237,12 @@ const app = new Hono()
         userId: user.$id,
       });
 
-      // Verify update permissions
-      if (!member || (member.role !== MemberRole.ADMIN && member.role !== MemberRole.OWNER)) {
+      // Verify update permissions - support both legacy and new roles
+      if (!member || (
+        member.role !== MemberRole.ADMIN &&
+        member.role !== MemberRole.OWNER &&
+        member.role !== WorkspaceMemberRole.WS_ADMIN
+      )) {
         return c.json({ error: "Unauthorized" }, 401);
       }
 
@@ -411,8 +415,12 @@ const app = new Hono()
       userId: user.$id,
     });
 
-    // Verify reset permissions
-    if (!member || (member.role !== MemberRole.ADMIN && member.role !== MemberRole.OWNER)) {
+    // Verify reset permissions - support both legacy and new roles
+    if (!member || (
+      member.role !== MemberRole.ADMIN &&
+      member.role !== MemberRole.OWNER &&
+      member.role !== WorkspaceMemberRole.WS_ADMIN
+    )) {
       return c.json({ error: "Unauthorized" }, 401);
     }
 

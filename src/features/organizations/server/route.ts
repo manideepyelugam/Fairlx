@@ -13,7 +13,8 @@ import {
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
 import { MemberRole } from "@/features/members/types";
-import { Organization, OrganizationMember, OrganizationRole } from "../types";
+import { hasOrgPermission } from "@/lib/permission-matrix";
+import { Organization, OrganizationMember, OrganizationRole, OrgMemberStatus } from "../types";
 import {
     createOrganizationSchema,
     updateOrganizationSchema,
@@ -147,6 +148,7 @@ const app = new Hono()
                     organizationId: organization.$id,
                     userId: user.$id,
                     role: OrganizationRole.OWNER,
+                    status: OrgMemberStatus.ACTIVE,
                     name: user.name,
                     email: user.email,
                 }
@@ -196,9 +198,9 @@ const app = new Hono()
             const user = c.get("user");
             const { orgId } = c.req.param();
 
-            // Verify user has permission
+            // Verify user has permission to edit org (OWNER or ADMIN)
             const membership = await getOrganizationMember(databases, orgId, user.$id);
-            if (!membership || membership.role === OrganizationRole.MEMBER) {
+            if (!membership || !hasOrgPermission(membership.role as OrganizationRole, "INVITE_MEMBERS")) {
                 return c.json({ error: "Unauthorized" }, 401);
             }
 
@@ -375,9 +377,9 @@ const app = new Hono()
             const user = c.get("user");
             const { orgId } = c.req.param();
 
-            // Verify user has permission
+            // Verify user has permission to add members (OWNER or ADMIN)
             const membership = await getOrganizationMember(databases, orgId, user.$id);
-            if (!membership || membership.role === OrganizationRole.MEMBER) {
+            if (!membership || !hasOrgPermission(membership.role as OrganizationRole, "INVITE_MEMBERS")) {
                 return c.json({ error: "Unauthorized" }, 401);
             }
 
@@ -397,6 +399,7 @@ const app = new Hono()
                     organizationId: orgId,
                     userId,
                     role,
+                    status: OrgMemberStatus.ACTIVE,
                 }
             );
 
@@ -417,9 +420,9 @@ const app = new Hono()
             const user = c.get("user");
             const { orgId, userId } = c.req.param();
 
-            // Verify user has permission
+            // Verify user has permission to update roles (OWNER or ADMIN)
             const membership = await getOrganizationMember(databases, orgId, user.$id);
-            if (!membership || membership.role === OrganizationRole.MEMBER) {
+            if (!membership || !hasOrgPermission(membership.role as OrganizationRole, "INVITE_MEMBERS")) {
                 return c.json({ error: "Unauthorized" }, 401);
             }
 
@@ -466,9 +469,9 @@ const app = new Hono()
         const user = c.get("user");
         const { orgId, userId } = c.req.param();
 
-        // Verify user has permission
+        // Verify user has permission to remove members (OWNER or ADMIN)
         const membership = await getOrganizationMember(databases, orgId, user.$id);
-        if (!membership || membership.role === OrganizationRole.MEMBER) {
+        if (!membership || !hasOrgPermission(membership.role as OrganizationRole, "REMOVE_MEMBERS")) {
             return c.json({ error: "Unauthorized" }, 401);
         }
 
@@ -612,6 +615,7 @@ const app = new Hono()
                         organizationId: organization.$id,
                         userId: user.$id,
                         role: OrganizationRole.OWNER,
+                        status: OrgMemberStatus.ACTIVE,
                         name: user.name,
                         email: user.email,
                     }

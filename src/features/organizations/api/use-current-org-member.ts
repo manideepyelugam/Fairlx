@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useCurrent } from "@/features/auth/api/use-current";
+import { OrganizationRole } from "../types";
 
 interface UseCurrentOrgMemberProps {
     organizationId: string;
@@ -11,7 +12,7 @@ export interface CurrentOrgMember {
     $id: string;
     organizationId: string;
     userId: string;
-    role: "OWNER" | "ADMIN" | "MEMBER";
+    role: OrganizationRole;
     name?: string;
     email?: string;
 }
@@ -59,9 +60,13 @@ export const useCurrentOrgMember = ({ organizationId }: UseCurrentOrgMemberProps
     return {
         ...query,
         role,
+        // OWNER and ADMIN can edit org settings
         canEdit: role === "OWNER" || role === "ADMIN",
+        // MODERATOR+ can assign members to workspaces
+        canAssignToWorkspaces: role === "OWNER" || role === "ADMIN" || role === "MODERATOR",
         isOwner: role === "OWNER",
         isAdmin: role === "ADMIN",
+        isModerator: role === "MODERATOR",
         isMember: role === "MEMBER",
     };
 };

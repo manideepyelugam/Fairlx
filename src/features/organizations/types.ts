@@ -27,15 +27,34 @@ export enum AccountType {
  * 
  * WHY separate from workspace roles:
  * - Organization OWNER controls billing and org deletion
- * - Organization ADMIN can manage workspaces and members
- * - Organization MEMBER has view access to org-level resources
+ * - Organization ADMIN can invite/remove org members, create workspaces
+ * - Organization MODERATOR can assign org members to workspaces
+ * - Organization MEMBER has no org-level management permissions
+ * 
+ * RULE: Org role defines WHAT you can manage globally.
+ *       Workspace role defines WHERE you can act.
+ *       Org role NEVER implies workspace access.
  * 
  * INVARIANT: Organization must always have ≥1 OWNER
  */
 export enum OrganizationRole {
     OWNER = "OWNER",
     ADMIN = "ADMIN",
+    MODERATOR = "MODERATOR",
     MEMBER = "MEMBER",
+}
+
+/**
+ * Organization member status
+ * 
+ * INVITED: User has been invited but not yet accepted
+ * ACTIVE: User has accepted and is an active member
+ * SUSPENDED: User's access has been suspended (can be reactivated)
+ */
+export enum OrgMemberStatus {
+    INVITED = "INVITED",
+    ACTIVE = "ACTIVE",
+    SUSPENDED = "SUSPENDED",
 }
 
 // ===============================
@@ -89,6 +108,13 @@ export type OrganizationMember = Models.Document & {
     organizationId: string;
     userId: string;
     role: OrganizationRole;
+    /**
+     * Member status for invitation lifecycle
+     * - INVITED: Pending acceptance
+     * - ACTIVE: Full access
+     * - SUSPENDED: Temporarily disabled
+     */
+    status: OrgMemberStatus;
     /**
      * Cached user data for display (denormalized)
      * Updated when membership is created/modified

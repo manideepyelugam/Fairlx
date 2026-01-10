@@ -16,7 +16,8 @@ import {
   Star,
   Loader2,
   UserPlus,
-  Share2
+  Share2,
+  Building2
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -25,6 +26,7 @@ import { useGetMembers } from "@/features/members/api/use-get-members";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useDeleteMember } from "@/features/members/api/use-delete-member";
 import { useUpdateMember } from "@/features/members/api/use-update-member";
+import { useAddWorkspaceMemberFromOrg } from "@/features/members/api/use-add-workspace-member-from-org";
 import { MemberRole } from "@/features/members/types";
 import { useGetWorkspace } from "@/features/workspaces/api/use-get-workspace";
 import { useResetInviteCode } from "@/features/workspaces/api/use-reset-invite-code";
@@ -32,6 +34,7 @@ import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { useGetSpaces } from "@/features/spaces/api/use-get-spaces";
 import { useAddSpaceMember } from "@/features/spaces/api/use-add-space-member";
 import { useGetRoles } from "@/features/roles/api/use-get-roles";
+import { useGetOrgMembers } from "@/features/organizations/api/use-get-org-members";
 import { SpaceRole } from "@/features/spaces/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CustomRole } from "@/features/teams/types";
@@ -85,6 +88,17 @@ export const MembersList = () => {
   const { mutate: updateMember, isPending: isUpdatingMember } = useUpdateMember();
   const { mutate: resetInviteCode, isPending: isResettingInviteCode } = useResetInviteCode();
   const { mutate: addSpaceMember, isPending: isAddingSpaceMember } = useAddSpaceMember();
+  const { mutate: addFromOrg, isPending: isAddingFromOrg } = useAddWorkspaceMemberFromOrg();
+
+  // Org members for explicit assignment
+  const { data: orgMembersData } = useGetOrgMembers({
+    organizationId: workspace?.organizationId || ""
+  });
+
+  // State for Add from Org dialog
+  const [addFromOrgDialogOpen, setAddFromOrgDialogOpen] = useState(false);
+  const [selectedOrgUserId, setSelectedOrgUserId] = useState<string>("");
+  const [selectedNewMemberRole, setSelectedNewMemberRole] = useState<MemberRole>(MemberRole.MEMBER);
 
   const handleUpdateMember = (memberId: string, role: MemberRole | string) => {
     updateMember({ json: { role }, param: { memberId } });
@@ -136,6 +150,32 @@ export const MembersList = () => {
       }
     );
   };
+
+  // Handler for adding org member to workspace
+  const handleAddFromOrg = () => {
+    if (!selectedOrgUserId) return;
+
+    addFromOrg(
+      {
+        workspaceId,
+        userId: selectedOrgUserId,
+        role: selectedNewMemberRole,
+      },
+      {
+        onSuccess: () => {
+          setAddFromOrgDialogOpen(false);
+          setSelectedOrgUserId("");
+          setSelectedNewMemberRole(MemberRole.MEMBER);
+        },
+      }
+    );
+  };
+
+  // Filter org members - exclude those already in workspace
+  const existingMemberUserIds = data?.documents.map((m) => m.userId) || [];
+  const availableOrgMembers = orgMembersData?.documents.filter(
+    (om) => !existingMemberUserIds.includes(om.userId)
+  ) || [];
 
   const fullInviteLink = workspace
     ? `${window.location.origin}/workspaces/${workspaceId}/join/${workspace.inviteCode}`
@@ -230,120 +270,201 @@ export const MembersList = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Add from Organization Dialog */}
+      {workspace?.organizationId && (
+        <Dialog open={addFromOrgDialogOpen} onOpenChange={setAddFromOrgDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Building2 className="size-5 text-blue-600" />
+                Add from Organization
+              </DialogTitle>
+              <DialogDescription>
+                Add an organization member directly to this workspace
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Select Member</label>
+                <Select value={selectedOrgUserId} onValueChange={setSelectedOrgUserId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose an organization member..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableOrgMembers.map((om) => (
+                      <SelectItem key={om.userId} value={om.userId}>
+                        <div className="flex items-center gap-2">
+                          <span>{om.name || om.email}</span>
+                          <span className="text-xs text-muted-foreground">({om.role})</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Workspace Role</label>
+                <Select
+                  value={selectedNewMemberRole}
+                  onValueChange={(v) => setSelectedNewMemberRole(v as MemberRole)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={MemberRole.ADMIN}>Admin</SelectItem>
+                    <SelectItem value={MemberRole.MEMBER}>Member</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {availableOrgMembers.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-2">
+                  All organization members are already in this workspace
+                </p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setAddFromOrgDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAddFromOrg}
+                disabled={!selectedOrgUserId || isAddingFromOrg}
+                className="gap-2"
+              >
+                {isAddingFromOrg && <Loader2 className="size-4 animate-spin" />}
+                Add Member
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-         
-       
+
+
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Team Members</h1>
             <p className="text-sm mt-0.5 mb-4 text-muted-foreground">Manage workspace members and permissions</p>
           </div>
         </div>
         {isCurrentUserAdmin && (
-          <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="xs" className="gap-1.5">
-                <UserPlus className="size-4" />
-                Invite Members
+          <div className="flex gap-2">
+            {workspace?.organizationId && (
+              <Button
+                size="xs"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => setAddFromOrgDialogOpen(true)}
+              >
+                <Building2 className="size-4" />
+                Add from Org
               </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Share2 className="size-5 text-primary" />
-                  Share Workspace Invitation
-                </DialogTitle>
-                <DialogDescription>
-                  Share this workspace invitation link through your preferred platform
-                </DialogDescription>
-              </DialogHeader>
-              <Tabs defaultValue="link" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 h-9">
-                  <TabsTrigger value="link" className="text-xs">Copy Link</TabsTrigger>
-                  <TabsTrigger value="social" className="text-xs">Social Media</TabsTrigger>
-                </TabsList>
-                <TabsContent value="link" className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium">Invitation Link</label>
-                    <div className="flex gap-2">
-                      <Input value={fullInviteLink} readOnly className="font-mono text-xs h-9" />
-                      <Button onClick={handleCopyInviteLink} size="sm" variant="secondary" className="shrink-0">
-                        <CopyIcon className="size-4" />
-                      </Button>
+            )}
+            <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="xs" className="gap-1.5">
+                  <UserPlus className="size-4" />
+                  Invite Members
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Share2 className="size-5 text-primary" />
+                    Share Workspace Invitation
+                  </DialogTitle>
+                  <DialogDescription>
+                    Share this workspace invitation link through your preferred platform
+                  </DialogDescription>
+                </DialogHeader>
+                <Tabs defaultValue="link" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 h-9">
+                    <TabsTrigger value="link" className="text-xs">Copy Link</TabsTrigger>
+                    <TabsTrigger value="social" className="text-xs">Social Media</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="link" className="space-y-4 pt-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium">Invitation Link</label>
+                      <div className="flex gap-2">
+                        <Input value={fullInviteLink} readOnly className="font-mono text-xs h-9" />
+                        <Button onClick={handleCopyInviteLink} size="sm" variant="secondary" className="shrink-0">
+                          <CopyIcon className="size-4" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-start gap-2 p-3 rounded-lg bg-green-500/5 border border-green-500/20">
-                    <CheckCircle2 className="size-4 text-green-600 mt-0.5 shrink-0" />
-                    <div className="space-y-0.5">
-                      <p className="text-xs font-medium">Share this link with anyone</p>
-                      <p className="text-xs text-muted-foreground">
-                        Anyone with this link can join your workspace
-                      </p>
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-green-500/5 border border-green-500/20">
+                      <CheckCircle2 className="size-4 text-green-600 mt-0.5 shrink-0" />
+                      <div className="space-y-0.5">
+                        <p className="text-xs font-medium">Share this link with anyone</p>
+                        <p className="text-xs text-muted-foreground">
+                          Anyone with this link can join your workspace
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </TabsContent>
-                <TabsContent value="social" className="space-y-2 pt-4">
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start gap-3 h-11"
-                    onClick={handleShareViaEmail}
-                  >
-                    <div className="p-1.5 rounded-md bg-red-500/10">
-                      <Mail className="size-4 text-red-600" />
-                    </div>
-                    <div className="flex-1 text-left">
-                      <p className="text-sm font-medium">Email</p>
-                      <p className="text-xs text-muted-foreground">Share via email client</p>
-                    </div>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start gap-3 h-11"
-                    onClick={handleShareViaFacebook}
-                  >
-                    <div className="p-1.5 rounded-md bg-blue-600/10">
-                      <Facebook className="size-4 text-blue-600" />
-                    </div>
-                    <div className="flex-1 text-left">
-                      <p className="text-sm font-medium">Facebook</p>
-                      <p className="text-xs text-muted-foreground">Share on Facebook</p>
-                    </div>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start gap-3 h-11"
-                    onClick={handleShareViaTwitter}
-                  >
-                    <div className="p-1.5 rounded-md bg-sky-500/10">
-                      <Twitter className="size-4 text-sky-500" />
-                    </div>
-                    <div className="flex-1 text-left">
-                      <p className="text-sm font-medium">Twitter / X</p>
-                      <p className="text-xs text-muted-foreground">Share on Twitter</p>
-                    </div>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start gap-3 h-11"
-                    onClick={handleShareViaLinkedIn}
-                  >
-                    <div className="p-1.5 rounded-md bg-blue-700/10">
-                      <Linkedin className="size-4 text-blue-700" />
-                    </div>
-                    <div className="flex-1 text-left">
-                      <p className="text-sm font-medium">LinkedIn</p>
-                      <p className="text-xs text-muted-foreground">Share on LinkedIn</p>
-                    </div>
-                  </Button>
-                </TabsContent>
-              </Tabs>
-            </DialogContent>
-          </Dialog>
+                  </TabsContent>
+                  <TabsContent value="social" className="space-y-2 pt-4">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-3 h-11"
+                      onClick={handleShareViaEmail}
+                    >
+                      <div className="p-1.5 rounded-md bg-red-500/10">
+                        <Mail className="size-4 text-red-600" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <p className="text-sm font-medium">Email</p>
+                        <p className="text-xs text-muted-foreground">Share via email client</p>
+                      </div>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-3 h-11"
+                      onClick={handleShareViaFacebook}
+                    >
+                      <div className="p-1.5 rounded-md bg-blue-600/10">
+                        <Facebook className="size-4 text-blue-600" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <p className="text-sm font-medium">Facebook</p>
+                        <p className="text-xs text-muted-foreground">Share on Facebook</p>
+                      </div>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-3 h-11"
+                      onClick={handleShareViaTwitter}
+                    >
+                      <div className="p-1.5 rounded-md bg-sky-500/10">
+                        <Twitter className="size-4 text-sky-500" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <p className="text-sm font-medium">Twitter / X</p>
+                        <p className="text-xs text-muted-foreground">Share on Twitter</p>
+                      </div>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-3 h-11"
+                      onClick={handleShareViaLinkedIn}
+                    >
+                      <div className="p-1.5 rounded-md bg-blue-700/10">
+                        <Linkedin className="size-4 text-blue-700" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <p className="text-sm font-medium">LinkedIn</p>
+                        <p className="text-xs text-muted-foreground">Share on LinkedIn</p>
+                      </div>
+                    </Button>
+                  </TabsContent>
+                </Tabs>
+              </DialogContent>
+            </Dialog>
+          </div>
         )}
       </div>
-
-      
 
       {/* Members List Section */}
       <Card className="border shadow-sm">
