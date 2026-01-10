@@ -168,8 +168,9 @@ export const WorkflowConflictDialog = ({
                 <div className="space-y-1">
                   {/* Show all project statuses */}
                   {(conflict.allProjectStatuses || [...conflict.matchingStatuses.map(s => ({ key: s.key, label: s.name, color: s.color })), ...conflict.projectOnlyStatuses]).map((status) => {
+                    // Check if this status is project-only (not in workflow)
                     const isProjectOnly = conflict.projectOnlyStatuses.some(
-                      (s) => s.key === status.key
+                      (s) => s.key === status.key || s.label.toLowerCase() === status.label.toLowerCase()
                     );
                     return (
                       <div
@@ -354,7 +355,24 @@ export function detectWorkflowProjectConflict(
   customColumns?: CustomColumnForConflict[]
 ): StatusConflictInfo | null {
   const workflowStatuses = workflow.statuses || [];
-  const workflowStatusKeys = new Set(workflowStatuses.map(s => s.key));
+  
+  // Helper function to normalize keys for comparison
+  const normalizeKey = (key: string): string => {
+    return key.toLowerCase().replace(/[\s_-]+/g, "_");
+  };
+  
+  // Helper function to normalize names for comparison
+  const normalizeName = (name: string): string => {
+    return name.toLowerCase().trim();
+  };
+  
+  // Build workflow lookup maps
+  const workflowStatusKeyMap = new Map<string, WorkflowStatus>();
+  const workflowStatusNameMap = new Map<string, WorkflowStatus>();
+  for (const status of workflowStatuses) {
+    workflowStatusKeyMap.set(normalizeKey(status.key), status);
+    workflowStatusNameMap.set(normalizeName(status.name), status);
+  }
   
   // Build project statuses from:
   // 1. customWorkItemTypes if available
@@ -381,10 +399,10 @@ export function detectWorkflowProjectConflict(
   
   // Add custom columns (these are additional columns created in the project)
   if (customColumns && customColumns.length > 0) {
-    const existingKeys = new Set(projectStatuses.map(s => s.key));
+    const existingNames = new Set(projectStatuses.map(s => normalizeName(s.label)));
     for (const col of customColumns) {
-      // Use $id as key for custom columns (that's how they're identified in tasks)
-      if (!existingKeys.has(col.$id)) {
+      // Check if custom column already exists by name
+      if (!existingNames.has(normalizeName(col.name))) {
         projectStatuses.push({
           key: col.$id,
           label: col.name,
@@ -392,26 +410,43 @@ export function detectWorkflowProjectConflict(
           icon: col.icon,
           isCustom: true,
         });
+        existingNames.add(normalizeName(col.name));
       }
     }
   }
-  
-  const projectStatusKeys = new Set(projectStatuses.map(t => t.key));
+
+  // Helper to check if a project status matches any workflow status
+  const findMatchingWorkflowStatus = (projectStatus: ProjectStatusInfo): WorkflowStatus | undefined => {
+    // Try key match first
+    const byKey = workflowStatusKeyMap.get(normalizeKey(projectStatus.key));
+    if (byKey) return byKey;
+    
+    // Try name match
+    const byName = workflowStatusNameMap.get(normalizeName(projectStatus.label));
+    return byName;
+  };
 
   // Find workflow-only statuses (in workflow but not project)
-  const workflowOnlyStatuses = workflowStatuses.filter(
-    s => !projectStatusKeys.has(s.key)
-  );
+  const projectNormalizedKeys = new Set(projectStatuses.map(s => normalizeKey(s.key)));
+  const projectNormalizedNames = new Set(projectStatuses.map(s => normalizeName(s.label)));
+  
+  const workflowOnlyStatuses = workflowStatuses.filter(s => {
+    const keyMatch = projectNormalizedKeys.has(normalizeKey(s.key));
+    const nameMatch = projectNormalizedNames.has(normalizeName(s.name));
+    return !keyMatch && !nameMatch;
+  });
 
   // Find project-only statuses (in project but not workflow)
   const projectOnlyStatuses = projectStatuses.filter(
-    t => !workflowStatusKeys.has(t.key)
+    t => !findMatchingWorkflowStatus(t)
   );
 
   // Find matching statuses
-  const matchingStatuses = workflowStatuses.filter(
-    s => projectStatusKeys.has(s.key)
-  );
+  const matchingStatuses = workflowStatuses.filter(s => {
+    const keyMatch = projectNormalizedKeys.has(normalizeKey(s.key));
+    const nameMatch = projectNormalizedNames.has(normalizeName(s.name));
+    return keyMatch || nameMatch;
+  });
 
   // If no conflicts, return null
   if (workflowOnlyStatuses.length === 0 && projectOnlyStatuses.length === 0) {

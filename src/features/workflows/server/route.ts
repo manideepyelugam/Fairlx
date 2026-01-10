@@ -15,6 +15,8 @@ import {
   PROJECTS_ID,
   TEAM_MEMBERS_ID,
   SPACE_MEMBERS_ID,
+  CUSTOM_COLUMNS_ID,
+  DEFAULT_COLUMN_SETTINGS_ID,
 } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 
@@ -1088,14 +1090,15 @@ const app = new Hono()
         workflowId
       );
 
-      const member = await getMember({
+      const { hasPermission } = await checkWorkflowPermission(
         databases,
-        workspaceId: workflow.workspaceId,
-        userId: user.$id,
-      });
+        workflow.workspaceId,
+        user.$id,
+        workflow.spaceId
+      );
 
-      if (!member || member.role !== MemberRole.ADMIN) {
-        return c.json({ error: "Only admins can connect projects to workflows" }, 403);
+      if (!hasPermission) {
+        return c.json({ error: "Only workspace owners, admins, or space masters can connect projects to workflows" }, 403);
       }
 
       // Get the project
@@ -1151,14 +1154,15 @@ const app = new Hono()
         workflowId
       );
 
-      const member = await getMember({
+      const { hasPermission } = await checkWorkflowPermission(
         databases,
-        workspaceId: workflow.workspaceId,
-        userId: user.$id,
-      });
+        workflow.workspaceId,
+        user.$id,
+        workflow.spaceId
+      );
 
-      if (!member || member.role !== MemberRole.ADMIN) {
-        return c.json({ error: "Only admins can sync workflow and project" }, 403);
+      if (!hasPermission) {
+        return c.json({ error: "Only workspace owners, admins, or space masters can sync workflow and project" }, 403);
       }
 
       // Get workflow statuses
@@ -1179,22 +1183,78 @@ const app = new Hono()
         return c.json({ error: "Project and workflow must be in the same workspace" }, 400);
       }
 
+      // Get project's customWorkItemTypes (legacy/inline storage)
       const projectCustomTypes = (project.customWorkItemTypes || []) as Array<{
         key: string;
         label: string;
         icon: string;
         color: string;
+        visible?: boolean;
       }>;
 
+      // Get custom columns from the database
+      const projectCustomColumns = await databases.listDocuments(
+        DATABASE_ID,
+        CUSTOM_COLUMNS_ID,
+        [
+          Query.equal("workspaceId", workflow.workspaceId),
+          Query.equal("projectId", projectId),
+          Query.orderAsc("position"),
+        ]
+      );
+
+      // Get default column settings (to check which columns are hidden/enabled)
+      const defaultColumnSettings = await databases.listDocuments(
+        DATABASE_ID,
+        DEFAULT_COLUMN_SETTINGS_ID,
+        [
+          Query.equal("workspaceId", workflow.workspaceId),
+          Query.equal("projectId", projectId),
+        ]
+      );
+
+      // Build a map of column visibility from default settings
+      const columnVisibility = new Map<string, boolean>();
+      for (const setting of defaultColumnSettings.documents) {
+        columnVisibility.set(setting.columnId, setting.isEnabled);
+      }
+
+      // Helper function to normalize status key for matching
+      const normalizeKey = (name: string): string => {
+        return name.toLowerCase().replace(/[\s_-]+/g, "_").toUpperCase();
+      };
+
+      // Helper function to find matching workflow status
+      const findMatchingWorkflowStatus = (
+        name: string,
+        key: string
+      ): WorkflowStatus | undefined => {
+        // First try exact key match
+        let match = workflowStatuses.documents.find(s => s.key === key);
+        if (match) return match;
+
+        // Try normalized key match
+        const normalizedKey = normalizeKey(name);
+        match = workflowStatuses.documents.find(s => s.key === normalizedKey);
+        if (match) return match;
+
+        // Try name match (case insensitive)
+        match = workflowStatuses.documents.find(
+          s => s.name.toLowerCase() === name.toLowerCase()
+        );
+        return match;
+      };
+
       if (resolution === "workflow") {
-        // Workflow takes priority
-        // Update project's customWorkItemTypes to match workflow statuses
-        // Statuses on canvas (with positions) become visible columns
-        // Statuses not on canvas (position 0,0) become hidden
+        // =========================================
+        // WORKFLOW TAKES PRIORITY
+        // =========================================
+        // - Sync workflow statuses → project columns
+        // - Statuses on canvas become visible columns
+        // - Statuses off canvas (0,0) become hidden columns
         
         const newCustomTypes = workflowStatuses.documents.map((status) => {
-          // Check if this status has a canvas position (visible)
-          const hasCanvasPosition = 
+          const isOnCanvas = 
             (status.positionX !== undefined && status.positionX > 0) || 
             (status.positionY !== undefined && status.positionY > 0);
           
@@ -1203,10 +1263,60 @@ const app = new Hono()
             label: status.name,
             icon: status.icon,
             color: status.color,
-            // Add visibility flag based on canvas position
-            visible: hasCanvasPosition,
+            visible: isOnCanvas,
           };
         });
+
+        // Get existing custom columns for this project
+        const existingColumnMap = new Map(
+          projectCustomColumns.documents.map(col => [col.name.toLowerCase(), col])
+        );
+
+        // Sync custom columns: create new ones or update existing ones
+        let position = 1000;
+        for (const status of workflowStatuses.documents) {
+          const existingColumn = existingColumnMap.get(status.name.toLowerCase());
+          
+          if (existingColumn) {
+            // Update existing column
+            await databases.updateDocument(
+              DATABASE_ID,
+              CUSTOM_COLUMNS_ID,
+              existingColumn.$id,
+              {
+                icon: status.icon,
+                color: status.color,
+                position: position,
+              }
+            );
+            existingColumnMap.delete(status.name.toLowerCase());
+          } else {
+            // Create new column
+            await databases.createDocument(
+              DATABASE_ID,
+              CUSTOM_COLUMNS_ID,
+              ID.unique(),
+              {
+                name: status.name,
+                workspaceId: workflow.workspaceId,
+                projectId: projectId,
+                icon: status.icon,
+                color: status.color,
+                position: position,
+              }
+            );
+          }
+          position += 1000;
+        }
+
+        // Delete custom columns that no longer exist in workflow
+        for (const [, column] of existingColumnMap) {
+          await databases.deleteDocument(
+            DATABASE_ID,
+            CUSTOM_COLUMNS_ID,
+            column.$id
+          );
+        }
 
         await databases.updateDocument(
           DATABASE_ID,
@@ -1226,39 +1336,207 @@ const app = new Hono()
           },
         });
       } else {
-        // Project takes priority
-        // Add missing project statuses to workflow
-        const workflowStatusKeys = new Set(
-          workflowStatuses.documents.map((s) => s.key)
-        );
+        // =========================================
+        // PROJECT TAKES PRIORITY
+        // =========================================
+        // - Sync project columns → workflow statuses
+        // - Add missing statuses to workflow with canvas positions
+        // - Update existing statuses visibility based on project column visibility
+        // - Hidden columns → status moves off canvas (but not deleted)
 
-        // Find project statuses not in workflow
-        const missingInWorkflow = projectCustomTypes.filter(
-          (t) => !workflowStatusKeys.has(t.key)
-        );
+        // Default task statuses (always available in projects)
+        const DEFAULT_STATUSES = [
+          { key: "TODO", label: "To Do", color: "#9CA3AF", icon: "Circle" },
+          { key: "ASSIGNED", label: "Assigned", color: "#EF4444", icon: "UserCheck" },
+          { key: "IN_PROGRESS", label: "In Progress", color: "#F59E0B", icon: "Clock" },
+          { key: "IN_REVIEW", label: "In Review", color: "#3B82F6", icon: "Eye" },
+          { key: "DONE", label: "Done", color: "#10B981", icon: "CheckCircle" },
+        ];
 
-        // Add missing statuses to workflow
-        let position = workflowStatuses.total;
-        for (const missingStatus of missingInWorkflow) {
-          await databases.createDocument<WorkflowStatus>(
-            DATABASE_ID,
-            WORKFLOW_STATUSES_ID,
-            ID.unique(),
-            {
-              workflowId,
-              name: missingStatus.label,
-              key: missingStatus.key,
-              icon: missingStatus.icon || "Circle",
-              color: missingStatus.color || "#6B7280",
-              statusType: StatusType.OPEN, // Default to OPEN for new statuses
-              description: null,
-              position: position++,
-              positionX: 0, // Not on canvas initially
-              positionY: 0,
-              isInitial: false,
-              isFinal: false,
-            }
+        // Build comprehensive list of all project statuses from multiple sources
+        interface ProjectStatus {
+          key: string;
+          name: string;
+          icon: string;
+          color: string;
+          isVisible: boolean;
+          source: "default" | "customColumn" | "customType";
+        }
+
+        const allProjectStatuses: ProjectStatus[] = [];
+        const seenNames = new Set<string>();
+
+        // 1. Start with default statuses (these are always present in a project)
+        // Check visibility from defaultColumnSettings
+        for (const defaultStatus of DEFAULT_STATUSES) {
+          const normalizedName = defaultStatus.label.toLowerCase();
+          // Check if this default column is enabled (visible)
+          // If no setting exists, default to visible (true)
+          const isVisible = columnVisibility.has(defaultStatus.key) 
+            ? columnVisibility.get(defaultStatus.key) 
+            : true;
+          
+          if (!seenNames.has(normalizedName)) {
+            seenNames.add(normalizedName);
+            allProjectStatuses.push({
+              key: defaultStatus.key,
+              name: defaultStatus.label,
+              icon: defaultStatus.icon,
+              color: defaultStatus.color,
+              isVisible: isVisible !== false,
+              source: "default",
+            });
+          }
+        }
+
+        // 2. Add custom columns from the database (may override defaults or add new ones)
+        for (const col of projectCustomColumns.documents) {
+          const normalizedName = col.name.toLowerCase();
+          // Check if this name matches a default status (to update it)
+          const existingIndex = allProjectStatuses.findIndex(
+            s => s.name.toLowerCase() === normalizedName
           );
+          
+          if (existingIndex >= 0) {
+            // Update existing status with custom column properties
+            allProjectStatuses[existingIndex] = {
+              ...allProjectStatuses[existingIndex],
+              icon: col.icon || allProjectStatuses[existingIndex].icon,
+              color: col.color || allProjectStatuses[existingIndex].color,
+              source: "customColumn",
+            };
+          } else if (!seenNames.has(normalizedName)) {
+            // Add as new custom column
+            seenNames.add(normalizedName);
+            allProjectStatuses.push({
+              key: normalizeKey(col.name),
+              name: col.name,
+              icon: col.icon || "Circle",
+              color: col.color || "#6B7280",
+              isVisible: true,
+              source: "customColumn",
+            });
+          }
+        }
+
+        // 3. Add project's customWorkItemTypes (may override or add new ones)
+        for (const type of projectCustomTypes) {
+          const normalizedName = type.label.toLowerCase();
+          const existingIndex = allProjectStatuses.findIndex(
+            s => s.name.toLowerCase() === normalizedName
+          );
+          
+          if (existingIndex >= 0) {
+            // Update existing status
+            allProjectStatuses[existingIndex] = {
+              ...allProjectStatuses[existingIndex],
+              icon: type.icon || allProjectStatuses[existingIndex].icon,
+              color: type.color || allProjectStatuses[existingIndex].color,
+              isVisible: type.visible !== false,
+              source: "customType",
+            };
+          } else if (!seenNames.has(normalizedName)) {
+            // Add as new custom type
+            seenNames.add(normalizedName);
+            allProjectStatuses.push({
+              key: type.key,
+              name: type.label,
+              icon: type.icon || "Circle",
+              color: type.color || "#6B7280",
+              isVisible: type.visible !== false,
+              source: "customType",
+            });
+          }
+        }
+
+        // Track statistics
+        let addedCount = 0;
+        let updatedCount = 0;
+
+        // Calculate base canvas position for new statuses
+        let maxX = 100;
+        let maxY = 100;
+        for (const status of workflowStatuses.documents) {
+          if (status.positionX && status.positionX > maxX) maxX = status.positionX;
+          if (status.positionY && status.positionY > maxY) maxY = status.positionY;
+        }
+        let newStatusOffsetY = 0;
+
+        // Process each project status
+        for (const projectStatus of allProjectStatuses) {
+          const existingWorkflowStatus = findMatchingWorkflowStatus(
+            projectStatus.name,
+            projectStatus.key
+          );
+
+          if (existingWorkflowStatus) {
+            // Status exists in workflow - update visibility based on project
+            const shouldBeOnCanvas = projectStatus.isVisible;
+            const isCurrentlyOnCanvas = 
+              (existingWorkflowStatus.positionX !== undefined && existingWorkflowStatus.positionX > 0) ||
+              (existingWorkflowStatus.positionY !== undefined && existingWorkflowStatus.positionY > 0);
+
+            if (shouldBeOnCanvas !== isCurrentlyOnCanvas) {
+              // Need to update canvas position
+              if (shouldBeOnCanvas && !isCurrentlyOnCanvas) {
+                // Move onto canvas
+                await databases.updateDocument(
+                  DATABASE_ID,
+                  WORKFLOW_STATUSES_ID,
+                  existingWorkflowStatus.$id,
+                  {
+                    positionX: maxX + 250,
+                    positionY: 100 + newStatusOffsetY,
+                    icon: projectStatus.icon,
+                    color: projectStatus.color,
+                  }
+                );
+                newStatusOffsetY += 150;
+                updatedCount++;
+              } else if (!shouldBeOnCanvas && isCurrentlyOnCanvas) {
+                // Move off canvas (hide)
+                await databases.updateDocument(
+                  DATABASE_ID,
+                  WORKFLOW_STATUSES_ID,
+                  existingWorkflowStatus.$id,
+                  {
+                    positionX: 0,
+                    positionY: 0,
+                  }
+                );
+                updatedCount++;
+              }
+            }
+          } else {
+            // Status doesn't exist in workflow - create it
+            const newPosition = workflowStatuses.total + addedCount;
+            
+            await databases.createDocument<WorkflowStatus>(
+              DATABASE_ID,
+              WORKFLOW_STATUSES_ID,
+              ID.unique(),
+              {
+                workflowId,
+                name: projectStatus.name,
+                key: projectStatus.key,
+                icon: projectStatus.icon,
+                color: projectStatus.color,
+                statusType: StatusType.OPEN,
+                description: null,
+                position: newPosition,
+                // If visible, place on canvas; otherwise off canvas
+                positionX: projectStatus.isVisible ? maxX + 250 : 0,
+                positionY: projectStatus.isVisible ? 100 + newStatusOffsetY : 0,
+                isInitial: false,
+                isFinal: false,
+              }
+            );
+
+            if (projectStatus.isVisible) {
+              newStatusOffsetY += 150;
+            }
+            addedCount++;
+          }
         }
 
         // Update project to use this workflow
@@ -1275,7 +1553,8 @@ const app = new Hono()
           data: {
             message: "Workflow synced from project statuses",
             resolution: "project",
-            addedStatuses: missingInWorkflow.length,
+            addedStatuses: addedCount,
+            updatedStatuses: updatedCount,
           },
         });
       }
