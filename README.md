@@ -89,8 +89,8 @@
         <p>Repo links, commit sync, AI docs, code Q&A</p>
       </td>
       <td align="center" width="33%">
-        <h3>📊 Analytics & Billing</h3>
-        <p>Burndown, velocity, usage-based billing, audit logs</p>
+        <h3>💳 Usage-Based Billing</h3>
+        <p>Traffic, storage, compute metering with Razorpay</p>
       </td>
     </tr>
   </table>
@@ -103,13 +103,14 @@
 - **AI-first**: Smart task suggestions, auto-generated documentation, code analysis, and natural language search.
 - **Enterprise-ready**: Organizations, multi-workspace, programs, teams, RBAC permissions.
 - **Dual account types**: Personal accounts for individuals, Org accounts for teams with shared billing.
-- **Usage-based billing**: Flexible metering for traffic, storage, and compute.
+- **Production-grade billing**: Usage-based metering (traffic, storage, compute) with Razorpay e-mandate, grace periods, and auto-suspension.
+- **Security hardened**: Server-side org derivation, billing enforcement middleware, invariant checks.
 - **Flexible workflows**: Workspace/space/project-level customization.
 - **Custom fields**: Text, numbers, selects, users, dates, currency, labels.
 - **Built-in time tracking**: Estimates vs actuals, timesheets, exports.
-- **Integration-ready**: GitHub, AI services, notifications, storage.
+- **Integration-ready**: GitHub, AI services, Razorpay, notifications, storage.
 - **Self-host friendly**: Appwrite backend; full data ownership.
-- **Modern stack**: Next.js 15, TypeScript, Tailwind, Appwrite.
+- **Modern stack**: Next.js 15, TypeScript, Tailwind, Appwrite, Hono.
 
 ---
 
@@ -194,6 +195,18 @@ NEXT_PUBLIC_APPWRITE_USAGE_AGGREGATIONS_ID=usage_aggregations
 NEXT_PUBLIC_APPWRITE_USAGE_ALERTS_ID=usage_alerts
 NEXT_PUBLIC_APPWRITE_STORAGE_SNAPSHOTS_ID=storage_snapshots
 NEXT_PUBLIC_APPWRITE_INVOICES_ID=invoices
+NEXT_PUBLIC_APPWRITE_BILLING_ACCOUNTS_ID=billing_accounts
+NEXT_PUBLIC_APPWRITE_BILLING_AUDIT_LOGS_ID=billing_audit_logs
+NEXT_PUBLIC_APPWRITE_PROCESSED_EVENTS_ID=processed_events
+
+# Razorpay (for billing)
+RAZORPAY_KEY_ID=your_razorpay_key_id
+RAZORPAY_KEY_SECRET=your_razorpay_key_secret
+RAZORPAY_WEBHOOK_SECRET=your_webhook_secret
+
+# Billing Configuration
+BILLING_GRACE_PERIOD_DAYS=14
+BILLING_CURRENCY=INR
 
 # Storage Buckets
 NEXT_PUBLIC_APPWRITE_IMAGES_BUCKET_ID=images
@@ -370,8 +383,12 @@ CMD ["npm", "start"]
 - Comments & attachments
 - Notifications
 - Timelines & analytics
-- Usage-based billing foundation
+- **Production-grade usage-based billing** (traffic, storage, compute metering)
+- **Razorpay e-mandate integration** (auto-debit, grace periods, suspension)
 - Dual account types (Personal/Org)
+- **Billing enforcement middleware** (mutation guards, suspension blocks)
+- **Billing UX components** (explainer, timeline, suspension screen)
+- **Developer documentation** for billing invariants
 
 **In Progress**: 
 - Advanced reporting dashboard
@@ -408,10 +425,16 @@ Full attribute list, types, required flags, lengths, and indexes: see [APPWRITE_
 - Email verification required (configure SMTP provider & topic in Appwrite).
 - RBAC via workspace/member roles and custom team roles.
 - Organization-level permissions and audit logs.
+- **Billing enforcement**: `mutationGuard` middleware blocks writes for suspended accounts.
+- **Server-side org derivation**: Never trusts client-provided organization IDs.
+- **Webhook signature verification**: Razorpay webhooks verified before processing.
+- **Idempotency**: Processed events registry prevents duplicate billing operations.
 - Data encrypted at rest/in transit; secure sessions.
 - File validation on uploads; antivirus enabled on buckets (Appwrite settings).
 - Route utilities prevent navigation with undefined/invalid IDs.
 - Report vulnerabilities privately (not via public issues).
+
+> 📖 See [`md/BILLING_INVARIANTS.md`](./md/BILLING_INVARIANTS.md) for billing system invariants and security patterns.
 
 ---
 

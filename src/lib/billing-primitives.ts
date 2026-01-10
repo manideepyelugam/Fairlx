@@ -285,6 +285,20 @@ export async function lockBillingCycle(
     billingAccountId: string
 ): Promise<LockResult> {
     const lockTimestamp = new Date().toISOString();
+    const startTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
+
+    const logTiming = (operation: string, success: boolean) => {
+        const durationMs = typeof performance !== 'undefined'
+            ? Math.round(performance.now() - startTime)
+            : Math.round(Date.now() - startTime);
+
+        // Detect potential contention: if operation took > 5s, log a warning
+        if (durationMs > 5000) {
+            console.warn(`[BillingPrimitives] CONTENTION WARNING: ${operation} took ${durationMs}ms for ${billingAccountId}`);
+        }
+
+        return { durationMs, operation, success };
+    };
 
     try {
         // Step 1: Read current state
@@ -296,7 +310,11 @@ export async function lockBillingCycle(
 
         // Step 2: Check if already locked (idempotent handling)
         if (account.isBillingCycleLocked === true) {
-            console.log(`[BillingPrimitives] Cycle already locked for ${billingAccountId} at ${account.billingCycleLockedAt}`);
+            const timing = logTiming('lock_check', false);
+            console.log(`[BillingPrimitives] Cycle already locked for ${billingAccountId}`, {
+                lockedAt: account.billingCycleLockedAt,
+                ...timing,
+            });
             return {
                 success: false,
                 alreadyLocked: true,
@@ -324,7 +342,12 @@ export async function lockBillingCycle(
 
         if (verifyAccount.billingCycleLockedAt !== lockTimestamp) {
             // Another process won the race
-            console.warn(`[BillingPrimitives] Lock race lost for ${billingAccountId}. Expected ${lockTimestamp}, got ${verifyAccount.billingCycleLockedAt}`);
+            const timing = logTiming('lock_race', false);
+            console.warn(`[BillingPrimitives] Lock race lost for ${billingAccountId}`, {
+                expected: lockTimestamp,
+                actual: verifyAccount.billingCycleLockedAt,
+                ...timing,
+            });
             return {
                 success: false,
                 alreadyLocked: true,
@@ -332,14 +355,22 @@ export async function lockBillingCycle(
             };
         }
 
-        console.log(`[BillingPrimitives] Successfully locked billing cycle for ${billingAccountId}`);
+        const timing = logTiming('lock_acquired', true);
+        console.log(`[BillingPrimitives] Successfully locked billing cycle for ${billingAccountId}`, {
+            timestamp: lockTimestamp,
+            ...timing,
+        });
         return {
             success: true,
             alreadyLocked: false,
             lockedAt: lockTimestamp,
         };
     } catch (error) {
-        console.error(`[BillingPrimitives] Lock failed for ${billingAccountId}:`, error);
+        const timing = logTiming('lock_error', false);
+        console.error(`[BillingPrimitives] Lock failed for ${billingAccountId}:`, {
+            error: error instanceof Error ? error.message : String(error),
+            ...timing,
+        });
         return {
             success: false,
             alreadyLocked: false,

@@ -7,3 +7,9 @@ export {
     useBillingStatusCookie,
     clearBillingStatusCookie,
 } from "./billing-status-tracker";
+
+// Billing Explainer & Timeline
+export { BillingExplainer } from "./billing-explainer";
+export { BillingTimeline, getBillingPhaseFromStatus } from "./billing-timeline";
+export type { BillingPhase } from "./billing-timeline";
+
