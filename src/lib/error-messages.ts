@@ -87,6 +87,65 @@ export const SPECIFIC_ERROR_MESSAGES: Record<string, ErrorMapping> = {
         message: "You're not a member of this workspace. Ask the owner for an invite.",
     },
 
+    // Billing & Account Status
+    "ACCOUNT_SUSPENDED": {
+        title: "Account suspended",
+        message: "Your account is suspended due to an unpaid invoice.",
+        action: "Update your payment method to restore access.",
+    },
+    "BILLING_SUSPENDED": {
+        title: "Account suspended",
+        message: "Write access is temporarily restricted. Your data is safe.",
+        action: "Please update your payment method.",
+    },
+    "BILLING_DUE": {
+        title: "Payment overdue",
+        message: "Your account has an unpaid invoice.",
+        action: "Please pay soon to avoid service interruption.",
+    },
+    "BILLING_NOT_FOUND": {
+        title: "Billing not configured",
+        message: "Please set up billing to continue using this feature.",
+        action: "Set Up Billing",
+    },
+    "BILLING_CYCLE_LOCKED": {
+        title: "Billing cycle closed",
+        message: "This billing cycle has been finalized.",
+    },
+    "Your account has been suspended": {
+        title: "Account suspended",
+        message: "Your account is suspended due to an unpaid invoice.",
+        action: "Update Payment",
+    },
+
+    // Access & Permissions
+    "NO_WORKSPACE_ACCESS": {
+        title: "Access denied",
+        message: "You don't have access to this workspace.",
+        action: "Contact the workspace owner for an invite.",
+    },
+    "CROSS_ORG_ACCESS_DENIED": {
+        title: "Access denied",
+        message: "You cannot access resources from another organization.",
+    },
+    "INSUFFICIENT_ROLE": {
+        title: "Permission denied",
+        message: "You don't have the required role to perform this action.",
+        action: "Contact a workspace admin for help.",
+    },
+    "Forbidden": {
+        title: "Access restricted",
+        message: "You don't have permission for this action.",
+    },
+    "Not allowed": {
+        title: "Action not allowed",
+        message: "This action is not permitted in the current context.",
+    },
+    "You don't have permission": {
+        title: "Permission denied",
+        message: "You don't have the required permissions for this action.",
+    },
+
     // Generic
     "Network Error": {
         title: "Connection issue",

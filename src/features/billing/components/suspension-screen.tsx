@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, CreditCard, Mail, Phone, ExternalLink } from "lucide-react";
+import { AlertCircle, CreditCard, Mail, Phone, ExternalLink, Eye, Download } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -13,13 +13,14 @@ interface SuspensionScreenProps {
     currency?: string;
     invoiceId?: string;
     gracePeriodExpiredAt?: string;
+    suspendedAt?: string;
 }
 
 /**
  * Suspension Screen
  * 
  * Full-screen overlay displayed when account is suspended.
- * Shows clear recovery instructions and only allows access to billing page.
+ * Shows clear recovery instructions and explains read-only behavior.
  * 
  * CRITICAL: This blocks all other UI and forces user to billing page.
  */
@@ -30,6 +31,7 @@ export function SuspensionScreen({
     currency = "INR",
     invoiceId,
     gracePeriodExpiredAt,
+    suspendedAt,
 }: SuspensionScreenProps) {
     const billingUrl = organizationId
         ? `/organization/settings/billing`
@@ -47,6 +49,17 @@ export function SuspensionScreen({
             year: "numeric",
             month: "long",
             day: "numeric",
+        });
+    };
+
+    const formatDateTime = (dateString: string) => {
+        return new Date(dateString).toLocaleString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZoneName: "short",
         });
     };
 
@@ -81,25 +94,81 @@ export function SuspensionScreen({
                                             <p className="text-xs text-muted-foreground">Invoice: {invoiceId}</p>
                                         )}
                                     </div>
-                                    {gracePeriodExpiredAt && (
-                                        <div className="text-right">
-                                            <p className="text-sm text-muted-foreground">Suspended on</p>
-                                            <p className="text-sm font-medium">{formatDate(gracePeriodExpiredAt)}</p>
-                                        </div>
-                                    )}
+                                    <div className="text-right">
+                                        {suspendedAt ? (
+                                            <>
+                                                <p className="text-sm text-muted-foreground">Suspended on</p>
+                                                <p className="text-sm font-medium">{formatDate(suspendedAt)}</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {formatDateTime(suspendedAt)}
+                                                </p>
+                                            </>
+                                        ) : gracePeriodExpiredAt && (
+                                            <>
+                                                <p className="text-sm text-muted-foreground">Grace period ended</p>
+                                                <p className="text-sm font-medium">{formatDate(gracePeriodExpiredAt)}</p>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         )}
 
-                        {/* What's Blocked */}
-                        <div className="space-y-2">
-                            <h3 className="font-semibold">While suspended, you cannot:</h3>
-                            <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
-                                <li>Create or update projects, tasks, or work items</li>
-                                <li>Upload files or documents</li>
-                                <li>Use API access</li>
-                                <li>Invite or manage team members</li>
-                            </ul>
+                        {/* Read-Only Mode Explanation */}
+                        <div className="space-y-3">
+                            <h3 className="font-semibold">Read-Only Mode Active</h3>
+                            <p className="text-sm text-muted-foreground">
+                                Your account is in read-only mode. You can view all existing data,
+                                but write operations are temporarily blocked until payment is received.
+                            </p>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <p className="text-sm font-medium text-red-600 dark:text-red-400">
+                                        Blocked Actions
+                                    </p>
+                                    <ul className="text-sm text-muted-foreground space-y-1">
+                                        <li className="flex items-center gap-2">
+                                            <span className="text-red-500">✗</span>
+                                            Create or update items
+                                        </li>
+                                        <li className="flex items-center gap-2">
+                                            <span className="text-red-500">✗</span>
+                                            Upload files
+                                        </li>
+                                        <li className="flex items-center gap-2">
+                                            <span className="text-red-500">✗</span>
+                                            Invite members
+                                        </li>
+                                        <li className="flex items-center gap-2">
+                                            <span className="text-red-500">✗</span>
+                                            API write access
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div className="space-y-2">
+                                    <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                                        Still Available
+                                    </p>
+                                    <ul className="text-sm text-muted-foreground space-y-1">
+                                        <li className="flex items-center gap-2">
+                                            <Eye className="h-3 w-3 text-green-500" />
+                                            View all data
+                                        </li>
+                                        <li className="flex items-center gap-2">
+                                            <Download className="h-3 w-3 text-green-500" />
+                                            Export data
+                                        </li>
+                                        <li className="flex items-center gap-2">
+                                            <CreditCard className="h-3 w-3 text-green-500" />
+                                            Update payment
+                                        </li>
+                                        <li className="flex items-center gap-2">
+                                            <Mail className="h-3 w-3 text-green-500" />
+                                            Contact support
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Data Safety Notice */}
@@ -150,3 +219,4 @@ export function SuspensionScreen({
         </div>
     );
 }
+
