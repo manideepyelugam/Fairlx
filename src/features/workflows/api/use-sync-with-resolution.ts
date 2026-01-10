@@ -25,7 +25,8 @@ export const useSyncWithResolution = () => {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to sync workflow and project");
+        const error = await response.json();
+        throw new Error((error as { error?: string }).error || "Failed to sync workflow and project");
       }
 
       return await response.json();
@@ -37,12 +38,17 @@ export const useSyncWithResolution = () => {
           ? "Project synced to workflow statuses" 
           : "Workflow updated with project statuses"
       );
+      // Invalidate all related caches for immediate UI update
       queryClient.invalidateQueries({ queryKey: ["workflows"] });
       queryClient.invalidateQueries({ queryKey: ["workflow", variables.param.workflowId] });
+      queryClient.invalidateQueries({ queryKey: ["workflow-statuses", variables.param.workflowId] });
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["project", variables.param.projectId] });
+      queryClient.invalidateQueries({ queryKey: ["custom-columns"] });
+      queryClient.invalidateQueries({ queryKey: ["default-column-settings"] });
     },
-    onError: () => {
-      toast.error("Failed to sync workflow and project");
+    onError: (error) => {
+      toast.error(error.message || "Failed to sync workflow and project");
     },
   });
 

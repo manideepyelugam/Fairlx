@@ -24,19 +24,25 @@ export const useConnectProject = () => {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to connect project to workflow");
+        const error = await response.json();
+        throw new Error((error as { error?: string }).error || "Failed to connect project to workflow");
       }
 
       return await response.json();
     },
     onSuccess: (_data, variables) => {
       toast.success("Project connected to workflow");
+      // Invalidate all related caches for immediate UI update
       queryClient.invalidateQueries({ queryKey: ["workflows"] });
       queryClient.invalidateQueries({ queryKey: ["workflow", variables.param.workflowId] });
+      queryClient.invalidateQueries({ queryKey: ["workflow-statuses", variables.param.workflowId] });
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["project", variables.param.projectId] });
+      queryClient.invalidateQueries({ queryKey: ["custom-columns"] });
+      queryClient.invalidateQueries({ queryKey: ["default-column-settings"] });
     },
-    onError: () => {
-      toast.error("Failed to connect project to workflow");
+    onError: (error) => {
+      toast.error(error.message || "Failed to connect project to workflow");
     },
   });
 
