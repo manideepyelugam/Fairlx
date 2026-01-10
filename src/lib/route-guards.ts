@@ -226,3 +226,70 @@ export const organizationGuard = createMiddleware<RouteGuardContext>(async (c, n
         throw error;
     }
 });
+
+/**
+ * Mutation Guard Middleware
+ * 
+ * Apply to all POST/PATCH/DELETE routes that modify data.
+ * Combines workspace access validation with billing enforcement.
+ * 
+ * CRITICAL: This is the recommended guard for all mutation endpoints.
+ * It ensures:
+ * 1. User has access to the workspace
+ * 2. OrgId is derived server-side (never trust client)
+ * 3. Billing is not suspended
+ * 
+ * Usage:
+ * ```typescript
+ * app.post("/tasks", sessionMiddleware, mutationGuard, async (c) => {
+ *     const secureContext = c.get("secureContext");
+ *     // Safe to proceed with mutation
+ * });
+ * ```
+ */
+export const mutationGuard = createMiddleware<RouteGuardContext>(async (c, next) => {
+    const user = c.get("user");
+    const databases = c.get("databases");
+    const workspaceId = extractWorkspaceId(c);
+
+    if (!workspaceId) {
+        // No workspace context - allow through (some routes don't need workspace)
+        await next();
+        return;
+    }
+
+    try {
+        // 1. Verify workspace access with server-side orgId derivation
+        const { getSecureWorkspaceContext } = await import("./authorization-guards");
+        const secureContext = await getSecureWorkspaceContext(databases, user.$id, workspaceId);
+
+        // 2. Block if suspended (mutations not allowed)
+        await assertBillingNotSuspended(databases, {
+            workspaceId,
+            organizationId: secureContext.organizationId || undefined,
+        });
+
+        // 3. Set secure context for downstream handlers
+        c.set("secureContext", secureContext);
+
+        await next();
+    } catch (error) {
+        if (error instanceof BillingError) {
+            return c.json({
+                error: "Your account is suspended due to an unpaid invoice. Please update your payment method to restore access.",
+                code: error.code,
+                billingUrl: "/billing",
+            }, 403);
+        }
+
+        if (error instanceof AuthorizationError) {
+            return c.json({
+                error: "You don't have permission to perform this action in this workspace.",
+                code: error.code,
+            }, 403);
+        }
+
+        throw error;
+    }
+});
+

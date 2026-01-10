@@ -231,3 +231,81 @@ export function getProcessedEventsCacheStats(): {
         maxSize: MAX_CACHE_SIZE,
     };
 }
+
+/**
+ * Cleanup old processed events (retention strategy)
+ * 
+ * Call this from a scheduled job (e.g., weekly cron)
+ * Default retention: 90 days
+ * 
+ * This prevents unbounded growth of the processed_events collection
+ * while keeping enough history for debugging and audit purposes.
+ * 
+ * @param databases - Appwrite Databases instance
+ * @param retentionDays - Number of days to retain events (default: 90)
+ * @returns Cleanup statistics
+ */
+export async function cleanupProcessedEvents(
+    databases: Databases,
+    retentionDays: number = 90
+): Promise<{ deleted: number; errors: number }> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
+
+    let deleted = 0;
+    let errors = 0;
+
+    try {
+        const collectionId = getCollectionId();
+
+        // Query old events in batches to avoid memory issues
+        let hasMore = true;
+        let iterations = 0;
+        const maxIterations = 100; // Safety limit
+
+        while (hasMore && iterations < maxIterations) {
+            iterations++;
+
+            const oldEvents = await databases.listDocuments(
+                DATABASE_ID,
+                collectionId,
+                [
+                    Query.lessThan("$createdAt", cutoffDate.toISOString()),
+                    Query.limit(100),
+                ]
+            );
+
+            if (oldEvents.total === 0 || oldEvents.documents.length === 0) {
+                hasMore = false;
+                break;
+            }
+
+            for (const event of oldEvents.documents) {
+                try {
+                    await databases.deleteDocument(DATABASE_ID, collectionId, event.$id);
+                    deleted++;
+                } catch (deleteError) {
+                    console.error(`[ProcessedEventsRegistry] Failed to delete event ${event.$id}:`, deleteError);
+                    errors++;
+                }
+            }
+
+            // If we got fewer than limit, we're done
+            if (oldEvents.documents.length < 100) {
+                hasMore = false;
+            }
+        }
+
+        console.log(`[ProcessedEventsRegistry] Cleanup complete:`, {
+            deleted,
+            errors,
+            retentionDays,
+            cutoffDate: cutoffDate.toISOString(),
+        });
+    } catch (error) {
+        console.error("[ProcessedEventsRegistry] Cleanup failed:", error);
+    }
+
+    return { deleted, errors };
+}
+
