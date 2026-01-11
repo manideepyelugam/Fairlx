@@ -20,7 +20,7 @@ import {
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { generateInviteCode } from "@/lib/utils";
 
-import { MemberRole } from "@/features/members/types";
+import { MemberRole, WorkspaceMemberRole } from "@/features/members/types";
 import { getMember } from "@/features/members/utils";
 import { TaskStatus } from "@/features/tasks/types";
 
@@ -237,8 +237,12 @@ const app = new Hono()
         userId: user.$id,
       });
 
-      // Verify update permissions
-      if (!member || (member.role !== MemberRole.ADMIN && member.role !== MemberRole.OWNER)) {
+      // Verify update permissions - support both legacy and new roles
+      if (!member || (
+        member.role !== MemberRole.ADMIN &&
+        member.role !== MemberRole.OWNER &&
+        member.role !== WorkspaceMemberRole.WS_ADMIN
+      )) {
         return c.json({ error: "Unauthorized" }, 401);
       }
 
@@ -405,18 +409,38 @@ const app = new Hono()
 
     const { workspaceId } = c.req.param();
 
+    // Check if this workspace belongs to an organization
+    const workspace = await databases.getDocument<Workspace>(
+      DATABASE_ID,
+      WORKSPACES_ID,
+      workspaceId
+    );
+
+    // GATE: Block invite code reset for ORG workspaces
+    // ORG workspaces should add members through org-level management
+    if (workspace.organizationId) {
+      return c.json({
+        error: "Invite codes are disabled for organization workspaces. Members must be added through organization management.",
+        code: "ORG_INVITE_DISABLED",
+      }, 400);
+    }
+
     const member = await getMember({
       databases,
       workspaceId,
       userId: user.$id,
     });
 
-    // Verify reset permissions
-    if (!member || (member.role !== MemberRole.ADMIN && member.role !== MemberRole.OWNER)) {
+    // Verify reset permissions - support both legacy and new roles
+    if (!member || (
+      member.role !== MemberRole.ADMIN &&
+      member.role !== MemberRole.OWNER &&
+      member.role !== WorkspaceMemberRole.WS_ADMIN
+    )) {
       return c.json({ error: "Unauthorized" }, 401);
     }
 
-    const workspace = await databases.updateDocument(
+    const updatedWorkspace = await databases.updateDocument(
       DATABASE_ID,
       WORKSPACES_ID,
       workspaceId,
@@ -426,7 +450,7 @@ const app = new Hono()
       }
     );
 
-    return c.json({ data: workspace });
+    return c.json({ data: updatedWorkspace });
   })
   .post(
     "/:workspaceId/join",
@@ -438,6 +462,15 @@ const app = new Hono()
 
       const databases = c.get("databases");
       const user = c.get("user");
+
+      // GATE: Block ORG accounts from using invite codes
+      // ORG accounts must add members through org-level management
+      if (user.prefs?.accountType === "ORG") {
+        return c.json({
+          error: "Organization accounts cannot join workspaces via invite code. Members must be added through organization management.",
+          code: "ORG_INVITE_DISABLED",
+        }, 400);
+      }
 
       const member = await getMember({
         databases,

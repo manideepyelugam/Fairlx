@@ -643,6 +643,97 @@ const app = new Hono()
     }
   })
   /**
+   * POST /auth/reset-password-first-login
+   * Reset password on first login (ORG member accounts only)
+   * 
+   * SECURITY:
+   * - Only works if user.prefs.mustResetPassword === true
+   * - Requires current session (user must be logged in)
+   * - Clears mustResetPassword flag on success
+   * - Updates org member status to ACTIVE
+   */
+  .post(
+    "/reset-password-first-login",
+    sessionMiddleware,
+    zValidator("json", z.object({
+      newPassword: z.string().min(8, "Password must be at least 8 characters"),
+    })),
+    async (c) => {
+      const user = c.get("user");
+      const databases = c.get("databases");
+      const { newPassword } = c.req.valid("json");
+
+      // GATE: Only allow if mustResetPassword is true
+      if (user.prefs?.mustResetPassword !== true) {
+        return c.json({
+          error: "Password reset not required for this account."
+        }, 400);
+      }
+
+      try {
+        // Update password using Admin SDK (user may not have old password)
+        const { users } = await createAdminClient();
+        await users.updatePassword(user.$id, newPassword);
+
+        // Clear mustResetPassword flag
+        await users.updatePrefs(user.$id, {
+          ...user.prefs,
+          mustResetPassword: false,
+        });
+
+        // Update org member status to ACTIVE
+        const { Query } = await import("node-appwrite");
+        const memberships = await databases.listDocuments(
+          DATABASE_ID,
+          ORGANIZATION_MEMBERS_ID,
+          [
+            Query.equal("userId", user.$id),
+            Query.equal("mustResetPassword", true),
+          ]
+        );
+
+        for (const membership of memberships.documents) {
+          await databases.updateDocument(
+            DATABASE_ID,
+            ORGANIZATION_MEMBERS_ID,
+            membership.$id,
+            {
+              mustResetPassword: false,
+              status: "ACTIVE",
+            }
+          );
+        }
+
+        // Log audit event
+        if (memberships.total > 0) {
+          const { logOrgAudit, OrgAuditAction } = await import("@/features/organizations/audit");
+          const { databases: adminDatabases } = await createAdminClient();
+          await logOrgAudit({
+            databases: adminDatabases,
+            organizationId: memberships.documents[0].organizationId,
+            actorUserId: user.$id,
+            actionType: OrgAuditAction.MEMBER_ACTIVATED,
+            metadata: {
+              userId: user.$id,
+              activationType: "first_login_password_reset",
+            },
+          });
+        }
+
+        return c.json({
+          success: true,
+          message: "Password reset successfully! You can now access your account."
+        });
+      } catch (error: unknown) {
+        console.error("First login password reset error:", error);
+        const appwriteError = error as { message?: string };
+        return c.json({
+          error: appwriteError.message || "Failed to reset password"
+        }, 500);
+      }
+    }
+  )
+  /**
    * POST /auth/complete-signup
    * 
    * Creates workspace/organization after email verification.

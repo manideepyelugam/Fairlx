@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { OrganizationRole, OrgMemberStatus } from "../types";
 
 interface UseGetOrgMembersProps {
     organizationId: string;
@@ -10,10 +11,12 @@ export interface OrgMember {
     $id: string;
     organizationId: string;
     userId: string;
-    role: "OWNER" | "ADMIN" | "MEMBER";
+    role: OrganizationRole;
+    status?: OrgMemberStatus;
     name?: string;
     email?: string;
     profileImageUrl?: string | null;
+    mustResetPassword?: boolean;
 }
 
 /**

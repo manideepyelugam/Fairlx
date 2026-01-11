@@ -13,12 +13,14 @@ import {
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
 import { MemberRole } from "@/features/members/types";
-import { Organization, OrganizationMember, OrganizationRole } from "../types";
+import { hasOrgPermission } from "@/lib/permission-matrix";
+import { Organization, OrganizationMember, OrganizationRole, OrgMemberStatus } from "../types";
 import {
     createOrganizationSchema,
     updateOrganizationSchema,
     addOrganizationMemberSchema,
     updateOrganizationMemberSchema,
+    createOrgMemberSchema,
     convertToOrganizationSchema,
 } from "../schemas";
 
@@ -147,6 +149,7 @@ const app = new Hono()
                     organizationId: organization.$id,
                     userId: user.$id,
                     role: OrganizationRole.OWNER,
+                    status: OrgMemberStatus.ACTIVE,
                     name: user.name,
                     email: user.email,
                 }
@@ -196,9 +199,9 @@ const app = new Hono()
             const user = c.get("user");
             const { orgId } = c.req.param();
 
-            // Verify user has permission
+            // Verify user has permission to edit org (OWNER or ADMIN)
             const membership = await getOrganizationMember(databases, orgId, user.$id);
-            if (!membership || membership.role === OrganizationRole.MEMBER) {
+            if (!membership || !hasOrgPermission(membership.role as OrganizationRole, "INVITE_MEMBERS")) {
                 return c.json({ error: "Unauthorized" }, 401);
             }
 
@@ -375,9 +378,9 @@ const app = new Hono()
             const user = c.get("user");
             const { orgId } = c.req.param();
 
-            // Verify user has permission
+            // Verify user has permission to add members (OWNER or ADMIN)
             const membership = await getOrganizationMember(databases, orgId, user.$id);
-            if (!membership || membership.role === OrganizationRole.MEMBER) {
+            if (!membership || !hasOrgPermission(membership.role as OrganizationRole, "INVITE_MEMBERS")) {
                 return c.json({ error: "Unauthorized" }, 401);
             }
 
@@ -397,6 +400,7 @@ const app = new Hono()
                     organizationId: orgId,
                     userId,
                     role,
+                    status: OrgMemberStatus.ACTIVE,
                 }
             );
 
@@ -417,9 +421,9 @@ const app = new Hono()
             const user = c.get("user");
             const { orgId, userId } = c.req.param();
 
-            // Verify user has permission
+            // Verify user has permission to update roles (OWNER or ADMIN)
             const membership = await getOrganizationMember(databases, orgId, user.$id);
-            if (!membership || membership.role === OrganizationRole.MEMBER) {
+            if (!membership || !hasOrgPermission(membership.role as OrganizationRole, "INVITE_MEMBERS")) {
                 return c.json({ error: "Unauthorized" }, 401);
             }
 
@@ -466,9 +470,9 @@ const app = new Hono()
         const user = c.get("user");
         const { orgId, userId } = c.req.param();
 
-        // Verify user has permission
+        // Verify user has permission to remove members (OWNER or ADMIN)
         const membership = await getOrganizationMember(databases, orgId, user.$id);
-        if (!membership || membership.role === OrganizationRole.MEMBER) {
+        if (!membership || !hasOrgPermission(membership.role as OrganizationRole, "REMOVE_MEMBERS")) {
             return c.json({ error: "Unauthorized" }, 401);
         }
 
@@ -501,6 +505,286 @@ const app = new Hono()
 
         return c.json({ data: { $id: userId } });
     })
+
+    /**
+     * POST /organizations/:orgId/members/create-user
+     * Create a new user account and add as org member (ORG accounts only)
+     * 
+     * SECURITY:
+     * - Only OWNER or ADMIN can create members
+     * - Global email uniqueness enforced
+     * - Temp password generated server-side
+     * - mustResetPassword flag set for first login
+     */
+    .post(
+        "/:orgId/members/create-user",
+        sessionMiddleware,
+        zValidator("json", createOrgMemberSchema),
+        async (c) => {
+            const databases = c.get("databases");
+            const user = c.get("user");
+            const { orgId } = c.req.param();
+            const { fullName, email, role } = c.req.valid("json");
+
+            // GATE: Verify caller is OWNER or ADMIN
+            const membership = await getOrganizationMember(databases, orgId, user.$id);
+            if (!membership || !hasOrgPermission(membership.role as OrganizationRole, "INVITE_MEMBERS")) {
+                return c.json({ error: "Unauthorized. Only OWNER or ADMIN can add members." }, 401);
+            }
+
+            // Get organization name for error messages
+            const organization = await databases.getDocument<Organization>(
+                DATABASE_ID,
+                ORGANIZATIONS_ID,
+                orgId
+            );
+
+            // Check global email uniqueness across ALL organizations
+            const existingMembers = await databases.listDocuments(
+                DATABASE_ID,
+                ORGANIZATION_MEMBERS_ID,
+                [Query.equal("email", email)]
+            );
+
+            if (existingMembers.total > 0) {
+                // Find which org this email belongs to
+                const existingMember = existingMembers.documents[0];
+                const existingOrg = await databases.getDocument<Organization>(
+                    DATABASE_ID,
+                    ORGANIZATIONS_ID,
+                    existingMember.organizationId
+                );
+                return c.json({
+                    error: "EMAIL_EXISTS",
+                    code: "EMAIL_EXISTS",
+                    orgName: existingOrg.name,
+                    message: `This email already belongs to ${existingOrg.name}.`
+                }, 400);
+            }
+
+            // Generate secure temporary password (16 chars, mixed)
+            const crypto = await import("crypto");
+            const tempPassword = crypto.randomBytes(12).toString("base64").slice(0, 16);
+
+            try {
+                // Create Appwrite user with admin client
+                const { users } = await createAdminClient();
+
+                const newUser = await users.create(
+                    ID.unique(),
+                    email,
+                    undefined, // phone
+                    tempPassword,
+                    fullName
+                );
+
+                // Set user prefs to indicate password reset required
+                await users.updatePrefs(newUser.$id, {
+                    mustResetPassword: true,
+                    accountType: "ORG",
+                    primaryOrganizationId: orgId,
+                });
+
+                // Create org_member record
+                const member = await databases.createDocument(
+                    DATABASE_ID,
+                    ORGANIZATION_MEMBERS_ID,
+                    ID.unique(),
+                    {
+                        organizationId: orgId,
+                        userId: newUser.$id,
+                        role,
+                        status: OrgMemberStatus.INVITED,
+                        mustResetPassword: true,
+                        name: fullName,
+                        email: email,
+                    }
+                );
+
+                // Log audit event
+                const { logOrgAudit, OrgAuditAction } = await import("../audit");
+                const { databases: adminDatabases } = await createAdminClient();
+                await logOrgAudit({
+                    databases: adminDatabases,
+                    organizationId: orgId,
+                    actorUserId: user.$id,
+                    actionType: OrgAuditAction.MEMBER_ADDED,
+                    metadata: {
+                        targetUserId: newUser.$id,
+                        targetEmail: email,
+                        role,
+                        creationType: "admin_created",
+                    },
+                });
+
+                // Send welcome email with temp password
+                const { sendWelcomeEmail, logEmailSent } = await import("../services/email-service");
+                const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL}/sign-in`;
+
+                const emailResult = await sendWelcomeEmail({
+                    recipientEmail: email,
+                    recipientName: fullName,
+                    recipientUserId: newUser.$id,
+                    organizationName: organization.name,
+                    tempPassword,
+                    loginUrl,
+                });
+
+                // Log email sent event (non-blocking)
+                if (emailResult.success) {
+                    logEmailSent({
+                        organizationId: orgId,
+                        recipientUserId: newUser.$id,
+                        recipientEmail: email,
+                        emailType: "welcome",
+                    });
+                }
+
+                return c.json({
+                    data: {
+                        member,
+                        userId: newUser.$id,
+                        emailSent: emailResult.success,
+                        emailError: emailResult.success ? undefined : emailResult.error,
+                        // SECURITY: In production, remove this - send via email only
+                        tempPassword: process.env.NODE_ENV === "development" ? tempPassword : undefined,
+                    },
+                    message: "Member created successfully. Welcome email sent.",
+                });
+
+            } catch (error: unknown) {
+                const appwriteError = error as { code?: number; message?: string };
+
+                // Handle duplicate email in Appwrite
+                if (appwriteError.code === 409) {
+                    return c.json({
+                        error: "EMAIL_EXISTS",
+                        code: "EMAIL_EXISTS",
+                        message: "This email is already registered in the system.",
+                    }, 400);
+                }
+
+                console.error("Create org member error:", error);
+                return c.json({
+                    error: appwriteError.message || "Failed to create member",
+                }, 500);
+            }
+        }
+    )
+
+    /**
+     * POST /organizations/:orgId/members/:userId/resend-welcome
+     * Resend welcome email with new temp password
+     * Only for members with mustResetPassword = true (pending activation)
+     */
+    .post(
+        "/:orgId/members/:userId/resend-welcome",
+        sessionMiddleware,
+        async (c) => {
+            const { orgId, userId } = c.req.param();
+            const user = c.get("user");
+
+            if (!orgId || !userId) {
+                return c.json({ error: "Missing orgId or userId" }, 400);
+            }
+
+            try {
+                const { users, databases } = await createAdminClient();
+
+                // Verify requester is OWNER/ADMIN of this org
+                const requesterMemberships = await databases.listDocuments(
+                    DATABASE_ID,
+                    ORGANIZATION_MEMBERS_ID,
+                    [
+                        Query.equal("organizationId", orgId),
+                        Query.equal("userId", user.$id),
+                    ]
+                );
+
+                if (requesterMemberships.total === 0) {
+                    return c.json({ error: "Not a member of this organization" }, 403);
+                }
+
+                const requesterRole = requesterMemberships.documents[0].role;
+                if (!["OWNER", "ADMIN"].includes(requesterRole)) {
+                    return c.json({ error: "Only OWNER or ADMIN can resend welcome emails" }, 403);
+                }
+
+                // Get the target member
+                const targetMemberships = await databases.listDocuments(
+                    DATABASE_ID,
+                    ORGANIZATION_MEMBERS_ID,
+                    [
+                        Query.equal("organizationId", orgId),
+                        Query.equal("userId", userId),
+                    ]
+                );
+
+                if (targetMemberships.total === 0) {
+                    return c.json({ error: "Member not found" }, 404);
+                }
+
+                const member = targetMemberships.documents[0];
+
+                // Check if member still needs password reset
+                if (!member.mustResetPassword) {
+                    return c.json({
+                        error: "Member has already activated their account",
+                        code: "ALREADY_ACTIVATED"
+                    }, 400);
+                }
+
+                // Get the target user
+                const targetUser = await users.get(userId);
+
+                // Get organization name
+                const organization = await databases.getDocument(
+                    DATABASE_ID,
+                    ORGANIZATIONS_ID,
+                    orgId
+                );
+
+                // Generate new temp password
+                const crypto = await import("crypto");
+                const newTempPassword = crypto.randomBytes(12).toString("base64url").slice(0, 16);
+
+                // Update user's password
+                await users.updatePassword(userId, newTempPassword);
+
+                // Send welcome email
+                const { sendWelcomeEmail } = await import("../services/email-service");
+                const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL}/sign-in`;
+
+                const emailResult = await sendWelcomeEmail({
+                    recipientEmail: targetUser.email,
+                    recipientName: member.name || targetUser.name || targetUser.email,
+                    recipientUserId: userId,
+                    organizationName: organization.name,
+                    tempPassword: newTempPassword,
+                    loginUrl,
+                });
+
+                if (!emailResult.success) {
+                    console.error("Failed to send welcome email:", emailResult.error);
+                    return c.json({
+                        error: `Failed to send email: ${emailResult.error || "Unknown error"}. Please check your SMTP configuration in Appwrite Console.`
+                    }, 424); // 424 Failed Dependency
+                }
+
+                return c.json({
+                    success: true,
+                    emailSent: true,
+                    message: "Welcome email resent with new temporary password",
+                    // SECURITY: In production, remove this - send via email only
+                    tempPassword: process.env.NODE_ENV === "development" ? newTempPassword : undefined,
+                });
+
+            } catch (error) {
+                console.error("Resend welcome email error:", error);
+                return c.json({ error: "Failed to resend welcome email" }, 500);
+            }
+        }
+    )
 
     /**
      * POST /organizations/convert
@@ -612,6 +896,7 @@ const app = new Hono()
                         organizationId: organization.$id,
                         userId: user.$id,
                         role: OrganizationRole.OWNER,
+                        status: OrgMemberStatus.ACTIVE,
                         name: user.name,
                         email: user.email,
                     }
