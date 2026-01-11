@@ -20,6 +20,7 @@ export const PUBLIC_ROUTES = [
     "/forgot-password",
     "/reset-password",
     "/auth/callback",
+    "/auth/first-login", // Magic link for ORG member first login
 ];
 
 /**

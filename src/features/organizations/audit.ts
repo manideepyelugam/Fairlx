@@ -51,6 +51,12 @@ export enum OrgAuditAction {
     BILLING_UPDATED = "billing_updated",
     /** Account deletion blocked due to ownership constraints */
     ACCOUNT_DELETE_ATTEMPT_BLOCKED = "account_delete_attempt_blocked",
+
+    // === FIRST LOGIN MAGIC LINK ===
+    /** First-login magic link token created for new org member */
+    FIRST_LOGIN_TOKEN_CREATED = "first_login_token_created",
+    /** First-login magic link token used (single-use) */
+    FIRST_LOGIN_TOKEN_USED = "first_login_token_used",
 }
 
 /**
