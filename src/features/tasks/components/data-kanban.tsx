@@ -365,14 +365,14 @@ export const DataKanban = ({
           {canDeleteTasks && (
             <Button
               variant={selectionMode ? "secondary" : "outline"}
-              size="sm"
+              size="xs"
               onClick={toggleSelectionMode}
             >
               {selectionMode ? "Exit Selection" : "Select Tasks"}
             </Button>
           )}
           {selectionMode && selectedTasks.size > 0 && (
-            <span className="text-sm text-gray-600">
+            <span className="text-xs text-gray-600">
               {selectedTasks.size} task{selectedTasks.size !== 1 ? 's' : ''} selected
             </span>
           )}
