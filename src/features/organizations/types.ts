@@ -116,6 +116,12 @@ export type OrganizationMember = Models.Document & {
      */
     status: OrgMemberStatus;
     /**
+     * If true, user must reset password on first login.
+     * Set when admin creates user with temp password.
+     * Cleared after successful password reset.
+     */
+    mustResetPassword?: boolean;
+    /**
      * Cached user data for display (denormalized)
      * Updated when membership is created/modified
      */
@@ -145,6 +151,16 @@ export type AddOrganizationMemberDto = {
 };
 
 export type UpdateOrganizationMemberDto = {
+    role: OrganizationRole;
+};
+
+/**
+ * Create a new org member (admin creates user account)
+ * Used for ORG accounts only - creates Appwrite user + org membership
+ */
+export type CreateOrgMemberDto = {
+    fullName: string;
+    email: string;
     role: OrganizationRole;
 };
 

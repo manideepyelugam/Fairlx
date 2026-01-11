@@ -19,6 +19,8 @@ export type AccountLifecycleState = {
     activeMember: Models.Document | null;
     activeOrgId: string | null;
     activeWorkspaceId: string | null;
+    /** If true, user must reset password on first login (ORG accounts) */
+    mustResetPassword: boolean;
 };
 
 // Legacy alias for backward compatibility during migration

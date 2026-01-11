@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import {
     Building2, Users, Settings2, Shield, Trash2, Crown,
-    CreditCard, AlertTriangle, FileText, Loader2, Clock, Hash
+    CreditCard, AlertTriangle, FileText, Loader2, Clock, Hash, UserPlus, Mail
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +54,9 @@ import { useCurrentOrgMember } from "@/features/organizations/api/use-current-or
 import { OrganizationRole } from "@/features/organizations/types";
 import { OrganizationBillingSettings } from "@/features/organizations/components/organization-billing-settings";
 import { OrganizationAuditLogs } from "@/features/organizations/components/organization-audit-logs";
+import { useCreateOrgMember } from "@/features/organizations/api/use-create-org-member";
+import { useResendWelcomeEmail } from "@/features/organizations/api/use-resend-welcome-email";
+import { BulkMemberUpload } from "@/features/organizations/components/bulk-member-upload";
 
 export const OrganizationSettingsClient = () => {
     const { isOrg, primaryOrganizationId } = useAccountType();
@@ -88,6 +91,14 @@ export const OrganizationSettingsClient = () => {
     const { mutate: updateMemberRole, isPending: isUpdatingRole } = useUpdateOrgMemberRole();
     const { mutate: removeMember, isPending: isRemoving } = useRemoveOrgMember();
     const { mutate: deleteOrg, isPending: isDeleting } = useDeleteOrganization();
+    const { mutate: createMember, isPending: isCreatingMember } = useCreateOrgMember();
+    const { mutate: resendWelcome, isPending: isResendingWelcome } = useResendWelcomeEmail();
+
+    // Add Member modal state
+    const [addMemberOpen, setAddMemberOpen] = useState(false);
+    const [newMemberName, setNewMemberName] = useState("");
+    const [newMemberEmail, setNewMemberEmail] = useState("");
+    const [newMemberRole, setNewMemberRole] = useState<OrganizationRole>(OrganizationRole.MEMBER);
 
     // Sync form state with fetched data
     useEffect(() => {
@@ -138,6 +149,27 @@ export const OrganizationSettingsClient = () => {
     const handleDeleteOrg = () => {
         if (!primaryOrganizationId) return;
         deleteOrg({ organizationId: primaryOrganizationId });
+    };
+
+    // Handler: Create new member
+    const handleCreateMember = () => {
+        if (!primaryOrganizationId || !newMemberName.trim() || !newMemberEmail.trim()) return;
+
+        createMember({
+            param: { orgId: primaryOrganizationId },
+            json: {
+                fullName: newMemberName.trim(),
+                email: newMemberEmail.trim().toLowerCase(),
+                role: newMemberRole,
+            },
+        }, {
+            onSuccess: () => {
+                setAddMemberOpen(false);
+                setNewMemberName("");
+                setNewMemberEmail("");
+                setNewMemberRole(OrganizationRole.MEMBER);
+            },
+        });
     };
 
     const canDeleteOrg = isOwner && deleteConfirmName === organization?.name;
@@ -330,7 +362,86 @@ export const OrganizationSettingsClient = () => {
                                         {members.length} member{members.length !== 1 ? "s" : ""} in your organization
                                     </CardDescription>
                                 </div>
-                                {/* Note: Invite functionality requires email-based invitation system */}
+                                {canEdit && primaryOrganizationId && (
+                                    <div className="flex items-center gap-2">
+                                        <BulkMemberUpload organizationId={primaryOrganizationId} />
+                                        <Dialog open={addMemberOpen} onOpenChange={setAddMemberOpen}>
+                                            <DialogTrigger asChild>
+                                                <Button size="sm" className="gap-1.5">
+                                                    <UserPlus className="size-4" />
+                                                    Add Member
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent>
+                                                <DialogHeader>
+                                                    <DialogTitle className="flex items-center gap-2">
+                                                        <UserPlus className="size-5" />
+                                                        Add Organization Member
+                                                    </DialogTitle>
+                                                    <DialogDescription>
+                                                        Create a new user account and add them to your organization.
+                                                        They will receive login credentials via email.
+                                                    </DialogDescription>
+                                                </DialogHeader>
+                                                <div className="space-y-4 py-4">
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="memberName">Full Name</Label>
+                                                        <Input
+                                                            id="memberName"
+                                                            placeholder="John Doe"
+                                                            value={newMemberName}
+                                                            onChange={(e) => setNewMemberName(e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="memberEmail">Email</Label>
+                                                        <Input
+                                                            id="memberEmail"
+                                                            type="email"
+                                                            placeholder="john@example.com"
+                                                            value={newMemberEmail}
+                                                            onChange={(e) => setNewMemberEmail(e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="memberRole">Role</Label>
+                                                        <Select
+                                                            value={newMemberRole}
+                                                            onValueChange={(v) => setNewMemberRole(v as OrganizationRole)}
+                                                        >
+                                                            <SelectTrigger>
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value={OrganizationRole.MEMBER}>Member</SelectItem>
+                                                                <SelectItem value={OrganizationRole.MODERATOR}>Moderator</SelectItem>
+                                                                <SelectItem value={OrganizationRole.ADMIN}>Admin</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                </div>
+                                                <DialogFooter>
+                                                    <DialogClose asChild>
+                                                        <Button variant="outline">Cancel</Button>
+                                                    </DialogClose>
+                                                    <Button
+                                                        onClick={handleCreateMember}
+                                                        disabled={isCreatingMember || !newMemberName.trim() || !newMemberEmail.trim()}
+                                                    >
+                                                        {isCreatingMember ? (
+                                                            <>
+                                                                <Loader2 className="size-4 animate-spin mr-2" />
+                                                                Creating...
+                                                            </>
+                                                        ) : (
+                                                            "Create Member"
+                                                        )}
+                                                    </Button>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                        </Dialog>
+                                    </div>
+                                )}
                             </div>
                         </CardHeader>
                         <CardContent>
@@ -385,6 +496,31 @@ export const OrganizationSettingsClient = () => {
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
+                                                {/* Pending activation badge + Resend button */}
+                                                {member.mustResetPassword && canEdit && primaryOrganizationId && (
+                                                    <>
+                                                        <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700 border-amber-200">
+                                                            Pending
+                                                        </Badge>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-7 gap-1 text-xs"
+                                                            disabled={isResendingWelcome}
+                                                            onClick={() => resendWelcome({
+                                                                orgId: primaryOrganizationId,
+                                                                userId: member.userId
+                                                            })}
+                                                        >
+                                                            {isResendingWelcome ? (
+                                                                <Loader2 className="size-3 animate-spin" />
+                                                            ) : (
+                                                                <Mail className="size-3" />
+                                                            )}
+                                                            Resend
+                                                        </Button>
+                                                    </>
+                                                )}
                                                 {/* Role selector (ADMIN+ can change roles) */}
                                                 {canEdit ? (
                                                     <Select
@@ -408,10 +544,10 @@ export const OrganizationSettingsClient = () => {
                                                     <Badge
                                                         variant="outline"
                                                         className={`text-xs ${member.role === "OWNER"
-                                                                ? "bg-amber-500/10 text-amber-700 border-amber-500/20"
-                                                                : member.role === "ADMIN"
-                                                                    ? "bg-purple-500/10 text-purple-700 border-purple-500/20"
-                                                                    : ""
+                                                            ? "bg-amber-500/10 text-amber-700 border-amber-500/20"
+                                                            : member.role === "ADMIN"
+                                                                ? "bg-purple-500/10 text-purple-700 border-purple-500/20"
+                                                                : ""
                                                             }`}
                                                     >
                                                         {member.role === "OWNER" && <Crown className="size-3 mr-1" />}

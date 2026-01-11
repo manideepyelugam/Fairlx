@@ -21,6 +21,7 @@ const INITIAL_LIFECYCLE_STATE: AccountLifecycleState = {
     activeMember: null,
     activeOrgId: null,
     activeWorkspaceId: null,
+    mustResetPassword: false,
 };
 
 /**

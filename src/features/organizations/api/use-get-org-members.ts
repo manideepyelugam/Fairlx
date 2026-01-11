@@ -16,6 +16,7 @@ export interface OrgMember {
     name?: string;
     email?: string;
     profileImageUrl?: string | null;
+    mustResetPassword?: boolean;
 }
 
 /**

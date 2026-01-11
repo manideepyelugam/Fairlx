@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAccountLifecycle } from "@/components/account-lifecycle-provider";
 import { PUBLIC_ROUTES, ONBOARDING_ROUTES } from "@/features/auth/constants";
 import { Loader2 } from "lucide-react";
+import { ForcePasswordReset } from "@/features/auth/components/force-password-reset";
 
 interface LifecycleGuardProps {
     children: React.ReactNode;
@@ -18,16 +19,17 @@ interface LifecycleGuardProps {
  * 
  * Rules:
  * 1. Unauthenticated → /sign-in (unless PUBLIC_ROUTE)
- * 2. Authenticated, no account type → /onboarding
- * 3. PERSONAL, no workspace → /onboarding
- * 4. ORG, no org → /onboarding
- * 5. ORG, no workspace → allow /welcome ONLY, block /workspaces/*
- * 6. Fully setup → block /onboarding and /welcome
+ * 2. Authenticated, mustResetPassword → show ForcePasswordReset screen
+ * 3. Authenticated, no account type → /onboarding
+ * 4. PERSONAL, no workspace → /onboarding
+ * 5. ORG, no org → /onboarding
+ * 6. ORG, no workspace → allow /welcome ONLY, block /workspaces/*
+ * 7. Fully setup → block /onboarding and /welcome
  */
 export function LifecycleGuard({ children }: LifecycleGuardProps) {
     const router = useRouter();
     const pathname = usePathname();
-    const { lifecycleState, isLoaded } = useAccountLifecycle();
+    const { lifecycleState, isLoaded, refreshLifecycle } = useAccountLifecycle();
     const redirectingRef = useRef(false);
 
     // Determine route type
@@ -41,6 +43,9 @@ export function LifecycleGuard({ children }: LifecycleGuardProps) {
         // Skip guards for public routes
         if (isPublicRoute) return;
 
+        // Skip if mustResetPassword - we'll show the reset screen instead
+        if (lifecycleState.mustResetPassword) return;
+
         const { isAuthenticated, accountType, hasOrg, hasWorkspace, activeWorkspaceId } = lifecycleState;
 
         // Rule 1: Unauthenticated on protected route
@@ -50,28 +55,28 @@ export function LifecycleGuard({ children }: LifecycleGuardProps) {
             return;
         }
 
-        // Rule 2: No account type selected
+        // Rule 3: No account type selected
         if (!accountType && !pathname.startsWith("/onboarding")) {
             redirectingRef.current = true;
             router.push("/onboarding");
             return;
         }
 
-        // Rule 3: PERSONAL account without workspace
+        // Rule 4: PERSONAL account without workspace
         if (accountType === "PERSONAL" && !hasWorkspace && !pathname.startsWith("/onboarding")) {
             redirectingRef.current = true;
             router.push("/onboarding");
             return;
         }
 
-        // Rule 4: ORG account without org
+        // Rule 5: ORG account without org
         if (accountType === "ORG" && !hasOrg && !isOnboardingRoute) {
             redirectingRef.current = true;
             router.push("/onboarding");
             return;
         }
 
-        // Rule 5: ORG account with org but no workspace
+        // Rule 6: ORG account with org but no workspace
         if (accountType === "ORG" && hasOrg && !hasWorkspace) {
             // Allow /welcome, /organization, onboarding routes
             const allowedPaths = ["/welcome", "/organization", ...ONBOARDING_ROUTES];
@@ -84,7 +89,7 @@ export function LifecycleGuard({ children }: LifecycleGuardProps) {
             }
         }
 
-        // Rule 6: Fully setup - block onboarding and welcome
+        // Rule 7: Fully setup - block onboarding and welcome
         if (hasWorkspace) {
             if (pathname.startsWith("/onboarding") || pathname === "/welcome") {
                 redirectingRef.current = true;
@@ -107,6 +112,11 @@ export function LifecycleGuard({ children }: LifecycleGuardProps) {
                 </div>
             </div>
         );
+    }
+
+    // Rule 2: Force password reset for ORG members on first login
+    if (lifecycleState.isAuthenticated && lifecycleState.mustResetPassword) {
+        return <ForcePasswordReset onSuccess={() => refreshLifecycle()} />;
     }
 
     // If redirecting, don't render children
