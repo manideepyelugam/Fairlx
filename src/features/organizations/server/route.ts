@@ -676,7 +676,7 @@ const app = new Hono()
                             primaryOrganizationId: orgId,
                         });
                     }
-                } catch (_userLookupError) {
+                } catch {
                     // If user lookup fails, try to create new user
                     const newUser = await users.create(
                         ID.unique(),
