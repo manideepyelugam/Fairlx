@@ -79,6 +79,7 @@ export const INVOICES_ID = process.env.NEXT_PUBLIC_APPWRITE_INVOICES_ID!;
 export const ORGANIZATIONS_ID = process.env.NEXT_PUBLIC_APPWRITE_ORGANIZATIONS_ID!;
 export const ORGANIZATION_MEMBERS_ID = process.env.NEXT_PUBLIC_APPWRITE_ORGANIZATION_MEMBERS_ID!;
 export const ORGANIZATION_AUDIT_LOGS_ID = process.env.NEXT_PUBLIC_APPWRITE_ORGANIZATION_AUDIT_LOGS_ID!;
+export const LOGIN_TOKENS_ID = process.env.NEXT_PUBLIC_APPWRITE_LOGIN_TOKENS_ID!;
 // User preferences extended with accountType stored in Appwrite user.prefs
 
 // Organization lifecycle settings

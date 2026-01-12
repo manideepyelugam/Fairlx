@@ -21,6 +21,8 @@ export type AccountLifecycleState = {
     activeWorkspaceId: string | null;
     /** If true, user must reset password on first login (ORG accounts) */
     mustResetPassword: boolean;
+    /** User's role in the active organization (null for PERSONAL accounts) */
+    orgRole: "OWNER" | "ADMIN" | "MODERATOR" | "MEMBER" | null;
 };
 
 // Legacy alias for backward compatibility during migration
