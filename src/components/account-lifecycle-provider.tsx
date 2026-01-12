@@ -42,6 +42,20 @@ interface AccountLifecycleContextValue {
      * These users should NOT see Create Workspace, Manage Org CTAs.
      */
     isRestrictedOrgMember: boolean;
+    /**
+     * Derived: Can this user create workspaces?
+     * - PERSONAL accounts: yes (up to their limit)
+     * - ORG OWNER/ADMIN: yes
+     * - ORG MEMBER/MODERATOR: NO
+     */
+    canCreateWorkspace: boolean;
+    /**
+     * Derived: Can this user manage auth providers (link Google/GitHub)?
+     * - PERSONAL accounts: yes
+     * - ORG OWNER/ADMIN: yes
+     * - ORG MEMBER/MODERATOR: NO (managed by org)
+     */
+    canManageAuthProviders: boolean;
 }
 
 const AccountLifecycleContext = createContext<AccountLifecycleContextValue | null>(null);
@@ -56,7 +70,7 @@ interface AccountLifecycleProviderProps {
  * Wraps the application and provides:
  * - lifecycleState: Full account lifecycle state
  * - refreshLifecycle: Function to refresh state
- * - Derived helpers: isPersonal, isOrg, isFullySetup, isRestrictedOrgMember
+ * - Derived helpers: isPersonal, isOrg, isFullySetup, isRestrictedOrgMember, canCreateWorkspace, canManageAuthProviders
  * 
  * All components should use useAccountLifecycle() to access lifecycle state.
  */
@@ -66,17 +80,31 @@ export function AccountLifecycleProvider({ children }: AccountLifecycleProviderP
     const value = useMemo<AccountLifecycleContextValue>(() => {
         const state = lifecycleState ?? INITIAL_STATE;
         const isOrg = state.accountType === "ORG";
+        const isPersonal = state.accountType === "PERSONAL";
         const isOwner = state.orgRole === "OWNER";
+        const isAdmin = state.orgRole === "ADMIN";
+
+        // ORG-LEVEL permissions (OWNER/ADMIN only)
+        const hasOrgAdminPerms = isOrg && (isOwner || isAdmin);
+
+        // Workspace creation: PERSONAL or ORG OWNER/ADMIN
+        const canCreateWorkspace = isPersonal || hasOrgAdminPerms;
+
+        // Auth provider linking: PERSONAL or ORG OWNER/ADMIN
+        // MEMBER/MODERATOR cannot link - managed by organization
+        const canManageAuthProviders = isPersonal || hasOrgAdminPerms;
 
         return {
             lifecycleState: state,
             refreshLifecycle,
-            isPersonal: state.accountType === "PERSONAL",
+            isPersonal,
             isOrg,
             isFullySetup: state.hasWorkspace ?? false,
             isLoaded,
             // Restricted mode: ORG + not OWNER + no workspace
             isRestrictedOrgMember: isOrg && !isOwner && !state.hasWorkspace,
+            canCreateWorkspace,
+            canManageAuthProviders,
         };
     }, [lifecycleState, refreshLifecycle, isLoaded]);
 

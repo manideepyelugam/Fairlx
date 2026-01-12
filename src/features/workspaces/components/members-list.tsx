@@ -352,116 +352,124 @@ export const MembersList = () => {
         </div>
         {isCurrentUserAdmin && (
           <div className="flex gap-2">
-            {workspace?.organizationId && (
-              <Button
-                size="xs"
-                variant="outline"
-                className="gap-1.5"
-                onClick={() => setAddFromOrgDialogOpen(true)}
-              >
-                <Building2 className="size-4" />
-                Add from Org
-              </Button>
-            )}
-            <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="xs" className="gap-1.5">
-                  <UserPlus className="size-4" />
-                  Invite Members
+            {/* ORG workspaces: Only show "Add from Org" - no invite links */}
+            {workspace?.organizationId ? (
+              <>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() => setAddFromOrgDialogOpen(true)}
+                >
+                  <Building2 className="size-4" />
+                  Add from Org
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <Share2 className="size-5 text-primary" />
-                    Share Workspace Invitation
-                  </DialogTitle>
-                  <DialogDescription>
-                    Share this workspace invitation link through your preferred platform
-                  </DialogDescription>
-                </DialogHeader>
-                <Tabs defaultValue="link" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 h-9">
-                    <TabsTrigger value="link" className="text-xs">Copy Link</TabsTrigger>
-                    <TabsTrigger value="social" className="text-xs">Social Media</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="link" className="space-y-4 pt-4">
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium">Invitation Link</label>
-                      <div className="flex gap-2">
-                        <Input value={fullInviteLink} readOnly className="font-mono text-xs h-9" />
-                        <Button onClick={handleCopyInviteLink} size="sm" variant="secondary" className="shrink-0">
-                          <CopyIcon className="size-4" />
-                        </Button>
+                <p className="text-xs text-muted-foreground self-center">
+                  Members are added by admins
+                </p>
+              </>
+            ) : (
+              /* PERSONAL workspaces: Show invite dialog */
+              <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="xs" className="gap-1.5">
+                    <UserPlus className="size-4" />
+                    Invite Members
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Share2 className="size-5 text-primary" />
+                      Share Workspace Invitation
+                    </DialogTitle>
+                    <DialogDescription>
+                      Share this workspace invitation link through your preferred platform
+                    </DialogDescription>
+                  </DialogHeader>
+                  <Tabs defaultValue="link" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 h-9">
+                      <TabsTrigger value="link" className="text-xs">Copy Link</TabsTrigger>
+                      <TabsTrigger value="social" className="text-xs">Social Media</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="link" className="space-y-4 pt-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium">Invitation Link</label>
+                        <div className="flex gap-2">
+                          <Input value={fullInviteLink} readOnly className="font-mono text-xs h-9" />
+                          <Button onClick={handleCopyInviteLink} size="sm" variant="secondary" className="shrink-0">
+                            <CopyIcon className="size-4" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-start gap-2 p-3 rounded-lg bg-green-500/5 border border-green-500/20">
-                      <CheckCircle2 className="size-4 text-green-600 mt-0.5 shrink-0" />
-                      <div className="space-y-0.5">
-                        <p className="text-xs font-medium">Share this link with anyone</p>
-                        <p className="text-xs text-muted-foreground">
-                          Anyone with this link can join your workspace
-                        </p>
+                      <div className="flex items-start gap-2 p-3 rounded-lg bg-green-500/5 border border-green-500/20">
+                        <CheckCircle2 className="size-4 text-green-600 mt-0.5 shrink-0" />
+                        <div className="space-y-0.5">
+                          <p className="text-xs font-medium">Share this link with anyone</p>
+                          <p className="text-xs text-muted-foreground">
+                            Anyone with this link can join your workspace
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="social" className="space-y-2 pt-4">
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start gap-3 h-11"
-                      onClick={handleShareViaEmail}
-                    >
-                      <div className="p-1.5 rounded-md bg-red-500/10">
-                        <Mail className="size-4 text-red-600" />
-                      </div>
-                      <div className="flex-1 text-left">
-                        <p className="text-sm font-medium">Email</p>
-                        <p className="text-xs text-muted-foreground">Share via email client</p>
-                      </div>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start gap-3 h-11"
-                      onClick={handleShareViaFacebook}
-                    >
-                      <div className="p-1.5 rounded-md bg-blue-600/10">
-                        <Facebook className="size-4 text-blue-600" />
-                      </div>
-                      <div className="flex-1 text-left">
-                        <p className="text-sm font-medium">Facebook</p>
-                        <p className="text-xs text-muted-foreground">Share on Facebook</p>
-                      </div>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start gap-3 h-11"
-                      onClick={handleShareViaTwitter}
-                    >
-                      <div className="p-1.5 rounded-md bg-sky-500/10">
-                        <Twitter className="size-4 text-sky-500" />
-                      </div>
-                      <div className="flex-1 text-left">
-                        <p className="text-sm font-medium">Twitter / X</p>
-                        <p className="text-xs text-muted-foreground">Share on Twitter</p>
-                      </div>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start gap-3 h-11"
-                      onClick={handleShareViaLinkedIn}
-                    >
-                      <div className="p-1.5 rounded-md bg-blue-700/10">
-                        <Linkedin className="size-4 text-blue-700" />
-                      </div>
-                      <div className="flex-1 text-left">
-                        <p className="text-sm font-medium">LinkedIn</p>
-                        <p className="text-xs text-muted-foreground">Share on LinkedIn</p>
-                      </div>
-                    </Button>
-                  </TabsContent>
-                </Tabs>
-              </DialogContent>
-            </Dialog>
+                    </TabsContent>
+                    <TabsContent value="social" className="space-y-2 pt-4">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start gap-3 h-11"
+                        onClick={handleShareViaEmail}
+                      >
+                        <div className="p-1.5 rounded-md bg-red-500/10">
+                          <Mail className="size-4 text-red-600" />
+                        </div>
+                        <div className="flex-1 text-left">
+                          <p className="text-sm font-medium">Email</p>
+                          <p className="text-xs text-muted-foreground">Share via email client</p>
+                        </div>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start gap-3 h-11"
+                        onClick={handleShareViaFacebook}
+                      >
+                        <div className="p-1.5 rounded-md bg-blue-600/10">
+                          <Facebook className="size-4 text-blue-600" />
+                        </div>
+                        <div className="flex-1 text-left">
+                          <p className="text-sm font-medium">Facebook</p>
+                          <p className="text-xs text-muted-foreground">Share on Facebook</p>
+                        </div>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start gap-3 h-11"
+                        onClick={handleShareViaTwitter}
+                      >
+                        <div className="p-1.5 rounded-md bg-sky-500/10">
+                          <Twitter className="size-4 text-sky-500" />
+                        </div>
+                        <div className="flex-1 text-left">
+                          <p className="text-sm font-medium">Twitter / X</p>
+                          <p className="text-xs text-muted-foreground">Share on Twitter</p>
+                        </div>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start gap-3 h-11"
+                        onClick={handleShareViaLinkedIn}
+                      >
+                        <div className="p-1.5 rounded-md bg-blue-700/10">
+                          <Linkedin className="size-4 text-blue-700" />
+                        </div>
+                        <div className="flex-1 text-left">
+                          <p className="text-sm font-medium">LinkedIn</p>
+                          <p className="text-xs text-muted-foreground">Share on LinkedIn</p>
+                        </div>
+                      </Button>
+                    </TabsContent>
+                  </Tabs>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
         )}
       </div>
@@ -619,8 +627,9 @@ export const MembersList = () => {
         </CardContent>
       </Card>
 
-      {/* Invite Members Section */}
-      {isCurrentUserAdmin && (
+      {/* Quick Invite Section - PERSONAL workspaces only */}
+      {/* ORG workspaces use admin-controlled assignment via "Add from Org" */}
+      {isCurrentUserAdmin && !workspace?.organizationId && (
         <Card className="border shadow-sm">
           <CardHeader className="pb-3">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

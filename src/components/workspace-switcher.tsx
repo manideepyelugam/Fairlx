@@ -41,11 +41,9 @@ export const WorkspaceSwitcher = () => {
   const { data: workspaces } = useGetWorkspaces();
   const { open } = useCreateWorkspaceModal();
 
-  const { lifecycleState: state } = useAccountLifecycle();
-  const {
-    activeWorkspaceId,
-    user
-  } = state;
+  // Use centralized permission from lifecycle context
+  const { lifecycleState: state, canCreateWorkspace } = useAccountLifecycle();
+  const { activeWorkspaceId } = state;
 
   const urlWorkspaceId = useWorkspaceId();
   // Use URL workspaceId if available, otherwise fallback to global active workspaceId
@@ -53,10 +51,6 @@ export const WorkspaceSwitcher = () => {
 
   const { member } = useCurrentMember({ workspaceId: selectedWorkspaceId });
   const { mutate: deleteMember } = useDeleteMember();
-
-  // PERSONAL accounts can only have one workspace
-  const accountType = user?.prefs?.accountType || "PERSONAL";
-  const canCreateWorkspace = accountType === "ORG" || (workspaces?.documents?.length ?? 0) === 0;
 
   const [ConfirmDialog, confirm] = useConfirm(
     "Leave Workspace",
@@ -125,49 +119,38 @@ export const WorkspaceSwitcher = () => {
 
         <div className="flex items-center justify-between pb-4">
           <p className="text-[13px] tracking-normal font-medium  pl-2 text-primary">Workspaces</p>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-5 p-0 hover:bg-transparent">
-                <RiAddCircleFill className="size-5 text-neutral-500 cursor-pointer hover:opacity-75 transition" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              {/* Create Workspace - disabled for PERSONAL with existing workspace */}
-              {canCreateWorkspace ? (
-                <DropdownMenuItem onClick={handleCreateWorkspace} className="cursor-pointer">
-                  <Plus className="size-4 mr-2" />
-                  Create Workspace
-                </DropdownMenuItem>
-              ) : (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuItem
-                      className="cursor-not-allowed opacity-50"
-                      onSelect={(e) => e.preventDefault()}
-                    >
-                      <Plus className="size-4 mr-2" />
-                      Create Workspace
-                    </DropdownMenuItem>
-                  </TooltipTrigger>
-                  <TooltipContent side="left" className="max-w-[200px]">
-                    Upgrade to Organization to create more workspaces
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              {member && workspaces && workspaces.documents.length > 1 && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={handleLeaveWorkspace}
-                    className="cursor-pointer text-destructive focus:text-destructive"
-                  >
-                    <LogOut className="size-4 mr-2" />
-                    Leave Workspace
+
+          {/* Only show dropdown if user can create workspace OR has options */}
+          {(canCreateWorkspace || (member && workspaces && workspaces.documents.length > 1)) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="size-5 p-0 hover:bg-transparent">
+                  <RiAddCircleFill className="size-5 text-neutral-500 cursor-pointer hover:opacity-75 transition" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                {/* Create Workspace - only for OWNER/ADMIN */}
+                {canCreateWorkspace && (
+                  <DropdownMenuItem onClick={handleCreateWorkspace} className="cursor-pointer">
+                    <Plus className="size-4 mr-2" />
+                    Create Workspace
                   </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                )}
+                {member && workspaces && workspaces.documents.length > 1 && (
+                  <>
+                    {canCreateWorkspace && <DropdownMenuSeparator />}
+                    <DropdownMenuItem
+                      onClick={handleLeaveWorkspace}
+                      className="cursor-pointer text-destructive focus:text-destructive"
+                    >
+                      <LogOut className="size-4 mr-2" />
+                      Leave Workspace
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
         <Select onValueChange={onSelect} value={selectedWorkspaceId}>
