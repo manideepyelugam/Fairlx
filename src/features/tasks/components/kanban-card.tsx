@@ -1,4 +1,4 @@
-import { CalendarIcon, MoreHorizontalIcon, FlagIcon, MessageCircle, GripVertical } from "lucide-react";
+import { CalendarIcon, MoreHorizontalIcon, FlagIcon, MessageCircle } from "lucide-react";
 import { Project } from "@/features/projects/types";
 import { DraggableProvidedDragHandleProps } from "@hello-pangea/dnd";
 
@@ -32,6 +32,8 @@ export const KanbanCard = ({
 }: KanbanCardProps) => {
     const { open: openPreview } = useTaskPreviewModal();
 
+
+
     const assignees = task.assignees?.length
         ? task.assignees
         : task.assignee
@@ -50,7 +52,8 @@ export const KanbanCard = ({
     return (
         <div
             onClick={handleCardClick}
-            className={`bg-white mb-2.5 rounded-xl border shadow-sm group hover:shadow-md transition-shadow relative ${isSelected ? 'ring-2 ring-blue-500' : ''
+            {...dragHandleProps}
+            className={`bg-white mb-2.5 rounded-xl border shadow-sm group hover:shadow-md transition-shadow relative cursor-grab active:cursor-grabbing ${isSelected ? 'ring-2 ring-blue-500' : ''
                 } ${showSelection ? 'hover:bg-gray-50' : ''}`}
         >
             <div className="flex p-4 flex-col items-start justify-between gap-x-2">
@@ -58,26 +61,17 @@ export const KanbanCard = ({
                 <div className="flex-1 flex w-full justify-between items-start">
 
                     <div className="flex gap-2 items-center">
-                        {/* Drag Handle - Only visible on hover or when dragging, but taking up space layout-wise if needed, or absolute */}
-                        {dragHandleProps && (
-                            <div
-                                {...dragHandleProps}
-                                className="mr-1 cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <GripVertical className="size-4" />
-                            </div>
-                        )}
 
                         {task.priority && (
                             <PriorityBadge
+                            className="px-1"
                                 priority={task.priority}
                                 color={customPriority?.color}
                             />
                         )}
 
                         {task.labels && task.labels.length > 0 && (
-                            <div className="flex flex-wrap gap-1 ">
+                            <div className="flex  gap-1 ">
                                 {task.labels.slice(0, 2).map((label, index) => {
                                     const customLabel = customLabels.find(l => l.name === label);
                                     return (
@@ -116,7 +110,7 @@ export const KanbanCard = ({
                     {task.flagged && (
                         <FlagIcon className="size-4 fill-red-500 text-red-500 shrink-0 mt-0.5" />
                     )}
-                    <h1 className="text-sm line-clamp-2 font-semibold flex-1">{task.name}</h1>
+                    <h1 className="text-sm line-clamp-2 font-semibold flex-1 mb-1">{task.name}</h1>
                 </div>
                 <p className="text-xs text-gray-600 mt-1 line-clamp-3">
                     {(() => {
@@ -152,12 +146,14 @@ export const KanbanCard = ({
                                 .replace(/ /g, "-")
                             : "No Date"}
                     </p>
+
                     {(task.commentCount ?? 0) > 0 && (
                         <p className="text-xs flex gap-0.5 items-center text-muted-foreground">
                             <MessageCircle className="size-[14px] text-gray-500" />
                             {task.commentCount}
                         </p>
                     )}
+
                 </div>
 
                 <div className="flex items-center gap-x-2">
