@@ -12,7 +12,7 @@ import { Tools } from "./tools";
 import { useAccountLifecycle } from "@/components/account-lifecycle-provider";
 
 export const Sidebar = () => {
-  const { lifecycleState: state } = useAccountLifecycle();
+  const { lifecycleState: state, isRestrictedOrgMember } = useAccountLifecycle();
   const {
     hasWorkspace,
     hasOrg,
@@ -22,6 +22,34 @@ export const Sidebar = () => {
 
   // Only show workspace content if we have a workspace ID (URL or global)
   const showWorkspaceContent = !!(urlWorkspaceId || activeWorkspaceId);
+
+  // ============================================================
+  // RESTRICTED ORG MEMBER: Hide ALL workspace UI
+  // ============================================================
+  if (isRestrictedOrgMember) {
+    return (
+      <aside className="h-full bg-neutral-50 w-full overflow-hidden border-r-[1.5px] border-neutral-200 flex flex-col">
+        <div className="flex items-center w-full py-5 px-4 border-b-[1.5px] border-neutral-200 flex-shrink-0">
+          <Link href="/welcome">
+            <Image src="/Logo.png" className="object-contain" alt="logo" width={80} height={90} />
+          </Link>
+        </div>
+
+        <div className="flex flex-col flex-1 overflow-hidden p-4">
+          <div className="text-center text-sm text-muted-foreground space-y-4">
+            <p className="font-medium">Waiting for Access</p>
+            <p>An admin will assign you to a workspace soon.</p>
+            <Link
+              href="/profile"
+              className="inline-block mt-4 text-primary hover:underline"
+            >
+              Complete your profile →
+            </Link>
+          </div>
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside className="h-full bg-neutral-50 w-full overflow-hidden border-r-[1.5px] border-neutral-200 flex flex-col">
@@ -54,7 +82,7 @@ export const Sidebar = () => {
           </div>
         )}
 
-        {/* ORG accounts with no workspaces - show guidance */}
+        {/* ORG OWNER/ADMIN with no workspaces - show guidance */}
         {!hasWorkspace && hasOrg && (
           <div className="p-4 text-center text-sm text-muted-foreground">
             <p className="mb-2">Ready to start</p>
@@ -69,4 +97,5 @@ export const Sidebar = () => {
     </aside>
   );
 };
+
 
