@@ -15,26 +15,28 @@ import { client } from "@/lib/rpc";
  * - Google OAuth
  * - GitHub OAuth
  * - Email verification
+ * - Magic link first login
  * 
- * ROUTING LOGIC:
- * | PersonalAccount | Org Memberships | Route                    |
- * |-----------------|-----------------|--------------------------|
- * | None            | None            | /onboarding              |
- * | Exists          | None            | /app (or /workspaces/id) |
- * | None            | Has orgs        | /org/select              |
- * | Exists          | Has orgs        | /context-switcher        |
+ * ROLE-AWARE ROUTING LOGIC:
  * 
- * WHY this pattern:
- * - OAuth provider type does NOT affect routing
- * - Same email always resolves to same user
- * - Account type selection happens POST-AUTH in onboarding
+ * | Account Type | Org Role | Has Workspace | Route                    |
+ * |--------------|----------|---------------|--------------------------|
+ * | None         | -        | -             | /onboarding              |
+ * | PERSONAL     | -        | No            | /onboarding/workspace    |
+ * | PERSONAL     | -        | Yes           | /workspaces/:id          |
+ * | ORG          | OWNER    | No            | /onboarding/organization |
+ * | ORG          | OWNER    | Yes           | /workspaces/:id          |
+ * | ORG          | !OWNER   | No            | /welcome (RESTRICTED)    |
+ * | ORG          | !OWNER   | Yes           | /workspaces/:id          |
+ * 
+ * CRITICAL: Non-OWNER org members NEVER see onboarding.
  */
 
 interface UserState {
-    hasPersonalAccount: boolean;
-    hasOrganizations: boolean;
+    accountType: "PERSONAL" | "ORG" | null;
+    orgRole: "OWNER" | "ADMIN" | "MODERATOR" | "MEMBER" | null;
     defaultWorkspaceId: string | null;
-    primaryOrganizationId: string | null;
+    orgSetupComplete: boolean;
     needsOnboarding: boolean;
     emailVerified: boolean;
 }
@@ -52,43 +54,48 @@ async function fetchUserState(): Promise<UserState | null> {
         }
 
         const prefs = user.prefs || {};
-
-        // ENTERPRISE: Check email verification status
         const emailVerified = user.emailVerification === true;
+        const accountType = prefs.accountType as "PERSONAL" | "ORG" | null ?? null;
+        const orgSetupComplete = prefs.orgSetupComplete === true;
 
-        // Check if user needs onboarding (new user without account type set)
-        const needsOnboarding = prefs.needsOnboarding === true ||
-            (!prefs.accountType && !prefs.signupCompletedAt);
+        // Check if user needs onboarding (new user without account type)
+        const needsOnboarding = !accountType && !prefs.signupCompletedAt;
 
-        // For users with completed onboarding, check their accounts
-        const hasPersonalAccount = prefs.accountType === "PERSONAL" &&
-            prefs.signupCompletedAt !== null;
+        // For ORG accounts, fetch org membership to get role
+        let orgRole: "OWNER" | "ADMIN" | "MODERATOR" | "MEMBER" | null = null;
 
-        const hasOrganizations = !!prefs.primaryOrganizationId;
-        const primaryOrganizationId = prefs.primaryOrganizationId as string | null || null;
+        if (accountType === "ORG") {
+            try {
+                const lifecycleResponse = await client.api.auth.lifecycle.$get();
+                if (lifecycleResponse.ok) {
+                    const { data: lifecycle } = await lifecycleResponse.json();
+                    orgRole = lifecycle?.orgRole as typeof orgRole ?? null;
+                }
+            } catch {
+                // Lifecycle fetch failed, treat as unknown role
+            }
+        }
 
         // Try to get default workspace
         let defaultWorkspaceId: string | null = null;
 
-        if (!needsOnboarding) {
-            try {
-                const workspacesResponse = await client.api.workspaces.$get();
-                if (workspacesResponse.ok) {
-                    const { data: workspaces } = await workspacesResponse.json();
-                    if (workspaces && workspaces.documents && workspaces.documents.length > 0) {
-                        defaultWorkspaceId = workspaces.documents[0].$id;
-                    }
+        try {
+            const workspacesResponse = await client.api.workspaces.$get();
+            if (workspacesResponse.ok) {
+                const { data: workspaces } = await workspacesResponse.json();
+                if (workspaces?.documents?.length > 0) {
+                    defaultWorkspaceId = workspaces.documents[0].$id;
                 }
-            } catch {
-                // Workspaces fetch failed, but that's okay for routing
             }
+        } catch {
+            // Workspaces fetch failed
         }
 
         return {
-            hasPersonalAccount,
-            hasOrganizations,
+            accountType,
+            orgRole,
             defaultWorkspaceId,
-            primaryOrganizationId,
+            orgSetupComplete,
             needsOnboarding,
             emailVerified,
         };
@@ -120,15 +127,18 @@ export default function AuthCallbackPage() {
                     return;
                 }
 
-                // ROUTING DECISION TREE
+                // ============================================================
+                // ROUTING DECISION TREE (Role-Aware)
+                // ============================================================
+
+                // 1. No account type → onboarding (new user)
                 if (state.needsOnboarding) {
-                    // New user needs to complete onboarding
                     router.replace("/onboarding");
                     return;
                 }
 
-                if (state.hasPersonalAccount && !state.hasOrganizations) {
-                    // Personal account only - go to workspace or app
+                // 2. PERSONAL account
+                if (state.accountType === "PERSONAL") {
                     if (state.defaultWorkspaceId) {
                         router.replace(`/workspaces/${state.defaultWorkspaceId}`);
                     } else {
@@ -137,27 +147,31 @@ export default function AuthCallbackPage() {
                     return;
                 }
 
-                if (!state.hasPersonalAccount && state.hasOrganizations) {
-                    // Org only - go to org selector
+                // 3. ORG account - role-aware routing
+                if (state.accountType === "ORG") {
+                    // 3a. Has workspace → go to it
                     if (state.defaultWorkspaceId) {
                         router.replace(`/workspaces/${state.defaultWorkspaceId}`);
+                        return;
+                    }
+
+                    // 3b. No workspace - check role
+                    if (state.orgRole === "OWNER") {
+                        // OWNER without workspace → onboarding
+                        if (!state.orgSetupComplete) {
+                            router.replace("/onboarding/organization");
+                        } else {
+                            router.replace("/onboarding/workspace");
+                        }
                     } else {
-                        router.replace("/onboarding/workspace");
+                        // NON-OWNER without workspace → /welcome (RESTRICTED MODE)
+                        // They will see the restricted welcome page
+                        router.replace("/welcome");
                     }
                     return;
                 }
 
-                if (state.hasPersonalAccount && state.hasOrganizations) {
-                    // Both - go to context switcher (or default workspace)
-                    if (state.defaultWorkspaceId) {
-                        router.replace(`/workspaces/${state.defaultWorkspaceId}`);
-                    } else {
-                        router.replace("/");
-                    }
-                    return;
-                }
-
-                // Fallback: No accounts at all, go to onboarding
+                // Fallback: Unknown state → onboarding
                 router.replace("/onboarding");
             } catch (err) {
                 console.error("Auth callback error:", err);
@@ -189,3 +203,4 @@ export default function AuthCallbackPage() {
         </div>
     );
 }
+
