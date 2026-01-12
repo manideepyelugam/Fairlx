@@ -11,7 +11,8 @@ import {
   resendVerificationSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
-  changePasswordSchema
+  changePasswordSchema,
+  firstLoginSchema
 } from "../schemas";
 import { createAdminClient } from "@/lib/appwrite";
 import { ID, ImageFormat, Client, Account } from "node-appwrite";
@@ -971,6 +972,186 @@ const app = new Hono()
     } catch (error) {
       console.error("[Auth] Delete identity error:", error);
       return c.json({ error: "Failed to unlink provider" }, 500);
+    }
+  })
+  /**
+   * POST /auth/first-login
+   * RPC version of first-login for frontend page
+   */
+  .post("/first-login", zValidator("json", firstLoginSchema), async (c) => {
+    const { token } = c.req.valid("json");
+
+    try {
+      const crypto = await import("crypto");
+      const { Query } = await import("node-appwrite");
+      const { DATABASE_ID, LOGIN_TOKENS_ID } = await import("@/config");
+      const { createAdminClient } = await import("@/lib/appwrite");
+      const { databases, users } = await createAdminClient();
+
+      if (!LOGIN_TOKENS_ID) {
+        return c.json({ error: "Service unavailable (LOGIN_TOKENS_ID missing)" }, 500);
+      }
+
+      const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+      const tokens = await databases.listDocuments(DATABASE_ID, LOGIN_TOKENS_ID, [
+        Query.equal("tokenHash", tokenHash),
+        Query.equal("purpose", "FIRST_LOGIN"),
+      ]);
+
+      if (tokens.total === 0) {
+        return c.json({ error: "Invalid or expired token" }, 401);
+      }
+
+      const loginToken = tokens.documents[0];
+
+      if (new Date(loginToken.expiresAt) < new Date()) {
+        return c.json({ error: "Token has expired" }, 401);
+      }
+
+      if (loginToken.usedAt) {
+        return c.json({ error: "Token has already been used" }, 401);
+      }
+
+      // Mark used
+      await databases.updateDocument(DATABASE_ID, LOGIN_TOKENS_ID, loginToken.$id, {
+        usedAt: new Date().toISOString(),
+      });
+
+      // Create session
+      const session = await users.createSession(loginToken.userId);
+
+      setCookie(c, AUTH_COOKIE, session.secret, {
+        path: "/",
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 30,
+      });
+
+      // Audit (non-blocking)
+      try {
+        const { logOrgAudit, OrgAuditAction } = await import("@/features/organizations/audit");
+        await logOrgAudit({
+          databases,
+          organizationId: loginToken.orgId,
+          actorUserId: loginToken.userId,
+          actionType: OrgAuditAction.FIRST_LOGIN_TOKEN_USED,
+          metadata: { tokenId: loginToken.$id, method: "rpc" },
+        });
+      } catch (e) {
+        console.error("Audit error:", e);
+      }
+
+      return c.json({ success: true, message: "Login successful" });
+
+    } catch (error) {
+      console.error("First-login POST error:", error);
+      return c.json({ error: "Authentication failed" }, 500);
+    }
+  })
+  /**
+   * GET /auth/first-login
+   * Handle first-login magic link for ORG members (direct link from email)
+   */
+  .get("/first-login", async (c) => {
+    const token = c.req.query("token");
+
+    if (!token) {
+      return c.redirect("/sign-in?error=missing_token");
+    }
+
+    try {
+      const crypto = await import("crypto");
+      const { Query } = await import("node-appwrite");
+      const { DATABASE_ID, LOGIN_TOKENS_ID } = await import("@/config");
+      const { createAdminClient } = await import("@/lib/appwrite");
+      const { databases, users } = await createAdminClient();
+
+      // Collection may not exist yet
+      if (!LOGIN_TOKENS_ID) {
+        console.warn("[Auth] LOGIN_TOKENS_ID not configured");
+        return c.redirect("/sign-in?error=service_unavailable");
+      }
+
+      // Hash the incoming token
+      const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+      // Find matching token
+      const tokens = await databases.listDocuments(
+        DATABASE_ID,
+        LOGIN_TOKENS_ID,
+        [
+          Query.equal("tokenHash", tokenHash),
+          Query.equal("purpose", "FIRST_LOGIN"),
+        ]
+      );
+
+      if (tokens.total === 0) {
+        console.warn("[Auth] First-login token not found");
+        return c.redirect("/sign-in?error=invalid_token");
+      }
+
+      const loginToken = tokens.documents[0];
+
+      // Validate not expired
+      if (new Date(loginToken.expiresAt) < new Date()) {
+        console.warn("[Auth] First-login token expired");
+        return c.redirect("/sign-in?error=token_expired");
+      }
+
+      // Validate not already used (single-use)
+      if (loginToken.usedAt) {
+        console.warn("[Auth] First-login token already used");
+        return c.redirect("/sign-in?error=token_used");
+      }
+
+      // Mark token as used BEFORE creating session (atomic safety)
+      await databases.updateDocument(
+        DATABASE_ID,
+        LOGIN_TOKENS_ID,
+        loginToken.$id,
+        { usedAt: new Date().toISOString() }
+      );
+
+      // Create authenticated session for the user
+      const session = await users.createSession(loginToken.userId);
+
+      // Set auth cookie
+      setCookie(c, AUTH_COOKIE, session.secret, {
+        path: "/",
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+      });
+
+      // Log audit event (non-blocking)
+      try {
+        const { logOrgAudit, OrgAuditAction } = await import("@/features/organizations/audit");
+        await logOrgAudit({
+          databases,
+          organizationId: loginToken.orgId,
+          actorUserId: loginToken.userId,
+          actionType: OrgAuditAction.FIRST_LOGIN_TOKEN_USED,
+          metadata: {
+            tokenId: loginToken.$id,
+            usedAt: new Date().toISOString(),
+          },
+        });
+      } catch (auditError) {
+        console.error("[Auth] Failed to log first-login audit:", auditError);
+      }
+
+      console.log(`[Auth] First-login token used for user ${loginToken.userId}`);
+
+      // Redirect to app - lifecycle-guard will show ForcePasswordReset
+      // because mustResetPassword is still true
+      return c.redirect("/");
+
+    } catch (error) {
+      console.error("[Auth] First-login error:", error);
+      return c.redirect("/sign-in?error=login_failed");
     }
   });
 

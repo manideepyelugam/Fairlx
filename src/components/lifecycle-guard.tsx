@@ -46,7 +46,7 @@ export function LifecycleGuard({ children }: LifecycleGuardProps) {
         // Skip if mustResetPassword - we'll show the reset screen instead
         if (lifecycleState.mustResetPassword) return;
 
-        const { isAuthenticated, accountType, hasOrg, hasWorkspace, activeWorkspaceId } = lifecycleState;
+        const { isAuthenticated, accountType, hasOrg, hasWorkspace, activeWorkspaceId, orgRole } = lifecycleState;
 
         // Rule 1: Unauthenticated on protected route
         if (!isAuthenticated) {
@@ -69,7 +69,26 @@ export function LifecycleGuard({ children }: LifecycleGuardProps) {
             return;
         }
 
-        // Rule 5: ORG account without org
+        // ============================================================
+        // CRITICAL ROLE-BASED RULE: Non-OWNER ORG members
+        // ============================================================
+        // ADMIN, MODERATOR, MEMBER must NEVER see org onboarding.
+        // They are added by an OWNER, not responsible for setup.
+        if (accountType === "ORG" && orgRole && orgRole !== "OWNER") {
+            // HARD BLOCK onboarding routes for non-owners
+            if (pathname.startsWith("/onboarding")) {
+                redirectingRef.current = true;
+                // Send to workspace if assigned, else welcome
+                if (hasWorkspace && activeWorkspaceId) {
+                    router.push(`/workspaces/${activeWorkspaceId}`);
+                } else {
+                    router.push("/welcome");
+                }
+                return;
+            }
+        }
+
+        // Rule 5: ORG OWNER without org → onboarding
         if (accountType === "ORG" && !hasOrg && !isOnboardingRoute) {
             redirectingRef.current = true;
             router.push("/onboarding");
@@ -78,7 +97,7 @@ export function LifecycleGuard({ children }: LifecycleGuardProps) {
 
         // Rule 6: ORG account with org but no workspace
         if (accountType === "ORG" && hasOrg && !hasWorkspace) {
-            // Allow /welcome, /organization, onboarding routes
+            // Allow /welcome, /organization, onboarding routes (for OWNER only)
             const allowedPaths = ["/welcome", "/organization", ...ONBOARDING_ROUTES];
             const isAllowed = allowedPaths.some(p => pathname.startsWith(p));
 

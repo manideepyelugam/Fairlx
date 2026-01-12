@@ -14,6 +14,10 @@ interface WelcomeEmailParams {
     organizationName: string;
     tempPassword: string;
     loginUrl: string;
+    /** Optional first-login magic link token (raw, not hashed) */
+    firstLoginToken?: string;
+    /** App base URL for constructing magic link */
+    appUrl?: string;
 }
 
 /**
@@ -21,6 +25,7 @@ interface WelcomeEmailParams {
  * 
  * SECURITY: This uses Appwrite's messaging system.
  * The temp password is included in the email body.
+ * If firstLoginToken is provided, includes a magic link option.
  */
 export async function sendWelcomeEmail({
     recipientEmail,
@@ -29,25 +34,45 @@ export async function sendWelcomeEmail({
     organizationName,
     tempPassword,
     loginUrl,
+    firstLoginToken,
+    appUrl,
 }: WelcomeEmailParams): Promise<{ success: boolean; error?: string }> {
     try {
         const { messaging } = await createAdminClient();
         const { ID } = await import("node-appwrite");
 
         const subject = `Welcome to ${organizationName}!`;
+
+        // Build magic link section if token provided
+        const magicLinkSection = firstLoginToken && appUrl ? `
+    <div style="background-color: #e8f4fd; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #0070f3;">
+        <p style="margin: 0 0 10px 0; font-weight: bold; color: #0070f3;">🚀 Quick Login (Recommended)</p>
+        <p style="margin: 0 0 15px 0; font-size: 14px; color: #333;">Click below to log in instantly — no password needed:</p>
+        <a href="${appUrl}/auth/first-login?token=${firstLoginToken}" 
+           style="background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+            Login Directly
+        </a>
+        <p style="margin: 15px 0 0 0; font-size: 12px; color: #666;">
+            ⚠️ This link expires in <strong>24 hours</strong> and can only be used <strong>once</strong>.
+        </p>
+    </div>
+        ` : "";
+
         const body = `
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
     <h2>Welcome to ${organizationName}!</h2>
     <p>Hello ${recipientName},</p>
     <p>You've been added to <strong>${organizationName}</strong> as an organization member.</p>
     
+    ${magicLinkSection}
+
     <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
-        <p style="margin: 0; font-weight: bold;">Your temporary login credentials:</p>
+        <p style="margin: 0; font-weight: bold;">${firstLoginToken ? "📧 Alternative: Manual Login" : "Your temporary login credentials:"}</p>
         <p style="margin: 5px 0;">Email: ${recipientEmail}</p>
-        <p style="margin: 5px 0;">Temporary Password: <code>${tempPassword}</code></p>
+        <p style="margin: 5px 0;">Temporary Password: <code style="background: #e0e0e0; padding: 2px 6px; border-radius: 3px;">${tempPassword}</code></p>
     </div>
 
-    <p><a href="${loginUrl}" style="background-color: #0070f3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Log In & Reset Password</a></p>
+    <p><a href="${loginUrl}" style="background-color: ${firstLoginToken ? "#6c757d" : "#0070f3"}; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Log In Manually</a></p>
     
     <p style="font-size: 14px; color: #666; margin-top: 20px;">
         For security, you will be required to change your password immediately upon your first login.
@@ -87,6 +112,7 @@ export async function sendWelcomeEmail({
         console.log("[Email Service] FALLBACK - Welcome email content:", {
             to: recipientEmail,
             passwordIncluded: !!tempPassword,
+            hasMagicLink: !!firstLoginToken,
         });
 
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
