@@ -242,14 +242,24 @@ const app = new Hono()
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      // Check if user is already a member
-      const existingMember = await getMember({
-        databases,
-        workspaceId,
-        userId,
-      });
+      // ============================================================
+      // CHECK FOR DIRECT WORKSPACE MEMBERSHIP ONLY
+      // ============================================================
+      // CRITICAL: We must NOT use getMember() here because it has an
+      // organization fallback. A user being an org member does NOT mean
+      // they are already a workspace member.
+      // 
+      // Workspace membership uniqueness is: (userId + workspaceId)
+      const existingMembers = await databases.listDocuments(
+        DATABASE_ID,
+        MEMBERS_ID,
+        [
+          Query.equal("workspaceId", workspaceId),
+          Query.equal("userId", userId),
+        ]
+      );
 
-      if (existingMember) {
+      if (existingMembers.total > 0) {
         return c.json({ error: "User is already a workspace member" }, 400);
       }
 

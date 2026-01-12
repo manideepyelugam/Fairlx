@@ -269,11 +269,36 @@ const app = new Hono()
     zValidator("json", updateProfileSchema),
     async (c) => {
       const account = c.get("account");
-      const { name } = c.req.valid("json");
+      const user = c.get("user");
+      const {
+        name,
+        phoneNumber,
+        linkedinUrl,
+        portfolioUrl,
+        workingDomain,
+        role,
+        designation,
+        toolsAndTechnologies
+      } = c.req.valid("json");
 
-      const user = await account.updateName(name);
+      // Update user name
+      const updatedUser = await account.updateName(name);
 
-      return c.json({ data: user });
+      // Update prefs with professional profile fields
+      const currentPrefs = user.prefs || {};
+      await account.updatePrefs({
+        ...currentPrefs,
+        // Professional profile fields (stored in prefs)
+        phoneNumber: phoneNumber ?? currentPrefs.phoneNumber ?? null,
+        linkedinUrl: linkedinUrl ?? currentPrefs.linkedinUrl ?? null,
+        portfolioUrl: portfolioUrl ?? currentPrefs.portfolioUrl ?? null,
+        workingDomain: workingDomain ?? currentPrefs.workingDomain ?? null,
+        role: role ?? currentPrefs.role ?? null,
+        designation: designation ?? currentPrefs.designation ?? null,
+        toolsAndTechnologies: toolsAndTechnologies ?? currentPrefs.toolsAndTechnologies ?? null,
+      });
+
+      return c.json({ data: updatedUser });
     }
   )
   .post("/profile-image", sessionMiddleware, zValidator("form", z.object({ file: z.instanceof(File) })), async (c) => {
