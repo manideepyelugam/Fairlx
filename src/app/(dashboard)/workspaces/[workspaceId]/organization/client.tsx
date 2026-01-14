@@ -57,6 +57,10 @@ import { OrganizationAuditLogs } from "@/features/organizations/components/organ
 import { useCreateOrgMember } from "@/features/organizations/api/use-create-org-member";
 import { useResendWelcomeEmail } from "@/features/organizations/api/use-resend-welcome-email";
 import { BulkMemberUpload } from "@/features/organizations/components/bulk-member-upload";
+import { DepartmentsList } from "@/features/departments/components/departments-list";
+import { PermissionsManager } from "@/features/org-permissions/components/permissions-manager";
+import { useCurrentUserOrgPermissions } from "@/features/org-permissions/api/use-current-user-permissions";
+import { OrgPermissionKey } from "@/features/org-permissions/types";
 
 export const OrganizationSettingsClient = () => {
     const { isOrg, primaryOrganizationId } = useAccountType();
@@ -77,6 +81,11 @@ export const OrganizationSettingsClient = () => {
     // Current user's role
     const { canEdit, isOwner, isLoading: isLoadingRole } = useCurrentOrgMember({
         organizationId: primaryOrganizationId || ""
+    });
+
+    // Current user's org permissions
+    const { hasPermission } = useCurrentUserOrgPermissions({
+        orgId: primaryOrganizationId || ""
     });
 
     // General settings form state
@@ -252,19 +261,39 @@ export const OrganizationSettingsClient = () => {
                         Security
                     </TabsTrigger>
                     <TabsTrigger
-                        value="billing"
+                        value="departments"
                         className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
                     >
-                        <CreditCard className="size-4 mr-2" />
-                        Billing
+                        <Building2 className="size-4 mr-2" />
+                        Departments
                     </TabsTrigger>
-                    <TabsTrigger
-                        value="audit"
-                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
-                    >
-                        <FileText className="size-4 mr-2" />
-                        Audit
-                    </TabsTrigger>
+                    {hasPermission(OrgPermissionKey.BILLING_VIEW) && (
+                        <TabsTrigger
+                            value="billing"
+                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
+                        >
+                            <CreditCard className="size-4 mr-2" />
+                            Billing
+                        </TabsTrigger>
+                    )}
+                    {hasPermission(OrgPermissionKey.AUDIT_VIEW) && (
+                        <TabsTrigger
+                            value="audit"
+                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
+                        >
+                            <FileText className="size-4 mr-2" />
+                            Audit
+                        </TabsTrigger>
+                    )}
+                    {isOwner && (
+                        <TabsTrigger
+                            value="permissions"
+                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
+                        >
+                            <Shield className="size-4 mr-2" />
+                            Permissions
+                        </TabsTrigger>
+                    )}
                 </TabsList>
 
                 {/* ==================== GENERAL TAB ==================== */}
@@ -737,6 +766,28 @@ export const OrganizationSettingsClient = () => {
                         <OrganizationAuditLogs organizationId={primaryOrganizationId} />
                     )}
                 </TabsContent>
+
+                {/* ==================== DEPARTMENTS TAB ==================== */}
+                <TabsContent value="departments" className="space-y-4 mt-6">
+                    {primaryOrganizationId && (
+                        <DepartmentsList
+                            orgId={primaryOrganizationId}
+                            canManage={canEdit}
+                        />
+                    )}
+                </TabsContent>
+
+                {/* ==================== PERMISSIONS TAB (OWNER ONLY) ==================== */}
+                {isOwner && (
+                    <TabsContent value="permissions" className="space-y-4 mt-6">
+                        {primaryOrganizationId && (
+                            <PermissionsManager
+                                orgId={primaryOrganizationId}
+                                isOwner={isOwner}
+                            />
+                        )}
+                    </TabsContent>
+                )}
             </Tabs>
         </div>
     );

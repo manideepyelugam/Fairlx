@@ -89,8 +89,8 @@ export function UsageDashboardClient() {
     // State for filters
     const [page, setPage] = useState(0);
     const pageSize = 10;
-    const [resourceTypeFilter, setResourceTypeFilter] = useState<ResourceType | undefined>();
-    const [sourceFilter, setSourceFilter] = useState<UsageSource | undefined>();
+    const [resourceTypeFilters, setResourceTypeFilters] = useState<ResourceType[]>([]);
+    const [sourceFilters, setSourceFilters] = useState<UsageSource[]>([]);
     const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({
         from: startOfMonth(new Date()),
         to: endOfMonth(new Date()),
@@ -106,6 +106,12 @@ export function UsageDashboardClient() {
         ? { organizationId: primaryOrganizationId }
         : { workspaceId };
 
+    // When filters are active, fetch more events for proper client-side filtering
+    // Otherwise use standard pagination
+    const hasActiveFilters = resourceTypeFilters.length > 0 || sourceFilters.length > 0;
+    const fetchLimit = hasActiveFilters ? 500 : pageSize; // Fetch more when filtering
+    const fetchOffset = hasActiveFilters ? 0 : page * pageSize; // Start from 0 when filtering
+
     // Queries - now using correct context for org vs personal
     const {
         data: eventsData,
@@ -113,12 +119,12 @@ export function UsageDashboardClient() {
         refetch: refetchEvents,
     } = useGetUsageEvents({
         ...usageQueryParams,
-        resourceType: resourceTypeFilter,
-        source: sourceFilter,
+        // Note: We don't pass resourceType/source to API - all filtering is done client-side
+        // This enables true multi-select filtering without pagination issues
         startDate: dateRange.from?.toISOString(),
         endDate: dateRange.to?.toISOString(),
-        limit: pageSize,
-        offset: page * pageSize,
+        limit: fetchLimit,
+        offset: fetchOffset,
     });
 
     const { data: summaryData, isLoading: isSummaryLoading } = useGetUsageSummary({
@@ -140,7 +146,7 @@ export function UsageDashboardClient() {
                 format,
                 startDate: dateRange.from?.toISOString(),
                 endDate: dateRange.to?.toISOString(),
-                resourceType: resourceTypeFilter,
+                resourceType: resourceTypeFilters.length === 1 ? resourceTypeFilters[0] : undefined,
             });
 
             if (format === "csv" && result instanceof Blob) {
@@ -329,10 +335,10 @@ export function UsageDashboardClient() {
                             pageSize={pageSize}
                             onPageChange={setPage}
                             onExport={handleExport}
-                            resourceTypeFilter={resourceTypeFilter}
-                            sourceFilter={sourceFilter}
-                            onResourceTypeFilterChange={setResourceTypeFilter}
-                            onSourceFilterChange={setSourceFilter}
+                            resourceTypeFilters={resourceTypeFilters}
+                            sourceFilters={sourceFilters}
+                            onResourceTypeFilterChange={setResourceTypeFilters}
+                            onSourceFilterChange={setSourceFilters}
                             workspaceNames={workspaceNames}
                             projectNames={projectNames}
                             dateRange={dateRange}

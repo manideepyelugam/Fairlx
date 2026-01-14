@@ -112,6 +112,17 @@ export function OrganizationAuditLogs({ organizationId }: OrganizationAuditLogsP
         }
     };
 
+    const safeFormatDate = (timestamp: string | undefined | null, formatStr: string) => {
+        try {
+            if (!timestamp) return "-";
+            const date = new Date(timestamp);
+            if (isNaN(date.getTime())) return "-";
+            return format(date, formatStr);
+        } catch {
+            return "-";
+        }
+    };
+
     if (isError) {
         return (
             <Card>
@@ -209,10 +220,10 @@ export function OrganizationAuditLogs({ organizationId }: OrganizationAuditLogsP
                                     </div>
                                     <div className="text-right">
                                         <p className="text-xs text-muted-foreground">
-                                            {format(new Date(log.timestamp), "MMM d, yyyy")}
+                                            {safeFormatDate(log.timestamp, "MMM d, yyyy")}
                                         </p>
                                         <p className="text-xs text-muted-foreground">
-                                            {format(new Date(log.timestamp), "h:mm a")}
+                                            {safeFormatDate(log.timestamp, "h:mm a")}
                                         </p>
                                     </div>
                                 </div>
