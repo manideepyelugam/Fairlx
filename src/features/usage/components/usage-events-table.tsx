@@ -50,10 +50,12 @@ interface UsageEventsTableProps {
     pageSize: number;
     onPageChange: (page: number) => void;
     onExport: (format: "csv" | "json") => void;
-    resourceTypeFilter?: ResourceType;
-    sourceFilter?: UsageSource;
-    onResourceTypeFilterChange: (type: ResourceType | undefined) => void;
-    onSourceFilterChange: (source: UsageSource | undefined) => void;
+    /** Multiple resource types can be selected */
+    resourceTypeFilters?: ResourceType[];
+    /** Multiple sources can be selected */
+    sourceFilters?: UsageSource[];
+    onResourceTypeFilterChange: (types: ResourceType[]) => void;
+    onSourceFilterChange: (sources: UsageSource[]) => void;
     /** Lookup map: workspaceId -> workspaceName */
     workspaceNames?: Map<string, string>;
     /** Lookup map: projectId -> projectName */
@@ -113,8 +115,8 @@ export function UsageEventsTable({
     pageSize,
     onPageChange,
     onExport,
-    resourceTypeFilter,
-    sourceFilter,
+    resourceTypeFilters = [],
+    sourceFilters = [],
     onResourceTypeFilterChange,
     onSourceFilterChange,
     workspaceNames = new Map(),
@@ -122,8 +124,42 @@ export function UsageEventsTable({
     dateRange,
     onDateRangeChange,
 }: UsageEventsTableProps) {
+    // Helper to toggle a filter value in an array
+    const toggleResourceType = (type: ResourceType) => {
+        if (resourceTypeFilters.includes(type)) {
+            onResourceTypeFilterChange(resourceTypeFilters.filter(t => t !== type));
+        } else {
+            onResourceTypeFilterChange([...resourceTypeFilters, type]);
+        }
+    };
+
+    const toggleSource = (source: UsageSource) => {
+        if (sourceFilters.includes(source)) {
+            onSourceFilterChange(sourceFilters.filter(s => s !== source));
+        } else {
+            onSourceFilterChange([...sourceFilters, source]);
+        }
+    };
+
+    // Client-side filtering for multi-select support
+    // When filters are selected, filter events locally
+    const filteredEvents = events.filter((event) => {
+        // If no resource type filters, include all; otherwise check if event type is in selected filters
+        const matchesResourceType = resourceTypeFilters.length === 0 ||
+            resourceTypeFilters.includes(event.resourceType);
+
+        // If no source filters, include all; otherwise check if event source is in selected filters
+        const matchesSource = sourceFilters.length === 0 ||
+            sourceFilters.includes(event.source);
+
+        return matchesResourceType && matchesSource;
+    });
+
     const [expandedRow, setExpandedRow] = useState<string | null>(null);
-    const totalPages = Math.ceil(total / pageSize);
+    const filteredTotal = resourceTypeFilters.length > 0 || sourceFilters.length > 0
+        ? filteredEvents.length
+        : total;
+    const totalPages = Math.ceil(filteredTotal / pageSize);
 
     if (isLoading) {
         return (
@@ -149,7 +185,7 @@ export function UsageEventsTable({
                     <div>
                         <CardTitle>Usage Events</CardTitle>
                         <CardDescription>
-                            {total.toLocaleString()} total events
+                            {filteredTotal.toLocaleString()} {(resourceTypeFilters.length > 0 || sourceFilters.length > 0) ? 'filtered' : 'total'} events
                         </CardDescription>
                     </div>
                     <div className="flex items-center gap-2">
@@ -159,53 +195,68 @@ export function UsageEventsTable({
                                 <Button variant="outline" size="sm">
                                     <Filter className="h-4 w-4 mr-2" />
                                     Filters
-                                    {(resourceTypeFilter || sourceFilter) && (
+                                    {(resourceTypeFilters.length > 0 || sourceFilters.length > 0) && (
                                         <Badge variant="secondary" className="ml-2">
-                                            {[resourceTypeFilter, sourceFilter].filter(Boolean).length}
+                                            {resourceTypeFilters.length + sourceFilters.length}
                                         </Badge>
                                     )}
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56">
-                                <DropdownMenuLabel>Resource Type</DropdownMenuLabel>
-                                <DropdownMenuCheckboxItem
-                                    checked={!resourceTypeFilter}
-                                    onCheckedChange={() => onResourceTypeFilterChange(undefined)}
-                                >
-                                    All Types
-                                </DropdownMenuCheckboxItem>
+                            <DropdownMenuContent align="end" className="w-64">
+                                <DropdownMenuLabel className="flex items-center justify-between">
+                                    <span>Resource Type</span>
+                                    {resourceTypeFilters.length > 0 && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-5 px-1 text-xs text-muted-foreground hover:text-foreground"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                onResourceTypeFilterChange([]);
+                                            }}
+                                        >
+                                            Clear
+                                        </Button>
+                                    )}
+                                </DropdownMenuLabel>
                                 {Object.values(ResourceType).map((type) => (
                                     <DropdownMenuCheckboxItem
                                         key={type}
-                                        checked={resourceTypeFilter === type}
-                                        onCheckedChange={() =>
-                                            onResourceTypeFilterChange(
-                                                resourceTypeFilter === type ? undefined : type
-                                            )
-                                        }
+                                        checked={resourceTypeFilters.includes(type)}
+                                        onCheckedChange={() => toggleResourceType(type)}
                                     >
-                                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                                        <span className="flex items-center gap-2">
+                                            {getResourceIcon(type)}
+                                            {type.charAt(0).toUpperCase() + type.slice(1)}
+                                        </span>
                                     </DropdownMenuCheckboxItem>
                                 ))}
                                 <DropdownMenuSeparator />
-                                <DropdownMenuLabel>Source</DropdownMenuLabel>
-                                <DropdownMenuCheckboxItem
-                                    checked={!sourceFilter}
-                                    onCheckedChange={() => onSourceFilterChange(undefined)}
-                                >
-                                    All Sources
-                                </DropdownMenuCheckboxItem>
+                                <DropdownMenuLabel className="flex items-center justify-between">
+                                    <span>Source</span>
+                                    {sourceFilters.length > 0 && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-5 px-1 text-xs text-muted-foreground hover:text-foreground"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                onSourceFilterChange([]);
+                                            }}
+                                        >
+                                            Clear
+                                        </Button>
+                                    )}
+                                </DropdownMenuLabel>
                                 {Object.values(UsageSource).map((source) => (
                                     <DropdownMenuCheckboxItem
                                         key={source}
-                                        checked={sourceFilter === source}
-                                        onCheckedChange={() =>
-                                            onSourceFilterChange(
-                                                sourceFilter === source ? undefined : source
-                                            )
-                                        }
+                                        checked={sourceFilters.includes(source)}
+                                        onCheckedChange={() => toggleSource(source)}
                                     >
-                                        {source.toUpperCase()}
+                                        <Badge variant={getSourceBadgeVariant(source)} className="mr-2">
+                                            {source.toUpperCase()}
+                                        </Badge>
                                     </DropdownMenuCheckboxItem>
                                 ))}
                             </DropdownMenuContent>
@@ -277,13 +328,13 @@ export function UsageEventsTable({
                         )}
 
                         {/* Clear Filters */}
-                        {(resourceTypeFilter || sourceFilter || dateRange) && (
+                        {(resourceTypeFilters.length > 0 || sourceFilters.length > 0 || dateRange) && (
                             <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => {
-                                    onResourceTypeFilterChange(undefined);
-                                    onSourceFilterChange(undefined);
+                                    onResourceTypeFilterChange([]);
+                                    onSourceFilterChange([]);
                                     if (onDateRangeChange) onDateRangeChange({});
                                 }}
                                 className="h-8 px-2 lg:px-3"
@@ -326,14 +377,14 @@ export function UsageEventsTable({
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {events.length === 0 ? (
+                            {filteredEvents.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                                         No usage events found
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                events.map((event) => (
+                                filteredEvents.map((event) => (
                                     <TableRow
                                         key={event.$id}
                                         className="cursor-pointer"

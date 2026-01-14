@@ -31,6 +31,8 @@ export type OrgPermission =
     | "REMOVE_MEMBERS"       // Remove org members
     | "CREATE_WORKSPACES"    // Create workspaces in org
     | "ASSIGN_TO_WORKSPACES" // Assign org members to workspaces
+    | "MANAGE_DEPARTMENTS"   // Create, edit, delete departments
+    | "VIEW_AUDIT_LOGS"      // View org audit logs
     | "VIEW_ORG";            // View org details
 
 /**
@@ -44,6 +46,7 @@ export type OrgPermission =
  * ADMIN: Member and workspace management
  * - Invite/remove org members
  * - Create workspaces
+ * - Manage departments
  * 
  * MODERATOR: Workspace assignment only
  * - Assign org members to workspaces
@@ -60,6 +63,8 @@ export const ORG_ROLE_PERMISSIONS: Record<OrganizationRole, readonly OrgPermissi
         "REMOVE_MEMBERS",
         "CREATE_WORKSPACES",
         "ASSIGN_TO_WORKSPACES",
+        "MANAGE_DEPARTMENTS",
+        "VIEW_AUDIT_LOGS",
         "VIEW_ORG",
     ] as const,
     [OrganizationRole.ADMIN]: [
@@ -67,6 +72,8 @@ export const ORG_ROLE_PERMISSIONS: Record<OrganizationRole, readonly OrgPermissi
         "REMOVE_MEMBERS",
         "CREATE_WORKSPACES",
         "ASSIGN_TO_WORKSPACES",
+        "MANAGE_DEPARTMENTS",
+        "VIEW_AUDIT_LOGS",
         "VIEW_ORG",
     ] as const,
     [OrganizationRole.MODERATOR]: [
