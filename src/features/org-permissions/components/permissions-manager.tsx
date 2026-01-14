@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Shield, Loader2, Check, X, ChevronDown, ChevronRight, Users } from "lucide-react";
+import { Shield, Loader2, Check, ChevronDown, ChevronRight, Users } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +24,6 @@ import {
 import { useGetAllOrgPermissions } from "../api/use-get-all-permissions";
 import { useBulkGrantPermissions, useRevokePermission } from "../api/use-manage-permissions";
 import {
-    OrgPermissionKey,
     ORG_PERMISSION_METADATA,
     PERMISSION_CATEGORIES,
 } from "../types";
