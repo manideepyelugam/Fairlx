@@ -20,6 +20,7 @@ import { OrganizationRole } from "@/features/organizations/types";
 /**
  * Validate that a permission key is valid
  */
+
 export function isValidPermissionKey(key: string): key is OrgPermissionKey {
     return Object.values(OrgPermissionKey).includes(key as OrgPermissionKey);
 }
