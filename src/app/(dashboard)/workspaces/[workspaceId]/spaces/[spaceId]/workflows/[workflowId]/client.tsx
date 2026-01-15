@@ -158,6 +158,55 @@ const WorkflowEditor = () => {
   const workflowRef = useRef(workflow);
   workflowRef.current = workflow;
 
+  // ============ DEBOUNCED POSITION UPDATES ============
+  // Batch position updates to prevent API spam when dragging nodes
+  const pendingPositionUpdates = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const positionUpdateTimeout = useRef<NodeJS.Timeout | null>(null);
+  const isSavingPositions = useRef(false);
+
+  // Debounced save function - batches all pending position updates
+  const savePositions = useCallback(async () => {
+    if (isSavingPositions.current) return;
+    
+    const updates = pendingPositionUpdates.current;
+    if (updates.size === 0) return;
+
+    // Copy and clear pending updates
+    const toSave = new Map(updates);
+    pendingPositionUpdates.current.clear();
+    isSavingPositions.current = true;
+
+    try {
+      // Batch save all positions in parallel
+      await Promise.all(
+        Array.from(toSave.entries()).map(([statusId, position]) =>
+          updateStatus({
+            param: { workflowId, statusId },
+            json: {
+              positionX: Math.round(position.x),
+              positionY: Math.round(position.y),
+            },
+          }).catch((error) => {
+            console.error(`Failed to save position for ${statusId}:`, error);
+          })
+        )
+      );
+    } finally {
+      isSavingPositions.current = false;
+    }
+  }, [workflowId, updateStatus]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (positionUpdateTimeout.current) {
+        clearTimeout(positionUpdateTimeout.current);
+        // Save any pending updates before unmount
+        savePositions();
+      }
+    };
+  }, [savePositions]);
+
   const confirmDeleteStatusRef = useRef(confirmDeleteStatus);
   confirmDeleteStatusRef.current = confirmDeleteStatus;
 
@@ -337,22 +386,27 @@ const WorkflowEditor = () => {
     [workflowId, createTransition]
   );
 
-  // Handle node position change (drag)
+  // Handle node position change (drag) - DEBOUNCED to prevent API spam
   const onNodeDragStop = useCallback(
-    async (_event: React.MouseEvent, node: Node<StatusNodeData>) => {
-      try {
-        await updateStatus({
-          param: { workflowId, statusId: node.id },
-          json: {
-            positionX: Math.round(node.position.x),
-            positionY: Math.round(node.position.y),
-          },
-        });
-      } catch (error) {
-        console.error("Failed to save position:", error);
+    (_event: React.MouseEvent, node: Node<StatusNodeData>) => {
+      // Add to pending updates (will batch multiple drags)
+      pendingPositionUpdates.current.set(node.id, {
+        x: node.position.x,
+        y: node.position.y,
+      });
+
+      // Clear existing timeout
+      if (positionUpdateTimeout.current) {
+        clearTimeout(positionUpdateTimeout.current);
       }
+
+      // Set new timeout to batch save (500ms debounce)
+      // This waits until user stops dragging for 500ms before saving
+      positionUpdateTimeout.current = setTimeout(() => {
+        savePositions();
+      }, 500);
     },
-    [workflowId, updateStatus]
+    [savePositions]
   );
 
   // Status handlers
