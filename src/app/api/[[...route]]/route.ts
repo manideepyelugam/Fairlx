@@ -40,6 +40,12 @@ import webhooks from "@/features/billing/server/webhook";
 import cron from "@/features/billing/server/cron";
 // Currency Conversion
 import currency from "@/features/currency/server/route";
+// Departments (org-level grouping)
+import departments from "@/features/departments/server/route";
+// Org Permissions (explicit per-user)
+import orgPermissions from "@/features/org-permissions/server/route";
+// User Access (permission-driven navigation)
+import userAccess from "@/features/user-access/server/route";
 // Global Traffic Metering
 import { trafficMeteringMiddleware } from "@/lib/traffic-metering-middleware";
 
@@ -84,13 +90,19 @@ const routes = app
   .route("/usage", usage)
   // Organizations & Account Management
   .route("/organizations", organizations)
+  // Departments (org-level grouping)
+  .route("/departments", departments)
+  // Org Permissions (explicit per-user)
+  .route("/org-permissions", orgPermissions)
   // Billing & Payment
   .route("/billing", billing)
   .route("/webhooks", webhooks)
   // Currency Conversion (for admin panel)
   .route("/currency", currency)
   // Scheduled Jobs (protected by CRON_SECRET)
-  .route("/cron", cron);
+  .route("/cron", cron)
+  // User Access (permission-driven navigation)
+  .route("/user-access", userAccess);
 
 export const GET = handle(app);
 export const POST = handle(app);

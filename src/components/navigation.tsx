@@ -11,43 +11,59 @@ import {
 } from "react-icons/go";
 
 import { usePathname } from "next/navigation";
-import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
-
-import { useCurrentOrgMember } from "@/features/organizations/api/use-current-org-member";
+import { useAccountLifecycle } from "@/components/account-lifecycle-provider";
+import { AppRouteKey } from "@/lib/permissions/appRouteKeys";
 
 /**
- * Route configuration with scope distinction:
- * - workspaceScoped: true = requires active workspace (hidden when no workspace)
- * - orgRoute: true = uses dashboard-level route (not workspace-prefixed)
+ * Navigation Component (Permission-Driven)
+ * 
+ * ARCHITECTURE:
+ * - Routes are filtered by `allowedRouteKeys` received from server
+ * - No client-side permission logic - just UI rendering
+ * - If a route key is not in allowedRouteKeys, the route is hidden
+ * 
+ * INVARIANT:
+ * - If user can SEE a navigation item, they CAN access the route
+ * - Navigation visibility is purely based on allowedRouteKeys
  */
+
+// ============================================================================
+// ROUTE CONFIGURATION
+// ============================================================================
 
 interface RouteConfig {
   label: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   activeIcon: React.ComponentType<{ className?: string }>;
-  workspaceScoped?: boolean;
-  adminOnly?: boolean;
-  orgOnly?: boolean;
-  orgAdminOnly?: boolean;
+  /** Route key for permission-based filtering */
+  routeKey: AppRouteKey;
+  /** If true, route uses dashboard-level path (not workspace-prefixed) */
   orgRoute?: boolean;
+  /** If true, requires active workspace context */
+  workspaceScoped?: boolean;
 }
 
+/**
+ * Navigation routes with their associated route keys
+ */
 const routes: RouteConfig[] = [
   {
     label: "Home",
     href: "",
     icon: GoHome,
     activeIcon: GoHomeFill,
-    workspaceScoped: true, // Only available when workspace exists
+    routeKey: AppRouteKey.WORKSPACE_HOME,
+    workspaceScoped: true,
   },
   {
     label: "My Spaces",
     href: "/tasks",
     icon: GoCheckCircle,
     activeIcon: GoCheckCircleFill,
+    routeKey: AppRouteKey.WORKSPACE_TASKS,
     workspaceScoped: true,
   },
   {
@@ -55,14 +71,15 @@ const routes: RouteConfig[] = [
     href: "/programs",
     icon: FolderKanban,
     activeIcon: FolderKanban,
+    routeKey: AppRouteKey.WORKSPACE_PROGRAMS,
     workspaceScoped: true,
   },
-
   {
     label: "Teams",
     href: "/teams",
     icon: Users2,
     activeIcon: Users2,
+    routeKey: AppRouteKey.WORKSPACE_TEAMS,
     workspaceScoped: true,
   },
   {
@@ -70,6 +87,7 @@ const routes: RouteConfig[] = [
     href: "/timeline",
     icon: Calendar,
     activeIcon: Calendar,
+    routeKey: AppRouteKey.WORKSPACE_TIMELINE,
     workspaceScoped: true,
   },
   {
@@ -77,6 +95,7 @@ const routes: RouteConfig[] = [
     href: "/settings",
     icon: Settings,
     activeIcon: Settings,
+    routeKey: AppRouteKey.WORKSPACE_SETTINGS,
     workspaceScoped: true,
   },
   {
@@ -84,44 +103,53 @@ const routes: RouteConfig[] = [
     href: "/organization",
     icon: Building2,
     activeIcon: Building2,
-    orgOnly: true, // Only show for ORG accounts
-    orgAdminOnly: true, // Requires org admin/owner role
-    orgRoute: true, // Uses dashboard-level route (not workspace-prefixed)
+    routeKey: AppRouteKey.ORG_DASHBOARD,
+    orgRoute: true, // Dashboard-level route
   },
 ];
 
-interface NavigationProps {
+// ============================================================================
+// COMPONENT
+// ============================================================================
+
+export interface NavigationProps {
+  /** Route keys the user is allowed to access (from server) */
+  allowedRouteKeys?: AppRouteKey[];
+  /** Whether user has any workspaces (for workspace-scoped routes) */
   hasWorkspaces?: boolean;
+  /** Whether user has an org account */
+  hasOrg?: boolean;
 }
 
-import { useAccountLifecycle } from "@/components/account-lifecycle-provider";
-
-export const Navigation = ({ hasWorkspaces = true }: NavigationProps) => {
+export const Navigation = ({
+  allowedRouteKeys,
+  hasWorkspaces = true,
+  hasOrg = false,
+}: NavigationProps) => {
   const urlWorkspaceId = useWorkspaceId();
   const { lifecycleState: state } = useAccountLifecycle();
-  const { hasOrg, activeOrgId, activeWorkspaceId } = state;
+  const { activeWorkspaceId, hasOrg: contextHasOrg } = state;
 
-  // Use URL workspaceId if available, otherwise fallback to global active workspaceId
+  // Use props if provided, otherwise fall back to context
+  const effectiveHasOrg = hasOrg || contextHasOrg;
   const selectedWorkspaceId = urlWorkspaceId || activeWorkspaceId;
-
   const projectId = useProjectId();
   const pathname = usePathname();
-  const { isAdmin } = useCurrentMember({ workspaceId: (selectedWorkspaceId || "") as string });
 
-  const { canEdit: isOrgAdmin } = useCurrentOrgMember({
-    organizationId: (activeOrgId || "") as string
-  });
-
-  // Filter routes based on permissions, account type, and workspace existence
+  // Filter routes based on allowed route keys
   const visibleRoutes = routes.filter((route: RouteConfig) => {
-    // Hide workspace-scoped routes ONLY if user has no workspaces at all
+    // If allowedRouteKeys is provided, use permission-based filtering
+    if (allowedRouteKeys) {
+      // Check if route key is in allowed list
+      if (!allowedRouteKeys.includes(route.routeKey)) return false;
+    }
+
+    // Workspace-scoped routes require workspace context
     if (route.workspaceScoped && !hasWorkspaces) return false;
-    // Hide workspace admin-only routes for non-admins (when in workspace context)
-    if (route.adminOnly && hasWorkspaces && !isAdmin) return false;
-    // Hide org-only routes for PERSONAL accounts
-    if (route.orgOnly && !hasOrg) return false;
-    // Hide org admin-only routes for non org-admins
-    if (route.orgAdminOnly && !isOrgAdmin) return false;
+
+    // Org routes only show for org accounts
+    if (route.orgRoute && !effectiveHasOrg) return false;
+
     return true;
   });
 
@@ -132,17 +160,11 @@ export const Navigation = ({ hasWorkspaces = true }: NavigationProps) => {
           // Determine the correct href based on route type
           let fullHref: string;
           let isActive: boolean;
-          let isOrgRoute = item.orgRoute;
 
-          // Special case: Admin Panel should be org-level for ORG accounts
-          if (item.label === "Admin Panel" && hasOrg) {
-            fullHref = "/organization/usage";
-            isActive = pathname === "/organization/usage";
-            isOrgRoute = true;
-          } else if (isOrgRoute) {
+          if (item.orgRoute) {
             // Org-level routes: dashboard-level, no workspace prefix
             fullHref = item.href;
-            isActive = pathname === item.href;
+            isActive = pathname === item.href || pathname?.startsWith(item.href + "/") || false;
           } else {
             // Workspace-scoped routes require an ID
             if (!selectedWorkspaceId) return null;
@@ -160,11 +182,11 @@ export const Navigation = ({ hasWorkspaces = true }: NavigationProps) => {
           const Icon = isActive ? item.activeIcon : item.icon;
 
           return (
-            <div key={item.href || item.label}>
+            <div key={item.routeKey}>
               <Link href={fullHref}>
                 <div
                   className={cn(
-                    "flex items-center gap-2.5 p-2.5 rounded-md font-medium hover:bg-blue-100 hover:text-black  transition text-neutral-500",
+                    "flex items-center gap-2.5 p-2.5 rounded-md font-medium hover:bg-blue-100 hover:text-black transition text-neutral-500",
                     isActive && "bg-neutral-200 shadow-sm hover:opacity-100 text-primary"
                   )}
                 >
@@ -181,4 +203,3 @@ export const Navigation = ({ hasWorkspaces = true }: NavigationProps) => {
     </div>
   );
 };
-

@@ -46,6 +46,16 @@ export const updateOrganizationMemberSchema = z.object({
 });
 
 /**
+ * Schema for creating a new org member (with Appwrite user)
+ * ORG accounts only - admin creates user account with temp password
+ */
+export const createOrgMemberSchema = z.object({
+    fullName: z.string().trim().min(1, "Full name is required.").max(128, "Name too long."),
+    email: z.string().email("Invalid email format."),
+    role: z.enum(["OWNER", "ADMIN", "MODERATOR", "MEMBER"]).default("MEMBER"),
+});
+
+/**
  * Schema for Personal → Organization conversion
  * 
  * INVARIANTS enforced by this operation:

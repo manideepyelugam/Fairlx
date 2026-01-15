@@ -1,12 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { CheckCircle, Circle, Building2, FolderPlus, Settings } from "lucide-react";
+import { CheckCircle, Circle, Building2, FolderPlus, Settings, User, Clock } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useCurrent } from "@/features/auth/api/use-current";
-import { useAccountType } from "@/features/organizations/hooks/use-account-type";
+import { useAccountLifecycle } from "@/components/account-lifecycle-provider";
 import { useCreateWorkspaceModal } from "@/features/workspaces/hooks/use-create-workspace-modal";
 
 interface ProgressStep {
@@ -48,25 +49,96 @@ const ProgressBar = ({ steps }: { steps: ProgressStep[] }) => {
     );
 };
 
+/**
+ * Restricted Welcome View for ORG members without workspace assignment.
+ * Shows holding state with profile completion option.
+ */
+const RestrictedWelcome = ({ userName, orgRole }: { userName?: string; orgRole: string | null }) => {
+    const router = useRouter();
+
+    const roleDisplay = orgRole === "ADMIN" ? "Admin" : orgRole === "MODERATOR" ? "Moderator" : "Member";
+
+    return (
+        <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] p-6">
+            <div className="w-full max-w-lg space-y-8">
+                {/* Welcome Header */}
+                <div className="text-center space-y-4">
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                        <Clock className="h-8 w-8 text-primary" />
+                    </div>
+                    <h1 className="text-3xl font-bold">
+                        Welcome{userName ? `, ${userName.split(" ")[0]}` : ""}!
+                    </h1>
+                    <Badge variant="secondary" className="text-sm">
+                        {roleDisplay}
+                    </Badge>
+                </div>
+
+                {/* Waiting State Card */}
+                <Card className="border-2 border-dashed">
+                    <CardHeader className="text-center">
+                        <CardTitle>Waiting for Workspace Access</CardTitle>
+                        <CardDescription className="text-base">
+                            You&apos;ll get full access once an admin assigns you to a workspace.
+                            In the meantime, you can complete your profile.
+                        </CardDescription>
+                    </CardHeader>
+                </Card>
+
+                {/* Profile Setup CTA */}
+                <Card className="hover:border-primary/40 transition-colors cursor-pointer" onClick={() => router.push("/profile")}>
+                    <CardHeader>
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-primary/10">
+                                <User className="h-6 w-6 text-primary" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-lg">Complete Your Profile</CardTitle>
+                                <CardDescription>
+                                    Add your photo, timezone, and preferences
+                                </CardDescription>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <Button className="w-full" size="lg">
+                            Set Up Profile
+                        </Button>
+                    </CardContent>
+                </Card>
+
+                {/* Help Text */}
+                <p className="text-center text-sm text-muted-foreground">
+                    Need help? Contact your organization administrator.
+                </p>
+            </div>
+        </div>
+    );
+};
+
 export default function WelcomePage() {
     const router = useRouter();
     const { data: user } = useCurrent();
-    const { isOrg } = useAccountType();
+    const { isOrg, isRestrictedOrgMember, lifecycleState } = useAccountLifecycle();
     const { open: openCreateWorkspace } = useCreateWorkspaceModal();
 
     const prefs = user?.prefs || {};
     const orgSetupComplete = prefs.orgSetupComplete === true;
 
-    // Build progress steps based on account type
+    // ============================================================
+    // RESTRICTED MODE: Show holding state for non-OWNER without workspace
+    // ============================================================
+    if (isRestrictedOrgMember) {
+        return <RestrictedWelcome userName={user?.name} orgRole={lifecycleState.orgRole} />;
+    }
+
+    // Build progress steps based on account type (for OWNER / PERSONAL)
     const progressSteps: ProgressStep[] = [
         { label: "Account created", complete: true },
         { label: "Email verified", complete: user?.emailVerification === true },
         ...(isOrg ? [{ label: "Organization setup", complete: orgSetupComplete }] : []),
         { label: "Workspace created", complete: false }, // We're on this page because no workspace
     ];
-
-    // Organization settings requires a workspace to exist first
-    // In zero-workspace state, we show a disabled button with explanation
 
     return (
         <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] p-6">
@@ -183,3 +255,4 @@ export default function WelcomePage() {
         </div>
     );
 }
+

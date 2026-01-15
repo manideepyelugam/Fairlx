@@ -117,8 +117,8 @@ export function WorkspaceUsageDrawer({
                             pageSize={pageSize}
                             onPageChange={setPage}
                             onExport={() => { }}
-                            resourceTypeFilter={undefined}
-                            sourceFilter={undefined}
+                            resourceTypeFilters={[]}
+                            sourceFilters={[]}
                             onResourceTypeFilterChange={() => { }}
                             onSourceFilterChange={() => { }}
                             dateRange={dateRange}

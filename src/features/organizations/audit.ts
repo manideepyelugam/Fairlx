@@ -27,6 +27,8 @@ export enum OrgAuditAction {
     MEMBER_REMOVED = "member_removed",
     /** Member role changed */
     MEMBER_ROLE_CHANGED = "member_role_changed",
+    /** Member activated after first login password reset */
+    MEMBER_ACTIVATED = "member_activated",
 
     // === AUTH AUDIT ACTIONS (Enterprise) ===
     /** User logged in (method: password | google | github) */
@@ -49,6 +51,12 @@ export enum OrgAuditAction {
     BILLING_UPDATED = "billing_updated",
     /** Account deletion blocked due to ownership constraints */
     ACCOUNT_DELETE_ATTEMPT_BLOCKED = "account_delete_attempt_blocked",
+
+    // === FIRST LOGIN MAGIC LINK ===
+    /** First-login magic link token created for new org member */
+    FIRST_LOGIN_TOKEN_CREATED = "first_login_token_created",
+    /** First-login magic link token used (single-use) */
+    FIRST_LOGIN_TOKEN_USED = "first_login_token_used",
 }
 
 /**
@@ -138,7 +146,8 @@ export async function logOrgAudit({
                 actorUserId,
                 actionType,
                 metadata: JSON.stringify(metadata),
-                timestamp: new Date().toISOString(),
+                // Use epoch milliseconds as string (Appwrite attribute is string <=18 chars)
+                timestamp: String(Date.now()),
                 ipAddress: ipAddress || null,
                 userAgent: userAgent || null,
             }

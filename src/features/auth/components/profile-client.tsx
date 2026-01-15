@@ -6,7 +6,29 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Mail, User, Trash2, Shield, Camera } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Loader2,
+  Mail,
+  User,
+  Trash2,
+  Shield,
+  Camera,
+  Phone,
+  Linkedin,
+  Globe,
+  Briefcase,
+  Building2,
+  Wrench,
+  X
+} from "lucide-react";
 import { useUpdateProfile } from "../api/use-update-profile";
 import { useUploadProfileImage } from "../api/use-upload-profile-image";
 import { useDeleteAccount } from "../api/use-delete-account";
@@ -14,18 +36,37 @@ import { DeleteAccountDialog } from "./delete-account-dialog";
 import { LinkedProviders } from "./linked-providers";
 import { Models } from "node-appwrite";
 import { toast } from "sonner";
+import { workingDomainOptions, WorkingDomain, roleOptions, RoleOption, designationOptions, DesignationOption } from "../schemas";
 
 interface ProfileClientProps {
   initialData: Models.User<Models.Preferences>;
 }
 
 export const ProfileClient = ({ initialData }: ProfileClientProps) => {
+  // Basic profile
   const [name, setName] = useState(initialData.name || "");
   const [isEditing, setIsEditing] = useState(false);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(
     initialData.prefs?.profileImageUrl ?? null
   );
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  // Professional profile fields
+  const [isProfessionalEditing, setIsProfessionalEditing] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState(initialData.prefs?.phoneNumber ?? "");
+  const [linkedinUrl, setLinkedinUrl] = useState(initialData.prefs?.linkedinUrl ?? "");
+  const [portfolioUrl, setPortfolioUrl] = useState(initialData.prefs?.portfolioUrl ?? "");
+  const [workingDomain, setWorkingDomain] = useState<WorkingDomain | "">(
+    initialData.prefs?.workingDomain ?? ""
+  );
+  const [role, setRole] = useState<RoleOption | "">(initialData.prefs?.role ?? "");
+  const [designation, setDesignation] = useState<DesignationOption | "">(
+    initialData.prefs?.designation ?? ""
+  );
+  const [toolsAndTechnologies, setToolsAndTechnologies] = useState<string[]>(
+    initialData.prefs?.toolsAndTechnologies ?? []
+  );
+  const [newTool, setNewTool] = useState("");
 
   const { mutate: updateProfile, isPending: isUpdating } = useUpdateProfile();
   const { mutate: uploadImage, isPending: isUploading } = useUploadProfileImage();
@@ -55,22 +96,60 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
     );
   };
 
+  const handleProfessionalSave = () => {
+    if (name.trim() === "") {
+      toast.error("Name cannot be empty");
+      return;
+    }
+
+    updateProfile(
+      {
+        name,
+        phoneNumber: phoneNumber || null,
+        linkedinUrl: linkedinUrl || null,
+        portfolioUrl: portfolioUrl || null,
+        workingDomain: workingDomain || null,
+        role: role || null,
+        designation: designation || null,
+        toolsAndTechnologies: toolsAndTechnologies.length > 0 ? toolsAndTechnologies : null,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Professional profile updated");
+          setIsProfessionalEditing(false);
+        },
+        onError: () => {
+          toast.error("Failed to update profile");
+        },
+      }
+    );
+  };
+
   const handleCancel = () => {
     setName(initialData.name || "");
     setIsEditing(false);
+  };
+
+  const handleProfessionalCancel = () => {
+    setPhoneNumber(initialData.prefs?.phoneNumber ?? "");
+    setLinkedinUrl(initialData.prefs?.linkedinUrl ?? "");
+    setPortfolioUrl(initialData.prefs?.portfolioUrl ?? "");
+    setWorkingDomain(initialData.prefs?.workingDomain ?? "");
+    setRole(initialData.prefs?.role ?? "");
+    setDesignation(initialData.prefs?.designation ?? "");
+    setToolsAndTechnologies(initialData.prefs?.toolsAndTechnologies ?? []);
+    setIsProfessionalEditing(false);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
       toast.error("File size should be less than 2MB");
       return;
     }
 
-    // Validate file type
     if (!file.type.startsWith("image/")) {
       toast.error("Please upload an image file");
       return;
@@ -102,10 +181,20 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
     });
   };
 
+  const handleAddTool = () => {
+    if (newTool.trim() && !toolsAndTechnologies.includes(newTool.trim())) {
+      setToolsAndTechnologies([...toolsAndTechnologies, newTool.trim()]);
+      setNewTool("");
+    }
+  };
+
+  const handleRemoveTool = (tool: string) => {
+    setToolsAndTechnologies(toolsAndTechnologies.filter(t => t !== tool));
+  };
+
   return (
     <div className="h-full w-full p-6">
       <div className="max-w-4xl mx-auto space-y-6">
-
 
         <div className="w-full p-5 rounded-xl border flex items-center justify-between">
           <div className="flex items-start gap-5">
@@ -140,7 +229,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
 
             <div className="flex flex-col ">
               <h1 className="text-[22px] font-semibold">{initialData.name}</h1>
-              <p className="text-[13px]">Team Manager</p>
+              <p className="text-[13px]">{designation || role || "Team Member"}</p>
               <p className="text-[13px]">{initialData.email}</p>
             </div>
           </div>
@@ -213,105 +302,206 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
           </CardContent>
         </Card>
 
-        {/* Account Information Section */}
-        {/* <Card>
-          <CardHeader>
-            <CardTitle>Account Information</CardTitle>
-            <CardDescription>
-              View your account details
+        {/* Professional Profile Section */}
+        <Card>
+          <CardHeader className="mb-3">
+            <CardTitle className="!text-[18px] flex items-center gap-2">
+              <Briefcase className="size-5" />
+              Professional Profile
+            </CardTitle>
+            <CardDescription className="!text-xs font-normal">
+              Add your professional details and expertise
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Phone Number */}
               <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-muted-foreground">
+                <Label htmlFor="phoneNumber" className="flex items-center gap-2">
+                  <Phone className="size-4" />
+                  Phone Number
+                </Label>
+                <Input
+                  id="phoneNumber"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  disabled={!isProfessionalEditing || isUpdating}
+                  placeholder="+91 1234567890"
+                  className={!isProfessionalEditing ? "bg-neutral-50" : ""}
+                />
+              </div>
+
+              {/* LinkedIn */}
+              <div className="space-y-2">
+                <Label htmlFor="linkedinUrl" className="flex items-center gap-2">
+                  <Linkedin className="size-4" />
+                  LinkedIn Profile
+                </Label>
+                <Input
+                  id="linkedinUrl"
+                  value={linkedinUrl}
+                  onChange={(e) => setLinkedinUrl(e.target.value)}
+                  disabled={!isProfessionalEditing || isUpdating}
+                  placeholder="https://linkedin.com/in/username"
+                  className={!isProfessionalEditing ? "bg-neutral-50" : ""}
+                />
+              </div>
+
+              {/* Portfolio */}
+              <div className="space-y-2">
+                <Label htmlFor="portfolioUrl" className="flex items-center gap-2">
+                  <Globe className="size-4" />
+                  Portfolio Website
+                </Label>
+                <Input
+                  id="portfolioUrl"
+                  value={portfolioUrl}
+                  onChange={(e) => setPortfolioUrl(e.target.value)}
+                  disabled={!isProfessionalEditing || isUpdating}
+                  placeholder="https://yourportfolio.com"
+                  className={!isProfessionalEditing ? "bg-neutral-50" : ""}
+                />
+              </div>
+
+              {/* Working Domain */}
+              <div className="space-y-2">
+                <Label htmlFor="workingDomain" className="flex items-center gap-2">
+                  <Building2 className="size-4" />
+                  Working Domain
+                </Label>
+                <Select
+                  value={workingDomain}
+                  onValueChange={(v) => setWorkingDomain(v as WorkingDomain)}
+                  disabled={!isProfessionalEditing || isUpdating}
+                >
+                  <SelectTrigger className={!isProfessionalEditing ? "bg-neutral-50" : ""}>
+                    <SelectValue placeholder="Select your domain" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {workingDomainOptions.map((domain) => (
+                      <SelectItem key={domain} value={domain}>
+                        {domain}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Role */}
+              <div className="space-y-2">
+                <Label htmlFor="role" className="flex items-center gap-2">
+                  <Wrench className="size-4" />
+                  Role
+                </Label>
+                <Select
+                  value={role}
+                  onValueChange={(v) => setRole(v as RoleOption)}
+                  disabled={!isProfessionalEditing || isUpdating}
+                >
+                  <SelectTrigger className={!isProfessionalEditing ? "bg-neutral-50" : ""}>
+                    <SelectValue placeholder="Select your role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roleOptions.map((r) => (
+                      <SelectItem key={r} value={r}>
+                        {r}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Designation */}
+              <div className="space-y-2">
+                <Label htmlFor="designation" className="flex items-center gap-2">
                   <User className="size-4" />
-                  User ID
+                  Designation
                 </Label>
-                <p className="text-sm font-mono bg-neutral-50 p-2 rounded border">
-                  {initialData.$id}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-muted-foreground">
-                  <Calendar className="size-4" />
-                  Account Created
-                </Label>
-                <p className="text-sm bg-neutral-50 p-2 rounded border">
-                  {formatDate(initialData.$createdAt)}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-muted-foreground">
-                  <Calendar className="size-4" />
-                  Last Updated
-                </Label>
-                <p className="text-sm bg-neutral-50 p-2 rounded border">
-                  {formatDate(initialData.$updatedAt)}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-muted-foreground">
-                  Email Verification
-                </Label>
-                <p className="text-sm bg-neutral-50 p-2 rounded border">
-                  {initialData.emailVerification ? (
-                    <span className="text-green-600 font-medium">✓ Verified</span>
-                  ) : (
-                    <span className="text-amber-600 font-medium">⚠ Not Verified</span>
-                  )}
-                </p>
+                <Select
+                  value={designation}
+                  onValueChange={(v) => setDesignation(v as DesignationOption)}
+                  disabled={!isProfessionalEditing || isUpdating}
+                >
+                  <SelectTrigger className={!isProfessionalEditing ? "bg-neutral-50" : ""}>
+                    <SelectValue placeholder="Select your designation" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {designationOptions.map((d) => (
+                      <SelectItem key={d} value={d}>
+                        {d}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-          </CardContent>
-        </Card> */}
 
-        {/* Security Section */}
-        {/* <Card>
-          <CardHeader>
-            <CardTitle>Security</CardTitle>
-            <CardDescription>
-              Manage your account security settings
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            {/* Tools & Technologies */}
             <div className="space-y-2">
-              <Label>Password</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="password"
-                  value="••••••••"
-                  disabled
-                  className="bg-neutral-50"
-                />
-                <Button 
-                  variant="outline"
-                  onClick={() => setIsChangePasswordModalOpen(true)}
+              <Label className="flex items-center gap-2">
+                <Wrench className="size-4" />
+                Tools & Technologies
+              </Label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {toolsAndTechnologies.map((tool) => (
+                  <Badge key={tool} variant="secondary" className="gap-1">
+                    {tool}
+                    {isProfessionalEditing && (
+                      <X
+                        className="size-3 cursor-pointer hover:text-destructive"
+                        onClick={() => handleRemoveTool(tool)}
+                      />
+                    )}
+                  </Badge>
+                ))}
+                {toolsAndTechnologies.length === 0 && !isProfessionalEditing && (
+                  <p className="text-xs text-muted-foreground">No tools added yet</p>
+                )}
+              </div>
+              {isProfessionalEditing && (
+                <div className="flex gap-2">
+                  <Input
+                    value={newTool}
+                    onChange={(e) => setNewTool(e.target.value)}
+                    placeholder="Add a tool (e.g., React, TypeScript)"
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddTool())}
+                    className="flex-1"
+                  />
+                  <Button type="button" variant="secondary" size="xs" onClick={handleAddTool}>
+                    Add
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {isProfessionalEditing ? (
+              <div className="flex gap-2 pt-2 mt-3">
+                <Button
+                  onClick={handleProfessionalSave}
+                  disabled={isUpdating}
+                  className="text-xs font-medium px-6 rounded-sm py-3" size={"xs"}
                 >
-                  Change Password
+                  {isUpdating ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    "Save Profile"
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleProfessionalCancel}
+                  disabled={isUpdating} className="text-xs font-medium px-6 rounded-sm py-3" size={"xs"}
+                >
+                  Cancel
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Last changed: Never
-              </p>
-            </div>
-
-            <Separator />
-
-            <div className="space-y-2">
-              <Label>Two-Factor Authentication</Label>
-              <p className="text-sm text-muted-foreground">
-                Add an extra layer of security to your account
-              </p>
-              <Button variant="outline" disabled>
-                Enable 2FA (Coming Soon)
+            ) : (
+              <Button size={"xs"} className="text-xs font-medium px-6 rounded-sm py-3" onClick={() => setIsProfessionalEditing(true)}>
+                Edit Professional Profile
               </Button>
-            </div>
+            )}
           </CardContent>
-        </Card> */}
+        </Card>
 
         {/* Linked Accounts Section */}
         <LinkedProviders />
@@ -360,11 +550,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
         userId={initialData.$id}
         isPending={isDeleting}
       />
-
-      {/* <ChangePasswordModal
-        open={isChangePasswordModalOpen}
-        onOpenChange={setIsChangePasswordModalOpen}
-      /> */}
     </div>
   );
 };
+

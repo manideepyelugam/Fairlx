@@ -2,7 +2,8 @@ import "server-only";
 
 import { Query, Databases } from "node-appwrite";
 import { DATABASE_ID, ORGANIZATION_MEMBERS_ID, WORKSPACES_ID, MEMBERS_ID } from "@/config";
-import { MemberRole } from "@/features/members/types";
+import { MemberRole, WorkspaceMemberRole } from "@/features/members/types";
+import { ORG_ROLE_HIERARCHY } from "@/lib/permission-matrix";
 
 /**
  * Authorization Guards
@@ -106,26 +107,21 @@ export async function assertOrgMembership(
 /**
  * Assert user has a specific role (or higher) in an organization
  * 
- * Role hierarchy: OWNER > ADMIN > MEMBER
+ * Role hierarchy: OWNER > ADMIN > MODERATOR > MEMBER
  * 
- * @throws AuthorizationError if insufficient role
+ * @throws AuthorizationError if insufficient role or member is not ACTIVE
  */
 export async function assertOrgRole(
     databases: Databases,
     userId: string,
     organizationId: string,
-    requiredRole: "OWNER" | "ADMIN" | "MEMBER"
+    requiredRole: "OWNER" | "ADMIN" | "MODERATOR" | "MEMBER"
 ): Promise<{ role: string; membershipId: string }> {
     const membership = await assertOrgMembership(databases, userId, organizationId);
 
-    const roleHierarchy: Record<string, number> = {
-        "OWNER": 3,
-        "ADMIN": 2,
-        "MEMBER": 1,
-    };
-
-    const userLevel = roleHierarchy[membership.role] || 0;
-    const requiredLevel = roleHierarchy[requiredRole] || 0;
+    // Use centralized role hierarchy (includes MODERATOR)
+    const userLevel = ORG_ROLE_HIERARCHY[membership.role as keyof typeof ORG_ROLE_HIERARCHY] || 0;
+    const requiredLevel = ORG_ROLE_HIERARCHY[requiredRole as keyof typeof ORG_ROLE_HIERARCHY] || 0;
 
     if (userLevel < requiredLevel) {
         throw new AuthorizationError(
@@ -292,10 +288,14 @@ export async function assertWorkspaceRole(
 ): Promise<WorkspaceAccessResult> {
     const access = await assertWorkspaceAccess(databases, userId, workspaceId);
 
+    // Use centralized role hierarchy (handles both legacy and new roles)
     const roleHierarchy: Record<string, number> = {
         [MemberRole.OWNER]: 3,
         [MemberRole.ADMIN]: 2,
         [MemberRole.MEMBER]: 1,
+        [WorkspaceMemberRole.WS_ADMIN]: 3,
+        [WorkspaceMemberRole.WS_EDITOR]: 2,
+        [WorkspaceMemberRole.WS_VIEWER]: 1,
     };
 
     // Get effective role (workspace role takes precedence, fall back to org role)

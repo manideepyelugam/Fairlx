@@ -35,6 +35,8 @@ export async function resolveAccountLifecycleState(): Promise<AccountLifecycleSt
                 activeMember: null,
                 activeOrgId: null,
                 activeWorkspaceId: null,
+                mustResetPassword: false,
+                orgRole: null,
             };
         }
 
@@ -99,6 +101,12 @@ export async function resolveAccountLifecycleState(): Promise<AccountLifecycleSt
             activeWorkspaceId = workspaceMemberships.documents[0].workspaceId;
         }
 
+        // 4. Check if user must reset password (ORG member first login)
+        const mustResetPassword = user.prefs?.mustResetPassword === true;
+
+        // 5. Extract org role from active membership
+        const orgRole = activeMember?.role as "OWNER" | "ADMIN" | "MODERATOR" | "MEMBER" | null ?? null;
+
         return {
             isLoaded: true,
             isLoading: false,
@@ -112,6 +120,8 @@ export async function resolveAccountLifecycleState(): Promise<AccountLifecycleSt
             activeMember,
             activeOrgId,
             activeWorkspaceId,
+            mustResetPassword,
+            orgRole,
         };
     } catch {
         // If unauthenticated or error
@@ -128,6 +138,8 @@ export async function resolveAccountLifecycleState(): Promise<AccountLifecycleSt
             activeMember: null,
             activeOrgId: null,
             activeWorkspaceId: null,
+            mustResetPassword: false,
+            orgRole: null,
         };
     }
 }

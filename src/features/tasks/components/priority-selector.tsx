@@ -92,8 +92,8 @@ export const PriorityBadge = ({ priority, className, color }: PriorityBadgeProps
       className={cn("text-xs", className)}
       style={color ? { borderColor: color, color: color, backgroundColor: `${color}1A` } : undefined}
     >
-      <PriorityIcon priority={priority} className="mr-1" color={color} />
-      {priority}
+      <PriorityIcon priority={priority} className="text-xs mr-0.5" color={color} />
+      <p className="text-xs">{priority}</p>
     </Badge>
   );
 };

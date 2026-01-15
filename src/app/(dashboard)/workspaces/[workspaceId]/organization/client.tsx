@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import {
     Building2, Users, Settings2, Shield, Trash2, Crown,
-    CreditCard, AlertTriangle, FileText, Loader2, Clock, Hash
+    CreditCard, AlertTriangle, FileText, Loader2, Clock, Hash, UserPlus, Mail
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +54,13 @@ import { useCurrentOrgMember } from "@/features/organizations/api/use-current-or
 import { OrganizationRole } from "@/features/organizations/types";
 import { OrganizationBillingSettings } from "@/features/organizations/components/organization-billing-settings";
 import { OrganizationAuditLogs } from "@/features/organizations/components/organization-audit-logs";
+import { useCreateOrgMember } from "@/features/organizations/api/use-create-org-member";
+import { useResendWelcomeEmail } from "@/features/organizations/api/use-resend-welcome-email";
+import { BulkMemberUpload } from "@/features/organizations/components/bulk-member-upload";
+import { DepartmentsList } from "@/features/departments/components/departments-list";
+import { PermissionsManager } from "@/features/org-permissions/components/permissions-manager";
+import { useCurrentUserOrgPermissions } from "@/features/org-permissions/api/use-current-user-permissions";
+import { OrgPermissionKey } from "@/features/org-permissions/types";
 
 export const OrganizationSettingsClient = () => {
     const { isOrg, primaryOrganizationId } = useAccountType();
@@ -76,6 +83,11 @@ export const OrganizationSettingsClient = () => {
         organizationId: primaryOrganizationId || ""
     });
 
+    // Current user's org permissions
+    const { hasPermission } = useCurrentUserOrgPermissions({
+        orgId: primaryOrganizationId || ""
+    });
+
     // General settings form state
     const [orgName, setOrgName] = useState("");
     const [hasChanges, setHasChanges] = useState(false);
@@ -88,6 +100,14 @@ export const OrganizationSettingsClient = () => {
     const { mutate: updateMemberRole, isPending: isUpdatingRole } = useUpdateOrgMemberRole();
     const { mutate: removeMember, isPending: isRemoving } = useRemoveOrgMember();
     const { mutate: deleteOrg, isPending: isDeleting } = useDeleteOrganization();
+    const { mutate: createMember, isPending: isCreatingMember } = useCreateOrgMember();
+    const { mutate: resendWelcome, isPending: isResendingWelcome } = useResendWelcomeEmail();
+
+    // Add Member modal state
+    const [addMemberOpen, setAddMemberOpen] = useState(false);
+    const [newMemberName, setNewMemberName] = useState("");
+    const [newMemberEmail, setNewMemberEmail] = useState("");
+    const [newMemberRole, setNewMemberRole] = useState<OrganizationRole>(OrganizationRole.MEMBER);
 
     // Sync form state with fetched data
     useEffect(() => {
@@ -140,6 +160,27 @@ export const OrganizationSettingsClient = () => {
         deleteOrg({ organizationId: primaryOrganizationId });
     };
 
+    // Handler: Create new member
+    const handleCreateMember = () => {
+        if (!primaryOrganizationId || !newMemberName.trim() || !newMemberEmail.trim()) return;
+
+        createMember({
+            param: { orgId: primaryOrganizationId },
+            json: {
+                fullName: newMemberName.trim(),
+                email: newMemberEmail.trim().toLowerCase(),
+                role: newMemberRole,
+            },
+        }, {
+            onSuccess: () => {
+                setAddMemberOpen(false);
+                setNewMemberName("");
+                setNewMemberEmail("");
+                setNewMemberRole(OrganizationRole.MEMBER);
+            },
+        });
+    };
+
     const canDeleteOrg = isOwner && deleteConfirmName === organization?.name;
 
     if (!isOrg) {
@@ -151,7 +192,7 @@ export const OrganizationSettingsClient = () => {
                 <div className="text-center space-y-2">
                     <h2 className="text-xl font-semibold">Organization Features</h2>
                     <p className="text-muted-foreground text-sm max-w-md">
-                        Upgrade to an Organization account to unlock team collaboration, 
+                        Upgrade to an Organization account to unlock team collaboration,
                         advanced billing, and enterprise features.
                     </p>
                 </div>
@@ -170,7 +211,7 @@ export const OrganizationSettingsClient = () => {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                 <div className="flex items-center gap-3">
-                   
+
                     <div>
                         {isLoadingOrg ? (
                             <Skeleton className="h-7 w-48 mb-1" />
@@ -185,24 +226,24 @@ export const OrganizationSettingsClient = () => {
                     </div>
                 </div>
                 <Badge variant="secondary" className="self-start text-blue-600 bg-blue-100 text-xs px-2.5 py-1">
-                    <Building2  className="size-3 text-blue-600 mr-1" />
+                    <Building2 className="size-3 text-blue-600 mr-1" />
                     Organization
                 </Badge>
             </div>
 
-           
+
 
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent">
-                    <TabsTrigger 
-                        value="general" 
+                    <TabsTrigger
+                        value="general"
                         className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
                     >
                         <Settings2 className="size-4 mr-2" />
                         General
                     </TabsTrigger>
-                    <TabsTrigger 
+                    <TabsTrigger
                         value="members"
                         className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
                     >
@@ -212,27 +253,47 @@ export const OrganizationSettingsClient = () => {
                             {members.length}
                         </Badge>
                     </TabsTrigger>
-                    <TabsTrigger 
+                    <TabsTrigger
                         value="security"
                         className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
                     >
                         <Shield className="size-4 mr-2" />
                         Security
                     </TabsTrigger>
-                    <TabsTrigger 
-                        value="billing"
+                    <TabsTrigger
+                        value="departments"
                         className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
                     >
-                        <CreditCard className="size-4 mr-2" />
-                        Billing
+                        <Building2 className="size-4 mr-2" />
+                        Departments
                     </TabsTrigger>
-                    <TabsTrigger 
-                        value="audit"
-                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
-                    >
-                        <FileText className="size-4 mr-2" />
-                        Audit
-                    </TabsTrigger>
+                    {hasPermission(OrgPermissionKey.BILLING_VIEW) && (
+                        <TabsTrigger
+                            value="billing"
+                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
+                        >
+                            <CreditCard className="size-4 mr-2" />
+                            Billing
+                        </TabsTrigger>
+                    )}
+                    {hasPermission(OrgPermissionKey.AUDIT_VIEW) && (
+                        <TabsTrigger
+                            value="audit"
+                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
+                        >
+                            <FileText className="size-4 mr-2" />
+                            Audit
+                        </TabsTrigger>
+                    )}
+                    {isOwner && (
+                        <TabsTrigger
+                            value="permissions"
+                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
+                        >
+                            <Shield className="size-4 mr-2" />
+                            Permissions
+                        </TabsTrigger>
+                    )}
                 </TabsList>
 
                 {/* ==================== GENERAL TAB ==================== */}
@@ -330,7 +391,86 @@ export const OrganizationSettingsClient = () => {
                                         {members.length} member{members.length !== 1 ? "s" : ""} in your organization
                                     </CardDescription>
                                 </div>
-                                {/* Note: Invite functionality requires email-based invitation system */}
+                                {canEdit && primaryOrganizationId && (
+                                    <div className="flex items-center gap-2">
+                                        <BulkMemberUpload organizationId={primaryOrganizationId} />
+                                        <Dialog open={addMemberOpen} onOpenChange={setAddMemberOpen}>
+                                            <DialogTrigger asChild>
+                                                <Button size="sm" className="gap-1.5">
+                                                    <UserPlus className="size-4" />
+                                                    Add Member
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent>
+                                                <DialogHeader>
+                                                    <DialogTitle className="flex items-center gap-2">
+                                                        <UserPlus className="size-5" />
+                                                        Add Organization Member
+                                                    </DialogTitle>
+                                                    <DialogDescription>
+                                                        Create a new user account and add them to your organization.
+                                                        They will receive login credentials via email.
+                                                    </DialogDescription>
+                                                </DialogHeader>
+                                                <div className="space-y-4 py-4">
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="memberName">Full Name</Label>
+                                                        <Input
+                                                            id="memberName"
+                                                            placeholder="John Doe"
+                                                            value={newMemberName}
+                                                            onChange={(e) => setNewMemberName(e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="memberEmail">Email</Label>
+                                                        <Input
+                                                            id="memberEmail"
+                                                            type="email"
+                                                            placeholder="john@example.com"
+                                                            value={newMemberEmail}
+                                                            onChange={(e) => setNewMemberEmail(e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="memberRole">Role</Label>
+                                                        <Select
+                                                            value={newMemberRole}
+                                                            onValueChange={(v) => setNewMemberRole(v as OrganizationRole)}
+                                                        >
+                                                            <SelectTrigger>
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value={OrganizationRole.MEMBER}>Member</SelectItem>
+                                                                <SelectItem value={OrganizationRole.MODERATOR}>Moderator</SelectItem>
+                                                                <SelectItem value={OrganizationRole.ADMIN}>Admin</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                </div>
+                                                <DialogFooter>
+                                                    <DialogClose asChild>
+                                                        <Button variant="outline">Cancel</Button>
+                                                    </DialogClose>
+                                                    <Button
+                                                        onClick={handleCreateMember}
+                                                        disabled={isCreatingMember || !newMemberName.trim() || !newMemberEmail.trim()}
+                                                    >
+                                                        {isCreatingMember ? (
+                                                            <>
+                                                                <Loader2 className="size-4 animate-spin mr-2" />
+                                                                Creating...
+                                                            </>
+                                                        ) : (
+                                                            "Create Member"
+                                                        )}
+                                                    </Button>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                        </Dialog>
+                                    </div>
+                                )}
                             </div>
                         </CardHeader>
                         <CardContent>
@@ -385,6 +525,31 @@ export const OrganizationSettingsClient = () => {
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
+                                                {/* Pending activation badge + Resend button */}
+                                                {member.mustResetPassword && canEdit && primaryOrganizationId && (
+                                                    <>
+                                                        <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700 border-amber-200">
+                                                            Pending
+                                                        </Badge>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-7 gap-1 text-xs"
+                                                            disabled={isResendingWelcome}
+                                                            onClick={() => resendWelcome({
+                                                                orgId: primaryOrganizationId,
+                                                                userId: member.userId
+                                                            })}
+                                                        >
+                                                            {isResendingWelcome ? (
+                                                                <Loader2 className="size-3 animate-spin" />
+                                                            ) : (
+                                                                <Mail className="size-3" />
+                                                            )}
+                                                            Resend
+                                                        </Button>
+                                                    </>
+                                                )}
                                                 {/* Role selector (ADMIN+ can change roles) */}
                                                 {canEdit ? (
                                                     <Select
@@ -400,19 +565,19 @@ export const OrganizationSettingsClient = () => {
                                                         <SelectContent>
                                                             <SelectItem value="OWNER">Owner</SelectItem>
                                                             <SelectItem value="ADMIN">Admin</SelectItem>
+                                                            <SelectItem value="MODERATOR">Moderator</SelectItem>
                                                             <SelectItem value="MEMBER">Member</SelectItem>
                                                         </SelectContent>
                                                     </Select>
                                                 ) : (
-                                                    <Badge 
-                                                        variant="outline" 
-                                                        className={`text-xs ${
-                                                            member.role === "OWNER" 
-                                                                ? "bg-amber-500/10 text-amber-700 border-amber-500/20" 
-                                                                : member.role === "ADMIN" 
-                                                                    ? "bg-purple-500/10 text-purple-700 border-purple-500/20" 
-                                                                    : ""
-                                                        }`}
+                                                    <Badge
+                                                        variant="outline"
+                                                        className={`text-xs ${member.role === "OWNER"
+                                                            ? "bg-amber-500/10 text-amber-700 border-amber-500/20"
+                                                            : member.role === "ADMIN"
+                                                                ? "bg-purple-500/10 text-purple-700 border-purple-500/20"
+                                                                : ""
+                                                            }`}
                                                     >
                                                         {member.role === "OWNER" && <Crown className="size-3 mr-1" />}
                                                         {member.role === "ADMIN" && <Shield className="size-3 mr-1" />}
@@ -601,6 +766,28 @@ export const OrganizationSettingsClient = () => {
                         <OrganizationAuditLogs organizationId={primaryOrganizationId} />
                     )}
                 </TabsContent>
+
+                {/* ==================== DEPARTMENTS TAB ==================== */}
+                <TabsContent value="departments" className="space-y-4 mt-6">
+                    {primaryOrganizationId && (
+                        <DepartmentsList
+                            orgId={primaryOrganizationId}
+                            canManage={canEdit}
+                        />
+                    )}
+                </TabsContent>
+
+                {/* ==================== PERMISSIONS TAB (OWNER ONLY) ==================== */}
+                {isOwner && (
+                    <TabsContent value="permissions" className="space-y-4 mt-6">
+                        {primaryOrganizationId && (
+                            <PermissionsManager
+                                orgId={primaryOrganizationId}
+                                isOwner={isOwner}
+                            />
+                        )}
+                    </TabsContent>
+                )}
             </Tabs>
         </div>
     );
