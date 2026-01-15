@@ -11,6 +11,9 @@ import {
   PanelLeftClose,
   PanelLeft,
   BookOpen,
+  AlertTriangle,
+  Sparkles,
+  Layers,
 } from "lucide-react";
 import {
   ReactFlow,
@@ -33,6 +36,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { useGetTeams } from "@/features/teams/api/use-get-teams";
@@ -60,12 +64,15 @@ import {
   StatusNode as StatusNodeType,
   TransitionEdge as TransitionEdgeType,
   PopulatedWorkflow,
+  StatusType,
 } from "@/features/workflows/types";
+import { StatusSuggestion, TransitionSuggestion } from "@/features/workflows/types/ai-context";
 import { StatusNode } from "@/features/workflows/components/status-node";
 import { TransitionEdge } from "@/features/workflows/components/transition-edge";
 import { StatusEditDialog } from "@/features/workflows/components/status-edit-dialog";
 import { TransitionEditDialog } from "@/features/workflows/components/transition-edit-dialog";
 import { WorkflowSimpleView } from "@/features/workflows/components/workflow-simple-view";
+import { WorkflowAIChat } from "@/features/workflows/components/workflow-ai-chat";
 import { ConnectProjectDialog } from "@/features/workflows/components/connect-project-dialog";
 import { ResolutionStrategy } from "@/features/workflows/components/workflow-conflict-dialog";
 
@@ -114,6 +121,87 @@ const WorkflowEditor = () => {
     projects.filter(p => p.workflowId !== workflowId),
     [projects, workflowId]
   );
+
+  // ============ EDGE CASE: Detect orphaned statuses ============
+  // Orphaned statuses have no incoming or outgoing transitions (unreachable)
+  const orphanedStatuses = useMemo(() => {
+    if (!workflow?.statuses || !workflow?.transitions) return [];
+    
+    const transitions = workflow.transitions ?? [];
+    return workflow.statuses.filter(status => {
+      // Initial statuses are entry points, so they can have no incoming transitions
+      if (status.isInitial) return false;
+      
+      const hasIncoming = transitions.some(t => t.toStatusId === status.$id);
+      const hasOutgoing = transitions.some(t => t.fromStatusId === status.$id);
+      
+      // A status is orphaned if it has neither incoming nor outgoing transitions
+      return !hasIncoming && !hasOutgoing;
+    });
+  }, [workflow?.statuses, workflow?.transitions]);
+
+  // Detect unreachable statuses (have outgoing but no incoming transitions and not initial)
+  const unreachableStatuses = useMemo(() => {
+    if (!workflow?.statuses || !workflow?.transitions) return [];
+    
+    const transitions = workflow.transitions ?? [];
+    return workflow.statuses.filter(status => {
+      if (status.isInitial) return false;
+      
+      const hasIncoming = transitions.some(t => t.toStatusId === status.$id);
+      const hasOutgoing = transitions.some(t => t.fromStatusId === status.$id);
+      
+      // Unreachable = has outgoing but no way to get there
+      return !hasIncoming && hasOutgoing;
+    });
+  }, [workflow?.statuses, workflow?.transitions]);
+
+  // Detect dead-end statuses (have incoming but no outgoing and not final)
+  const deadEndStatuses = useMemo(() => {
+    if (!workflow?.statuses || !workflow?.transitions) return [];
+    
+    const transitions = workflow.transitions ?? [];
+    return workflow.statuses.filter(status => {
+      if (status.isFinal) return false;
+      
+      const hasIncoming = transitions.some(t => t.toStatusId === status.$id);
+      const hasOutgoing = transitions.some(t => t.fromStatusId === status.$id);
+      
+      // Dead-end = can get there but can't leave (and not marked as final)
+      return hasIncoming && !hasOutgoing;
+    });
+  }, [workflow?.statuses, workflow?.transitions]);
+
+  // Combine all workflow warnings
+  const workflowWarnings = useMemo(() => {
+    const warnings: Array<{ type: string; message: string; statuses: string[] }> = [];
+    
+    if (orphanedStatuses.length > 0) {
+      warnings.push({
+        type: "orphaned",
+        message: "Orphaned statuses (no connections)",
+        statuses: orphanedStatuses.map(s => s.name),
+      });
+    }
+    
+    if (unreachableStatuses.length > 0) {
+      warnings.push({
+        type: "unreachable",
+        message: "Unreachable statuses (no incoming transitions)",
+        statuses: unreachableStatuses.map(s => s.name),
+      });
+    }
+    
+    if (deadEndStatuses.length > 0) {
+      warnings.push({
+        type: "deadend",
+        message: "Dead-end statuses (no outgoing transitions, not final)",
+        statuses: deadEndStatuses.map(s => s.name),
+      });
+    }
+    
+    return warnings;
+  }, [orphanedStatuses, unreachableStatuses, deadEndStatuses]);
 
   const [DeleteDialog, confirmDelete] = useConfirm(
     "Delete Workflow",
@@ -455,6 +543,56 @@ const WorkflowEditor = () => {
     setEditingTransition(null);
   };
 
+  // AI handlers - create status from AI suggestion
+  const handleAICreateStatus = useCallback(
+    async (suggestion: StatusSuggestion) => {
+      // Calculate position for new status
+      const lastNode = nodes[nodes.length - 1];
+      const positionX = lastNode ? lastNode.position.x + 250 : 100;
+      const positionY = lastNode ? lastNode.position.y : 100;
+
+      await createStatus({
+        param: { workflowId },
+        json: {
+          name: suggestion.name,
+          key: suggestion.key,
+          statusType: suggestion.statusType as StatusType,
+          color: suggestion.color,
+          isInitial: suggestion.isInitial || false,
+          isFinal: suggestion.isFinal || false,
+          description: suggestion.description || "",
+          positionX,
+          positionY,
+        },
+      });
+    },
+    [workflowId, createStatus, nodes]
+  );
+
+  // AI handlers - create transition from AI suggestion
+  const handleAICreateTransition = useCallback(
+    async (suggestion: TransitionSuggestion) => {
+      // Find status IDs from keys
+      const fromStatus = workflow?.statuses?.find(s => s.key === suggestion.fromStatusKey);
+      const toStatus = workflow?.statuses?.find(s => s.key === suggestion.toStatusKey);
+
+      if (!fromStatus || !toStatus) {
+        return;
+      }
+
+      await createTransition({
+        param: { workflowId },
+        json: {
+          fromStatusId: fromStatus.$id,
+          toStatusId: toStatus.$id,
+          name: suggestion.name || "",
+          requiresApproval: suggestion.requiresApproval || false,
+        },
+      });
+    },
+    [workflowId, createTransition, workflow?.statuses]
+  );
+
   // Redirect if workflow not found
   useEffect(() => {
     if (!workflowLoading && !workflow) {
@@ -582,25 +720,78 @@ const WorkflowEditor = () => {
 
       {/* Main Content with Info Panel */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Info Panel */}
+        {/* Info Panel with Tabs */}
         {showInfoPanel && (
-          <div className="w-[380px] border-r bg-background shrink-0 overflow-hidden">
-            <ScrollArea className="h-full">
-              <div className="p-4">
-                <WorkflowSimpleView
-                  workflow={workflow as PopulatedWorkflow}
-                  projects={projects}
-                  workspaceId={workspaceId}
-                  spaceId={spaceId}
-                  isAdmin={isAdmin}
-                  onConnectProject={() => setConnectProjectOpen(true)}
-                  onDisconnectProject={handleDisconnectProject}
-                  onSyncFromProject={handleSyncFromProject}
-                  isSyncing={isSyncing}
-                  onRemoveStatus={handleRemoveStatus}
-                />
+          <div className="w-[380px] border-r bg-background shrink-0 overflow-hidden flex flex-col">
+            <Tabs defaultValue="builder" className="flex flex-col h-full">
+              {/* Tab Headers */}
+              <div className="border-b px-3 pt-3 pb-0 shrink-0">
+                <TabsList className="grid w-full grid-cols-2 h-9">
+                  <TabsTrigger value="builder" className="text-xs gap-1.5">
+                    <Layers className="h-3.5 w-3.5" />
+                    Builder
+                  </TabsTrigger>
+                  <TabsTrigger value="ai" className="text-xs gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    AI Assistant
+                  </TabsTrigger>
+                </TabsList>
               </div>
-            </ScrollArea>
+
+              {/* Builder Tab Content */}
+              <TabsContent value="builder" className="flex-1 overflow-hidden m-0 data-[state=inactive]:hidden">
+                <ScrollArea className="h-full">
+                  <div className="p-4">
+                    {/* Workflow Warnings */}
+                    {workflowWarnings.length > 0 && (
+                      <div className="mb-4 space-y-2">
+                        {workflowWarnings.map((warning, index) => (
+                          <div
+                            key={index}
+                            className="p-3 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800/50 rounded-lg"
+                          >
+                            <div className="flex items-start gap-2">
+                              <AlertTriangle className="size-4 text-yellow-600 dark:text-yellow-500 mt-0.5 shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                                  {warning.message}
+                                </p>
+                                <p className="text-xs text-yellow-700 dark:text-yellow-300/80 mt-1">
+                                  {warning.statuses.join(", ")}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    <WorkflowSimpleView
+                      workflow={workflow as PopulatedWorkflow}
+                      projects={projects}
+                      workspaceId={workspaceId}
+                      spaceId={spaceId}
+                      isAdmin={isAdmin}
+                      onConnectProject={() => setConnectProjectOpen(true)}
+                      onDisconnectProject={handleDisconnectProject}
+                      onSyncFromProject={handleSyncFromProject}
+                      isSyncing={isSyncing}
+                      onRemoveStatus={handleRemoveStatus}
+                    />
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+
+              {/* AI Assistant Tab Content */}
+              <TabsContent value="ai" className="flex-1 overflow-hidden m-0 data-[state=inactive]:hidden">
+                <WorkflowAIChat
+                  workflowId={workflowId}
+                  workspaceId={workspaceId}
+                  onCreateStatus={handleAICreateStatus}
+                  onCreateTransition={handleAICreateTransition}
+                />
+              </TabsContent>
+            </Tabs>
           </div>
         )}
 

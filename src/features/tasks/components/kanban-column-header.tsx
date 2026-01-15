@@ -3,7 +3,6 @@ import {
   CircleDotDashedIcon,
   CircleDotIcon,
   CircleIcon,
-  PlusIcon,
   MoreHorizontalIcon,
   CheckSquare,
   XSquare,
@@ -32,7 +31,6 @@ import { Badge } from "@/components/ui/badge";
 import { snakeCaseToTitleCase, cn } from "@/lib/utils";
 
 import { TaskStatus } from "../types";
-import { useCreateTaskModal } from "../hooks/use-create-task-modal";
 
 const statusIconMap: Record<TaskStatus, React.ReactNode> = {
   [TaskStatus.TODO]: <CircleIcon className="size-[18px] text-gray-400" />,
@@ -75,13 +73,10 @@ export const KanbanColumnHeader = ({
   onClearSelection,
   onSortByPriority,
   onSortByDueDate,
-  canCreateTasks = true,
   sortDirection = 'asc',
   wipLimit,
   onSetWipLimit,
 }: KanbanColumnHeaderProps) => {
-  const { open } = useCreateTaskModal();
-
   const icon = statusIconMap[board];
 
 

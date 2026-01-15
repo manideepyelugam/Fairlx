@@ -1,38 +1,41 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { InferRequestType, InferResponseType } from "hono";
 
 import { client } from "@/lib/rpc";
 
-interface UseValidateTransitionProps {
-  workflowId: string;
-  fromStatusId: string;
-  toStatusId: string;
-  enabled?: boolean;
+type ResponseType = InferResponseType<typeof client.api.workflows["validate-transition"]["$post"], 200>;
+type RequestType = InferRequestType<typeof client.api.workflows["validate-transition"]["$post"]>;
+
+export interface TransitionValidationResult {
+  allowed: boolean;
+  reason?: "TRANSITION_NOT_ALLOWED" | "ROLE_NOT_ALLOWED" | "TEAM_NOT_ALLOWED" | "REQUIRES_APPROVAL";
+  message?: string;
+  approverTeamIds?: string[];
+  transition?: {
+    $id: string;
+    name?: string | null;
+    requiresApproval?: boolean;
+  };
 }
 
-export const useValidateTransition = ({ 
-  workflowId, 
-  fromStatusId, 
-  toStatusId, 
-  enabled = true 
-}: UseValidateTransitionProps) => {
-  const query = useQuery({
-    queryKey: ["validate-transition", workflowId, fromStatusId, toStatusId],
-    enabled: enabled && !!workflowId && !!fromStatusId && !!toStatusId,
-    queryFn: async () => {
-      // TODO: Implement validate transition endpoint
-      const response = await client.api.workflows[":workflowId"]["transitions"].$post({
-        param: { workflowId },
-        json: { fromStatusId, toStatusId },
-      }) as Response;
+export const useValidateTransition = () => {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation<ResponseType, Error, RequestType>({
+    mutationFn: async ({ json }) => {
+      const response = await client.api.workflows["validate-transition"].$post({ json });
 
       if (!response.ok) {
         throw new Error("Failed to validate transition.");
       }
 
-      const { data } = await response.json();
-      return data;
+      return await response.json();
+    },
+    onSuccess: () => {
+      // Optionally invalidate related queries
+      queryClient.invalidateQueries({ queryKey: ["allowed-transitions"] });
     },
   });
 
-  return query;
+  return mutation;
 };
