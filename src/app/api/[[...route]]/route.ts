@@ -24,6 +24,7 @@ import projectDocs from "@/features/project-docs/server/route";
 // New Jira-like features
 import spaces from "@/features/spaces/server/route";
 import workflows from "@/features/workflows/server/route";
+import workflowAI from "@/features/workflows/server/ai-route";
 import customFields from "@/features/custom-fields/server/route";
 import workItemLinks from "@/features/work-item-links/server/route";
 import savedViews from "@/features/saved-views/server/route";
@@ -80,6 +81,7 @@ const routes = app
   // New Jira-like features
   .route("/spaces", spaces)
   .route("/workflows", workflows)
+  .route("/workflow-ai", workflowAI)
   .route("/custom-fields", customFields)
   .route("/work-item-links", workItemLinks)
   .route("/saved-views", savedViews)

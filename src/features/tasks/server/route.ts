@@ -1,9 +1,9 @@
-import { ID, Query, Models } from "node-appwrite";
+import { ID, Query, Models, Databases } from "node-appwrite";
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 
-import { DATABASE_ID, MEMBERS_ID, PROJECTS_ID, TASKS_ID, TIME_LOGS_ID, COMMENTS_ID } from "@/config";
+import { DATABASE_ID, MEMBERS_ID, PROJECTS_ID, TASKS_ID, TIME_LOGS_ID, COMMENTS_ID, WORKFLOW_TRANSITIONS_ID, TEAM_MEMBERS_ID, WORKFLOW_STATUSES_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
 import { notifyTaskAssignees, notifyWorkspaceAdmins } from "@/lib/notifications";
@@ -14,6 +14,128 @@ import { Project } from "@/features/projects/types";
 
 import { createTaskSchema, updateTaskSchema } from "../schemas";
 import { Task, TaskStatus, TaskPriority } from "../types";
+
+/**
+ * Validate if a status transition is allowed for the user
+ * Checks workflow rules, role restrictions, team restrictions, and approval requirements
+ */
+async function validateStatusTransition(
+  databases: Databases,
+  workflowId: string,
+  fromStatus: string,
+  toStatus: string,
+  userId: string,
+  workspaceId: string,
+  memberRole: string
+): Promise<{ allowed: boolean; reason?: string; message?: string }> {
+  // If same status, always allowed
+  if (fromStatus === toStatus) {
+    return { allowed: true };
+  }
+
+  try {
+    // Get the workflow statuses to find the status IDs from status keys/values
+    const workflowStatuses = await databases.listDocuments(
+      DATABASE_ID,
+      WORKFLOW_STATUSES_ID,
+      [Query.equal("workflowId", workflowId)]
+    );
+
+    // Find the status documents by key (status value)
+    const fromStatusDoc = workflowStatuses.documents.find(s => s.key === fromStatus);
+    const toStatusDoc = workflowStatuses.documents.find(s => s.key === toStatus);
+
+    // If statuses are not found in workflow, it means the task uses legacy/default statuses
+    // In this case, allow the transition (backward compatibility)
+    if (!fromStatusDoc || !toStatusDoc) {
+      return { allowed: true };
+    }
+
+    // Get the transition between these statuses
+    const transitions = await databases.listDocuments(
+      DATABASE_ID,
+      WORKFLOW_TRANSITIONS_ID,
+      [
+        Query.equal("workflowId", workflowId),
+        Query.equal("fromStatusId", fromStatusDoc.$id),
+        Query.equal("toStatusId", toStatusDoc.$id),
+      ]
+    );
+
+    // No transition defined = not allowed
+    if (transitions.total === 0) {
+      return {
+        allowed: false,
+        reason: "TRANSITION_NOT_DEFINED",
+        message: `Cannot move from "${fromStatusDoc.name}" to "${toStatusDoc.name}". This transition is not allowed in the workflow.`,
+      };
+    }
+
+    const transition = transitions.documents[0];
+
+    // Check role restrictions
+    if (transition.allowedMemberRoles && transition.allowedMemberRoles.length > 0) {
+      if (!transition.allowedMemberRoles.includes(memberRole)) {
+        return {
+          allowed: false,
+          reason: "ROLE_NOT_ALLOWED",
+          message: `Your role (${memberRole}) cannot perform this transition. Allowed roles: ${transition.allowedMemberRoles.join(", ")}`,
+        };
+      }
+    }
+
+    // Check team restrictions
+    if (transition.allowedTeamIds && transition.allowedTeamIds.length > 0) {
+      const userTeams = await databases.listDocuments(
+        DATABASE_ID,
+        TEAM_MEMBERS_ID,
+        [Query.equal("userId", userId), Query.equal("workspaceId", workspaceId)]
+      );
+      
+      const userTeamIds = userTeams.documents.map((t) => t.teamId as string);
+      const hasAllowedTeam = transition.allowedTeamIds.some(
+        (teamId: string) => userTeamIds.includes(teamId)
+      );
+      
+      if (!hasAllowedTeam) {
+        return {
+          allowed: false,
+          reason: "TEAM_NOT_ALLOWED",
+          message: "Your team does not have permission to perform this transition",
+        };
+      }
+    }
+
+    // Check approval requirement
+    if (transition.requiresApproval) {
+      // Check if user is in approver team
+      const userTeams = await databases.listDocuments(
+        DATABASE_ID,
+        TEAM_MEMBERS_ID,
+        [Query.equal("userId", userId), Query.equal("workspaceId", workspaceId)]
+      );
+      
+      const userTeamIds = userTeams.documents.map((t) => t.teamId as string);
+      const isApprover = transition.approverTeamIds?.some(
+        (teamId: string) => userTeamIds.includes(teamId)
+      );
+      
+      if (!isApprover) {
+        return {
+          allowed: false,
+          reason: "REQUIRES_APPROVAL",
+          message: "This transition requires approval from designated approvers",
+        };
+      }
+    }
+
+    return { allowed: true };
+  } catch (error) {
+    console.error("Error validating status transition:", error);
+    // On error, allow the transition to prevent blocking users due to validation errors
+    return { allowed: true };
+  }
+}
 
 const app = new Hono()
   .delete("/:taskId", sessionMiddleware, async (c) => {
@@ -311,6 +433,37 @@ const app = new Hono()
         projectId
       );
 
+      // ======= INITIAL STATUS VALIDATION =======
+      // If project has a workflow, validate that the status is an initial status
+      if (project.workflowId) {
+        try {
+          const workflowStatuses = await databases.listDocuments(
+            DATABASE_ID,
+            WORKFLOW_STATUSES_ID,
+            [
+              Query.equal("workflowId", project.workflowId),
+              Query.equal("isInitial", true),
+            ]
+          );
+
+          // Get all initial status keys
+          const validInitialStatusKeys = workflowStatuses.documents.map(s => s.key);
+
+          // If there are defined initial statuses and the provided status isn't one of them
+          if (validInitialStatusKeys.length > 0 && !validInitialStatusKeys.includes(status)) {
+            return c.json({
+              error: `Tasks must start with an initial status. Allowed: ${validInitialStatusKeys.join(", ")}`,
+              reason: "INVALID_INITIAL_STATUS",
+              allowedStatuses: validInitialStatusKeys,
+            }, 400);
+          }
+        } catch (workflowError) {
+          // If workflow check fails, continue without validation
+          console.warn("Failed to validate initial status:", workflowError);
+        }
+      }
+      // ======= END INITIAL STATUS VALIDATION =======
+
       const projectKey = project.name.substring(0, 3).toUpperCase();
       const keyNumber = existingItems.total + 1;
       const key = `${projectKey}-${keyNumber}`;
@@ -392,6 +545,43 @@ const app = new Hono()
       if (!member) {
         return c.json({ error: "Unauthorized" }, 401);
       }
+
+      // ======= WORKFLOW TRANSITION VALIDATION =======
+      // If status is changing, validate the transition against workflow rules
+      if (status !== undefined && existingTask.status !== status) {
+        // Get the project to find the associated workflow
+        try {
+          const project = await databases.getDocument<Project>(
+            DATABASE_ID,
+            PROJECTS_ID,
+            existingTask.projectId
+          );
+
+          // Only validate if project has a workflow attached
+          if (project.workflowId) {
+            const validation = await validateStatusTransition(
+              databases,
+              project.workflowId,
+              existingTask.status,
+              status,
+              user.$id,
+              existingTask.workspaceId,
+              member.role as string
+            );
+
+            if (!validation.allowed) {
+              return c.json({
+                error: validation.message || "This status transition is not allowed",
+                reason: validation.reason,
+              }, 403);
+            }
+          }
+        } catch (projectError) {
+          // If project fetch fails, log but continue (project might have been deleted)
+          console.warn("Failed to fetch project for workflow validation:", projectError);
+        }
+      }
+      // ======= END WORKFLOW VALIDATION =======
 
       const updateData: Record<string, unknown> = {};
 
@@ -664,8 +854,77 @@ const app = new Hono()
         return c.json({ error: "Unauthorized" }, 401);
       }
 
+      // ======= WORKFLOW TRANSITION VALIDATION FOR BULK UPDATES =======
+      // Validate each status transition before performing updates
+      const failedValidations: { taskId: string; error: string }[] = [];
+      const validTasks: typeof tasks = [];
+
+      // Build a map of existing tasks for quick lookup
+      const existingTasksMap = new Map(
+        tasksToUpdate.documents.map((task) => [task.$id, task])
+      );
+
+      // Get project workflows for validation
+      const projectIds = [...new Set(tasksToUpdate.documents.map((t) => t.projectId))];
+      const projects = await databases.listDocuments<Project>(
+        DATABASE_ID,
+        PROJECTS_ID,
+        projectIds.length > 0 ? [Query.equal("$id", projectIds)] : []
+      );
+      const projectWorkflowMap = new Map(
+        projects.documents.map((p) => [p.$id, p.workflowId])
+      );
+
+      for (const taskUpdate of tasks) {
+        const existingTask = existingTasksMap.get(taskUpdate.$id);
+        
+        if (!existingTask) {
+          failedValidations.push({
+            taskId: taskUpdate.$id,
+            error: "Task not found",
+          });
+          continue;
+        }
+
+        // If status is changing, validate the transition
+        if (taskUpdate.status && existingTask.status !== taskUpdate.status) {
+          const workflowId = projectWorkflowMap.get(existingTask.projectId);
+          
+          if (workflowId) {
+            const validation = await validateStatusTransition(
+              databases,
+              workflowId,
+              existingTask.status,
+              taskUpdate.status,
+              user.$id,
+              workspaceId,
+              member.role as string
+            );
+
+            if (!validation.allowed) {
+              failedValidations.push({
+                taskId: taskUpdate.$id,
+                error: validation.message || "Status transition not allowed",
+              });
+              continue;
+            }
+          }
+        }
+
+        validTasks.push(taskUpdate);
+      }
+
+      // If all tasks failed validation, return error with details
+      if (validTasks.length === 0 && failedValidations.length > 0) {
+        return c.json({
+          error: "All status transitions were blocked by workflow rules",
+          failedValidations,
+        }, 403);
+      }
+      // ======= END WORKFLOW VALIDATION =======
+
       const updatedTasks = await Promise.all(
-        tasks.map(async (task) => {
+        validTasks.map(async (task) => {
           const { $id, status, position, assigneeIds } = task;
 
           // Get existing task to compare status
@@ -735,7 +994,14 @@ const app = new Hono()
         }).catch(() => { });
       });
 
-      return c.json({ data: updatedTasks.map(({ task }) => task) });
+      // Return success with any partial failures noted
+      return c.json({ 
+        data: updatedTasks.map(({ task }) => task),
+        ...(failedValidations.length > 0 && { 
+          partialFailures: failedValidations,
+          message: `${validTasks.length} task(s) updated successfully, ${failedValidations.length} blocked by workflow rules`
+        })
+      });
     }
   );
 

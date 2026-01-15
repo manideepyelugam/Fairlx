@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   CircleDotDashedIcon,
   ChevronDown,
@@ -18,6 +18,7 @@ import {
   X,
   Send,
   Plus,
+  Lock,
 } from "lucide-react";
 import {
   Popover,
@@ -29,7 +30,9 @@ import { cn } from "@/lib/utils";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { Member } from "@/features/members/types";
-// import { useGetProjects } from "@/features/projects/api/use-get-projects";
+import { useGetProject } from "@/features/projects/api/use-get-project";
+import { useGetAllowedTransitions } from "@/features/workflows/api/use-get-allowed-transitions";
+import { useGetWorkflowStatuses } from "@/features/workflows/api/use-get-workflow-statuses";
 import { useUpdateTask } from "../api/use-update-task";
 import { PopulatedTask, TaskStatus, TaskPriority } from "../types";
 import { toast } from "sonner";
@@ -123,13 +126,102 @@ const labelColors: Record<string, string> = {
 const suggestedLabels = ["Bug", "Feature", "Improvement"];
 const allLabels = ["Feature", "Improvement", "Documentation", "Design"];
 
+// Helper function to get status icon based on workflow status configuration
+const getStatusIcon = (iconName: string, color: string): React.ReactNode => {
+  const iconStyle = { color };
+  const className = "size-4";
+  
+  switch (iconName) {
+    case "CircleCheck":
+    case "CheckCircle":
+      return <CircleCheckIcon className={className} style={iconStyle} />;
+    case "CircleDot":
+      return <CircleDotIcon className={className} style={iconStyle} />;
+    case "CircleDashed":
+    case "CircleDotDashed":
+      return <CircleDotDashedIcon className={className} style={iconStyle} />;
+    case "X":
+    case "XCircle":
+      return <X className={className} style={iconStyle} />;
+    default:
+      return <CircleIcon className={className} style={iconStyle} />;
+  }
+};
+
 export const TaskDetailsSidebar = ({
   task,
   workspaceId,
   canEdit = true,
 }: TaskDetailsSidebarProps) => {
   const { data: members } = useGetMembers({ workspaceId });
-  const { mutate: updateTask } = useUpdateTask();
+  const { mutate: updateTask, isPending: isUpdating } = useUpdateTask();
+
+  // Get project to find workflow
+  const { data: projectData } = useGetProject({ projectId: task.projectId });
+  const workflowId = projectData?.workflowId;
+
+  // Get workflow statuses to find the current status ID
+  const { data: workflowStatusesData } = useGetWorkflowStatuses({ 
+    workflowId: workflowId || "" 
+  });
+  
+  // Find the current status document by matching the key to task.status
+  const currentStatusDoc = useMemo(() => {
+    if (!workflowStatusesData?.documents) return null;
+    return workflowStatusesData.documents.find(
+      (s: { key: string }) => s.key === task.status
+    );
+  }, [workflowStatusesData, task.status]);
+
+  // Get allowed transitions from current status
+  const { data: allowedTransitions, isLoading: isLoadingTransitions } = useGetAllowedTransitions({
+    workflowId: workflowId || "",
+    fromStatusId: currentStatusDoc?.$id || "",
+    enabled: !!workflowId && !!currentStatusDoc?.$id,
+  });
+
+  // Filter statuses to only show allowed transitions (when workflow is active)
+  const workflowFilteredStatuses = useMemo(() => {
+    // No workflow = show all default statuses
+    if (!workflowId || !allowedTransitions) {
+      return allStatuses;
+    }
+
+    // Get allowed target status keys
+    const allowedStatusKeys = new Set<string>();
+    
+    // Always include current status
+    allowedStatusKeys.add(task.status);
+
+    // Add allowed transition targets
+    allowedTransitions.forEach((t: { toStatus?: { key: string } }) => {
+      if (t.toStatus?.key) {
+        allowedStatusKeys.add(t.toStatus.key);
+      }
+    });
+
+    // If we have workflow statuses, use those instead of default statuses
+    if (workflowStatusesData?.documents && workflowStatusesData.documents.length > 0) {
+      return workflowStatusesData.documents.map((status: { 
+        key: string; 
+        name: string; 
+        icon: string; 
+        color: string 
+      }) => ({
+        value: status.key,
+        label: status.name,
+        icon: getStatusIcon(status.icon, status.color),
+        key: status.key,
+        isAllowed: allowedStatusKeys.has(status.key),
+      }));
+    }
+
+    // Fallback: filter default statuses
+    return allStatuses.map(status => ({
+      ...status,
+      isAllowed: allowedStatusKeys.has(status.value),
+    }));
+  }, [workflowId, allowedTransitions, task.status, workflowStatusesData]);
 
   const [statusOpen, setStatusOpen] = useState(false);
   const [priorityOpen, setPriorityOpen] = useState(false);
@@ -147,14 +239,25 @@ export const TaskDetailsSidebar = ({
     updateTask(
       { param: { taskId: task.$id }, json: updates },
       {
-        onError: () => {
-          toast.error("Failed to update task");
+        onError: (error) => {
+          // Check if this is a workflow transition error
+          const errorMessage = error?.message || "Failed to update task";
+          if (errorMessage.includes("transition") || errorMessage.includes("workflow")) {
+            toast.error("This status transition is not allowed by the workflow");
+          } else {
+            toast.error(errorMessage);
+          }
         },
       }
     );
   };
 
-  const handleStatusChange = (status: string) => {
+  const handleStatusChange = (status: string, isAllowed?: boolean) => {
+    // If workflow is active and transition is not allowed, show error
+    if (workflowId && isAllowed === false) {
+      toast.error("This status transition is not allowed by the workflow rules");
+      return;
+    }
     handleUpdateTask({ status });
     setStatusOpen(false);
   };
@@ -179,12 +282,26 @@ export const TaskDetailsSidebar = ({
   };
 
 
-  // Get current status display
-  const currentStatus = statusConfig[task.status] || {
-    icon: <CircleDotDashedIcon className="size-4 text-gray-400" />,
-    label: "Backlog",
-    color: "text-gray-400",
-  };
+  // Get current status display - prefer workflow status if available
+  const currentStatus = useMemo(() => {
+    // First check if we have a matching workflow status
+    const workflowStatus = workflowFilteredStatuses.find(
+      s => s.value === task.status
+    );
+    if (workflowStatus) {
+      return {
+        icon: workflowStatus.icon,
+        label: workflowStatus.label,
+        color: "", // Color is embedded in the icon
+      };
+    }
+    // Fallback to static config
+    return statusConfig[task.status] || {
+      icon: <CircleDotDashedIcon className="size-4 text-gray-400" />,
+      label: "Backlog",
+      color: "text-gray-400",
+    };
+  }, [task.status, workflowFilteredStatuses]);
 
   // Get current priority display
   const currentPriority = task.priority
@@ -197,10 +314,13 @@ export const TaskDetailsSidebar = ({
       ? task.assignees[0]
       : task.assignee;
 
-  // Filter functions
-  const filteredStatuses = allStatuses.filter((s) =>
-    s.label.toLowerCase().includes(statusSearch.toLowerCase())
-  );
+  // Filter functions - use workflow statuses if available
+  const filteredStatuses = useMemo(() => {
+    const statuses = workflowFilteredStatuses.length > 0 ? workflowFilteredStatuses : allStatuses;
+    return statuses.filter((s) =>
+      s.label.toLowerCase().includes(statusSearch.toLowerCase())
+    );
+  }, [workflowFilteredStatuses, statusSearch]);
 
   const filteredMembers = members?.documents?.filter((m: Member) =>
     m.name?.toLowerCase().includes(assigneeSearch.toLowerCase())
@@ -229,12 +349,15 @@ export const TaskDetailsSidebar = ({
       {projectOpen ? (
         <>
          <Popover open={statusOpen} onOpenChange={setStatusOpen}>
-        <PopoverTrigger asChild disabled={!canEdit}>
+        <PopoverTrigger asChild disabled={!canEdit || isUpdating}>
           <button className="flex items-center gap-3 mt-2 px-2 py-2 hover:bg-gray-100 rounded-md w-full text-left">
             <span className={cn("flex items-center", currentStatus.color)}>
               {currentStatus.icon}
             </span>
             <span className="text-[13px] font-normal ">{currentStatus.label}</span>
+            {isLoadingTransitions && workflowId && (
+              <span className="text-xs text-gray-400 ml-auto">Loading...</span>
+            )}
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-64 p-0 bg-white border border-gray-200 text-gray-900 shadow-lg" align="start" side="left" sideOffset={8}>
@@ -248,23 +371,43 @@ export const TaskDetailsSidebar = ({
               />
               
             </div>
+            {workflowId && (
+              <div className="px-2 py-1 mb-1 text-xs text-gray-500 flex items-center gap-1">
+                <Lock className="size-3" />
+                <span>Workflow enforced</span>
+              </div>
+            )}
             <div className="space-y-0.5">
-              {filteredStatuses.map((status) => (
-                <button
-                  key={status.value}
-                  onClick={() => handleStatusChange(status.value)}
-                  className="flex items-center justify-between w-full px-2 py-1.5 hover:bg-gray-100 rounded text-sm"
-                >
-                  <div className="flex items-center gap-2">
-                    {status.icon}
-                    <span className="text-xs tracking-normal">{status.label}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {task.status === status.value && <Check className="size-4 text-gray-600" />}
-                    <span className="text-xs text-gray-400">{status.key}</span>
-                  </div>
-                </button>
-              ))}
+              {filteredStatuses.map((status) => {
+                const isAllowed = 'isAllowed' in status ? status.isAllowed !== false : true;
+                const isCurrent = task.status === status.value;
+                
+                return (
+                  <button
+                    key={status.value}
+                    onClick={() => handleStatusChange(status.value, isAllowed)}
+                    disabled={!isAllowed && !isCurrent}
+                    className={cn(
+                      "flex items-center justify-between w-full px-2 py-1.5 rounded text-sm",
+                      isAllowed || isCurrent
+                        ? "hover:bg-gray-100 cursor-pointer"
+                        : "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      {status.icon}
+                      <span className="text-xs tracking-normal">{status.label}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isCurrent && <Check className="size-4 text-gray-600" />}
+                      {!isAllowed && !isCurrent && workflowId && (
+                        <Lock className="size-3 text-gray-400" />
+                      )}
+                      <span className="text-xs text-gray-400">{status.key}</span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </PopoverContent>
