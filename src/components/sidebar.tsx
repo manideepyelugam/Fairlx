@@ -10,15 +10,24 @@ import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { Spaces } from "./spaces";
 import { Tools } from "./tools";
 import { useAccountLifecycle } from "@/components/account-lifecycle-provider";
+import { useUserAccess } from "@/hooks/use-user-access";
 
+/**
+ * Sidebar Component (Permission-Driven)
+ * 
+ * ARCHITECTURE:
+ * - Fetches user access from useUserAccess hook
+ * - Passes allowedRouteKeys to Navigation
+ * - No client-side permission logic beyond routing
+ * 
+ * INVARIANT:
+ * - Navigation items shown = routes user can access
+ */
 export const Sidebar = () => {
   const { lifecycleState: state, isRestrictedOrgMember } = useAccountLifecycle();
-  const {
-    hasWorkspace,
-    hasOrg,
-    activeWorkspaceId
-  } = state;
+  const { hasWorkspace, hasOrg, activeWorkspaceId } = state;
   const urlWorkspaceId = useWorkspaceId();
+  const { allowedRouteKeys, isLoading: isAccessLoading } = useUserAccess();
 
   // Only show workspace content if we have a workspace ID (URL or global)
   const showWorkspaceContent = !!(urlWorkspaceId || activeWorkspaceId);
@@ -60,12 +69,16 @@ export const Sidebar = () => {
       </div>
 
       <div className="flex flex-col flex-1 overflow-hidden overflow-y-auto">
-        {/* Navigation: Always shown for ORG accounts, or when workspaces exist for PERSONAL */}
+        {/* Navigation: Pass allowed route keys from server */}
         {(hasOrg || hasWorkspace) && (
-          <Navigation hasWorkspaces={hasWorkspace} />
+          <Navigation
+            allowedRouteKeys={isAccessLoading ? undefined : allowedRouteKeys}
+            hasWorkspaces={hasWorkspace}
+            hasOrg={hasOrg}
+          />
         )}
 
-        {/* Workspace-scoped content: Only shown when a workspace is active AND not on an org route */}
+        {/* Workspace-scoped content: Only shown when a workspace is active */}
         {showWorkspaceContent && (
           <>
             <Tools />
@@ -97,5 +110,3 @@ export const Sidebar = () => {
     </aside>
   );
 };
-
-
