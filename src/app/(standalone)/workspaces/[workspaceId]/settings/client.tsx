@@ -29,7 +29,7 @@ export const WorkspaceIdSettingsClient = () => {
   }
 
   return (
-    <div className="w-full lg:max-w-xl">
+    <div className="w-full flex items-center justify-center">
       <EditWorkspaceForm initialValues={initialValues} />
     </div>
   );
