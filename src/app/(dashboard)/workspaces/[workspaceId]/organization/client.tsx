@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
+import { toast } from "sonner";
 import {
     Building2, Users, Settings2, Shield, Trash2, Crown,
-    CreditCard, AlertTriangle, FileText, Loader2, Clock, Hash, UserPlus, Mail, BarChart3
+    CreditCard, AlertTriangle, FileText, Loader2, Clock, Hash, UserPlus, Mail, BarChart3, ImageIcon
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -99,6 +101,8 @@ export const OrganizationSettingsClient = () => {
 
     // General settings form state
     const [orgName, setOrgName] = useState("");
+    const [orgLogo, setOrgLogo] = useState<File | null>(null);
+    const [orgLogoPreview, setOrgLogoPreview] = useState<string | null>(null);
     const [hasChanges, setHasChanges] = useState(false);
 
     // Delete confirmation state
@@ -128,19 +132,58 @@ export const OrganizationSettingsClient = () => {
     // Detect changes
     useEffect(() => {
         if (organization?.name) {
-            setHasChanges(orgName !== organization.name);
+            const nameChanged = orgName !== organization.name;
+            const logoChanged = orgLogo !== null;
+            setHasChanges(nameChanged || logoChanged);
         }
-    }, [orgName, organization?.name]);
+    }, [orgName, organization?.name, orgLogo]);
+
+    // Handle logo file selection
+    const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            // Validate file type
+            if (!file.type.startsWith("image/")) {
+                toast.error("Please select an image file");
+                return;
+            }
+            // Validate file size (max 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                toast.error("Image must be less than 5MB");
+                return;
+            }
+            setOrgLogo(file);
+            setOrgLogoPreview(URL.createObjectURL(file));
+        }
+    };
+
+    // Clear logo preview on unmount
+    useEffect(() => {
+        return () => {
+            if (orgLogoPreview) {
+                URL.revokeObjectURL(orgLogoPreview);
+            }
+        };
+    }, [orgLogoPreview]);
 
     const members = membersData?.documents || [];
     const ownerCount = members.filter((m: OrgMember) => m.role === "OWNER").length;
+    const queryClient = useQueryClient();
 
     // Handler: Save organization changes
     const handleSaveOrg = () => {
         if (!primaryOrganizationId || !hasChanges) return;
         updateOrg({
             organizationId: primaryOrganizationId,
-            name: orgName,
+            name: orgName !== organization?.name ? orgName : undefined,
+            image: orgLogo || undefined,
+        }, {
+            onSuccess: () => {
+                setOrgLogo(null);
+                setOrgLogoPreview(null);
+                // Also invalidate account lifecycle to update org logo in header
+                queryClient.invalidateQueries({ queryKey: ["account-lifecycle"] });
+            },
         });
     };
 
@@ -214,6 +257,10 @@ export const OrganizationSettingsClient = () => {
     }
 
     const isLoading = isLoadingOrg || isLoadingRole || isLoadingPermissions;
+
+    // Get current logo URL (prefer preview, then organization imageUrl)
+    const currentLogoUrl = orgLogoPreview || organization?.imageUrl;
+    const orgInitial = organization?.name?.charAt(0).toUpperCase() || "O";
 
     return (
         <div className="flex flex-col gap-6 w-full">
@@ -329,6 +376,62 @@ export const OrganizationSettingsClient = () => {
                                 </div>
                             ) : (
                                 <>
+                                    {/* Organization Logo */}
+                                    <div className="space-y-3">
+                                        <Label className="text-xs font-medium">Organization Logo</Label>
+                                        <div className="flex items-center gap-4">
+                                            <div className="relative group">
+                                                <Avatar className="h-20 w-20 border-2 border-muted">
+                                                    {currentLogoUrl ? (
+                                                        <AvatarImage src={currentLogoUrl} alt={organization?.name} />
+                                                    ) : null}
+                                                    <AvatarFallback className="bg-primary/10 text-primary text-2xl font-semibold">
+                                                        {orgInitial}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                {canEditSettings && (
+                                                    <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                                        <ImageIcon className="size-6 text-white" />
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            onChange={handleLogoChange}
+                                                            className="sr-only"
+                                                        />
+                                                    </label>
+                                                )}
+                                            </div>
+                                            <div className="space-y-1">
+                                                {canEditSettings && (
+                                                    <>
+                                                        <label>
+                                                            <Button variant="outline" size="sm" className="gap-1.5" asChild>
+                                                                <span>
+                                                                    <ImageIcon className="size-3.5" />
+                                                                    {currentLogoUrl ? "Change Logo" : "Upload Logo"}
+                                                                    <input
+                                                                        type="file"
+                                                                        accept="image/*"
+                                                                        onChange={handleLogoChange}
+                                                                        className="sr-only"
+                                                                    />
+                                                                </span>
+                                                            </Button>
+                                                        </label>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            PNG, JPG or GIF. Max 5MB.
+                                                        </p>
+                                                    </>
+                                                )}
+                                                {!canEditSettings && !currentLogoUrl && (
+                                                    <p className="text-xs text-muted-foreground">
+                                                        No logo set
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <Label htmlFor="orgName" className="text-xs font-medium">Organization Name</Label>

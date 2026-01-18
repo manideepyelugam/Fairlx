@@ -3,6 +3,7 @@
 import { createSessionClient } from "@/lib/appwrite";
 import {
     DATABASE_ID,
+    ORGANIZATIONS_ID,
     ORGANIZATION_MEMBERS_ID,
     MEMBERS_ID,
 } from "@/config";
@@ -34,6 +35,8 @@ export async function resolveAccountLifecycleState(): Promise<AccountLifecycleSt
                 accountType: null,
                 activeMember: null,
                 activeOrgId: null,
+                activeOrgName: null,
+                activeOrgImageUrl: null,
                 activeWorkspaceId: null,
                 mustResetPassword: false,
                 orgRole: null,
@@ -86,6 +89,25 @@ export async function resolveAccountLifecycleState(): Promise<AccountLifecycleSt
             }
         }
 
+        // 2.5. Fetch organization details for display (name, imageUrl)
+        let activeOrgName: string | null = null;
+        let activeOrgImageUrl: string | null = null;
+
+        if (activeOrgId) {
+            try {
+                const orgDoc = await databases.getDocument(
+                    DATABASE_ID,
+                    ORGANIZATIONS_ID,
+                    activeOrgId
+                );
+                activeOrgName = orgDoc.name || null;
+                activeOrgImageUrl = orgDoc.imageUrl || null;
+            } catch {
+                // Organization fetch might fail due to permissions, but we still have activeOrgId
+                // This is acceptable - the UI will show fallbacks
+            }
+        }
+
         // 3. Resolve Active Workspace
         let hasWorkspace = false;
         let activeWorkspaceId = null;
@@ -119,6 +141,8 @@ export async function resolveAccountLifecycleState(): Promise<AccountLifecycleSt
             accountType: accountType as "PERSONAL" | "ORG" | null,
             activeMember,
             activeOrgId,
+            activeOrgName,
+            activeOrgImageUrl,
             activeWorkspaceId,
             mustResetPassword,
             orgRole,
@@ -137,6 +161,8 @@ export async function resolveAccountLifecycleState(): Promise<AccountLifecycleSt
             accountType: null,
             activeMember: null,
             activeOrgId: null,
+            activeOrgName: null,
+            activeOrgImageUrl: null,
             activeWorkspaceId: null,
             mustResetPassword: false,
             orgRole: null,

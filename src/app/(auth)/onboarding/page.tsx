@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 
 import { useCurrent } from "@/features/auth/api/use-current";
@@ -38,6 +39,7 @@ import { CompletionStep } from "./components/completion-step";
 
 function OnboardingContent() {
     const router = useRouter();
+    const queryClient = useQueryClient();
     const { data: user, isLoading: isUserLoading } = useCurrent();
     const {
         state,
@@ -83,12 +85,17 @@ function OnboardingContent() {
     const handleOrgCreated = useCallback((orgId: string, orgName: string) => {
         if (isSubmitting) return;
         setOrganization(orgId, orgName);
-    }, [isSubmitting, setOrganization]);
+        // Immediately invalidate lifecycle cache so sidebar has fresh state
+        queryClient.invalidateQueries({ queryKey: ["account-lifecycle"] });
+    }, [isSubmitting, setOrganization, queryClient]);
 
     const handleWorkspaceCreated = useCallback((workspaceId: string) => {
         if (isSubmitting) return;
         setWorkspace(workspaceId);
-    }, [isSubmitting, setWorkspace]);
+        // Invalidate both lifecycle and user-access caches
+        queryClient.invalidateQueries({ queryKey: ["account-lifecycle"] });
+        queryClient.invalidateQueries({ queryKey: ["user-access"] });
+    }, [isSubmitting, setWorkspace, queryClient]);
 
     const handleSkipWorkspace = useCallback(() => {
         if (isSubmitting) return;
@@ -104,7 +111,7 @@ function OnboardingContent() {
     // Show loading while initializing
     if (isUserLoading || !isInitialized || isRedirecting) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-background to-muted/30">
+            <div className="flex items-center justify-center min-h-[60vh]">
                 <div className="text-center">
                     <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
                     <p className="mt-4 text-sm text-muted-foreground">Setting up your account...</p>
@@ -191,24 +198,32 @@ function OnboardingContent() {
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-gradient-to-b from-background to-muted/30">
-            {/* Header with Stepper */}
-            <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b py-6 px-4">
+        <div className="w-full max-w-3xl mx-auto">
+            {/* Stepper */}
+            <div className="mb-8 px-4">
                 <OnboardingStepper
                     steps={steps}
                     currentStep={currentStep}
                     onStepClick={handleStepClick}
                 />
-            </header>
+            </div>
 
             {/* Main Content */}
-            <main className="flex-1 flex items-center justify-center p-6">
+            <div className="w-full">
                 {renderStep()}
-            </main>
+            </div>
 
             {/* Footer */}
-            <footer className="py-4 text-center text-xs text-muted-foreground">
-                Need help? Contact <a href="mailto:support@fairlx.com" className="underline hover:text-foreground">support@fairlx.com</a>
+            <footer className="mt-12 py-6 text-center">
+                <p className="text-xs text-muted-foreground">
+                    Need help?{" "}
+                    <a
+                        href="mailto:contact@fairlx.com"
+                        className="text-primary hover:underline font-medium"
+                    >
+                        Contact support
+                    </a>
+                </p>
             </footer>
         </div>
     );
@@ -221,4 +236,3 @@ export default function OnboardingPage() {
         </OnboardingErrorBoundary>
     );
 }
-
