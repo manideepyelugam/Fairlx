@@ -14,7 +14,7 @@ import { usePathname } from "next/navigation";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
 import { useAccountLifecycle } from "@/components/account-lifecycle-provider";
-import { AppRouteKey } from "@/lib/permissions/appRouteKeys";
+import { AppRouteKey, getOrgRouteKeys } from "@/lib/permissions/appRouteKeys";
 
 /**
  * Navigation Component (Permission-Driven)
@@ -128,7 +128,7 @@ export const Navigation = ({
 }: NavigationProps) => {
   const urlWorkspaceId = useWorkspaceId();
   const { lifecycleState: state } = useAccountLifecycle();
-  const { activeWorkspaceId, hasOrg: contextHasOrg } = state;
+  const { activeWorkspaceId, hasOrg: contextHasOrg, orgRole } = state;
 
   // Use props if provided, otherwise fall back to context
   const effectiveHasOrg = hasOrg || contextHasOrg;
@@ -136,12 +136,16 @@ export const Navigation = ({
   const projectId = useProjectId();
   const pathname = usePathname();
 
+  // OWNER fallback: If allowedRouteKeys is undefined but user is OWNER, show org routes
+  // This ensures OWNER always sees navigation even before API response
+  const effectiveRouteKeys = allowedRouteKeys ?? (orgRole === "OWNER" ? getOrgRouteKeys() : undefined);
+
   // Filter routes based on allowed route keys
   const visibleRoutes = routes.filter((route: RouteConfig) => {
-    // If allowedRouteKeys is provided, use permission-based filtering
-    if (allowedRouteKeys) {
+    // If effectiveRouteKeys is provided, use permission-based filtering
+    if (effectiveRouteKeys) {
       // Check if route key is in allowed list
-      if (!allowedRouteKeys.includes(route.routeKey)) return false;
+      if (!effectiveRouteKeys.includes(route.routeKey)) return false;
     }
 
     // Workspace-scoped routes require workspace context

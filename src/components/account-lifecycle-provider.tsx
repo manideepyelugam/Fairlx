@@ -19,6 +19,8 @@ const INITIAL_STATE: AccountLifecycleState = {
     accountType: null,
     activeMember: null,
     activeOrgId: null,
+    activeOrgName: null,
+    activeOrgImageUrl: null,
     activeWorkspaceId: null,
     mustResetPassword: false,
     orgRole: null,

@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useAccountLifecycle } from "@/components/account-lifecycle-provider";
-import { AppRouteKey } from "@/lib/permissions/appRouteKeys";
+import { AppRouteKey, getOrgRouteKeys, getWorkspaceIndependentRouteKeys } from "@/lib/permissions/appRouteKeys";
 
 /**
  * Hook to get user access (allowed route keys) for client-side navigation
@@ -26,7 +26,7 @@ interface UserAccessResponse {
 
 export function useUserAccess() {
     const { lifecycleState } = useAccountLifecycle();
-    const { activeOrgId, activeWorkspaceId, hasOrg } = lifecycleState;
+    const { activeOrgId, activeWorkspaceId, hasOrg, orgRole } = lifecycleState;
 
     const query = useQuery<UserAccessResponse>({
         queryKey: ["user-access", activeOrgId, activeWorkspaceId],
@@ -71,12 +71,18 @@ export function useUserAccess() {
         enabled: true, // Always run, but behavior changes based on account type
     });
 
+    // During loading, provide sensible defaults based on role
+    // OWNER always has full access, so this is safe to pre-populate
+    const loadingDefaults: AppRouteKey[] = orgRole === "OWNER"
+        ? [...getOrgRouteKeys(), ...getWorkspaceIndependentRouteKeys()]
+        : [];
+
     return {
-        allowedRouteKeys: query.data?.allowedRouteKeys ?? [],
-        isOwner: query.data?.isOwner ?? false,
-        role: query.data?.role ?? null,
+        allowedRouteKeys: query.data?.allowedRouteKeys ?? loadingDefaults,
+        isOwner: query.data?.isOwner ?? (orgRole === "OWNER"),
+        role: query.data?.role ?? orgRole,
         departmentIds: query.data?.departmentIds ?? [],
-        hasDepartmentAccess: query.data?.hasDepartmentAccess ?? false,
+        hasDepartmentAccess: query.data?.hasDepartmentAccess ?? (orgRole === "OWNER"),
         isLoading: query.isLoading,
         error: query.error,
     };
