@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Building2, MoreHorizontal, Pencil, Trash2, Users, Loader2 } from "lucide-react";
+import { Plus, Building2, MoreHorizontal, Pencil, Trash2, Users, Loader2, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,8 @@ import { useCreateDepartment } from "../api/use-create-department";
 import { useUpdateDepartment } from "../api/use-update-department";
 import { useDeleteDepartment } from "../api/use-delete-department";
 import { PopulatedDepartment, DEPARTMENT_COLORS } from "../types";
+import { DepartmentPermissionsDialog } from "./department-permissions-dialog";
+import { DepartmentMembersDialog } from "./department-members-dialog";
 
 interface DepartmentsListProps {
     orgId: string;
@@ -49,6 +51,8 @@ export function DepartmentsList({ orgId, canManage }: DepartmentsListProps) {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingDepartment, setEditingDepartment] = useState<PopulatedDepartment | null>(null);
     const [deletingDepartment, setDeletingDepartment] = useState<PopulatedDepartment | null>(null);
+    const [permissionsDepartment, setPermissionsDepartment] = useState<PopulatedDepartment | null>(null);
+    const [membersDepartment, setMembersDepartment] = useState<PopulatedDepartment | null>(null);
 
     const { data, isLoading } = useGetDepartments({ orgId });
     const departments = data?.documents ?? [];
@@ -110,6 +114,8 @@ export function DepartmentsList({ orgId, canManage }: DepartmentsListProps) {
                             canManage={canManage}
                             onEdit={() => setEditingDepartment(dept)}
                             onDelete={() => setDeletingDepartment(dept)}
+                            onManagePermissions={() => setPermissionsDepartment(dept)}
+                            onManageMembers={() => setMembersDepartment(dept)}
                         />
                     ))}
                 </div>
@@ -134,6 +140,26 @@ export function DepartmentsList({ orgId, canManage }: DepartmentsListProps) {
                     onClose={() => setDeletingDepartment(null)}
                 />
             </AlertDialog>
+
+            {/* Permissions Dialog */}
+            {permissionsDepartment && (
+                <DepartmentPermissionsDialog
+                    orgId={orgId}
+                    department={permissionsDepartment}
+                    open={!!permissionsDepartment}
+                    onOpenChange={(open) => !open && setPermissionsDepartment(null)}
+                />
+            )}
+
+            {/* Members Dialog */}
+            {membersDepartment && (
+                <DepartmentMembersDialog
+                    orgId={orgId}
+                    department={membersDepartment}
+                    open={!!membersDepartment}
+                    onOpenChange={(open) => !open && setMembersDepartment(null)}
+                />
+            )}
         </div>
     );
 }
@@ -144,11 +170,15 @@ function DepartmentCard({
     canManage,
     onEdit,
     onDelete,
+    onManagePermissions,
+    onManageMembers,
 }: {
     department: PopulatedDepartment;
     canManage: boolean;
     onEdit: () => void;
     onDelete: () => void;
+    onManagePermissions: () => void;
+    onManageMembers: () => void;
 }) {
     return (
         <Card className="relative overflow-hidden">
@@ -167,6 +197,14 @@ function DepartmentCard({
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={onManageMembers}>
+                                    <Users className="size-4 mr-2" />
+                                    Members
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={onManagePermissions}>
+                                    <Shield className="size-4 mr-2" />
+                                    Permissions
+                                </DropdownMenuItem>
                                 <DropdownMenuItem onClick={onEdit}>
                                     <Pencil className="size-4 mr-2" />
                                     Edit
@@ -381,9 +419,19 @@ function DeleteDepartmentDialog({
         <AlertDialogContent>
             <AlertDialogHeader>
                 <AlertDialogTitle>Delete Department</AlertDialogTitle>
-                <AlertDialogDescription>
-                    Are you sure you want to delete &quot;{department.name}&quot;?
-                    This will remove all member assignments.
+                <AlertDialogDescription asChild>
+                    <div className="text-sm text-muted-foreground space-y-2">
+                        <p>
+                            Are you sure you want to delete &quot;{department.name}&quot;?
+                            This will remove all member assignments.
+                        </p>
+                        {(department.memberCount ?? 0) > 0 && (
+                            <p className="text-destructive font-medium">
+                                ⚠️ Warning: {department.memberCount} member(s) may lose org access
+                                if this is their only department.
+                            </p>
+                        )}
+                    </div>
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

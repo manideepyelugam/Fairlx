@@ -67,22 +67,12 @@ export const ORG_ROLE_PERMISSIONS: Record<OrganizationRole, readonly OrgPermissi
         "VIEW_AUDIT_LOGS",
         "VIEW_ORG",
     ] as const,
-    [OrganizationRole.ADMIN]: [
-        "INVITE_MEMBERS",
-        "REMOVE_MEMBERS",
-        "CREATE_WORKSPACES",
-        "ASSIGN_TO_WORKSPACES",
-        "MANAGE_DEPARTMENTS",
-        "VIEW_AUDIT_LOGS",
-        "VIEW_ORG",
-    ] as const,
-    [OrganizationRole.MODERATOR]: [
-        "ASSIGN_TO_WORKSPACES",
-        "VIEW_ORG",
-    ] as const,
-    [OrganizationRole.MEMBER]: [
-        "VIEW_ORG",
-    ] as const,
+    // CRITICAL SECURITY ENFORCEMENT:
+    // Non-OWNER roles must have ZERO implicit permissions.
+    // All access must be explicitly granted via Department memberships.
+    [OrganizationRole.ADMIN]: [] as const,
+    [OrganizationRole.MODERATOR]: [] as const,
+    [OrganizationRole.MEMBER]: [] as const,
 };
 
 /**

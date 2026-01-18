@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import {
     CalendarIcon,
     RefreshCw,
     Shield,
     Building2,
+    ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,7 +27,8 @@ import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { useCurrent } from "@/features/auth/api/use-current";
 import { useAccountType } from "@/features/organizations/hooks/use-account-type";
 import { useGetOrganizations } from "@/features/organizations/api/use-get-organizations";
-import { useCurrentOrgMember } from "@/features/organizations/api/use-current-org-member";
+import { useCurrentUserOrgPermissions } from "@/features/org-permissions/api/use-current-user-permissions";
+import { OrgPermissionKey } from "@/features/org-permissions/types";
 import {
     useGetUsageEvents,
     useGetUsageSummary,
@@ -46,6 +49,7 @@ import { ResourceType, UsageSource } from "@/features/usage/types";
 import { CurrencySelector, useDisplayCurrency } from "@/features/currency/components/currency-selector";
 
 export function UsageDashboardClient() {
+    const router = useRouter();
     const workspaceId = useWorkspaceId();
     const { data: user } = useCurrent();
     const { isAdmin, isLoading: isMemberLoading } = useCurrentMember({ workspaceId });
@@ -53,9 +57,11 @@ export function UsageDashboardClient() {
     const { data: organizations } = useGetOrganizations();
     const { data: workspacesData } = useGetWorkspaces();
     const { data: projectsData } = useGetProjects({ workspaceId });
-    const { canEdit: isOrgAdmin, isLoading: isOrgMemberLoading } = useCurrentOrgMember({
-        organizationId: primaryOrganizationId || ""
+    // Org-level permissions - single source of truth
+    const { hasPermission: hasOrgPermission, isLoading: isOrgPermissionLoading } = useCurrentUserOrgPermissions({
+        orgId: primaryOrganizationId || ""
     });
+    const canViewBilling = hasOrgPermission(OrgPermissionKey.BILLING_VIEW);
 
     // Currency display hook
     const { currency, setCurrency, rate, rates } = useDisplayCurrency();
@@ -177,12 +183,12 @@ export function UsageDashboardClient() {
     };
 
     // Loading state
-    if (isMemberLoading || isOrgMemberLoading) {
+    if (isMemberLoading || isOrgPermissionLoading) {
         return <PageLoader />;
     }
 
-    // Admin check - either workspace admin (if in workspace) or org admin (if org account)
-    const hasAdminAccess = workspaceId ? isAdmin : (isOrg && isOrgAdmin);
+    // Admin check - either workspace admin (if in workspace) or org billing viewer (if org account)
+    const hasAdminAccess = workspaceId ? isAdmin : (isOrg && canViewBilling);
 
     if (!hasAdminAccess) {
         return (
@@ -200,6 +206,16 @@ export function UsageDashboardClient() {
             <div className="max-w-[1600px] mx-auto">
                 {/* Header Section - Matching workspace dashboard style */}
                 <div className="mb-8">
+                    {/* Back navigation - conditional for org vs personal accounts */}
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="mb-4 gap-2 text-muted-foreground hover:text-foreground"
+                        onClick={() => router.push(isOrg ? "/organization" : `/workspaces/${workspaceId}`)}
+                    >
+                        <ArrowLeft className="size-4" />
+                        {isOrg ? "Back to Organization" : "Back to Workspace"}
+                    </Button>
                     <div className="flex items-center justify-between mb-2">
                         <p className="text-sm text-blue-600 dark:text-blue-400">
                             {isOrg

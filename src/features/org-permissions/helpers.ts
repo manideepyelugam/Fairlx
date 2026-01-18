@@ -6,36 +6,15 @@ import { OrganizationRole, OrgMemberStatus, OrganizationMember } from "@/feature
 import { OrgMemberPermission, OrgPermissionKey } from "./types";
 
 // ============================================================================
-// ROLE → PERMISSION DEFAULTS
+// SECURITY: OWNER-ONLY DEFAULT PERMISSIONS
 // ============================================================================
 
 /**
- * Default permissions by role
+ * SECURITY: Only OWNER has implicit permissions.
+ * ADMIN/MODERATOR/MEMBER must use DEPARTMENTS for permissions.
  * 
- * OWNER: All permissions (checked first, before DB)
- * ADMIN: Management permissions
- * MODERATOR: Limited assignment permissions
- * MEMBER: No org permissions
+ * This constant is kept for OWNER bypass only.
  */
-const ROLE_DEFAULT_PERMISSIONS: Record<OrganizationRole, OrgPermissionKey[]> = {
-    [OrganizationRole.OWNER]: Object.values(OrgPermissionKey) as OrgPermissionKey[],
-    [OrganizationRole.ADMIN]: [
-        OrgPermissionKey.BILLING_VIEW,
-        OrgPermissionKey.MEMBERS_VIEW,
-        OrgPermissionKey.MEMBERS_MANAGE,
-        OrgPermissionKey.SETTINGS_MANAGE,
-        OrgPermissionKey.AUDIT_VIEW,
-        OrgPermissionKey.DEPARTMENTS_MANAGE,
-        OrgPermissionKey.SECURITY_VIEW,
-        OrgPermissionKey.WORKSPACE_CREATE,
-        OrgPermissionKey.WORKSPACE_ASSIGN,
-    ],
-    [OrganizationRole.MODERATOR]: [
-        OrgPermissionKey.MEMBERS_VIEW,
-        OrgPermissionKey.WORKSPACE_ASSIGN,
-    ],
-    [OrganizationRole.MEMBER]: [],
-};
 
 // ============================================================================
 // PERMISSION CHECK HELPER
@@ -84,7 +63,7 @@ export async function hasOrgPermissionExplicit(
         return true;
     }
 
-    // 3. Check explicit user-level permission
+    // 3. Check explicit user-level permission (from departments/direct grants)
     const explicitPerm = await databases.listDocuments<OrgMemberPermission>(
         DATABASE_ID,
         ORG_MEMBER_PERMISSIONS_ID,
@@ -94,12 +73,8 @@ export async function hasOrgPermissionExplicit(
         ]
     );
 
-    if (explicitPerm.total > 0) {
-        return true;
-    }
-
-    // 4. Fall back to role defaults
-    return ROLE_DEFAULT_PERMISSIONS[role]?.includes(permission) ?? false;
+    // Non-owners only get explicit permissions - NO role-based fallback
+    return explicitPerm.total > 0;
 }
 
 /**
@@ -137,7 +112,7 @@ export async function getOrgPermissions(
         };
     }
 
-    // Get explicit permissions
+    // Get explicit permissions only (from departments/direct grants)
     const explicitPerms = await databases.listDocuments<OrgMemberPermission>(
         DATABASE_ID,
         ORG_MEMBER_PERMISSIONS_ID,
@@ -148,11 +123,8 @@ export async function getOrgPermissions(
         (p) => p.permissionKey as OrgPermissionKey
     );
 
-    // Combine with role defaults
-    const roleDefaults = ROLE_DEFAULT_PERMISSIONS[role] || [];
-    const combined = [...new Set([...explicitKeys, ...roleDefaults])];
-
-    return { permissions: combined, role };
+    // Non-owners get ONLY explicit permissions - NO role-based fallback
+    return { permissions: explicitKeys, role };
 }
 
 /**

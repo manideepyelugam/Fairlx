@@ -3,7 +3,6 @@ import {
   CircleDotDashedIcon,
   CircleDotIcon,
   CircleIcon,
-  PlusIcon,
   MoreHorizontalIcon,
   CheckSquare,
   XSquare,
@@ -32,7 +31,6 @@ import { Badge } from "@/components/ui/badge";
 import { snakeCaseToTitleCase, cn } from "@/lib/utils";
 
 import { TaskStatus } from "../types";
-import { useCreateTaskModal } from "../hooks/use-create-task-modal";
 
 const statusIconMap: Record<TaskStatus, React.ReactNode> = {
   [TaskStatus.TODO]: <CircleIcon className="size-[18px] text-gray-400" />,
@@ -75,14 +73,12 @@ export const KanbanColumnHeader = ({
   onClearSelection,
   onSortByPriority,
   onSortByDueDate,
-  canCreateTasks = true,
   sortDirection = 'asc',
   wipLimit,
   onSetWipLimit,
 }: KanbanColumnHeaderProps) => {
-  const { open } = useCreateTaskModal();
-
   const icon = statusIconMap[board];
+
 
   const isAllSelected = taskCount > 0 && selectedCount === taskCount;
   const isPartiallySelected = selectedCount > 0 && selectedCount < taskCount;
@@ -172,31 +168,7 @@ export const KanbanColumnHeader = ({
       )}
 
       <div className="flex items-center gap-2">
-        {canCreateTasks && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  onClick={open}
-                  variant="ghost"
-                  size="icon"
-                  className={cn(
-                    "h-6 w-6 hover:bg-gray-100",
-                    isOverWipLimit && "opacity-50"
-                  )}
-                  disabled={isOverWipLimit}
-                >
-                  <PlusIcon className="h-4 w-4 text-gray-500" />
-                </Button>
-              </TooltipTrigger>
-              {isOverWipLimit && (
-                <TooltipContent>
-                  <span className="text-xs">Cannot add work items - WIP limit exceeded</span>
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
-        )}
+      
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-gray-100">

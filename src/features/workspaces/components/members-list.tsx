@@ -38,6 +38,8 @@ import { useGetOrgMembers } from "@/features/organizations/api/use-get-org-membe
 import { SpaceRole } from "@/features/spaces/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CustomRole } from "@/features/teams/types";
+import { useCurrentUserOrgPermissions } from "@/features/org-permissions/api/use-current-user-permissions";
+import { OrgPermissionKey } from "@/features/org-permissions/types";
 
 import { useConfirm } from "@/hooks/use-confirm";
 import { Button } from "@/components/ui/button";
@@ -99,6 +101,12 @@ export const MembersList = () => {
   const [addFromOrgDialogOpen, setAddFromOrgDialogOpen] = useState(false);
   const [selectedOrgUserId, setSelectedOrgUserId] = useState<string>("");
   const [selectedNewMemberRole, setSelectedNewMemberRole] = useState<MemberRole>(MemberRole.MEMBER);
+
+  // Check org-level WORKSPACE_ASSIGN permission for Add from Org button
+  const { hasPermission: hasOrgPermission } = useCurrentUserOrgPermissions({
+    orgId: workspace?.organizationId || ""
+  });
+  const canAssignToWorkspace = hasOrgPermission(OrgPermissionKey.WORKSPACE_ASSIGN);
 
   const handleUpdateMember = (memberId: string, role: MemberRole | string) => {
     updateMember({ json: { role }, param: { memberId } });
@@ -352,8 +360,8 @@ export const MembersList = () => {
         </div>
         {isCurrentUserAdmin && (
           <div className="flex gap-2">
-            {/* ORG workspaces: Only show "Add from Org" - no invite links */}
-            {workspace?.organizationId ? (
+            {/* ORG workspaces: Only show "Add from Org" if user has WORKSPACE_ASSIGN permission */}
+            {workspace?.organizationId && canAssignToWorkspace && (
               <>
                 <Button
                   size="xs"
@@ -368,8 +376,15 @@ export const MembersList = () => {
                   Members are added by admins
                 </p>
               </>
-            ) : (
-              /* PERSONAL workspaces: Show invite dialog */
+            )}
+            {/* ORG workspaces without WORKSPACE_ASSIGN permission: Just show info text */}
+            {workspace?.organizationId && !canAssignToWorkspace && (
+              <p className="text-xs text-muted-foreground self-center">
+                Members are added by admins with permission
+              </p>
+            )}
+            {/* PERSONAL workspaces: Show invite dialog */}
+            {!workspace?.organizationId && (
               <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
                 <DialogTrigger asChild>
                   <Button size="xs" className="gap-1.5">
@@ -471,11 +486,12 @@ export const MembersList = () => {
               </Dialog>
             )}
           </div>
-        )}
-      </div>
+        )
+        }
+      </div >
 
       {/* Members List Section */}
-      <Card className="border shadow-sm">
+      < Card className="border shadow-sm" >
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div>
@@ -625,68 +641,70 @@ export const MembersList = () => {
             })}
           </div>
         </CardContent>
-      </Card>
+      </Card >
 
       {/* Quick Invite Section - PERSONAL workspaces only */}
       {/* ORG workspaces use admin-controlled assignment via "Add from Org" */}
-      {isCurrentUserAdmin && !workspace?.organizationId && (
-        <Card className="border shadow-sm">
-          <CardHeader className="pb-3">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <LinkIcon className="size-4" />
-                  Quick Invite
-                </CardTitle>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Share your workspace with team members via link
-                </p>
+      {
+        isCurrentUserAdmin && !workspace?.organizationId && (
+          <Card className="border shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    <LinkIcon className="size-4" />
+                    Quick Invite
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Share your workspace with team members via link
+                  </p>
+                </div>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="p-4 rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/20">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <Input
-                    value={fullInviteLink}
-                    readOnly
-                    className="font-mono text-xs h-9 bg-background"
-                  />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-4 rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/20">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <Input
+                      value={fullInviteLink}
+                      readOnly
+                      className="font-mono text-xs h-9 bg-background"
+                    />
+                  </div>
+                  <Button
+                    onClick={handleCopyInviteLink}
+                    variant="secondary"
+                    size="xs"
+                    className="shrink-0 gap-1.5"
+                  >
+                    <CopyIcon className="size-3" />
+                    Copy Link
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-2 border-t">
+                <div>
+                  <p className="text-sm font-medium">Security Settings</p>
+                  <p className="text-xs text-muted-foreground">
+                    Reset your invite link to invalidate the current one
+                  </p>
                 </div>
                 <Button
-                  onClick={handleCopyInviteLink}
-                  variant="secondary"
                   size="xs"
-                  className="shrink-0 gap-1.5"
+                  variant="outline"
+                  onClick={handleResetInviteCode}
+                  disabled={isResettingInviteCode}
+                  className="gap-1.5 text-amber-600 hover:text-amber-700 hover:bg-amber-50 border-amber-200"
                 >
-                  <CopyIcon className="size-3" />
-                  Copy Link
+                  <Shield className="size-3.5" />
+                  Reset Link
                 </Button>
               </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-2 border-t">
-              <div>
-                <p className="text-sm font-medium">Security Settings</p>
-                <p className="text-xs text-muted-foreground">
-                  Reset your invite link to invalidate the current one
-                </p>
-              </div>
-              <Button
-                size="xs"
-                variant="outline"
-                onClick={handleResetInviteCode}
-                disabled={isResettingInviteCode}
-                className="gap-1.5 text-amber-600 hover:text-amber-700 hover:bg-amber-50 border-amber-200"
-              >
-                <Shield className="size-3.5" />
-                Reset Link
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+            </CardContent>
+          </Card>
+        )
+      }
+    </div >
   );
 };

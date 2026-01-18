@@ -83,6 +83,8 @@ export const LOGIN_TOKENS_ID = process.env.NEXT_PUBLIC_APPWRITE_LOGIN_TOKENS_ID!
 // Departments (org-level grouping)
 export const DEPARTMENTS_ID = process.env.NEXT_PUBLIC_APPWRITE_DEPARTMENTS_ID!;
 export const ORG_MEMBER_DEPARTMENTS_ID = process.env.NEXT_PUBLIC_APPWRITE_ORG_MEMBER_DEPARTMENTS_ID!;
+// Department permissions (org permissions owned by departments)
+export const DEPARTMENT_PERMISSIONS_ID = process.env.NEXT_PUBLIC_APPWRITE_DEPARTMENT_PERMISSIONS_ID!;
 // Explicit per-user org permissions
 export const ORG_MEMBER_PERMISSIONS_ID = process.env.NEXT_PUBLIC_APPWRITE_ORG_MEMBER_PERMISSIONS_ID!;
 // User preferences extended with accountType stored in Appwrite user.prefs

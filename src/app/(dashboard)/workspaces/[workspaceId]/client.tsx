@@ -47,18 +47,19 @@ import {
   CartesianGrid,
 } from "recharts"
 
-// Mini bar chart component for stat cards
+// Mini bar chart component for stat cards - uses semantic colors based on variant
 const MiniBarChart = ({ value, max, variant = "default" }: { value: number; max: number; variant?: "default" | "dotted" | "blocks" }) => {
   const bars = 12
   const filledBars = Math.round((value / Math.max(max, 1)) * bars)
   
+  // dotted variant - used for pending/warning states (amber)
   if (variant === "dotted") {
     return (
       <div className="flex items-end gap-0.5 h-8">
         {Array.from({ length: bars }).map((_, i) => (
           <div
             key={i}
-            className={`w-1.5 rounded-sm ${i < filledBars ? 'bg-blue-600 dark:bg-blue-500' : 'bg-blue-100 dark:bg-slate-700'}`}
+            className={`w-1.5 rounded-sm ${i < filledBars ? 'bg-amber-500 dark:bg-amber-400' : 'bg-amber-100 dark:bg-slate-700'}`}
             style={{ height: `${20 + (i * 5) % 30 + 20}%` }}
           />
         ))}
@@ -66,25 +67,27 @@ const MiniBarChart = ({ value, max, variant = "default" }: { value: number; max:
     )
   }
   
+  // blocks variant - used for completed/success states (emerald)
   if (variant === "blocks") {
     return (
       <div className="flex items-end gap-1 h-8">
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
-            className={`w-3 h-6 rounded-sm ${i < Math.ceil(filledBars / 2) ? 'bg-blue-600 dark:bg-blue-500' : 'bg-blue-100 dark:bg-slate-700'}`}
+            className={`w-3 h-6 rounded-sm ${i < Math.ceil(filledBars / 2) ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-emerald-100 dark:bg-slate-700'}`}
           />
         ))}
       </div>
     )
   }
   
+  // default variant - neutral/black for totals
   return (
     <div className="flex items-end gap-0.5 h-8">
       {Array.from({ length: bars }).map((_, i) => (
         <div
           key={i}
-          className={`w-1 rounded-sm ${i < filledBars ? 'bg-blue-600 dark:bg-blue-500' : 'bg-blue-100 dark:bg-slate-700'}`}
+          className={`w-1 rounded-sm ${i < filledBars ? 'bg-slate-900 dark:bg-slate-300' : 'bg-slate-300 dark:bg-slate-700'}`}
           style={{ height: `${30 + (i * 7) % 40 + 30}%` }}
         />
       ))}
@@ -146,10 +149,10 @@ export const WorkspaceIdClient = () => {
 
     // Priority distribution for bar chart
     const priorityDistribution = [
-      { name: "URGENT", count: itemDocs.filter(t => t.priority === WorkItemPriority.URGENT).length, fill: "#2563eb" },
-      { name: "HIGH", count: itemDocs.filter(t => t.priority === WorkItemPriority.HIGH).length, fill: "#3b82f6" },
-      { name: "MEDIUM", count: itemDocs.filter(t => t.priority === WorkItemPriority.MEDIUM).length, fill: "#60a5fa" },
-      { name: "LOW", count: itemDocs.filter(t => t.priority === WorkItemPriority.LOW).length, fill: "#93c5fd" },
+      { name: "URGENT", count: itemDocs.filter(t => t.priority === WorkItemPriority.URGENT).length, fill: "#ef4444" },
+      { name: "HIGH", count: itemDocs.filter(t => t.priority === WorkItemPriority.HIGH).length, fill: "#f87171" },
+      { name: "MEDIUM", count: itemDocs.filter(t => t.priority === WorkItemPriority.MEDIUM).length, fill: "#eab308" },
+      { name: "LOW", count: itemDocs.filter(t => t.priority === WorkItemPriority.LOW).length, fill: "#22c55e" },
     ]
 
     // Monthly data for bar chart (based on actual task creation dates)
@@ -305,43 +308,43 @@ export const WorkspaceIdClient = () => {
             {/* Top Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Total Task Card */}
-              <Card className="p-5 bg-white  border border-slate-200">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm font-normal text-slate-600 dark:text-slate-400">Total Tasks</span>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
-                    <ArrowUpRight className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+              <Card className="p-4 bg-white border border-slate-200 shadow-none text-slate-900">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-normal text-slate-600 dark:text-slate-400">Total Tasks</span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <ArrowUpRight className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
                   </Button>
                 </div>
                 <div className="flex items-end justify-between">
-                  <span className="text-4xl font-bold text-slate-900 dark:text-white">{totalTasks}</span>
+                  <span className="text-3xl font-bold text-slate-900 dark:text-white">{totalTasks}</span>
                   <MiniBarChart value={totalTasks} max={totalTasks + 50} variant="default" />
                 </div>
               </Card>
 
               {/* Pending Task Card */}
-              <Card className="p-5 bg-white border border-amber-200  ">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm font-normal text-slate-600 dark:text-slate-400">Pending Tasks</span>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-amber-50 dark:hover:bg-amber-900/20">
-                    <ArrowUpRight className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <Card className="p-4 bg-amber-50 border border-amber-200 shadow-none text-amber-600">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-normal text-amber-600 dark:text-slate-400">Pending Tasks</span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-amber-50 dark:hover:bg-amber-900/20">
+                    <ArrowUpRight className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
                   </Button>
                 </div>
                 <div className="flex items-end justify-between">
-                  <span className="text-4xl font-bold text-slate-900 dark:text-white">{pendingTasks}</span>
+                  <span className="text-3xl font-bold text-amber-600 dark:text-white">{pendingTasks}</span>
                   <MiniBarChart value={pendingTasks} max={totalTasks} variant="dotted" />
                 </div>
               </Card>
 
               {/* Completed Task Card */}
-              <Card className="p-5 bg-white  border border-emerald-200 ">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm font-normal text-slate-600 dark:text-slate-400">Completed Tasks</span>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
-                    <ArrowUpRight className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <Card className="p-4 bg-emerald-50 border border-emerald-200 shadow-none text-emerald-600">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-normal text-emerald-600 dark:text-slate-400">Completed Tasks</span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
+                    <ArrowUpRight className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                   </Button>
                 </div>
                 <div className="flex items-end justify-between">
-                  <span className="text-4xl font-bold text-slate-900 dark:text-white">{completedTasks}</span>
+                  <span className="text-3xl font-bold text-emerald-600 dark:text-white">{completedTasks}</span>
                   <MiniBarChart value={completedTasks} max={totalTasks} variant="blocks" />
                 </div>
               </Card>
@@ -438,23 +441,23 @@ export const WorkspaceIdClient = () => {
                 {/* Status Legend */}
                 <div className="flex items-center gap-4 mb-4">
                   <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-blue-600" />
+                    <div className="w-2 h-2 rounded-full bg-emerald-600" />
                     <span className="text-xs text-slate-600 dark:text-slate-400">Completed</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-blue-400" />
+                    <div className="w-2 h-2 rounded-full bg-amber-600" />
                     <span className="text-xs text-slate-600 dark:text-slate-400">Pending</span>
                   </div>
                 </div>
 
                 {/* Progress Bar Visualization */}
-                <div className="h-3 flex rounded-full overflow-hidden bg-blue-100 dark:bg-slate-700 mb-6">
+                <div className="h-3 flex rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700 mb-6">
                   <div 
-                    className="bg-blue-600 transition-all" 
+                    className="bg-emerald-600 transition-all" 
                     style={{ width: `${(completedTasks / Math.max(totalTasks, 1)) * 100}%` }}
                   />
                   <div 
-                    className="bg-blue-400 transition-all" 
+                    className="bg-amber-500 transition-all" 
                     style={{ width: `${(pendingTasks / Math.max(totalTasks, 1)) * 100}%` }}
                   />
                 </div>
@@ -463,30 +466,30 @@ export const WorkspaceIdClient = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <p className="text-xs font-medium text-slate-900 dark:text-white">In Progress</p>
-                    <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-slate-700/50 rounded-lg">
-                      <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded">
-                        <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <div className="flex items-center gap-2 p-2 bg-amber-50 dark:bg-slate-700/50 rounded-lg">
+                      <div className="p-1.5 bg-amber-100 dark:bg-amber-900/30 rounded">
+                        <FileText className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium truncate text-slate-900 dark:text-white">Active Items</p>
                         <p className="text-[10px] text-slate-600 dark:text-slate-400">{pendingTasks} tasks</p>
                       </div>
                     </div>
-                    <Progress value={pendingTasks > 0 ? Math.min((pendingTasks / totalTasks) * 100, 100) : 0} className="h-1 bg-blue-100 dark:bg-slate-700 [&>div]:bg-blue-400" />
+                    <Progress value={pendingTasks > 0 ? Math.min((pendingTasks / totalTasks) * 100, 100) : 0} className="h-1 bg-amber-100 dark:bg-slate-700 [&>div]:bg-amber-500" />
                     <p className="text-[10px] text-slate-600 dark:text-slate-400">Progress... {pendingTasks > 0 ? Math.round((pendingTasks / totalTasks) * 100) : 0}%</p>
                   </div>
                   <div className="space-y-2">
                     <p className="text-xs font-medium text-slate-900 dark:text-white">Completed</p>
-                    <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
-                      <div className="p-1.5 bg-blue-100 dark:bg-blue-950 rounded">
-                        <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <div className="flex items-center gap-2 p-2 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg">
+                      <div className="p-1.5 bg-emerald-100 dark:bg-emerald-950 rounded">
+                        <FileText className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium truncate text-slate-900 dark:text-white">Done Items</p>
                         <p className="text-[10px] text-slate-600 dark:text-slate-400">{completedTasks} tasks</p>
                       </div>
                     </div>
-                    <Progress value={completedTasks > 0 ? Math.min((completedTasks / totalTasks) * 100, 100) : 0} className="h-1 bg-blue-100 dark:bg-blue-950 [&>div]:bg-blue-500" />
+                    <Progress value={completedTasks > 0 ? Math.min((completedTasks / totalTasks) * 100, 100) : 0} className="h-1 bg-emerald-100 dark:bg-emerald-950 [&>div]:bg-emerald-600" />
                     <p className="text-[10px] text-slate-600 dark:text-slate-400">Completed {completedTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0}%</p>
                   </div>
                 </div>
@@ -542,25 +545,27 @@ export const WorkspaceIdClient = () => {
                       <div className="col-span-2">
                         <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
                           task.status === "Completed" 
-                            ? "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400" 
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400" 
                             : task.status === "In Progress"
-                            ? "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300"
-                            : "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
+                            ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                            : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
                         }`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${
-                            task.status === "Completed" ? "bg-blue-600" : 
-                            task.status === "In Progress" ? "bg-blue-400" : "bg-slate-400"
+                            task.status === "Completed" ? "bg-emerald-600" : 
+                            task.status === "In Progress" ? "bg-amber-600" : "bg-blue-600"
                           }`} />
                           {task.status}
                         </span>
                       </div>
                       <div className="col-span-2">
                         <span className={`text-xs font-medium px-2 py-1 rounded ${
-                          task.priority === "URGENT" || task.priority === "HIGH" 
-                            ? "bg-blue-600 text-blue-100 dark:bg-blue-900 dark:text-blue-200" 
+                          task.priority === "URGENT" 
+                            ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200" 
+                            : task.priority === "HIGH"
+                            ? "bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-300"
                             : task.priority === "MEDIUM"
-                            ? "bg-blue-400 text-blue-900 dark:bg-blue-700 dark:text-blue-100"
-                            : "bg-blue-200 text-blue-800 dark:bg-blue-800 dark:text-blue-200"
+                            ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-200"
+                            : "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200"
                         }`}>
                           {task.priority}
                         </span>
@@ -755,10 +760,10 @@ export const WorkspaceIdClient = () => {
           {/* Bottom Row - Workload, Priority & Top Contributors */}
             <div className="grid grid-cols-1 w-full mt-4  lg:grid-cols-3 gap-4">
               {/* Workload Distribution */}
-              <Card className="p-5 bg-white dark:bg-slate-800 border border-violet-200 dark:border-slate-700 shadow-sm">
+              <Card className="p-5 bg-white  border border-slate-200 dark:border-slate-700 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Workload Distribution</h3>
-                  <Users className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                  <Users className="h-4 w-4 text-slate-600" />
                 </div>
                 <div className="space-y-4">
                   {dynamicData.memberWorkload.length > 0 ? (
@@ -779,7 +784,7 @@ export const WorkspaceIdClient = () => {
                               </div>
                               <Progress 
                                 value={workloadPercentage} 
-                                className="h-2 bg-violet-100 dark:bg-slate-700 [&>div]:bg-violet-600" 
+                                className="h-2 text-slate-600" 
                               />
                             </div>
                           </div>
@@ -795,10 +800,10 @@ export const WorkspaceIdClient = () => {
               </Card>
 
               {/* Priority Distribution */}
-              <Card className="p-5 bg-white dark:bg-slate-800 border border-rose-200 dark:border-slate-700 shadow-sm">
+              <Card className="p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Priority Distribution</h3>
-                  <Layers className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+                  <Layers className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                 </div>
                 <div className="h-[200px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -838,10 +843,10 @@ export const WorkspaceIdClient = () => {
               </Card>
 
               {/* Top Contributors */}
-              <Card className="p-5 bg-white dark:bg-slate-800 border border-cyan-200 dark:border-slate-700 shadow-sm">
+              <Card className="p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Top Contributors</h3>
-                  <TrendingUp className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+                  <TrendingUp className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                 </div>
                 {dynamicData.contributionData.length > 0 ? (
                   <div className="space-y-3">

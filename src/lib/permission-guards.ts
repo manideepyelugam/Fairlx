@@ -19,7 +19,9 @@ import { MemberRole } from "@/features/members/types";
  * 
  * Access is granted if:
  * 1. User is a direct member of the workspace, OR
- * 2. User is an OWNER/ADMIN of the org that owns the workspace
+ * 2. User is the OWNER of the org that owns the workspace
+ * 
+ * SECURITY: ADMIN/MODERATOR/MEMBER do NOT have implicit workspace access
  */
 export function validateWorkspaceAccess(
     userId: string,
@@ -31,10 +33,11 @@ export function validateWorkspaceAccess(
         return true;
     }
 
-    // Org owner/admin can access all org workspaces
+    // SECURITY: Only org OWNER has implicit workspace access
+    // ADMIN/MODERATOR/MEMBER must have explicit workspace membership
     if (orgMembership && orgMembership.userId === userId) {
         const orgRole = orgMembership.role;
-        if (orgRole === "OWNER" || orgRole === "ADMIN") {
+        if (orgRole === "OWNER") {
             return true;
         }
     }

@@ -27,29 +27,20 @@ export function isValidPermissionKey(key: string): key is OrgPermissionKey {
 
 /**
  * Get permissions that a role grants by default
+ * 
+ * SECURITY: Only OWNER has implicit permissions.
+ * ADMIN/MODERATOR/MEMBER must use DEPARTMENTS for permissions.
  */
 export function getRoleDefaultPermissions(role: OrganizationRole): OrgPermissionKey[] {
-    const ROLE_DEFAULTS: Record<OrganizationRole, OrgPermissionKey[]> = {
-        [OrganizationRole.OWNER]: Object.values(OrgPermissionKey) as OrgPermissionKey[],
-        [OrganizationRole.ADMIN]: [
-            OrgPermissionKey.BILLING_VIEW,
-            OrgPermissionKey.MEMBERS_VIEW,
-            OrgPermissionKey.MEMBERS_MANAGE,
-            OrgPermissionKey.SETTINGS_MANAGE,
-            OrgPermissionKey.AUDIT_VIEW,
-            OrgPermissionKey.DEPARTMENTS_MANAGE,
-            OrgPermissionKey.SECURITY_VIEW,
-            OrgPermissionKey.WORKSPACE_CREATE,
-            OrgPermissionKey.WORKSPACE_ASSIGN,
-        ],
-        [OrganizationRole.MODERATOR]: [
-            OrgPermissionKey.MEMBERS_VIEW,
-            OrgPermissionKey.WORKSPACE_ASSIGN,
-        ],
-        [OrganizationRole.MEMBER]: [],
-    };
+    // ONLY OWNER has all permissions by default
+    // All other roles MUST use department-based permissions
+    if (role === OrganizationRole.OWNER) {
+        return Object.values(OrgPermissionKey) as OrgPermissionKey[];
+    }
 
-    return ROLE_DEFAULTS[role] || [];
+    // Non-owners get ZERO default permissions
+    // They must be assigned to departments to get access
+    return [];
 }
 
 /**

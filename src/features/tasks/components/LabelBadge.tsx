@@ -34,18 +34,18 @@ export const LabelBadge = ({
   return (
     <Badge
       variant={variant}
-      className={cn("text-xs border", className, !color && defaultClasses)}
+      className={cn("text-xs rounded-full  border", className, !color && defaultClasses)}
       style={color ? {
         backgroundColor: `${color}1A`, // 10% opacity
         color: color,
         borderColor: `${color}33` // 20% opacity
       } : undefined}
     >
-      {label}
+     <p className="text-xs">{label}</p> 
       {onRemove && (
         <button
           onClick={onRemove}
-          className="ml-1 hover:bg-muted rounded-full"
+          className="ml-1  rounded-full"
         >
           <X className="h-3 w-3" />
         </button>

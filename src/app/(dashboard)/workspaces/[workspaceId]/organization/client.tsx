@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import {
     Building2, Users, Settings2, Shield, Trash2, Crown,
-    CreditCard, AlertTriangle, FileText, Loader2, Clock, Hash, UserPlus, Mail
+    CreditCard, AlertTriangle, FileText, Loader2, Clock, Hash, UserPlus, Mail, BarChart3
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -58,11 +59,12 @@ import { useCreateOrgMember } from "@/features/organizations/api/use-create-org-
 import { useResendWelcomeEmail } from "@/features/organizations/api/use-resend-welcome-email";
 import { BulkMemberUpload } from "@/features/organizations/components/bulk-member-upload";
 import { DepartmentsList } from "@/features/departments/components/departments-list";
-import { PermissionsManager } from "@/features/org-permissions/components/permissions-manager";
 import { useCurrentUserOrgPermissions } from "@/features/org-permissions/api/use-current-user-permissions";
 import { OrgPermissionKey } from "@/features/org-permissions/types";
 
+
 export const OrganizationSettingsClient = () => {
+    const router = useRouter();
     const { isOrg, primaryOrganizationId } = useAccountType();
     const [activeTab, setActiveTab] = useState("general");
 
@@ -78,15 +80,22 @@ export const OrganizationSettingsClient = () => {
         isLoading: isLoadingMembers
     } = useGetOrgMembers({ organizationId: primaryOrganizationId || "" });
 
-    // Current user's role
-    const { canEdit, isOwner, isLoading: isLoadingRole } = useCurrentOrgMember({
+    const { isOwner, isLoading: isLoadingRole } = useCurrentOrgMember({
         organizationId: primaryOrganizationId || ""
     });
 
-    // Current user's org permissions
-    const { hasPermission } = useCurrentUserOrgPermissions({
+    // Current user's org permissions - THIS IS THE SINGLE SOURCE OF TRUTH
+    const { hasPermission, isLoading: isLoadingPermissions } = useCurrentUserOrgPermissions({
         orgId: primaryOrganizationId || ""
     });
+
+    // Derived permission checks for UI rendering
+    const canEditSettings = hasPermission(OrgPermissionKey.SETTINGS_MANAGE);
+    const canManageMembers = hasPermission(OrgPermissionKey.MEMBERS_MANAGE);
+    const canManageDepartments = hasPermission(OrgPermissionKey.DEPARTMENTS_MANAGE);
+    const canViewSecurity = hasPermission(OrgPermissionKey.SECURITY_VIEW);
+
+
 
     // General settings form state
     const [orgName, setOrgName] = useState("");
@@ -204,14 +213,13 @@ export const OrganizationSettingsClient = () => {
         );
     }
 
-    const isLoading = isLoadingOrg || isLoadingRole;
+    const isLoading = isLoadingOrg || isLoadingRole || isLoadingPermissions;
 
     return (
         <div className="flex flex-col gap-6 w-full">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                 <div className="flex items-center gap-3">
-
                     <div>
                         {isLoadingOrg ? (
                             <Skeleton className="h-7 w-48 mb-1" />
@@ -225,13 +233,25 @@ export const OrganizationSettingsClient = () => {
                         </p>
                     </div>
                 </div>
-                <Badge variant="secondary" className="self-start text-blue-600 bg-blue-100 text-xs px-2.5 py-1">
-                    <Building2 className="size-3 text-blue-600 mr-1" />
-                    Organization
-                </Badge>
+                <div className="flex items-center gap-2">
+                    {/* Quick access button for Admin Panel / Usage */}
+                    {hasPermission(OrgPermissionKey.BILLING_VIEW) && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs gap-1.5"
+                            onClick={() => router.push("/organization/usage")}
+                        >
+                            <BarChart3 className="size-3.5" />
+                            Usage Dashboard
+                        </Button>
+                    )}
+                    <Badge variant="secondary" className="text-blue-600 bg-blue-100 text-xs px-2.5 py-1">
+                        <Building2 className="size-3 text-blue-600 mr-1" />
+                        Organization
+                    </Badge>
+                </div>
             </div>
-
-
 
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -285,15 +305,6 @@ export const OrganizationSettingsClient = () => {
                             Audit
                         </TabsTrigger>
                     )}
-                    {isOwner && (
-                        <TabsTrigger
-                            value="permissions"
-                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
-                        >
-                            <Shield className="size-4 mr-2" />
-                            Permissions
-                        </TabsTrigger>
-                    )}
                 </TabsList>
 
                 {/* ==================== GENERAL TAB ==================== */}
@@ -305,7 +316,7 @@ export const OrganizationSettingsClient = () => {
                                 Organization Details
                             </CardTitle>
                             <CardDescription className="text-xs">
-                                {canEdit
+                                {canEditSettings
                                     ? "Update your organization information"
                                     : "View your organization information"}
                             </CardDescription>
@@ -326,7 +337,7 @@ export const OrganizationSettingsClient = () => {
                                                 value={orgName}
                                                 onChange={(e) => setOrgName(e.target.value)}
                                                 placeholder="Organization name"
-                                                disabled={!canEdit}
+                                                disabled={!canEditSettings}
                                                 className="h-9"
                                             />
                                         </div>
@@ -359,7 +370,7 @@ export const OrganizationSettingsClient = () => {
                                             />
                                         </div>
                                     </div>
-                                    {canEdit && (
+                                    {canEditSettings && (
                                         <div className="pt-2">
                                             <Button
                                                 onClick={handleSaveOrg}
@@ -391,7 +402,7 @@ export const OrganizationSettingsClient = () => {
                                         {members.length} member{members.length !== 1 ? "s" : ""} in your organization
                                     </CardDescription>
                                 </div>
-                                {canEdit && primaryOrganizationId && (
+                                {canManageMembers && primaryOrganizationId && (
                                     <div className="flex items-center gap-2">
                                         <BulkMemberUpload organizationId={primaryOrganizationId} />
                                         <Dialog open={addMemberOpen} onOpenChange={setAddMemberOpen}>
@@ -526,7 +537,7 @@ export const OrganizationSettingsClient = () => {
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 {/* Pending activation badge + Resend button */}
-                                                {member.mustResetPassword && canEdit && primaryOrganizationId && (
+                                                {member.mustResetPassword && canManageMembers && primaryOrganizationId && (
                                                     <>
                                                         <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700 border-amber-200">
                                                             Pending
@@ -551,7 +562,7 @@ export const OrganizationSettingsClient = () => {
                                                     </>
                                                 )}
                                                 {/* Role selector (ADMIN+ can change roles) */}
-                                                {canEdit ? (
+                                                {canManageMembers ? (
                                                     <Select
                                                         value={member.role}
                                                         onValueChange={(value) =>
@@ -586,7 +597,7 @@ export const OrganizationSettingsClient = () => {
                                                 )}
 
                                                 {/* Remove member (ADMIN+ can remove, but not last OWNER) */}
-                                                {canEdit && member.role !== "OWNER" && (
+                                                {canManageMembers && member.role !== "OWNER" && (
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>
                                                             <Button
@@ -647,7 +658,7 @@ export const OrganizationSettingsClient = () => {
                                         Who can create new workspaces in this organization
                                     </div>
                                 </div>
-                                <Select defaultValue="admins" disabled={!canEdit}>
+                                <Select defaultValue="admins" disabled={!canViewSecurity}>
                                     <SelectTrigger className="w-36 h-8 text-xs">
                                         <SelectValue />
                                     </SelectTrigger>
@@ -665,7 +676,7 @@ export const OrganizationSettingsClient = () => {
                                         Who can invite new members to the organization
                                     </div>
                                 </div>
-                                <Select defaultValue="admins" disabled={!canEdit}>
+                                <Select defaultValue="admins" disabled={!canViewSecurity}>
                                     <SelectTrigger className="w-36 h-8 text-xs">
                                         <SelectValue />
                                     </SelectTrigger>
@@ -772,22 +783,12 @@ export const OrganizationSettingsClient = () => {
                     {primaryOrganizationId && (
                         <DepartmentsList
                             orgId={primaryOrganizationId}
-                            canManage={canEdit}
+                            canManage={canManageDepartments}
                         />
                     )}
                 </TabsContent>
 
-                {/* ==================== PERMISSIONS TAB (OWNER ONLY) ==================== */}
-                {isOwner && (
-                    <TabsContent value="permissions" className="space-y-4 mt-6">
-                        {primaryOrganizationId && (
-                            <PermissionsManager
-                                orgId={primaryOrganizationId}
-                                isOwner={isOwner}
-                            />
-                        )}
-                    </TabsContent>
-                )}
+
             </Tabs>
         </div>
     );

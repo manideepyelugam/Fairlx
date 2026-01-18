@@ -20,6 +20,8 @@ interface UserAccessResponse {
     allowedRouteKeys: AppRouteKey[];
     isOwner: boolean;
     role: string | null;
+    departmentIds: string[];
+    hasDepartmentAccess: boolean;
 }
 
 export function useUserAccess() {
@@ -50,6 +52,8 @@ export function useUserAccess() {
                     ],
                     isOwner: false,
                     role: null,
+                    departmentIds: [],
+                    hasDepartmentAccess: false,
                 };
             }
 
@@ -71,7 +75,10 @@ export function useUserAccess() {
         allowedRouteKeys: query.data?.allowedRouteKeys ?? [],
         isOwner: query.data?.isOwner ?? false,
         role: query.data?.role ?? null,
+        departmentIds: query.data?.departmentIds ?? [],
+        hasDepartmentAccess: query.data?.hasDepartmentAccess ?? false,
         isLoading: query.isLoading,
         error: query.error,
     };
 }
+

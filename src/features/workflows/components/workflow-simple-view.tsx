@@ -12,7 +12,6 @@ import {
   GripVertical,
   Play,
   Flag,
-  Sparkles,
   Layers,
   ArrowDownRight,
   RefreshCw,
@@ -263,17 +262,13 @@ export const WorkflowSimpleView = ({
   ];
 
   return (
-    <div className="space-y-5">
-      {/* Header with gradient */}
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-4 border border-primary/20">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+    <div className="space-y-4">
+      {/* Quick Info Header */}
+      <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-primary/8 via-primary/4 to-transparent p-3 border border-primary/15">
+        <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
         <div className="relative">
-          <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="size-4 text-primary" />
-            <span className="text-sm font-semibold text-primary">Workflow Builder</span>
-          </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Drag statuses to the canvas to reposition them. Connect statuses by dragging from one to another.
+            <span className="font-medium text-foreground">Tip:</span> Drag statuses to the canvas. Connect by dragging between nodes.
           </p>
         </div>
       </div>

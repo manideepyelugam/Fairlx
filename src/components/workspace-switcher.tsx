@@ -32,6 +32,8 @@ import {
 import { useRouter } from "next/navigation";
 
 import { useAccountLifecycle } from "@/components/account-lifecycle-provider";
+import { useCurrentUserOrgPermissions } from "@/features/org-permissions/api/use-current-user-permissions";
+import { OrgPermissionKey } from "@/features/org-permissions/types";
 
 export const WorkspaceSwitcher = () => {
   const router = useRouter();
@@ -39,8 +41,17 @@ export const WorkspaceSwitcher = () => {
   const { open } = useCreateWorkspaceModal();
 
   // Use centralized permission from lifecycle context
-  const { lifecycleState: state, canCreateWorkspace } = useAccountLifecycle();
-  const { activeWorkspaceId } = state;
+  const { lifecycleState: state, canCreateWorkspace: lifecycleCanCreate } = useAccountLifecycle();
+  const { activeWorkspaceId, activeOrgId } = state;
+
+  // Also check department-based WORKSPACE_CREATE permission for org members
+  const { hasPermission } = useCurrentUserOrgPermissions({
+    orgId: activeOrgId || ""
+  });
+  const hasDepartmentCreatePermission = hasPermission(OrgPermissionKey.WORKSPACE_CREATE);
+
+  // Combined: lifecycle permission OR department permission
+  const canCreateWorkspace = lifecycleCanCreate || hasDepartmentCreatePermission;
 
   const urlWorkspaceId = useWorkspaceId();
   // Use URL workspaceId if available, otherwise fallback to global active workspaceId

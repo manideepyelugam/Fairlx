@@ -223,7 +223,7 @@ export async function assertWorkspaceAccess(
             result.workspaceMembershipId = workspaceMembers.documents[0].$id;
         }
 
-        // 3. For org workspaces, check org membership (OWNER/ADMIN can access all)
+        // 3. For org workspaces, check org membership (OWNER only has implicit access)
         if (workspace.organizationId) {
             const orgMembers = await databases.listDocuments(
                 DATABASE_ID,
@@ -239,8 +239,9 @@ export async function assertWorkspaceAccess(
                 const orgRole = orgMembers.documents[0].role;
                 result.orgRole = orgRole;
 
-                // Org OWNER/ADMIN has implicit workspace access
-                if (orgRole === "OWNER" || orgRole === "ADMIN") {
+                // SECURITY: Only OWNER has implicit workspace access
+                // ADMIN/MODERATOR/MEMBER must have explicit workspace membership
+                if (orgRole === "OWNER") {
                     result.hasAccess = true;
                 }
             }

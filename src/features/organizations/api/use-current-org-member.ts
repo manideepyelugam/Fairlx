@@ -22,8 +22,9 @@ export interface CurrentOrgMember {
  * 
  * Returns:
  * - role: OWNER | ADMIN | MEMBER
- * - canEdit: true if OWNER or ADMIN
  * - isOwner: true if OWNER
+ * 
+ * @deprecated canEdit, canAssignToWorkspaces - Use useCurrentUserOrgPermissions.hasPermission() instead
  */
 export const useCurrentOrgMember = ({ organizationId }: UseCurrentOrgMemberProps) => {
     const { data: user } = useCurrent();
@@ -60,9 +61,13 @@ export const useCurrentOrgMember = ({ organizationId }: UseCurrentOrgMemberProps
     return {
         ...query,
         role,
-        // OWNER and ADMIN can edit org settings
+        /**
+         * @deprecated Use useCurrentUserOrgPermissions.hasPermission(OrgPermissionKey.SETTINGS_MANAGE) instead
+         */
         canEdit: role === "OWNER" || role === "ADMIN",
-        // MODERATOR+ can assign members to workspaces
+        /**
+         * @deprecated Use useCurrentUserOrgPermissions.hasPermission(OrgPermissionKey.WORKSPACE_ASSIGN) instead
+         */
         canAssignToWorkspaces: role === "OWNER" || role === "ADMIN" || role === "MODERATOR",
         isOwner: role === "OWNER",
         isAdmin: role === "ADMIN",

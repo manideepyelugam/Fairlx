@@ -44,8 +44,7 @@ export enum OrgPermissionKey {
     WORKSPACE_CREATE = "org.workspace.create",
     WORKSPACE_ASSIGN = "org.workspace.assign",
 
-    // Permissions
-    PERMISSIONS_MANAGE = "org.permissions.manage",
+
 }
 
 // ===============================
@@ -112,11 +111,7 @@ export const ORG_PERMISSION_METADATA: Record<OrgPermissionKey, {
         description: "Assign members to workspaces",
         category: "Workspaces",
     },
-    [OrgPermissionKey.PERMISSIONS_MANAGE]: {
-        label: "Manage Permissions",
-        description: "Grant and revoke permissions for members",
-        category: "Permissions",
-    },
+
 };
 
 // ===============================
@@ -231,11 +226,5 @@ export const PERMISSION_CATEGORIES = [
             OrgPermissionKey.WORKSPACE_ASSIGN,
         ],
     },
-    {
-        id: "permissions",
-        label: "Permissions",
-        permissions: [
-            OrgPermissionKey.PERMISSIONS_MANAGE,
-        ],
-    },
+
 ] as const;

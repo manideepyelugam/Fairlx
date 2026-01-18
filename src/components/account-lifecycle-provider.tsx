@@ -82,17 +82,18 @@ export function AccountLifecycleProvider({ children }: AccountLifecycleProviderP
         const isOrg = state.accountType === "ORG";
         const isPersonal = state.accountType === "PERSONAL";
         const isOwner = state.orgRole === "OWNER";
-        const isAdmin = state.orgRole === "ADMIN";
 
-        // ORG-LEVEL permissions (OWNER/ADMIN only)
-        const hasOrgAdminPerms = isOrg && (isOwner || isAdmin);
+        // SECURITY: Only OWNER has implicit org-level permissions
+        // ADMIN/MODERATOR/MEMBER must use department-based permissions
+        // (checked via useUserAccess hook, not here)
 
-        // Workspace creation: PERSONAL or ORG OWNER/ADMIN
-        const canCreateWorkspace = isPersonal || hasOrgAdminPerms;
+        // Workspace creation: PERSONAL or ORG OWNER only
+        // Non-owner org members need WORKSPACE_CREATE permission from departments
+        const canCreateWorkspace = isPersonal || isOwner;
 
-        // Auth provider linking: PERSONAL or ORG OWNER/ADMIN
-        // MEMBER/MODERATOR cannot link - managed by organization
-        const canManageAuthProviders = isPersonal || hasOrgAdminPerms;
+        // Auth provider linking: PERSONAL or ORG OWNER only
+        // Non-owner org members cannot link - managed by organization
+        const canManageAuthProviders = isPersonal || isOwner;
 
         return {
             lifecycleState: state,

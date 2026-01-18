@@ -31,7 +31,6 @@ export const PERMISSION_ROUTE_MAP: RoutePermissionEntry[] = [
             { tab: "departments", permission: OrgPermissionKey.DEPARTMENTS_MANAGE },
             { tab: "billing", permission: OrgPermissionKey.BILLING_VIEW },
             { tab: "audit", permission: OrgPermissionKey.AUDIT_VIEW },
-            { tab: "permissions", permission: OrgPermissionKey.PERMISSIONS_MANAGE },
         ],
     },
 ];

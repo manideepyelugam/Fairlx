@@ -32,7 +32,7 @@ export enum AppRouteKey {
     ORG_AUDIT = "ORG_AUDIT",
     ORG_DEPARTMENTS = "ORG_DEPARTMENTS",
     ORG_SECURITY = "ORG_SECURITY",
-    ORG_PERMISSIONS = "ORG_PERMISSIONS",
+
 
     // Workspace routes
     WORKSPACES = "WORKSPACES",
@@ -116,12 +116,7 @@ export const ROUTE_KEY_METADATA: Record<AppRouteKey, RouteKeyMetadata> = {
         category: "org",
         requiresWorkspace: false,
     },
-    [AppRouteKey.ORG_PERMISSIONS]: {
-        label: "Permissions",
-        description: "Manage member permissions",
-        category: "org",
-        requiresWorkspace: false,
-    },
+
 
     // Workspace routes
     [AppRouteKey.WORKSPACES]: {

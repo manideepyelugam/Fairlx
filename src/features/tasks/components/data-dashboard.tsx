@@ -55,13 +55,13 @@ const MiniBarChart = ({ value, max, variant = "default" }: { value: number; max:
     )
   }
   
-  // default variant - neutral/slate for totals
+  // default variant - neutral/black for totals
   return (
     <div className="flex items-end gap-0.5 h-8">
       {Array.from({ length: bars }).map((_, i) => (
         <div
           key={i}
-          className={`w-1 rounded-sm ${i < filledBars ? 'bg-slate-500 dark:bg-slate-400' : 'bg-slate-200 dark:bg-slate-700'}`}
+          className={`w-1 rounded-sm ${i < filledBars ? 'bg-slate-900 dark:bg-slate-300' : 'bg-slate-300 dark:bg-slate-700'}`}
           style={{ height: `${30 + (i * 7) % 40 + 30}%` }}
         />
       ))}
@@ -236,7 +236,7 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
       { id: "done", name: "Done", value: done, color: "#10b981" },
       { id: "inProgress", name: "In Progress", value: inProgress, color: "#eab308" },
       { id: "inReview", name: "In Review", value: inReview, color: "#3b82f6" },
-      { id: "todo", name: "To Do", value: todo, color: "#9ca3af" },
+      { id: "todo", name: "To Do", value: todo, color: "#2762f3" },
        { id: "assigned", name: "Assigned", value: assigned, color: "#f87171" },
     ].filter(s => s.value > 0);
   }, [tasks]);
@@ -249,60 +249,60 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
             {/* Top Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {/* Total Task Card */}
-              <Card className="p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm font-normal text-slate-600 dark:text-slate-400">Total Tasks</span>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
-                    <ArrowUpRight className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+              <Card className="p-4 bg-white border border-slate-200 shadow-none text-slate-900">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-normal text-slate-600 dark:text-slate-400">Total Tasks</span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <ArrowUpRight className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
                   </Button>
                 </div>
                 <div className="flex items-end justify-between">
-                  <span className="text-4xl font-bold text-slate-900 dark:text-white">{analytics.totalTasks}</span>
+                  <span className="text-3xl font-bold text-slate-900 dark:text-white">{analytics.totalTasks}</span>
                   <MiniBarChart value={analytics.totalTasks} max={analytics.totalTasks + 50} variant="default" />
                 </div>
               </Card>
 
               {/* Pending Task Card */}
-              <Card className="p-5 bg-white dark:bg-slate-800 border border-amber-200 dark:border-slate-700">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm font-normal text-slate-600 dark:text-slate-400">Pending Tasks</span>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-amber-50 dark:hover:bg-amber-900/20">
-                    <ArrowUpRight className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <Card className="p-4 bg-amber-50 border border-amber-200 shadow-none text-amber-600 ">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-normal text-amber-600 dark:text-slate-400">Pending Tasks</span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-amber-50 dark:hover:bg-amber-900/20">
+                    <ArrowUpRight className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
                   </Button>
                 </div>
                 <div className="flex items-end justify-between">
-                  <span className="text-4xl font-bold text-slate-900 dark:text-white">{analytics.pendingTasks}</span>
+                  <span className="text-3xl font-bold text-amber-600 dark:text-white">{analytics.pendingTasks}</span>
                   <MiniBarChart value={analytics.pendingTasks} max={analytics.totalTasks} variant="dotted" />
                 </div>
               </Card>
 
               {/* Completed Task Card */}
-              <Card className="p-5 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-slate-700">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm font-normal text-slate-600 dark:text-slate-400">Completed Tasks</span>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
-                    <ArrowUpRight className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <Card className="p-4 bg-emerald-50 border border-emerald-200 shadow-none text-emerald-600 ">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-normal text-emerald-600 dark:text-slate-400">Completed Tasks</span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
+                    <ArrowUpRight className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                   </Button>
                 </div>
                 <div className="flex items-end justify-between">
-                  <span className="text-4xl font-bold text-slate-900 dark:text-white">{analytics.completedTasks}</span>
+                  <span className="text-3xl font-bold text-emerald-600 dark:text-white">{analytics.completedTasks}</span>
                   <MiniBarChart value={analytics.completedTasks} max={analytics.totalTasks} variant="blocks" />
                 </div>
               </Card>
 
               {/* Flagged Task Card */}
-              <Card className="p-5 bg-white dark:bg-slate-800 border border-rose-200 dark:border-slate-700">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm font-normal text-slate-600 dark:text-slate-400">Flagged</span>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-rose-50 dark:hover:bg-rose-900/20">
-                    <Flag className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+              <Card className="p-4 bg-rose-50 border border-rose-200 shadow-none text-rose-600 ">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-normal text-rose-600 dark:text-slate-400">Flagged</span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-rose-50 dark:hover:bg-rose-900/20">
+                    <Flag className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
                   </Button>
                 </div>
                 <div className="flex items-end justify-between">
-                  <span className="text-4xl font-bold text-slate-900 dark:text-white">{analytics.flaggedTasks}</span>
-                  <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
-                    <AlertCircle className="h-3.5 w-3.5" />
-                    <span>{analytics.overdueTasks} overdue</span>
+                  <span className="text-3xl font-bold text-rose-600 dark:text-white">{analytics.flaggedTasks}</span>
+                  <div className="flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400">
+                    <AlertCircle className="h-3 w-3 text-rose-600" />
+                    <span className="text-rose-600">{analytics.overdueTasks} overdue</span>
                   </div>
                 </div>
               </Card>
@@ -317,7 +317,7 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
                 </div>
                 {statusOverview.length > 0 ? (
                   <>
-                    <div className="h-[200px]">
+                    <div className="h-[230px]">
                       <ResponsiveContainer width="100%" height="100%">
                         <RechartsPieChart>
                           <Pie
@@ -415,12 +415,12 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
                           task.status === "Completed" 
                             ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400" 
                             : task.status === "In Progress"
-                            ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300"
+                            ? "bg-yellow-100 text-amber-600 dark:bg-yellow-900/30 dark:text-amber-200"
                             : "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
                         }`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${
                             task.status === "Completed" ? "bg-emerald-600" : 
-                            task.status === "In Progress" ? "bg-yellow-500" : "bg-slate-400"
+                            task.status === "In Progress" ? "bg-amber-600" : "bg-slate-400"
                           }`} />
                           {task.status}
                         </span>
@@ -451,7 +451,7 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
           {/* Bottom Section - Due Alerts & Team Members */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Due Alerts Card */}
-            <Card className="p-5 bg-white dark:bg-slate-800 border border-amber-200 dark:border-slate-700 shadow-sm">
+            <Card className="p-5 bg-white dark:bg-slate-800 border border-red-200 dark:border-slate-700 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Due Alerts</h3>
                 <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-amber-50 dark:hover:bg-amber-900/20">

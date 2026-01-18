@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
-import { ArrowLeft, Github, BookOpen, MessageSquare, GitCommit, Loader2, ExternalLink, Settings, FileText } from "lucide-react";
+import { Github, BookOpen, MessageSquare, GitCommit, Loader2, ExternalLink, Settings, FileText } from "lucide-react";
 
 import { PageLoader } from "@/components/page-loader";
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
@@ -120,13 +120,13 @@ export const GitHubIntegrationClient = () => {
     return (
       <div className="flex flex-col gap-y-6 max-w-7xl mx-auto">
         {/* Back Button */}
-        <div className="flex items-center gap-4">
+        {/* <div className="flex items-center gap-4">
           <Link href={`/workspaces/${workspaceId}/projects/${projectId}`}>
             <Button variant="ghost" size="icon" className="size-9">
               <ArrowLeft className="size-5" />
             </Button>
           </Link>
-        </div>
+        </div> */}
         {/* Header Section */}
         <div className="text-center space-y-3 pt-4">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-green-500/10 mb-4">
@@ -328,11 +328,11 @@ export const GitHubIntegrationClient = () => {
     <div className="flex flex-col gap-y-8">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href={`/workspaces/${workspaceId}/projects/${projectId}`}>
+          {/* <Link href={`/workspaces/${workspaceId}/projects/${projectId}`}>
             <Button variant="ghost" size="icon" className="size-9">
               <ArrowLeft className="size-5" />
             </Button>
-          </Link>
+          </Link> */}
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">
               GitHub Integration

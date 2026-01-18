@@ -5,7 +5,8 @@ import {
   Draggable,
   type DropResult,
 } from "@hello-pangea/dnd";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 
@@ -17,6 +18,8 @@ import { Task, TaskStatus } from "../types";
 import { useBulkUpdateTasks } from "../api/use-bulk-update-tasks";
 import { useCreateTaskModal } from "../hooks/use-create-task-modal";
 import { useGetProject } from "@/features/projects/api/use-get-project";
+import { useValidateTransition, TransitionValidationResult } from "@/features/workflows/api/use-validate-transition";
+import { useGetWorkflowStatuses } from "@/features/workflows/api/use-get-workflow-statuses";
 
 const boards: TaskStatus[] = [
   TaskStatus.TODO,
@@ -88,6 +91,7 @@ export const DataKanban = ({
 
   const { mutate: bulkUpdateTasks } = useBulkUpdateTasks();
   const { open: openCreateTask } = useCreateTaskModal();
+  const { mutateAsync: validateTransition } = useValidateTransition();
 
   // Check if TODO column should be visible (only when tasks are TODO or unassigned)
   const shouldShowTodoColumn = useMemo(() => {
@@ -269,13 +273,74 @@ export const DataKanban = ({
     setSelectedTasks(new Set());
   }, [selectedTasks, bulkUpdateTasks]);
 
+  // Get workflow statuses to find status IDs
+  const { data: workflowStatusesData } = useGetWorkflowStatuses({ 
+    workflowId: project?.workflowId || "" 
+  });
+
+  // Create a map of status keys to status IDs for workflow validation
+  const statusKeyToIdMap = useMemo(() => {
+    const map = new Map<string, string>();
+    if (workflowStatusesData?.documents) {
+      workflowStatusesData.documents.forEach((status: { key: string; $id: string }) => {
+        map.set(status.key, status.$id);
+      });
+    }
+    return map;
+  }, [workflowStatusesData]);
+
   const onDragEnd = useCallback(
-    (result: DropResult) => {
+    async (result: DropResult) => {
       if (!result.destination) return;
 
       const { source, destination } = result;
       const sourceStatus = source.droppableId as TaskStatus;
       const destStatus = destination.droppableId as TaskStatus;
+
+      // Get the task being moved
+      const movedTask = tasks[sourceStatus][source.index];
+      if (!movedTask) {
+        console.warn("No task found at the source index");
+        return;
+      }
+
+      // ======= WORKFLOW TRANSITION VALIDATION =======
+      // If moving to a different column and project has a workflow, validate the transition
+      if (sourceStatus !== destStatus && project?.workflowId) {
+        const fromStatusId = statusKeyToIdMap.get(sourceStatus);
+        const toStatusId = statusKeyToIdMap.get(destStatus);
+
+        // Only validate if both statuses exist in the workflow
+        if (fromStatusId && toStatusId) {
+          try {
+            const validationResult = await validateTransition({
+              json: {
+                workflowId: project.workflowId,
+                fromStatusId,
+                toStatusId,
+              },
+            });
+
+            const data = validationResult.data as TransitionValidationResult;
+
+            if (!data.allowed) {
+              // Transition is not allowed - show error and don't update
+              toast.error(
+                data.message || "This status transition is not allowed by the workflow",
+                {
+                  icon: <AlertCircle className="size-4 text-red-500" />,
+                  duration: 4000,
+                }
+              );
+              return;
+            }
+          } catch (error) {
+            console.error("Failed to validate transition:", error);
+            // On validation error, allow the transition (fail-open)
+          }
+        }
+      }
+      // ======= END WORKFLOW VALIDATION =======
 
       let updatesPayload: {
         $id: string;
@@ -288,10 +353,10 @@ export const DataKanban = ({
 
         // Safely remove the task from the source column
         const sourceColumn = [...newTasks[sourceStatus]];
-        const [movedTask] = sourceColumn.splice(source.index, 1);
+        const [draggedTask] = sourceColumn.splice(source.index, 1);
 
         // If there's no moved task (shouldn't happen, but just in case), return the previous state
-        if (!movedTask) {
+        if (!draggedTask) {
           console.warn("No task found at the source index");
           return prevTasks;
         }
@@ -299,8 +364,8 @@ export const DataKanban = ({
         // Create a new task object with potentially updated status
         const updatedMovedTask =
           sourceStatus !== destStatus
-            ? { ...movedTask, status: destStatus }
-            : movedTask;
+            ? { ...draggedTask, status: destStatus }
+            : draggedTask;
 
         // Update the source column
         newTasks[sourceStatus] = sourceColumn;
@@ -355,7 +420,7 @@ export const DataKanban = ({
 
       onChange(updatesPayload);
     },
-    [onChange]
+    [onChange, project?.workflowId, statusKeyToIdMap, tasks, validateTransition]
   );
 
   return (
@@ -365,14 +430,14 @@ export const DataKanban = ({
           {canDeleteTasks && (
             <Button
               variant={selectionMode ? "secondary" : "outline"}
-              size="sm"
+              size="xs"
               onClick={toggleSelectionMode}
             >
               {selectionMode ? "Exit Selection" : "Select Tasks"}
             </Button>
           )}
           {selectionMode && selectedTasks.size > 0 && (
-            <span className="text-sm text-gray-600">
+            <span className="text-xs text-gray-600">
               {selectedTasks.size} task{selectedTasks.size !== 1 ? 's' : ''} selected
             </span>
           )}

@@ -26,63 +26,46 @@ import { AppRouteKey } from "./appRouteKeys";
 /**
  * Maps each permission to the route keys it grants access to
  */
-export const PERMISSION_TO_ROUTE_KEYS: Record<OrgPermissionKey, AppRouteKey[]> = {
-    // Billing
-    [OrgPermissionKey.BILLING_VIEW]: [
-        AppRouteKey.ORG_BILLING,
-        AppRouteKey.ORG_USAGE,
-    ],
-    [OrgPermissionKey.BILLING_MANAGE]: [
-        AppRouteKey.ORG_BILLING,
-        AppRouteKey.ORG_USAGE,
-    ],
+/**
+ * Maps each route key to the permissions that grant access to it.
+ * 
+ * KEY = The Route we want to see (Sidebar Item)
+ * VALUE = Array of permissions that unlock it (Any match = Unlock)
+ */
+export const ROUTE_TO_REQUIRED_PERMISSIONS: Partial<Record<AppRouteKey, OrgPermissionKey[]>> = {
+    // Billing & Usage
+    [AppRouteKey.ORG_BILLING]: [OrgPermissionKey.BILLING_VIEW, OrgPermissionKey.BILLING_MANAGE],
+    [AppRouteKey.ORG_USAGE]: [OrgPermissionKey.BILLING_VIEW, OrgPermissionKey.BILLING_MANAGE],
 
-    // Members
-    [OrgPermissionKey.MEMBERS_VIEW]: [
-        AppRouteKey.ORG_DASHBOARD,
-        AppRouteKey.ORG_MEMBERS,
+    // Dashboard & Members
+    [AppRouteKey.ORG_DASHBOARD]: [
+        OrgPermissionKey.MEMBERS_VIEW,
+        OrgPermissionKey.MEMBERS_MANAGE,
+        OrgPermissionKey.BILLING_VIEW,
+        OrgPermissionKey.BILLING_MANAGE,
+        OrgPermissionKey.SETTINGS_MANAGE,
+        OrgPermissionKey.AUDIT_VIEW,
+        OrgPermissionKey.COMPLIANCE_VIEW,
+        OrgPermissionKey.DEPARTMENTS_MANAGE,
+        OrgPermissionKey.SECURITY_VIEW
     ],
-    [OrgPermissionKey.MEMBERS_MANAGE]: [
-        AppRouteKey.ORG_DASHBOARD,
-        AppRouteKey.ORG_MEMBERS,
-    ],
+    [AppRouteKey.ORG_MEMBERS]: [OrgPermissionKey.MEMBERS_VIEW, OrgPermissionKey.MEMBERS_MANAGE],
 
     // Settings
-    [OrgPermissionKey.SETTINGS_MANAGE]: [
-        AppRouteKey.ORG_SETTINGS,
-    ],
+    [AppRouteKey.ORG_SETTINGS]: [OrgPermissionKey.SETTINGS_MANAGE],
 
     // Audit
-    [OrgPermissionKey.AUDIT_VIEW]: [
-        AppRouteKey.ORG_AUDIT,
-    ],
-    [OrgPermissionKey.COMPLIANCE_VIEW]: [
-        AppRouteKey.ORG_AUDIT,
-    ],
+    [AppRouteKey.ORG_AUDIT]: [OrgPermissionKey.AUDIT_VIEW, OrgPermissionKey.COMPLIANCE_VIEW],
 
     // Departments
-    [OrgPermissionKey.DEPARTMENTS_MANAGE]: [
-        AppRouteKey.ORG_DEPARTMENTS,
-    ],
+    [AppRouteKey.ORG_DEPARTMENTS]: [OrgPermissionKey.DEPARTMENTS_MANAGE],
 
     // Security
-    [OrgPermissionKey.SECURITY_VIEW]: [
-        AppRouteKey.ORG_SECURITY,
-    ],
+    [AppRouteKey.ORG_SECURITY]: [OrgPermissionKey.SECURITY_VIEW],
 
     // Workspaces
-    [OrgPermissionKey.WORKSPACE_CREATE]: [
-        AppRouteKey.WORKSPACES,
-        AppRouteKey.WORKSPACE_CREATE,
-    ],
-    [OrgPermissionKey.WORKSPACE_ASSIGN]: [
-        AppRouteKey.WORKSPACES,
-    ],
-
-    // Permissions management
-    [OrgPermissionKey.PERMISSIONS_MANAGE]: [
-        AppRouteKey.ORG_PERMISSIONS,
-    ],
+    [AppRouteKey.WORKSPACES]: [OrgPermissionKey.WORKSPACE_CREATE, OrgPermissionKey.WORKSPACE_ASSIGN],
+    [AppRouteKey.WORKSPACE_CREATE]: [OrgPermissionKey.WORKSPACE_CREATE],
 };
 
 // ============================================================================
@@ -105,7 +88,7 @@ export const ROUTE_KEY_TO_PATH: Record<AppRouteKey, string> = {
     [AppRouteKey.ORG_AUDIT]: "/organization?tab=audit",
     [AppRouteKey.ORG_DEPARTMENTS]: "/organization/departments",
     [AppRouteKey.ORG_SECURITY]: "/organization?tab=security",
-    [AppRouteKey.ORG_PERMISSIONS]: "/organization?tab=permissions",
+
 
     // Workspace routes
     [AppRouteKey.WORKSPACES]: "/",
@@ -148,7 +131,7 @@ export const ORG_SETTINGS_TABS: TabRouteMapping[] = [
     { tab: "departments", routeKey: AppRouteKey.ORG_DEPARTMENTS, permission: OrgPermissionKey.DEPARTMENTS_MANAGE },
     { tab: "billing", routeKey: AppRouteKey.ORG_BILLING, permission: OrgPermissionKey.BILLING_VIEW },
     { tab: "audit", routeKey: AppRouteKey.ORG_AUDIT, permission: OrgPermissionKey.AUDIT_VIEW },
-    { tab: "permissions", routeKey: AppRouteKey.ORG_PERMISSIONS, permission: OrgPermissionKey.PERMISSIONS_MANAGE },
+    { tab: "audit", routeKey: AppRouteKey.ORG_AUDIT, permission: OrgPermissionKey.AUDIT_VIEW },
 ];
 
 // ============================================================================
@@ -158,17 +141,29 @@ export const ORG_SETTINGS_TABS: TabRouteMapping[] = [
 /**
  * Get all route keys granted by a set of permissions
  */
-export function getRouteKeysForPermissions(permissions: OrgPermissionKey[]): AppRouteKey[] {
-    const routeKeys = new Set<AppRouteKey>();
+/**
+ * Get all route keys granted by a set of permissions
+ * 
+ * LOGIC:
+ * A route is allowed if the user has ANY of the permissions required for that route.
+ */
+export function getRouteKeysForPermissions(userPermissions: OrgPermissionKey[]): AppRouteKey[] {
+    const routeKeys: AppRouteKey[] = [];
+    const userPermSet = new Set(userPermissions);
 
-    for (const permission of permissions) {
-        const keys = PERMISSION_TO_ROUTE_KEYS[permission];
-        if (keys) {
-            keys.forEach(key => routeKeys.add(key));
+    // Iterate over all route definitions
+    for (const [routeKey, requiredPermissions] of Object.entries(ROUTE_TO_REQUIRED_PERMISSIONS)) {
+        // If route has no requirements, it might be open (or we skip it)
+        // In this strict model, we only grant if permission matches.
+
+        // If any required permission matches user's permissions -> GRANT
+        const hasAccess = requiredPermissions.some(req => userPermSet.has(req));
+        if (hasAccess) {
+            routeKeys.push(routeKey as AppRouteKey);
         }
     }
 
-    return Array.from(routeKeys);
+    return routeKeys;
 }
 
 /**
