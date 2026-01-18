@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, User, Check, ArrowRight } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Building2, User, Check, ArrowRight, Users, Briefcase, Shield, Zap, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -20,8 +19,9 @@ interface AccountTypeStepProps {
  * 
  * ENTERPRISE DESIGN:
  * - Card-based selection with clear visual feedback
- * - Checkmark on selected card
- * - Continue disabled until selection
+ * - Hover and selected states communicate affordance
+ * - Strong CTA that reacts to selection state
+ * - Clear differentiation between options
  */
 export function AccountTypeStep({ onSelectAccountType }: AccountTypeStepProps) {
     const [selected, setSelected] = useState<"PERSONAL" | "ORG" | null>(null);
@@ -34,120 +34,195 @@ export function AccountTypeStep({ onSelectAccountType }: AccountTypeStepProps) {
     };
 
     return (
-        <Card className="w-full max-w-xl shadow-lg">
-            <CardHeader className="text-center pb-2">
-                <CardTitle className="text-2xl font-bold">Welcome to Fairlx! 🎉</CardTitle>
-                <CardDescription className="text-base">
-                    Choose how you&apos;d like to use Fairlx
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-4">
-                {/* Personal Account Option */}
-                <button
-                    type="button"
-                    onClick={() => setSelected("PERSONAL")}
-                    className={cn(
-                        "w-full p-5 rounded-xl border-2 transition-all duration-200 text-left group relative",
-                        "hover:border-primary/60 hover:shadow-md",
-                        selected === "PERSONAL"
-                            ? "border-primary bg-primary/5 shadow-md"
-                            : "border-muted hover:bg-muted/30"
-                    )}
-                    disabled={isSubmitting}
-                >
-                    {/* Selection Checkmark */}
-                    {selected === "PERSONAL" && (
-                        <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-primary flex items-center justify-center">
-                            <Check className="w-4 h-4 text-white" />
-                        </div>
-                    )}
+        <div className="w-full max-w-2xl mx-auto">
+            {/* Main Content - No separate card, blends with page */}
+            <div className="p-6 sm:p-8">
+                {/* Header Section */}
+                <div className="text-center mb-10">
+                    {/* Decorative Icon */}
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/15 to-purple-500/15 border border-primary/20 mb-5">
+                        <Sparkles className="w-8 h-8 text-primary" />
+                    </div>
 
-                    <div className="flex items-start gap-4">
-                        <div className={cn(
-                            "p-3 rounded-xl transition-colors",
+                    <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+                        How will you use Fairlx?
+                    </h1>
+                    <p className="mt-4 text-base text-muted-foreground max-w-md mx-auto leading-relaxed">
+                        Select the option that best describes your needs. You can always invite team members later.
+                    </p>
+                </div>
+
+                {/* Selection Cards */}
+                <div className="space-y-4">
+                    {/* Personal Account Option */}
+                    <button
+                        type="button"
+                        onClick={() => setSelected("PERSONAL")}
+                        className={cn(
+                            "w-full p-6 rounded-2xl border-2 transition-all duration-300 text-left group relative overflow-hidden",
+                            "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
                             selected === "PERSONAL"
-                                ? "bg-primary/15 text-primary"
-                                : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
-                        )}>
-                            <User className="h-7 w-7" />
-                        </div>
-                        <div className="flex-1">
-                            <h3 className={cn(
-                                "font-semibold text-lg",
-                                selected === "PERSONAL" && "text-primary"
-                            )}>
-                                Personal Workspace
-                            </h3>
-                            <p className="text-sm text-muted-foreground mt-1">
-                                For individual use. Perfect for freelancers, personal projects, or solo work.
-                            </p>
-                            <div className="flex flex-wrap gap-2 mt-3">
-                                <span className="text-xs bg-muted px-2 py-1 rounded-full">Single user</span>
-                                <span className="text-xs bg-muted px-2 py-1 rounded-full">Personal projects</span>
-                            </div>
-                        </div>
-                    </div>
-                </button>
-
-                {/* Organization Account Option */}
-                <button
-                    type="button"
-                    onClick={() => setSelected("ORG")}
-                    className={cn(
-                        "w-full p-5 rounded-xl border-2 transition-all duration-200 text-left group relative",
-                        "hover:border-primary/60 hover:shadow-md",
-                        selected === "ORG"
-                            ? "border-primary bg-primary/5 shadow-md"
-                            : "border-muted hover:bg-muted/30"
-                    )}
-                    disabled={isSubmitting}
-                >
-                    {/* Selection Checkmark */}
-                    {selected === "ORG" && (
-                        <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-primary flex items-center justify-center">
-                            <Check className="w-4 h-4 text-white" />
-                        </div>
-                    )}
-
-                    <div className="flex items-start gap-4">
+                                ? "border-primary bg-primary/5 shadow-xl shadow-primary/10 scale-[1.02]"
+                                : "border-border bg-background hover:border-primary/50 hover:bg-muted/30 hover:shadow-lg"
+                        )}
+                        disabled={isSubmitting}
+                    >
+                        {/* Selection Indicator */}
                         <div className={cn(
-                            "p-3 rounded-xl transition-colors",
-                            selected === "ORG"
-                                ? "bg-primary/15 text-primary"
-                                : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
+                            "absolute top-5 right-5 w-7 h-7 rounded-full border-2 transition-all duration-300 flex items-center justify-center",
+                            selected === "PERSONAL"
+                                ? "border-primary bg-primary scale-110"
+                                : "border-muted-foreground/30 group-hover:border-primary/50 group-hover:scale-105"
                         )}>
-                            <Building2 className="h-7 w-7" />
+                            {selected === "PERSONAL" && (
+                                <Check className="w-4 h-4 text-white" strokeWidth={3} />
+                            )}
                         </div>
-                        <div className="flex-1">
-                            <h3 className={cn(
-                                "font-semibold text-lg",
-                                selected === "ORG" && "text-primary"
+
+                        <div className="flex items-start gap-5">
+                            <div className={cn(
+                                "p-4 rounded-2xl transition-all duration-300 shrink-0",
+                                selected === "PERSONAL"
+                                    ? "bg-gradient-to-br from-primary to-primary/80 text-white shadow-lg shadow-primary/30"
+                                    : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
                             )}>
-                                Organization / Team
-                            </h3>
-                            <p className="text-sm text-muted-foreground mt-1">
-                                For teams and companies. Collaborate with your organization members.
-                            </p>
-                            <div className="flex flex-wrap gap-2 mt-3">
-                                <span className="text-xs bg-muted px-2 py-1 rounded-full">Team collaboration</span>
-                                <span className="text-xs bg-muted px-2 py-1 rounded-full">Role-based access</span>
-                                <span className="text-xs bg-muted px-2 py-1 rounded-full">Invite members</span>
+                                <User className="h-7 w-7" />
+                            </div>
+                            <div className="flex-1 min-w-0 pr-10">
+                                <h3 className={cn(
+                                    "font-semibold text-xl transition-colors",
+                                    selected === "PERSONAL" ? "text-primary" : "text-foreground"
+                                )}>
+                                    Personal Workspace
+                                </h3>
+                                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                                    For individual use — freelancers, personal projects, or solo work.
+                                </p>
+                                <div className="flex flex-wrap items-center gap-2 mt-4">
+                                    <span className={cn(
+                                        "inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-medium transition-all duration-300",
+                                        selected === "PERSONAL"
+                                            ? "bg-primary/15 text-primary"
+                                            : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary/80"
+                                    )}>
+                                        <Zap className="w-3.5 h-3.5" />
+                                        Quick setup
+                                    </span>
+                                    <span className={cn(
+                                        "inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-medium transition-all duration-300",
+                                        selected === "PERSONAL"
+                                            ? "bg-primary/15 text-primary"
+                                            : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary/80"
+                                    )}>
+                                        <Briefcase className="w-3.5 h-3.5" />
+                                        Personal projects
+                                    </span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </button>
+                    </button>
 
-                <Button
-                    onClick={handleContinue}
-                    disabled={!selected || isSubmitting}
-                    className="w-full mt-6"
-                    size="lg"
-                >
-                    Continue
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-            </CardContent>
-        </Card>
+                    {/* Organization Account Option */}
+                    <button
+                        type="button"
+                        onClick={() => setSelected("ORG")}
+                        className={cn(
+                            "w-full p-6 rounded-2xl border-2 transition-all duration-300 text-left group relative overflow-hidden",
+                            "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                            selected === "ORG"
+                                ? "border-primary bg-primary/5 shadow-xl shadow-primary/10 scale-[1.02]"
+                                : "border-border bg-background hover:border-primary/50 hover:bg-muted/30 hover:shadow-lg"
+                        )}
+                        disabled={isSubmitting}
+                    >
+                        {/* Selection Indicator */}
+                        <div className={cn(
+                            "absolute top-5 right-5 w-7 h-7 rounded-full border-2 transition-all duration-300 flex items-center justify-center",
+                            selected === "ORG"
+                                ? "border-primary bg-primary scale-110"
+                                : "border-muted-foreground/30 group-hover:border-primary/50 group-hover:scale-105"
+                        )}>
+                            {selected === "ORG" && (
+                                <Check className="w-4 h-4 text-white" strokeWidth={3} />
+                            )}
+                        </div>
+
+                        <div className="flex items-start gap-5">
+                            <div className={cn(
+                                "p-4 rounded-2xl transition-all duration-300 shrink-0",
+                                selected === "ORG"
+                                    ? "bg-gradient-to-br from-primary to-primary/80 text-white shadow-lg shadow-primary/30"
+                                    : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
+                            )}>
+                                <Building2 className="h-7 w-7" />
+                            </div>
+                            <div className="flex-1 min-w-0 pr-10">
+                                <h3 className={cn(
+                                    "font-semibold text-xl transition-colors",
+                                    selected === "ORG" ? "text-primary" : "text-foreground"
+                                )}>
+                                    Organization / Team
+                                </h3>
+                                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                                    For teams and companies — collaborate with members across workspaces.
+                                </p>
+                                <div className="flex flex-wrap items-center gap-2 mt-4">
+                                    <span className={cn(
+                                        "inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-medium transition-all duration-300",
+                                        selected === "ORG"
+                                            ? "bg-primary/15 text-primary"
+                                            : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary/80"
+                                    )}>
+                                        <Users className="w-3.5 h-3.5" />
+                                        Team collaboration
+                                    </span>
+                                    <span className={cn(
+                                        "inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-medium transition-all duration-300",
+                                        selected === "ORG"
+                                            ? "bg-primary/15 text-primary"
+                                            : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary/80"
+                                    )}>
+                                        <Shield className="w-3.5 h-3.5" />
+                                        Role-based access
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+
+                {/* CTA Section */}
+                <div className="mt-10">
+                    <Button
+                        onClick={handleContinue}
+                        disabled={!selected || isSubmitting}
+                        size="lg"
+                        className={cn(
+                            "w-full h-14 text-base font-semibold rounded-2xl transition-all duration-300",
+                            selected
+                                ? "bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-xl shadow-primary/25 hover:shadow-2xl hover:shadow-primary/35 hover:scale-[1.02]"
+                                : "bg-muted text-muted-foreground hover:bg-muted"
+                        )}
+                    >
+                        {isSubmitting ? (
+                            "Setting up..."
+                        ) : (
+                            <>
+                                Continue
+                                <ArrowRight className="ml-2 h-5 w-5" />
+                            </>
+                        )}
+                    </Button>
+
+                    {/* Helper text */}
+                    <p className={cn(
+                        "text-center text-xs mt-4 transition-all duration-300",
+                        selected ? "opacity-0" : "text-muted-foreground"
+                    )}>
+                        Select an option above to continue
+                    </p>
+                </div>
+            </div>
+        </div>
     );
 }
-

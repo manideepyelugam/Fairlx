@@ -18,6 +18,10 @@ export type AccountLifecycleState = {
     accountType: "PERSONAL" | "ORG" | null;
     activeMember: Models.Document | null;
     activeOrgId: string | null;
+    /** Organization name (for display, e.g., during first login) */
+    activeOrgName: string | null;
+    /** Organization image URL (for display, e.g., during first login) */
+    activeOrgImageUrl: string | null;
     activeWorkspaceId: string | null;
     /** If true, user must reset password on first login (ORG accounts) */
     mustResetPassword: boolean;

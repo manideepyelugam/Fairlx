@@ -33,6 +33,32 @@ export const Sidebar = () => {
   const showWorkspaceContent = !!(urlWorkspaceId || activeWorkspaceId);
 
   // ============================================================
+  // LOADING STATE: Show friendly UI while permissions resolve
+  // ============================================================
+  if (isAccessLoading && hasOrg) {
+    return (
+      <aside className="h-full bg-neutral-50 w-full overflow-hidden border-r-[1.5px] border-neutral-200 flex flex-col">
+        <div className="flex items-center w-full py-5 px-4 border-b-[1.5px] border-neutral-200 flex-shrink-0">
+          <Link href="/welcome">
+            <Image src="/Logo.png" className="object-contain" alt="logo" width={80} height={90} />
+          </Link>
+        </div>
+
+        <div className="flex flex-col flex-1 overflow-hidden p-4">
+          <div className="text-center text-sm text-muted-foreground space-y-2">
+            <p className="font-medium">Loading workspace...</p>
+            <p className="text-xs">Setting up your navigation</p>
+          </div>
+        </div>
+
+        <div className="flex-shrink-0">
+          <WorkspaceSwitcher />
+        </div>
+      </aside>
+    );
+  }
+
+  // ============================================================
   // RESTRICTED ORG MEMBER: Hide ALL workspace UI
   // ============================================================
   if (isRestrictedOrgMember) {
