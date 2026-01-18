@@ -1258,6 +1258,7 @@ const app = new Hono()
 /**
  * Helper: Get organization member
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function getOrganizationMember(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     databases: any,

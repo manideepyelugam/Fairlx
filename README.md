@@ -1,576 +1,346 @@
-# 🚀 Fairlx - Enterprise-Grade Agile Project Management
-
 <div align="center">
 
-<img src="public/Logo.png" alt="Fairlx Logo" width="120" height="120" />
+# Fairlx
 
-**The Complete Solution for Agile Teams at Scale**
+### Enterprise-Grade Agile Project Management Platform
 
-[![Built with Next.js](https://img.shields.io/badge/Built%20with-Next.js%2015-000000?style=flat&logo=next.js&logoColor=white)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=flat&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![Appwrite](https://img.shields.io/badge/Appwrite-FD366E?style=flat&logo=appwrite&logoColor=white)](https://appwrite.io/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+<br />
 
-*A powerful project management platform for modern agile teams: organizations, workspaces, spaces, projects, teams, sprints, work items, workflows, custom fields, time tracking, docs, AI assistant, and integrations.*
+<img src="public/Logo.png" alt="Fairlx Logo" width="100" height="100" />
 
-[📖 Documentation](#-documentation) | [🚀 Quick Start](#-quick-start) | [🐛 Report Bug](https://github.com/stemlen/Fairlx/issues) | [✨ Request Feature](https://github.com/stemlen/Fairlx/issues)
+<br />
+<br />
+
+[![Next.js](https://img.shields.io/badge/Next.js_15-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Appwrite](https://img.shields.io/badge/Appwrite-FD366E?style=for-the-badge&logo=appwrite&logoColor=white)](https://appwrite.io/)
+
+<br />
+
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
+
+<br />
+
+A comprehensive project management solution built for modern agile teams.  
+Organizations, workspaces, custom workflows, AI-powered insights, and more.
+
+<br />
+
+[Get Started](#-quick-start) · [Documentation](#-documentation) · [Report Bug](https://github.com/stemlen/Fairlx/issues) · [Request Feature](https://github.com/stemlen/Fairlx/issues)
 
 </div>
 
+<br />
+
 ---
 
-## 📚 Table of Contents
+<br />
 
-- [Documentation](#-documentation)
-- [Features Overview](#-features-overview)
-- [Why Fairlx?](#-why-fairlx)
+## 📋 Table of Contents
+
+- [Overview](#-overview)
+- [Features](#-features)
 - [Tech Stack](#-tech-stack)
 - [Quick Start](#-quick-start)
 - [Project Structure](#-project-structure)
-- [Feature Modules](#-feature-modules-35-features)
-- [Permission System](#-permission-system)
-- [AI Features](#-ai-features)
-- [Development](#-development)
+- [Documentation](#-documentation)
 - [Deployment](#-deployment)
-- [Roadmap](#-roadmap)
-- [Security](#-security)
 - [Contributing](#-contributing)
+- [License](#-license)
 
----
+<br />
 
-## 📚 Documentation
+## 🎯 Overview
 
-<div align="center">
-  <table>
-    <tr>
-      <td align="center" width="25%">
-        <a href="#-quick-start"><h3>🚀 Quick Start</h3></a>
-        <p>Get up and running fast</p>
-      </td>
-      <td align="center" width="25%">
-        <a href="./md/APPWRITE_GUIDE.md"><h3>📊 Appwrite Guide</h3></a>
-        <p>Complete schema & setup</p>
-      </td>
-      <td align="center" width="25%">
-        <a href="./CONTRIBUTING.md"><h3>🤝 Contributing</h3></a>
-        <p>How to contribute</p>
-      </td>
-      <td align="center" width="25%">
-        <a href="./CODE_OF_CONDUCT.md"><h3>📜 Code of Conduct</h3></a>
-        <p>Community guidelines</p>
-      </td>
-    </tr>
-  </table>
-</div>
+Fairlx is an enterprise-ready agile project management platform designed to help teams of all sizes manage their work effectively. Built with modern technologies and best practices, it offers a complete solution for project planning, tracking, and collaboration.
 
----
+### Why Fairlx?
 
-## ✨ Features Overview
+| | |
+|---|---|
+| **🤖 AI-First** | Workflow AI assistant, smart suggestions, auto-generated documentation |
+| **🏢 Enterprise-Ready** | Organizations, multi-workspace, programs, teams, RBAC permissions |
+| **💳 Production Billing** | Usage-based metering with Razorpay integration |
+| **🔐 Security Hardened** | Server-side validation, billing enforcement, invariant checks |
+| **🔄 Flexible Workflows** | Customizable at workspace, space, and project levels |
+| **📦 Self-Host Friendly** | Full data ownership with Appwrite backend |
 
-<div align="center">
-  <table>
-    <tr>
-      <td align="center" width="33%">
-        <h3>🏢 Organizations & Workspaces</h3>
-        <p>Personal or Org accounts, multi-workspace, programs, teams, projects with spaces</p>
-      </td>
-      <td align="center" width="33%">
-        <h3>📋 Work Items</h3>
-        <p>Stories, Tasks, Bugs, Epics, Subtasks with custom fields, labels & workflows</p>
-      </td>
-      <td align="center" width="33%">
-        <h3>🏃 Sprints & Boards</h3>
-        <p>Scrum, Kanban, or Hybrid with WIP limits, velocity and burndown</p>
-      </td>
-    </tr>
-    <tr>
-      <td align="center" width="33%">
-        <h3>🔄 Custom Workflows</h3>
-        <p>Status flows, transitions, rules per workspace/space/project with AI assistant</p>
-      </td>
-      <td align="center" width="33%">
-        <h3>⏱️ Time Tracking</h3>
-        <p>Estimates vs actuals, timesheets, capacity insights, variance tracking</p>
-      </td>
-      <td align="center" width="33%">
-        <h3>📎 Files & Docs</h3>
-        <p>Attachments (50MB) and project docs (5GB) with categories & AI</p>
-      </td>
-    </tr>
-    <tr>
-      <td align="center" width="33%">
-        <h3>🤖 AI-Powered</h3>
-        <p>Workflow AI, smart suggestions, auto-docs, code analysis, Q&A</p>
-      </td>
-      <td align="center" width="33%">
-        <h3>🐙 GitHub Integration</h3>
-        <p>Repo links, commit sync, AI docs, code Q&A</p>
-      </td>
-      <td align="center" width="33%">
-        <h3>💳 Usage-Based Billing</h3>
-        <p>Traffic, storage, compute metering with Razorpay</p>
-      </td>
-    </tr>
-  </table>
-</div>
+<br />
 
----
+## ✨ Features
 
-## 🌟 Why Fairlx?
+<table>
+<tr>
+<td width="33%" valign="top">
 
-| Feature | Description |
-|---------|-------------|
-| **AI-first** | Workflow AI assistant, smart task suggestions, auto-generated documentation, code analysis |
-| **Enterprise-ready** | Organizations, multi-workspace, programs, teams, RBAC permissions |
-| **Dual account types** | Personal accounts for individuals, Org accounts for teams with shared billing |
-| **Production-grade billing** | Usage-based metering with Razorpay e-mandate, grace periods, auto-suspension |
-| **Security hardened** | Server-side org derivation, billing enforcement middleware, invariant checks |
-| **Flexible workflows** | Workspace/space/project-level customization with AI-powered transitions |
-| **Custom fields** | Text, numbers, selects, users, dates, currency, labels, percentage |
-| **Built-in time tracking** | Estimates vs actuals, timesheets, exports |
-| **Integration-ready** | GitHub, AI services, Razorpay, notifications, storage |
-| **Self-host friendly** | Appwrite backend; full data ownership |
-| **Modern stack** | Next.js 15, TypeScript, Tailwind, Appwrite, Hono, Gemini AI |
+### Core Management
+- **Organizations & Workspaces**  
+  Multi-tenant with billing scopes
+- **Spaces & Projects**  
+  Logical containers with visibility controls
+- **Teams & Programs**  
+  Cross-functional collaboration
 
----
+</td>
+<td width="33%" valign="top">
 
-## 🛠️ Tech Stack
+### Work Items
+- **Tasks, Stories, Bugs, Epics**  
+  Full work item lifecycle
+- **Custom Fields**  
+  10+ field types including labels & currency
+- **Subtasks & Links**  
+  8 relationship types
 
-| Category | Technologies |
-|----------|-------------|
-| **Framework** | Next.js 15 (App Router, RSC), TypeScript |
-| **Styling** | Tailwind CSS, shadcn/ui, Radix UI, Lucide Icons |
-| **Backend** | Appwrite (Auth, DB, Storage, Realtime), Hono (API routes) |
-| **State/Data** | TanStack Query (React Query), Zod validation |
-| **AI** | Google Gemini API (gemini-2.5-flash-lite) |
-| **UI Libraries** | React Hook Form, React Big Calendar, Recharts, @xyflow/react |
-| **Payments** | Razorpay (e-mandate, auto-debit) |
-| **Exports** | jsPDF, docx, html-to-docx |
+</td>
+<td width="33%" valign="top">
+
+### Planning
+- **Sprints & Boards**  
+  Scrum, Kanban, or Hybrid
+- **Time Tracking**  
+  Estimates vs actuals with timesheets
+- **Timeline Views**  
+  Gantt-style with zoom levels
+
+</td>
+</tr>
+<tr>
+<td width="33%" valign="top">
+
+### Workflows
+- **Custom Statuses**  
+  Define your own workflow
+- **Transition Rules**  
+  Control state changes
+- **AI Assistant**  
+  Analyze and optimize workflows
+
+</td>
+<td width="33%" valign="top">
+
+### Collaboration
+- **Comments & Mentions**  
+  Threaded discussions
+- **Attachments**  
+  Up to 50MB per file
+- **Project Docs**  
+  PRDs, specs with AI chat
+
+</td>
+<td width="33%" valign="top">
+
+### Integrations
+- **GitHub**  
+  Repo linking, commit sync
+- **AI Services**  
+  Google Gemini integration
+- **Notifications**  
+  Real-time updates
+
+</td>
+</tr>
+</table>
+
+<br />
+
+## 🛠 Tech Stack
+
+| Layer | Technologies |
+|:------|:-------------|
+| **Frontend** | Next.js 15, React, TypeScript |
+| **Styling** | Tailwind CSS, shadcn/ui, Radix UI |
+| **Backend** | Appwrite (Auth, Database, Storage), Hono |
+| **State** | TanStack Query, Zod |
+| **AI** | Google Gemini API |
+| **Payments** | Razorpay |
 | **Testing** | Vitest, Playwright |
 
----
+<br />
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+ (npm/yarn/pnpm/bun)
-- Appwrite Cloud or self-hosted Appwrite
-- Gemini API key (for AI features)
-- Razorpay account (for billing, optional)
 
-### Install
+- Node.js 18+
+- Appwrite instance (Cloud or self-hosted)
+- Gemini API key (optional, for AI features)
+
+### Installation
+
 ```bash
+# Clone the repository
 git clone https://github.com/stemlen/Fairlx.git
 cd Fairlx
-npm install  # or bun install
+
+# Install dependencies
+npm install
+
+# Configure environment
+cp .env.example .env.local
+# Edit .env.local with your configuration
+
+# Start development server
+npm run dev
 ```
 
-### Configure Environment
-Create `.env.local`:
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Environment Variables
+
+Create a `.env.local` file with the following required variables:
+
 ```env
+# App Configuration
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Appwrite Configuration
 NEXT_PUBLIC_APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
 NEXT_PUBLIC_APPWRITE_PROJECT=your_project_id
-NEXT_APPWRITE_KEY=your_api_key
 NEXT_PUBLIC_APPWRITE_DATABASE_ID=your_database_id
+NEXT_APPWRITE_KEY=your_api_key
 
-# AI Configuration
+# AI Configuration (Optional)
 GEMINI_API_KEY=your_gemini_api_key
 
-# Core Collections (see docs/APPWRITE_SETUP.md for full list)
-NEXT_PUBLIC_APPWRITE_WORKSPACES_ID=workspaces
-NEXT_PUBLIC_APPWRITE_MEMBERS_ID=members
-NEXT_PUBLIC_APPWRITE_PROJECTS_ID=projects
-NEXT_PUBLIC_APPWRITE_TASKS_ID=tasks
-NEXT_PUBLIC_APPWRITE_SPACES_ID=spaces
-NEXT_PUBLIC_APPWRITE_WORKFLOWS_ID=workflows
-NEXT_PUBLIC_APPWRITE_WORKFLOW_STATUSES_ID=workflow_statuses
-NEXT_PUBLIC_APPWRITE_WORKFLOW_TRANSITIONS_ID=workflow_transitions
-# ... (see md/APPWRITE_SETUP.md for complete list)
-
-# Razorpay (optional, for billing)
+# Razorpay (Optional, for billing)
 RAZORPAY_KEY_ID=your_razorpay_key_id
 RAZORPAY_KEY_SECRET=your_razorpay_key_secret
-
-# Storage Buckets
-NEXT_PUBLIC_APPWRITE_IMAGES_BUCKET_ID=images
-NEXT_PUBLIC_APPWRITE_ATTACHMENTS_BUCKET_ID=attachments_bucket
-NEXT_PUBLIC_APPWRITE_PROJECT_DOCS_BUCKET_ID=project-docs
 ```
 
-> Full schema and bucket details: see [md/APPWRITE_GUIDE.md](./md/APPWRITE_GUIDE.md).
+> See [APPWRITE_SETUP.md](./md/APPWRITE_SETUP.md) for complete environment configuration.
 
-### Run
-```bash
-npm run dev   # or bun dev
-# open http://localhost:3000
-```
-
----
+<br />
 
 ## 📁 Project Structure
 
 ```
-Fairlx/
-├── public/                    # Static assets (logo, icons)
+fairlx/
+├── public/                    # Static assets
 ├── docs/                      # Documentation
-│   ├── APPWRITE_ORGANIZATIONS_SETUP.md
-│   ├── DATABASE_UPDATES.md
-│   ├── FEATURES_COMPLETE.md
-│   ├── SPACES_GUIDE.md
-│   └── SPACES_TESTING_GUIDE.md
-├── md/                        # Additional guides
-│   ├── APPWRITE_GUIDE.md
-│   ├── APPWRITE_SETUP.md
-│   └── MIGRATION_SETUP.md
+├── md/                        # Setup guides
 ├── src/
 │   ├── app/                   # Next.js App Router
-│   │   ├── (auth)/            # Auth pages (sign-in, sign-up, verify)
-│   │   ├── (dashboard)/       # Dashboard routes
-│   │   │   └── workspaces/    # Workspace, spaces, projects, tasks
+│   │   ├── (auth)/            # Authentication pages
+│   │   ├── (dashboard)/       # Main application
 │   │   ├── (standalone)/      # Standalone pages
-│   │   ├── api/               # API routes (Hono)
-│   │   ├── auth/              # Auth callbacks
-│   │   └── oauth/             # OAuth handling
+│   │   └── api/               # API routes (Hono)
 │   ├── components/            # Shared components
-│   │   ├── ui/                # shadcn/ui primitives (34 components)
-│   │   ├── skeletons/         # Loading skeletons
-│   │   └── *.tsx              # App-specific components
-│   ├── features/              # Feature modules (35 features)
+│   │   ├── ui/                # shadcn/ui primitives
+│   │   └── skeletons/         # Loading states
+│   ├── features/              # Feature modules
 │   │   ├── auth/              # Authentication
-│   │   ├── organizations/     # Organizations & billing
 │   │   ├── workspaces/        # Workspace management
-│   │   ├── spaces/            # Spaces (containers)
 │   │   ├── projects/          # Project management
-│   │   ├── tasks/             # Tasks & work items
-│   │   ├── workflows/         # Custom workflows + AI
-│   │   ├── teams/             # Team management
-│   │   └── ...                # (see Feature Modules section)
-│   ├── hooks/                 # Shared hooks
-│   │   ├── use-confirm.tsx
-│   │   ├── use-debounce.ts
-│   │   └── use-permission.ts
+│   │   ├── tasks/             # Work items
+│   │   ├── workflows/         # Custom workflows
+│   │   └── ...                # 35+ feature modules
+│   ├── hooks/                 # Shared React hooks
 │   ├── lib/                   # Core utilities
-│   │   ├── appwrite.ts        # Appwrite clients
-│   │   ├── session-middleware.ts
-│   │   ├── rbac.ts            # Role-based access
-│   │   ├── permissions.ts     # Permission constants
-│   │   ├── billing-*.ts       # Billing utilities
-│   │   ├── usage-*.ts         # Usage metering
-│   │   └── utils.ts           # General utilities
-│   ├── types/                 # Shared TypeScript types
-│   └── config.ts              # Environment config
-├── CODE_OF_CONDUCT.md
-├── CONTRIBUTING.md
-├── DATABASE_UPDATES.md
-├── workflow.md
-├── components.json            # shadcn/ui config
+│   └── types/                 # TypeScript definitions
 ├── tailwind.config.ts
 ├── next.config.mjs
-├── tsconfig.json
-├── vitest.config.ts
-├── playwright.config.ts
 └── package.json
 ```
 
----
+<br />
 
-## 📦 Feature Modules (35 Features)
+## 📚 Documentation
 
-Each feature module follows a consistent structure:
-```
-feature/
-├── api/           # TanStack Query hooks (queries & mutations)
-├── components/    # React components
-├── hooks/         # Feature-specific hooks
-├── server/        # Hono API routes
-├── types/         # TypeScript types
-└── schemas.ts     # Zod validation schemas
-```
+| Document | Description |
+|:---------|:------------|
+| [Appwrite Guide](./md/APPWRITE_GUIDE.md) | Complete database schema and setup |
+| [Appwrite Setup](./md/APPWRITE_SETUP.md) | Step-by-step Appwrite configuration |
+| [Spaces Guide](./docs/SPACES_GUIDE.md) | Understanding spaces and containers |
+| [Contributing](./CONTRIBUTING.md) | Contribution guidelines |
+| [Code of Conduct](./CODE_OF_CONDUCT.md) | Community guidelines |
 
-### Core Entity Management
-
-| Feature | Description |
-|---------|-------------|
-| **auth** | Sign-in/up, email verification, OAuth (Google, GitHub), forgot/reset password |
-| **organizations** | Organization management, multi-workspace support, billing, soft-delete |
-| **workspaces** | Workspace CRUD with UI modes (Simple/Advanced), billing scope |
-| **spaces** | Logical containers between workspace and projects with visibility controls |
-| **projects** | Board types (Scrum/Kanban/Hybrid), WIP limits, sprint settings, GitHub integration |
-| **programs** | Cross-team program management with leads and status tracking |
-
-### Work Item Management
-
-| Feature | Description |
-|---------|-------------|
-| **tasks** | Work items with priority, status, assignees, teams, story points, labels, custom fields |
-| **sprints** | Sprint planning (Planned/Active/Completed/Cancelled), velocity tracking, burndown |
-| **subtasks** | Subtask management with priority, due dates, assignees |
-| **work-item-links** | Relationships: blocks, relates, duplicates, split, clone, parent/child, causes |
-| **personal-backlog** | Personal backlog items (Stories, Bugs, Tasks, Epics, Ideas, Improvements) |
-
-### Team & Member Management
-
-| Feature | Description |
-|---------|-------------|
-| **members** | Workspace membership with roles (Owner, Admin, Member) |
-| **teams** | Team management with visibility, roles (Lead/Member/Custom), granular permissions |
-| **project-members** | Project-scoped membership and roles |
-| **roles** | Custom role definitions with permission sets |
-| **org-permissions** | Organization-level role management (Owner, Admin, Moderator, Member) |
-| **user-access** | User access control and permissions |
-
-### Customization Features
-
-| Feature | Description |
-|---------|-------------|
-| **workflows** | Custom statuses, transitions, rules + **AI Assistant** for workflow building |
-| **custom-fields** | Text, number, date, select/multi-select, user, checkbox, URL, currency, percentage, labels |
-| **custom-columns** | Custom kanban columns with icons and colors |
-| **default-column-settings** | Default column configurations |
-| **saved-views** | Saved views for Kanban/List/Calendar/Timeline with filters and sorting |
-
-### Time & Planning
-
-| Feature | Description |
-|---------|-------------|
-| **time-tracking** | Time logs, estimates vs actuals, timesheets, variance tracking |
-| **timeline** | Gantt-style timeline view with zoom levels and epic grouping |
-
-### Collaboration Features
-
-| Feature | Description |
-|---------|-------------|
-| **comments** | Threaded comments with @mentions and edit tracking |
-| **attachments** | File attachments (up to 50MB) with preview support |
-| **project-docs** | Documentation (PRD, FRD, Technical Spec, API Docs) up to 5GB with AI chat |
-| **notifications** | Real-time notifications for assignments, status changes, comments |
-
-### Integration & Analytics
-
-| Feature | Description |
-|---------|-------------|
-| **github-integration** | GitHub repo linking, commit sync, AI-generated code docs, Q&A |
-| **audit-logs** | Activity logging and audit trails |
-| **usage** | Usage metering (traffic, storage, compute) for billing |
-| **billing** | Billing accounts, invoices, payment status, grace periods, suspension |
-| **currency** | Multi-currency support |
-| **onboarding** | User onboarding flow and hooks |
-
----
+<br />
 
 ## 🔐 Permission System
 
-Fairlx implements a hierarchical RBAC (Role-Based Access Control) system:
+Fairlx implements hierarchical Role-Based Access Control (RBAC):
 
 ```
-Organization (Org Account only)
-├── OWNER      - Full control, billing management, delete org
-├── ADMIN      - Manage members, settings, workspaces
-├── MODERATOR  - Manage content, limited member management
-└── MEMBER     - Basic access
-
-└── Workspace
-    ├── WS_ADMIN   - Full workspace control
-    ├── WS_EDITOR  - Edit content, manage projects
-    └── WS_VIEWER  - Read-only access
-
-    └── Space
-        ├── ADMIN/MASTER - Full space control
-        ├── MEMBER       - Standard access
-        └── VIEWER       - Read-only access
-
-        └── Project
-            ├── PROJECT_ADMIN - Full project control
-            ├── MANAGER       - Manage sprints, assign tasks
-            ├── DEVELOPER     - Work on tasks
-            └── VIEWER        - Read-only access
-
-            └── Team
-                ├── LEAD   - Team lead permissions
-                ├── MEMBER - Team member permissions
-                └── CUSTOM - Custom role permissions
+Organization
+├── Owner        Full control, billing
+├── Admin        Manage members, settings
+├── Moderator    Manage content
+└── Member       Basic access
+    │
+    └── Workspace
+        ├── Admin    Full workspace control
+        ├── Editor   Edit content
+        └── Viewer   Read-only
+            │
+            └── Space → Project → Team
 ```
 
-### Key Permission Files
-- `src/lib/permissions.ts` - Permission constants
-- `src/lib/permission-matrix.ts` - Permission matrix definitions
-- `src/lib/rbac.ts` - RBAC implementation
-- `src/lib/project-rbac.ts` - Project-level RBAC
-- `src/components/permission-guard.tsx` - React permission guard
-
----
-
-## 🤖 AI Features
-
-Fairlx integrates **Google Gemini AI** for intelligent assistance:
-
-### Workflow AI Assistant
-- **Analyze Workflows**: Identify orphaned, unreachable, and dead-end statuses
-- **Suggest Statuses**: AI recommends new statuses based on workflow context
-- **Suggest Transitions**: AI recommends transitions with conditions and rules
-- **Generate Templates**: Generate complete workflow templates from prompts
-- **Q&A**: Ask questions about your workflow structure
-
-### Project Docs AI
-- **Auto-Generated Documentation**: Generate PRDs, technical specs from project context
-- **Code Analysis & Q&A**: Ask questions about your codebase with file references
-- **Commit Summarization**: Auto-generate meaningful commit summaries
-
-### Smart Features
-- **Duplicate Detection**: AI identifies potentially duplicate tasks
-- **Risk Prediction**: Proactive alerts for scope creep, deadline risks
-- **Sprint Planning Assistant**: AI recommends capacity and prioritization
-
----
-
-## 🔧 Development
-
-### Scripts
-```bash
-npm run dev        # Start development server
-npm run build      # Production build
-npm run start      # Start production server
-npm run lint       # Run ESLint
-npm run test       # Run Vitest
-npm run test:run   # Vitest single run
-```
-
-### Guidelines
-- TypeScript strict mode; explicit types
-- Prefer Server Components; use client components only when needed
-- Use Tailwind utilities and shadcn/ui primitives
-- Validate inputs with Zod at API boundaries
-- Use route utilities (`src/lib/route-utils.ts`) for safe navigation
-- Run lint before pushing
-
-### Example: Safe Navigation
-```typescript
-import { buildWorkspaceRoute } from "@/lib/route-utils";
-
-// Safe navigation with validated IDs
-const route = buildWorkspaceRoute(workspaceId, "/settings");
-router.push(route);
-```
-
-### Feature Module Pattern
-```typescript
-// api/use-get-feature.ts
-export const useGetFeature = (id: string) => {
-  return useQuery({
-    queryKey: ["feature", id],
-    queryFn: async () => {
-      const response = await client.api.feature[":id"].$get({ param: { id } });
-      return response.json();
-    },
-  });
-};
-
-// server/route.ts
-const app = new Hono()
-  .get("/:id", sessionMiddleware, async (c) => {
-    const { id } = c.req.param();
-    // ... implementation
-    return c.json({ data });
-  });
-```
-
----
+<br />
 
 ## 🚀 Deployment
 
 ### Vercel (Recommended)
+
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/stemlen/Fairlx)
 
-1. Import repo to Vercel
-2. Set environment variables
-3. Deploy
-
 ### Docker
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
-EXPOSE 3000
-CMD ["npm", "start"]
+
+```bash
+docker build -t fairlx .
+docker run -p 3000:3000 fairlx
 ```
 
----
+### Manual
 
-## 🗺️ Roadmap
+```bash
+npm run build
+npm start
+```
 
-### ✅ Completed
-- Multi-workspace & organizations
-- Scrum/Kanban/Hybrid boards
-- Custom workflows with AI assistant
-- Custom fields (10+ types)
-- Time tracking with timesheets
-- Teams & programs
-- Work item links (8 relationship types)
-- GitHub integration with AI docs
-- Comments & attachments
-- Notifications
-- Timelines & analytics
-- Production-grade usage-based billing
-- Razorpay e-mandate integration
-- Dual account types (Personal/Org)
-- Billing enforcement middleware
-- Spaces (logical containers)
+<br />
 
-### 🚧 In Progress
-- Advanced reporting dashboard
-- Automation rules
-- Webhooks
+## 🧪 Development
 
-### 📋 Planned
-- Mobile app
-- Jira import/export
-- Slack/Discord/Teams integration
-- Approvals workflow
-- Capacity planning
-- Portfolio management
-- Custom widgets
-- i18n (internationalization)
-- Advanced search
-- Bulk operations
-- 2FA
+```bash
+# Development
+npm run dev
 
----
+# Type checking
+npm run lint
 
-## 📊 Database Overview
+# Unit tests
+npm run test
 
-- **Collections**: 35+ (workspaces, spaces, space_members, programs, teams, team_members, custom_roles, projects, members, tasks, work_items, sprints, workflows, workflow_statuses, workflow_transitions, custom_columns, default_column_settings, time_logs, subtasks, comments, attachments, notifications, personal_backlog, github_repos, code_docs, project_docs, organizations, organization_members, usage_events, invoices, etc.)
-- **Buckets**: 3 (images, attachments_bucket, project-docs)
+# E2E tests
+npm run test:e2e
 
-Full attribute list, types, and indexes: see [md/APPWRITE_GUIDE.md](./md/APPWRITE_GUIDE.md).
+# Production build
+npm run build
+```
 
----
+<br />
 
-## 🔐 Security
+## 🗺 Roadmap
 
-| Feature | Description |
-|---------|-------------|
-| **Email Verification** | Required for account access |
-| **RBAC** | Multi-level role-based access control |
-| **Billing Enforcement** | `mutationGuard` middleware blocks writes for suspended accounts |
-| **Server-side Org Derivation** | Never trusts client-provided organization IDs |
-| **Webhook Verification** | Razorpay webhooks verified before processing |
-| **Idempotency** | Processed events registry prevents duplicate operations |
-| **Data Encryption** | At rest and in transit |
-| **File Validation** | Upload validation; antivirus enabled on buckets |
-| **Route Guards** | Prevent navigation with undefined/invalid IDs |
+- [x] Multi-workspace organizations
+- [x] Custom workflows with AI
+- [x] GitHub integration
+- [x] Usage-based billing
+- [x] Spaces and containers
+- [ ] Advanced reporting
+- [ ] Automation rules
+- [ ] Mobile application
+- [ ] Jira import/export
+- [ ] Slack/Teams integration
 
-> Report vulnerabilities privately (not via public issues).
-
----
+<br />
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) before submitting a Pull Request.
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
@@ -578,33 +348,33 @@ We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for gu
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
----
+<br />
+
+## 📄 License
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+
+<br />
 
 ## 🙏 Acknowledgments
 
-- [Vercel](https://vercel.com)
-- [Appwrite](https://appwrite.io)
-- [Radix UI](https://www.radix-ui.com)
-- [shadcn/ui](https://ui.shadcn.com)
-- [Tailwind CSS](https://tailwindcss.com)
-- [TanStack Query](https://tanstack.com/query)
-- [Hono](https://hono.dev)
-- [Google Gemini](https://ai.google.dev)
+- [Next.js](https://nextjs.org) - React framework
+- [Appwrite](https://appwrite.io) - Backend services
+- [shadcn/ui](https://ui.shadcn.com) - UI components
+- [Tailwind CSS](https://tailwindcss.com) - Styling
+- [TanStack Query](https://tanstack.com/query) - Data fetching
+- [Hono](https://hono.dev) - API framework
 
----
-
-## 💬 Community & Support
-
-- **Docs**: [md/APPWRITE_GUIDE.md](./md/APPWRITE_GUIDE.md)
-- **Issues**: [Bugs](https://github.com/stemlen/Fairlx/issues/new?labels=bug) | [Features](https://github.com/stemlen/Fairlx/issues/new?labels=enhancement)
-- **Discussions**: [GitHub Discussions](https://github.com/stemlen/Fairlx/discussions)
+<br />
 
 ---
 
 <div align="center">
 
-**Built with ❤️ for Agile Teams**
+**Built with ❤️ for agile teams everywhere**
 
-⭐ Star us on GitHub if this helps!
+<br />
+
+[⬆ Back to Top](#fairlx)
 
 </div>
