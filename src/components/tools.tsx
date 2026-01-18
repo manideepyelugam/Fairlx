@@ -7,8 +7,9 @@ import { cn } from "@/lib/utils";
 
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
-import { useCurrentOrgMember } from "@/features/organizations/api/use-current-org-member";
 import { useAccountLifecycle } from "@/components/account-lifecycle-provider";
+import { useCurrentUserOrgPermissions } from "@/features/org-permissions/api/use-current-user-permissions";
+import { OrgPermissionKey } from "@/features/org-permissions/types";
 
 interface ToolItem {
   label: string;
@@ -31,9 +32,13 @@ export const Tools = () => {
   const workspaceId = (urlWorkspaceId || activeWorkspaceId || "") as string;
 
   const { isAdmin } = useCurrentMember({ workspaceId });
-  const { canEdit: isOrgAdmin } = useCurrentOrgMember({
-    organizationId: (activeOrgId || "") as string
+
+  // Org-level permissions from departments (single source of truth)
+  const { hasPermission } = useCurrentUserOrgPermissions({
+    orgId: (activeOrgId || "") as string
   });
+  const canViewBilling = hasPermission(OrgPermissionKey.BILLING_VIEW);
+  const canViewAudit = hasPermission(OrgPermissionKey.AUDIT_VIEW);
 
   const [isExpanded, setIsExpanded] = useState(true);
 
@@ -69,9 +74,17 @@ export const Tools = () => {
 
   // Filter tools based on permissions
   const visibleTools = tools.filter(tool => {
+    // Workspace-level admin check for general admin tools
     if (tool.adminOnly && !isAdmin) return false;
     if (tool.orgOnly && !hasOrg) return false;
-    if (tool.orgAdminOnly && !isOrgAdmin) return false;
+    // Use department-based permissions for org admin checks
+    if (tool.orgAdminOnly && !canViewAudit) return false;
+
+    // For org accounts: Hide Admin Panel and Billing from sidebar
+    // These are now accessible on the Organization settings page
+    if (hasOrg && (tool.label === "Admin Panel" || tool.label === "Billing")) {
+      return false;
+    }
     return true;
   });
 

@@ -30,6 +30,8 @@ import {
 } from "@/features/billing/api";
 import { BillingStatus, BillingAccountType } from "@/features/billing/types";
 import { BillingWarningBanner } from "@/features/billing/components/billing-warning-banner";
+import { useCurrentUserOrgPermissions } from "@/features/org-permissions/api/use-current-user-permissions";
+import { OrgPermissionKey } from "@/features/org-permissions/types";
 
 
 
@@ -49,6 +51,10 @@ export function OrganizationBillingSettings({
         limit: 10
     });
     const { mutate: updateOrganization } = useUpdateOrganization();
+
+    // Permission check - BILLING_MANAGE required to edit
+    const { hasPermission: hasOrgPermission } = useCurrentUserOrgPermissions({ orgId: organizationId });
+    const canManageBilling = hasOrgPermission(OrgPermissionKey.BILLING_MANAGE);
 
     // Billing hooks
     const { data: billingAccountData, isLoading: isBillingLoading } = useGetBillingAccount({
@@ -415,7 +421,7 @@ export function OrganizationBillingSettings({
                                     value={billingEmailValue}
                                     onChange={(e) => setBillingEmailValue(e.target.value)}
                                     placeholder={ownerEmail || "owner@example.com"}
-                                    disabled={isSaving}
+                                    disabled={isSaving || !canManageBilling}
                                 />
                                 <div className="text-[11px] text-muted-foreground flex items-center gap-1">
                                     {billingEmailValue ? (
@@ -437,7 +443,7 @@ export function OrganizationBillingSettings({
                                     value={alternativeEmailValue}
                                     onChange={(e) => setAlternativeEmailValue(e.target.value)}
                                     placeholder="finance@company.com"
-                                    disabled={isSaving}
+                                    disabled={isSaving || !canManageBilling}
                                 />
                                 <p className="text-[11px] text-muted-foreground">
                                     Secondary contact for billing notifications
@@ -445,7 +451,7 @@ export function OrganizationBillingSettings({
                             </div>
                         </div>
 
-                        <Button onClick={handleSaveBillingSettings} disabled={isSaving}>
+                        <Button onClick={handleSaveBillingSettings} disabled={isSaving || !canManageBilling}>
                             {isSaving ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -499,7 +505,7 @@ export function OrganizationBillingSettings({
                                     variant="outline"
                                     size="sm"
                                     onClick={handleAddPaymentMethod}
-                                    disabled={isAddingPayment}
+                                    disabled={isAddingPayment || !canManageBilling}
                                 >
                                     {isAddingPayment ? (
                                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -537,7 +543,7 @@ export function OrganizationBillingSettings({
                                     </p>
                                     <Button
                                         onClick={handleAddPaymentMethod}
-                                        disabled={isAddingPayment || !isScriptLoaded || !billingPhone || billingPhone.length < 10}
+                                        disabled={isAddingPayment || !isScriptLoaded || !billingPhone || billingPhone.length < 10 || !canManageBilling}
                                         size="lg"
                                     >
                                         {isAddingPayment ? (

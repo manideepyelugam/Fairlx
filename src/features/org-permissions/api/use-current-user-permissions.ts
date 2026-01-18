@@ -9,33 +9,14 @@ interface UseCurrentUserOrgPermissionsProps {
     orgId: string;
 }
 
-// Role-based default permissions
-const ROLE_DEFAULT_PERMISSIONS: Record<OrganizationRole, OrgPermissionKey[]> = {
-    [OrganizationRole.OWNER]: Object.values(OrgPermissionKey) as OrgPermissionKey[],
-    [OrganizationRole.ADMIN]: [
-        OrgPermissionKey.BILLING_VIEW,
-        OrgPermissionKey.MEMBERS_VIEW,
-        OrgPermissionKey.MEMBERS_MANAGE,
-        OrgPermissionKey.SETTINGS_MANAGE,
-        OrgPermissionKey.AUDIT_VIEW,
-        OrgPermissionKey.DEPARTMENTS_MANAGE,
-        OrgPermissionKey.SECURITY_VIEW,
-        OrgPermissionKey.WORKSPACE_CREATE,
-        OrgPermissionKey.WORKSPACE_ASSIGN,
-    ],
-    [OrganizationRole.MODERATOR]: [
-        OrgPermissionKey.MEMBERS_VIEW,
-        OrgPermissionKey.WORKSPACE_ASSIGN,
-    ],
-    [OrganizationRole.MEMBER]: [],
-};
-
 /**
- * Hook to get current user's org permissions based on role
- * Used for navigation visibility and screen access
+ * Hook to get current user's org permissions
  * 
- * Uses role-based defaults. For explicit per-user permissions,
- * a separate API call would be needed.
+ * SECURITY: Fetches permissions from server API.
+ * - OWNER: Gets all permissions (from server)
+ * - Non-owners: Get department-based permissions only
+ * 
+ * NOTE: This is for UI rendering only. Server-side checks are authoritative.
  */
 export const useCurrentUserOrgPermissions = ({ orgId }: UseCurrentUserOrgPermissionsProps) => {
     const { data: user } = useCurrent();
@@ -52,9 +33,9 @@ export const useCurrentUserOrgPermissions = ({ orgId }: UseCurrentUserOrgPermiss
                 return { permissions: [] as OrgPermissionKey[], role: null, isOwner: false, orgMemberId: null };
             }
 
-            // Get membership from org members endpoint
+            // Fetch permissions from server (authoritative source)
             const response = await fetch(
-                `/api/organizations/${orgId}/members`,
+                `/api/user-access?organizationId=${orgId}`,
                 { credentials: "include" }
             );
 
@@ -63,28 +44,13 @@ export const useCurrentUserOrgPermissions = ({ orgId }: UseCurrentUserOrgPermiss
             }
 
             const data = await response.json();
-            const members = data.data?.documents || [];
 
-            // Find current user's membership
-            const membership = members.find(
-                (m: { userId: string }) => m.userId === user.$id
-            );
-
-            if (!membership) {
-                return { permissions: [] as OrgPermissionKey[], role: null, isOwner: false, orgMemberId: null };
-            }
-
-            const role = membership.role as OrganizationRole;
-            const isOwner = role === OrganizationRole.OWNER;
-
-            // Get role-based permissions
-            const rolePermissions = ROLE_DEFAULT_PERMISSIONS[role] || [];
-
+            // Map server response to our interface
             return {
-                permissions: rolePermissions,
-                role,
-                isOwner,
-                orgMemberId: membership.$id,
+                permissions: (data.permissions || []) as OrgPermissionKey[],
+                role: data.role as OrganizationRole | null,
+                isOwner: data.isOwner ?? false,
+                orgMemberId: data.orgMemberId || null,
             };
         },
         enabled: !!orgId && !!user?.$id,
@@ -92,7 +58,9 @@ export const useCurrentUserOrgPermissions = ({ orgId }: UseCurrentUserOrgPermiss
     });
 
     const hasPermission = (permission: OrgPermissionKey): boolean => {
+        // OWNER has all permissions
         if (query.data?.isOwner) return true;
+        // Non-owners check department-based permissions from server
         return query.data?.permissions?.includes(permission) ?? false;
     };
 

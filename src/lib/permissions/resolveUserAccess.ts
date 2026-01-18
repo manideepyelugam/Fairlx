@@ -1,25 +1,33 @@
 import "server-only";
 
-import { Databases, Query } from "node-appwrite";
-import { DATABASE_ID, ORGANIZATION_MEMBERS_ID, ORG_MEMBER_PERMISSIONS_ID } from "@/config";
-import { OrganizationRole, OrgMemberStatus, OrganizationMember } from "@/features/organizations/types";
+import { Databases } from "node-appwrite";
 import { OrgPermissionKey } from "@/features/org-permissions/types";
+import { OrganizationRole } from "@/features/organizations/types";
 import { AppRouteKey } from "./appRouteKeys";
-import { getRouteKeysForPermissions, getPathsForRouteKeys, getAllRouteKeys } from "./permissionRouteMap";
+import { getPathsForRouteKeys } from "./permissionRouteMap";
+import { resolveUserOrgAccess, UserOrgAccessResult } from "./resolveUserOrgAccess";
 
 /**
- * Resolve User Access
+ * Resolve User Access (Refactored for Department-Driven Model)
  * 
  * Server-side permission resolver that computes the complete access
  * object for a user in an organization.
  * 
+ * ARCHITECTURE:
+ * - Delegates org-level permissions to resolveUserOrgAccess (department-based)
+ * - Adds always-accessible routes (profile, welcome)
+ * - Adds workspace routes when workspace context exists
+ * 
+ * GOVERNANCE CONTRACT:
+ * DEPARTMENT → PERMISSIONS → ROUTES → NAVIGATION
+ * 
  * RULES:
  * 1. OWNER always gets ALL routes (bypass all checks)
- * 2. Explicit permissions are checked first
- * 3. Role defaults are fallback
- * 4. Output includes allowed routes and permissions
+ * 2. Permissions come ONLY from departments (not roles)
+ * 3. No department = ZERO org permissions
+ * 4. Workspace and project RBAC remain unchanged
  * 
- * This function is the ONLY authority for permission and access decisions.
+ * This function maintains backward compatibility with existing consumers.
  */
 
 // ============================================================================
@@ -35,37 +43,17 @@ export interface UserAccess {
     isOwner: boolean;
     /** User's org role */
     role: OrganizationRole | null;
-    /** All permissions user has (explicit + role defaults) */
+    /** All permissions user has (from departments) */
     permissions: OrgPermissionKey[];
     /** User's org member ID */
     orgMemberId: string | null;
     /** Organization ID */
     organizationId: string | null;
+    /** IDs of departments the user belongs to */
+    departmentIds: string[];
+    /** Whether user has department-based org access */
+    hasDepartmentAccess: boolean;
 }
-
-// ============================================================================
-// ROLE DEFAULT PERMISSIONS
-// ============================================================================
-
-const ROLE_DEFAULT_PERMISSIONS: Record<OrganizationRole, OrgPermissionKey[]> = {
-    [OrganizationRole.OWNER]: Object.values(OrgPermissionKey) as OrgPermissionKey[],
-    [OrganizationRole.ADMIN]: [
-        OrgPermissionKey.BILLING_VIEW,
-        OrgPermissionKey.MEMBERS_VIEW,
-        OrgPermissionKey.MEMBERS_MANAGE,
-        OrgPermissionKey.SETTINGS_MANAGE,
-        OrgPermissionKey.AUDIT_VIEW,
-        OrgPermissionKey.DEPARTMENTS_MANAGE,
-        OrgPermissionKey.SECURITY_VIEW,
-        OrgPermissionKey.WORKSPACE_CREATE,
-        OrgPermissionKey.WORKSPACE_ASSIGN,
-    ],
-    [OrganizationRole.MODERATOR]: [
-        OrgPermissionKey.MEMBERS_VIEW,
-        OrgPermissionKey.WORKSPACE_ASSIGN,
-    ],
-    [OrganizationRole.MEMBER]: [],
-};
 
 // ============================================================================
 // BASE ROUTE KEYS (always accessible)
@@ -83,7 +71,10 @@ const ALWAYS_ACCESSIBLE_ROUTES: AppRouteKey[] = [
 ];
 
 /**
- * Route keys that are accessible to any org member
+ * Route keys that are accessible to any org member with department access
+ * 
+ * NOTE: Changed from "any org member" to "org member with departments"
+ * Members without departments cannot see workspaces list.
  */
 const ORG_MEMBER_BASE_ROUTES: AppRouteKey[] = [
     AppRouteKey.WORKSPACES,
@@ -106,11 +97,6 @@ const WORKSPACE_MEMBER_ROUTES: AppRouteKey[] = [
 // ============================================================================
 // MAIN RESOLVER
 // ============================================================================
-
-interface OrgMemberPermission {
-    orgMemberId: string;
-    permissionKey: string;
-}
 
 /**
  * Resolve user's complete access for an organization
@@ -136,6 +122,8 @@ export async function resolveUserAccess(
         permissions: [],
         orgMemberId: null,
         organizationId: organizationId || null,
+        departmentIds: [],
+        hasDepartmentAccess: false,
     };
 
     if (!organizationId) {
@@ -145,83 +133,53 @@ export async function resolveUserAccess(
     }
 
     try {
-        // 1. Get user's org membership
-        const membership = await databases.listDocuments<OrganizationMember>(
-            DATABASE_ID,
-            ORGANIZATION_MEMBERS_ID,
-            [
-                Query.equal("organizationId", organizationId),
-                Query.equal("userId", userId),
-                Query.equal("status", OrgMemberStatus.ACTIVE),
-            ]
+        // ============================================================
+        // DEPARTMENT-DRIVEN ORG ACCESS RESOLUTION
+        // ============================================================
+        const orgAccess: UserOrgAccessResult = await resolveUserOrgAccess(
+            databases,
+            userId,
+            organizationId,
+            workspaceId
         );
 
-        if (membership.total === 0) {
-            // Not an org member - return base access
+        // Not an org member at all
+        if (!orgAccess.orgMemberId) {
             baseAccess.allowedPaths = getPathsForRouteKeys(baseAccess.allowedRouteKeys, workspaceId);
             return baseAccess;
         }
 
-        const member = membership.documents[0];
-        const role = member.role as OrganizationRole;
-
-        // 2. OWNER SUPER-ROLE: Grant ALL access immediately
-        if (role === OrganizationRole.OWNER) {
-            const allRouteKeys = getAllRouteKeys();
-            return {
-                allowedRouteKeys: allRouteKeys,
-                allowedPaths: getPathsForRouteKeys(allRouteKeys, workspaceId),
-                isOwner: true,
-                role: OrganizationRole.OWNER,
-                permissions: Object.values(OrgPermissionKey) as OrgPermissionKey[],
-                orgMemberId: member.$id,
-                organizationId,
-            };
-        }
-
-        // 3. Get explicit user permissions
-        let explicitPermissions: OrgPermissionKey[] = [];
-        try {
-            const explicitPerms = await databases.listDocuments(
-                DATABASE_ID,
-                ORG_MEMBER_PERMISSIONS_ID,
-                [Query.equal("orgMemberId", member.$id)]
-            );
-
-            explicitPermissions = explicitPerms.documents.map(
-                (p) => (p as unknown as OrgMemberPermission).permissionKey as OrgPermissionKey
-            );
-        } catch {
-            // Collection may not exist yet - continue with role defaults only
-        }
-
-        // 4. Combine explicit permissions with role defaults
-        const roleDefaults = ROLE_DEFAULT_PERMISSIONS[role] || [];
-        const allPermissions = [...new Set([...explicitPermissions, ...roleDefaults])];
-
-        // 5. Resolve route keys from permissions
-        const permissionRouteKeys = getRouteKeysForPermissions(allPermissions);
-
-        // 6. Combine all route keys
-        const allRouteKeys = [
+        // ============================================================
+        // COMBINE ROUTE KEYS
+        // ============================================================
+        const allRouteKeys: AppRouteKey[] = [
             ...ALWAYS_ACCESSIBLE_ROUTES,
-            ...ORG_MEMBER_BASE_ROUTES,
-            ...permissionRouteKeys,
-            // Add workspace routes if workspace context exists
-            ...(workspaceId ? WORKSPACE_MEMBER_ROUTES : []),
         ];
 
-        // 7. De-duplicate and resolve paths
+        // Only add org-member routes if user has department access (or is OWNER)
+        if (orgAccess.hasDepartmentAccess) {
+            allRouteKeys.push(...ORG_MEMBER_BASE_ROUTES);
+            allRouteKeys.push(...orgAccess.allowedRouteKeys);
+        }
+
+        // Add workspace routes if workspace context exists
+        if (workspaceId) {
+            allRouteKeys.push(...WORKSPACE_MEMBER_ROUTES);
+        }
+
+        // De-duplicate
         const uniqueRouteKeys = [...new Set(allRouteKeys)];
 
         return {
             allowedRouteKeys: uniqueRouteKeys,
             allowedPaths: getPathsForRouteKeys(uniqueRouteKeys, workspaceId),
-            isOwner: false,
-            role,
-            permissions: allPermissions,
-            orgMemberId: member.$id,
+            isOwner: orgAccess.isOwner,
+            role: orgAccess.role,
+            permissions: orgAccess.permissions,
+            orgMemberId: orgAccess.orgMemberId,
             organizationId,
+            departmentIds: orgAccess.departmentIds,
+            hasDepartmentAccess: orgAccess.hasDepartmentAccess,
         };
     } catch (error) {
         console.error("[resolveUserAccess] Error resolving access:", error);
@@ -239,7 +197,6 @@ export async function resolveUserAccess(
  * Check if user has a specific permission
  */
 export function hasPermission(access: UserAccess, permission: OrgPermissionKey): boolean {
-    if (access.isOwner) return true;
     return access.permissions.includes(permission);
 }
 
@@ -247,7 +204,6 @@ export function hasPermission(access: UserAccess, permission: OrgPermissionKey):
  * Check if user can access a specific route key
  */
 export function canAccessRouteKey(access: UserAccess, routeKey: AppRouteKey): boolean {
-    if (access.isOwner) return true;
     return access.allowedRouteKeys.includes(routeKey);
 }
 
@@ -271,5 +227,14 @@ export function resolvePersonalUserAccess(workspaceId?: string): UserAccess {
         permissions: [],
         orgMemberId: null,
         organizationId: null,
+        departmentIds: [],
+        hasDepartmentAccess: false,
     };
+}
+
+/**
+ * Check if user has any org access (department member or OWNER)
+ */
+export function hasAnyOrgAccess(access: UserAccess): boolean {
+    return access.hasDepartmentAccess;
 }

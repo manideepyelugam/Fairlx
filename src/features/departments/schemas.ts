@@ -15,3 +15,11 @@ export const updateDepartmentSchema = z.object({
 export const assignMemberToDepartmentSchema = z.object({
     orgMemberId: z.string().min(1, "Member ID is required"),
 });
+
+export const addDepartmentPermissionSchema = z.object({
+    permissionKey: z.string().min(1, "Permission key is required"),
+});
+
+export const removeDepartmentPermissionSchema = z.object({
+    permissionKey: z.string().min(1, "Permission key is required"),
+});

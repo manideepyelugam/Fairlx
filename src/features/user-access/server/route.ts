@@ -32,6 +32,8 @@ const app = new Hono()
                 allowedRouteKeys: access.allowedRouteKeys,
                 isOwner: false,
                 role: null,
+                departmentIds: [],
+                hasDepartmentAccess: false,
             });
         }
 
@@ -45,9 +47,14 @@ const app = new Hono()
 
         return c.json({
             allowedRouteKeys: access.allowedRouteKeys,
+            permissions: access.permissions,  // Added for client hooks
             isOwner: access.isOwner,
             role: access.role,
+            orgMemberId: access.orgMemberId,  // Added for client hooks
+            departmentIds: access.departmentIds,
+            hasDepartmentAccess: access.hasDepartmentAccess,
         });
     });
 
 export default app;
+

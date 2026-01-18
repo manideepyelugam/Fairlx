@@ -227,19 +227,44 @@ const app = new Hono()
       const user = c.get("user");
       const { workspaceId, userId, role } = c.req.valid("json");
 
-      // Verify caller has permission
+      // Verify caller has permission (workspace role OR org-level WORKSPACE_ASSIGN)
       const callerMember = await getMember({
         databases,
         workspaceId,
         userId: user.$id,
       });
 
-      if (!callerMember || (
-        callerMember.role !== MemberRole.ADMIN &&
-        callerMember.role !== MemberRole.OWNER &&
-        callerMember.role !== WorkspaceMemberRole.WS_ADMIN
-      )) {
-        return c.json({ error: "Unauthorized" }, 401);
+      // Check 1: Workspace-level admin role
+      const hasWorkspaceAdminRole = callerMember && (
+        callerMember.role === MemberRole.ADMIN ||
+        callerMember.role === MemberRole.OWNER ||
+        callerMember.role === WorkspaceMemberRole.WS_ADMIN
+      );
+
+      // Check 2: Org-level WORKSPACE_ASSIGN permission (from departments)
+      let hasOrgAssignPermission = false;
+      try {
+        const { hasOrgPermission } = await import("@/lib/permission-authority");
+        const { OrgPermissionKey } = await import("@/features/org-permissions/types");
+        const { WORKSPACES_ID } = await import("@/config");
+
+        // Get the workspace to find its organizationId
+        const workspace = await databases.getDocument(DATABASE_ID, WORKSPACES_ID, workspaceId);
+
+        if (workspace.organizationId) {
+          hasOrgAssignPermission = await hasOrgPermission(
+            databases,
+            user.$id,
+            workspace.organizationId,
+            OrgPermissionKey.WORKSPACE_ASSIGN
+          );
+        }
+      } catch (error) {
+        console.warn("[members/from-org] Org permission check failed:", error);
+      }
+
+      if (!hasWorkspaceAdminRole && !hasOrgAssignPermission) {
+        return c.json({ error: "Requires workspace admin role or WORKSPACE_ASSIGN permission" }, 401);
       }
 
       // ============================================================

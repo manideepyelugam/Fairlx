@@ -5,18 +5,24 @@ import { Models } from "node-appwrite";
 // ===============================
 
 /**
- * Department - Organizational grouping unit
+ * Department - Organizational permission unit
  * 
  * RULES:
  * - Departments belong to an organization (org-level)
  * - Users can belong to multiple departments
- * - Departments do NOT grant permissions
- * - Departments are metadata for grouping, analytics, reporting
+ * - Departments OWN org-level permissions
+ * - Members gain org access ONLY via department membership
+ * - Permissions are UNIONED across all departments a member belongs to
+ * 
+ * INVARIANTS:
+ * - Member without departments has ZERO org permissions
+ * - OWNER role bypasses department check (super-role exception)
+ * - Permissions never float outside a department
  * 
  * USE CASES:
- * - Filter org members by department
- * - Department-level analytics
- * - Organizational hierarchy display
+ * - Engineering dept with WORKSPACE_CREATE permission
+ * - Finance dept with BILLING_VIEW, BILLING_MANAGE permissions
+ * - HR dept with MEMBERS_VIEW, MEMBERS_MANAGE permissions
  */
 export type Department = Models.Document & {
     /** Organization this department belongs to */
@@ -43,6 +49,29 @@ export type OrgMemberDepartment = Models.Document & {
     departmentId: string;
 };
 
+/**
+ * DepartmentPermission - Permission owned by a department
+ * 
+ * RULES:
+ * - Departments OWN permissions (not users directly)
+ * - Users in a department inherit all its permissions
+ * - Permissions are UNIONed across all departments a user belongs to
+ * - No permission exists without a department owner
+ * 
+ * AUDIT:
+ * - Tracks who granted and when for compliance
+ */
+export type DepartmentPermission = Models.Document & {
+    /** Reference to departments.$id */
+    departmentId: string;
+    /** Permission key from OrgPermissionKey enum */
+    permissionKey: string;
+    /** User ID who granted this permission */
+    grantedBy: string;
+    /** Timestamp when granted */
+    grantedAt: string;
+};
+
 // ===============================
 // DTOs
 // ===============================
@@ -61,6 +90,14 @@ export type UpdateDepartmentDto = {
 
 export type AssignMemberToDepartmentDto = {
     orgMemberId: string;
+};
+
+export type AddDepartmentPermissionDto = {
+    permissionKey: string;
+};
+
+export type RemoveDepartmentPermissionDto = {
+    permissionKey: string;
 };
 
 // ===============================

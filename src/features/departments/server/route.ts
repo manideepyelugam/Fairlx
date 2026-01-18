@@ -7,25 +7,34 @@ import {
     DEPARTMENTS_ID,
     ORG_MEMBER_DEPARTMENTS_ID,
     ORGANIZATION_MEMBERS_ID,
+    DEPARTMENT_PERMISSIONS_ID,
 } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
-import { hasOrgPermission } from "@/lib/permission-matrix";
+import { createAdminClient } from "@/lib/appwrite";
+// Use department-based permission checks (not role-based)
+import { hasOrgPermission } from "@/lib/permission-authority";
 import { OrganizationMember, OrganizationRole, OrgMemberStatus } from "@/features/organizations/types";
-import { Department, OrgMemberDepartment, PopulatedDepartment } from "../types";
+import { OrgPermissionKey } from "@/features/org-permissions/types";
+import { Department, OrgMemberDepartment, DepartmentPermission, PopulatedDepartment } from "../types";
 import {
     createDepartmentSchema,
     updateDepartmentSchema,
     assignMemberToDepartmentSchema,
+    addDepartmentPermissionSchema,
 } from "../schemas";
 
 /**
  * Departments API Routes
  * 
+ * GOVERNANCE CONTRACT:
+ * DEPARTMENT → PERMISSIONS → ROUTES → NAVIGATION
+ * 
  * RULES:
  * - Departments belong to organizations (org-level)
  * - Only OWNER/ADMIN can manage departments (MANAGE_DEPARTMENTS permission)
- * - Departments do NOT grant permissions
- * - Departments are metadata for grouping/analytics
+ * - Departments OWN org-level permissions
+ * - Members gain org access ONLY via department membership
+ * - Permissions are UNIONed across all departments a member belongs to
  */
 const app = new Hono()
     /**
@@ -94,24 +103,16 @@ const app = new Hono()
             const { orgId } = c.req.param();
             const { name, description, color } = c.req.valid("json");
 
-            // Verify permission
-            const membership = await databases.listDocuments<OrganizationMember>(
-                DATABASE_ID,
-                ORGANIZATION_MEMBERS_ID,
-                [
-                    Query.equal("organizationId", orgId),
-                    Query.equal("userId", user.$id),
-                    Query.equal("status", OrgMemberStatus.ACTIVE),
-                ]
+            // Check department-based permission (OWNER bypass included)
+            const canManage = await hasOrgPermission(
+                databases,
+                user.$id,
+                orgId,
+                OrgPermissionKey.DEPARTMENTS_MANAGE
             );
 
-            if (membership.total === 0) {
-                return c.json({ error: "Unauthorized" }, 401);
-            }
-
-            const role = membership.documents[0].role as OrganizationRole;
-            if (!hasOrgPermission(role, "MANAGE_DEPARTMENTS")) {
-                return c.json({ error: "Forbidden - requires MANAGE_DEPARTMENTS permission" }, 403);
+            if (!canManage) {
+                return c.json({ error: "Forbidden - requires department management permission" }, 403);
             }
 
             // Check for duplicate name
@@ -159,24 +160,16 @@ const app = new Hono()
             const { orgId, departmentId } = c.req.param();
             const updates = c.req.valid("json");
 
-            // Verify permission
-            const membership = await databases.listDocuments<OrganizationMember>(
-                DATABASE_ID,
-                ORGANIZATION_MEMBERS_ID,
-                [
-                    Query.equal("organizationId", orgId),
-                    Query.equal("userId", user.$id),
-                    Query.equal("status", OrgMemberStatus.ACTIVE),
-                ]
+            // Check department-based permission (OWNER bypass included)
+            const canManage = await hasOrgPermission(
+                databases,
+                user.$id,
+                orgId,
+                OrgPermissionKey.DEPARTMENTS_MANAGE
             );
 
-            if (membership.total === 0) {
-                return c.json({ error: "Unauthorized" }, 401);
-            }
-
-            const role = membership.documents[0].role as OrganizationRole;
-            if (!hasOrgPermission(role, "MANAGE_DEPARTMENTS")) {
-                return c.json({ error: "Forbidden - requires MANAGE_DEPARTMENTS permission" }, 403);
+            if (!canManage) {
+                return c.json({ error: "Forbidden - requires department management permission" }, 403);
             }
 
             // Verify department exists and belongs to org
@@ -230,24 +223,16 @@ const app = new Hono()
         const databases = c.get("databases");
         const { orgId, departmentId } = c.req.param();
 
-        // Verify permission
-        const membership = await databases.listDocuments<OrganizationMember>(
-            DATABASE_ID,
-            ORGANIZATION_MEMBERS_ID,
-            [
-                Query.equal("organizationId", orgId),
-                Query.equal("userId", user.$id),
-                Query.equal("status", OrgMemberStatus.ACTIVE),
-            ]
+        // Check department-based permission (OWNER bypass included)
+        const canManage = await hasOrgPermission(
+            databases,
+            user.$id,
+            orgId,
+            OrgPermissionKey.DEPARTMENTS_MANAGE
         );
 
-        if (membership.total === 0) {
-            return c.json({ error: "Unauthorized" }, 401);
-        }
-
-        const role = membership.documents[0].role as OrganizationRole;
-        if (!hasOrgPermission(role, "MANAGE_DEPARTMENTS")) {
-            return c.json({ error: "Forbidden - requires MANAGE_DEPARTMENTS permission" }, 403);
+        if (!canManage) {
+            return c.json({ error: "Forbidden - requires department management permission" }, 403);
         }
 
         // Verify department belongs to org
@@ -257,7 +242,7 @@ const app = new Hono()
             departmentId
         );
 
-        if (department.orgId !== orgId) {
+        if (department.organizationId !== orgId) {
             return c.json({ error: "Department not found in this organization" }, 404);
         }
 
@@ -294,24 +279,16 @@ const app = new Hono()
             const { orgId, departmentId } = c.req.param();
             const { orgMemberId } = c.req.valid("json");
 
-            // Verify permission
-            const membership = await databases.listDocuments<OrganizationMember>(
-                DATABASE_ID,
-                ORGANIZATION_MEMBERS_ID,
-                [
-                    Query.equal("organizationId", orgId),
-                    Query.equal("userId", user.$id),
-                    Query.equal("status", OrgMemberStatus.ACTIVE),
-                ]
+            // Check department-based permission (OWNER bypass included)
+            const canManage = await hasOrgPermission(
+                databases,
+                user.$id,
+                orgId,
+                OrgPermissionKey.DEPARTMENTS_MANAGE
             );
 
-            if (membership.total === 0) {
-                return c.json({ error: "Unauthorized" }, 401);
-            }
-
-            const role = membership.documents[0].role as OrganizationRole;
-            if (!hasOrgPermission(role, "MANAGE_DEPARTMENTS")) {
-                return c.json({ error: "Forbidden - requires MANAGE_DEPARTMENTS permission" }, 403);
+            if (!canManage) {
+                return c.json({ error: "Forbidden - requires department management permission" }, 403);
             }
 
             // Verify department belongs to org
@@ -373,24 +350,16 @@ const app = new Hono()
         const databases = c.get("databases");
         const { orgId, departmentId, orgMemberId } = c.req.param();
 
-        // Verify permission
-        const membership = await databases.listDocuments<OrganizationMember>(
-            DATABASE_ID,
-            ORGANIZATION_MEMBERS_ID,
-            [
-                Query.equal("organizationId", orgId),
-                Query.equal("userId", user.$id),
-                Query.equal("status", OrgMemberStatus.ACTIVE),
-            ]
+        // Check department-based permission (OWNER bypass included)
+        const canManage = await hasOrgPermission(
+            databases,
+            user.$id,
+            orgId,
+            OrgPermissionKey.DEPARTMENTS_MANAGE
         );
 
-        if (membership.total === 0) {
-            return c.json({ error: "Unauthorized" }, 401);
-        }
-
-        const role = membership.documents[0].role as OrganizationRole;
-        if (!hasOrgPermission(role, "MANAGE_DEPARTMENTS")) {
-            return c.json({ error: "Forbidden - requires MANAGE_DEPARTMENTS permission" }, 403);
+        if (!canManage) {
+            return c.json({ error: "Forbidden - requires department management permission" }, 403);
         }
 
         // Find and delete the assignment
@@ -460,6 +429,178 @@ const app = new Hono()
         );
 
         return c.json({ data: members });
+    })
+
+    // ============================================================================
+    // DEPARTMENT PERMISSION ENDPOINTS
+    // ============================================================================
+
+    /**
+     * GET /organizations/:orgId/departments/:departmentId/permissions
+     * List all permissions assigned to a department
+     */
+    .get("/:orgId/:departmentId/permissions", sessionMiddleware, async (c) => {
+        const user = c.get("user");
+        const databases = c.get("databases");
+        const { orgId, departmentId } = c.req.param();
+
+        // Verify user is org member
+        const membership = await databases.listDocuments<OrganizationMember>(
+            DATABASE_ID,
+            ORGANIZATION_MEMBERS_ID,
+            [
+                Query.equal("organizationId", orgId),
+                Query.equal("userId", user.$id),
+                Query.equal("status", OrgMemberStatus.ACTIVE),
+            ]
+        );
+
+        if (membership.total === 0) {
+            return c.json({ error: "Unauthorized" }, 401);
+        }
+
+        // Verify department belongs to org
+        const department = await databases.getDocument<Department>(
+            DATABASE_ID,
+            DEPARTMENTS_ID,
+            departmentId
+        );
+
+        if (department.organizationId !== orgId) {
+            return c.json({ error: "Department not found in this organization" }, 404);
+        }
+
+        // Get department permissions using admin client
+        // (department_permissions collection may have restricted access)
+        const { databases: adminDatabases } = await createAdminClient();
+        const permissions = await adminDatabases.listDocuments<DepartmentPermission>(
+            DATABASE_ID,
+            DEPARTMENT_PERMISSIONS_ID,
+            [
+                Query.equal("departmentId", departmentId),
+                Query.orderAsc("permissionKey"),
+            ]
+        );
+
+        return c.json({ data: permissions });
+    })
+
+    /**
+     * POST /organizations/:orgId/departments/:departmentId/permissions
+     * Add a permission to a department
+     */
+    .post(
+        "/:orgId/:departmentId/permissions",
+        sessionMiddleware,
+        zValidator("json", addDepartmentPermissionSchema),
+        async (c) => {
+            const user = c.get("user");
+            const databases = c.get("databases");
+            const { orgId, departmentId } = c.req.param();
+            const { permissionKey } = c.req.valid("json");
+
+            // Check department-based permission (OWNER bypass included)
+            const canManage = await hasOrgPermission(
+                databases,
+                user.$id,
+                orgId,
+                OrgPermissionKey.DEPARTMENTS_MANAGE
+            );
+
+            if (!canManage) {
+                return c.json({ error: "Forbidden - requires department management permission" }, 403);
+            }
+
+            // Verify department belongs to org
+            const department = await databases.getDocument<Department>(
+                DATABASE_ID,
+                DEPARTMENTS_ID,
+                departmentId
+            );
+
+            if (department.organizationId !== orgId) {
+                return c.json({ error: "Department not found in this organization" }, 404);
+            }
+
+            // Use admin client for department_permissions collection
+            const { databases: adminDatabases } = await createAdminClient();
+
+            // Check if permission already exists
+            const existing = await adminDatabases.listDocuments(
+                DATABASE_ID,
+                DEPARTMENT_PERMISSIONS_ID,
+                [
+                    Query.equal("departmentId", departmentId),
+                    Query.equal("permissionKey", permissionKey),
+                ]
+            );
+
+            if (existing.total > 0) {
+                return c.json({ error: "Permission already assigned to this department" }, 400);
+            }
+
+            // Create the permission assignment
+            const permission = await adminDatabases.createDocument<DepartmentPermission>(
+                DATABASE_ID,
+                DEPARTMENT_PERMISSIONS_ID,
+                ID.unique(),
+                {
+                    departmentId,
+                    permissionKey,
+                    grantedBy: user.$id,
+                    grantedAt: new Date().toISOString(),
+                }
+            );
+
+            return c.json({ data: permission }, 201);
+        }
+    )
+
+    /**
+     * DELETE /organizations/:orgId/departments/:departmentId/permissions/:permKey
+     * Remove a permission from a department
+     */
+    .delete("/:orgId/:departmentId/permissions/:permKey", sessionMiddleware, async (c) => {
+        const user = c.get("user");
+        const databases = c.get("databases");
+        const { orgId, departmentId, permKey } = c.req.param();
+
+        // Check department-based permission (OWNER bypass included)
+        const canManage = await hasOrgPermission(
+            databases,
+            user.$id,
+            orgId,
+            OrgPermissionKey.DEPARTMENTS_MANAGE
+        );
+
+        if (!canManage) {
+            return c.json({ error: "Forbidden - requires department management permission" }, 403);
+        }
+
+        // Use admin client for department_permissions collection
+        const { databases: adminDatabases } = await createAdminClient();
+
+        // Find and delete the permission
+        const permissions = await adminDatabases.listDocuments<DepartmentPermission>(
+            DATABASE_ID,
+            DEPARTMENT_PERMISSIONS_ID,
+            [
+                Query.equal("departmentId", departmentId),
+                Query.equal("permissionKey", permKey),
+            ]
+        );
+
+        if (permissions.total === 0) {
+            return c.json({ error: "Permission not found on this department" }, 404);
+        }
+
+        await adminDatabases.deleteDocument(
+            DATABASE_ID,
+            DEPARTMENT_PERMISSIONS_ID,
+            permissions.documents[0].$id
+        );
+
+        return c.json({ success: true });
     });
 
 export default app;

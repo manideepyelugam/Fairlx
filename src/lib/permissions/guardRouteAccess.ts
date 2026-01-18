@@ -1,8 +1,8 @@
 import "server-only";
 
 import { redirect } from "next/navigation";
-import { AppRouteKey } from "./appRouteKeys";
-import { UserAccess, canAccessRouteKey } from "./resolveUserAccess";
+import { AppRouteKey, getOrgRouteKeys } from "./appRouteKeys";
+import { UserAccess, canAccessRouteKey, hasAnyOrgAccess } from "./resolveUserAccess";
 import { getRouteKeyForPath, getPathForRouteKey, getVisibleOrgTabs } from "./permissionRouteMap";
 
 /**
@@ -34,15 +34,19 @@ import { getRouteKeyForPath, getPathForRouteKey, getVisibleOrgTabs } from "./per
 // ============================================================================
 
 /**
- * Guard route access - redirects to /403 if access denied
+ * Guard route access - redirects to /403 or /welcome if access denied
  * 
  * @param currentPath - Current URL path
  * @param access - User access object from resolveUserAccess
- * @throws Redirect to /403 if access denied
+ * @throws Redirect to /403 or /welcome if access denied
  */
 export function guardRouteAccess(currentPath: string, access: UserAccess): void {
-    // OWNER is never blocked
-    if (access.isOwner) return;
+    // Check if this is an org route and user has no department access
+    const routeKey = getRouteKeyForPath(currentPath);
+    if (routeKey && isOrgRouteKey(routeKey) && !hasAnyOrgAccess(access)) {
+        // Member with no departments trying to access org route
+        redirect("/welcome");
+    }
 
     // Check if path is allowed
     if (isPathAllowed(currentPath, access)) return;
@@ -59,9 +63,6 @@ export function guardRouteAccess(currentPath: string, access: UserAccess): void 
  * @throws Redirect to /403 if access denied
  */
 export function guardRouteKeyAccess(routeKey: AppRouteKey, access: UserAccess): void {
-    // OWNER is never blocked
-    if (access.isOwner) return;
-
     // Check if route key is allowed
     if (canAccessRouteKey(access, routeKey)) return;
 
@@ -78,9 +79,6 @@ export function guardRouteKeyAccess(routeKey: AppRouteKey, access: UserAccess): 
  * Does NOT redirect - just returns boolean
  */
 export function isPathAllowed(path: string, access: UserAccess): boolean {
-    // OWNER always has access
-    if (access.isOwner) return true;
-
     // Get the route key for this path
     const routeKey = getRouteKeyForPath(path);
 
@@ -98,7 +96,6 @@ export function isPathAllowed(path: string, access: UserAccess): boolean {
  * Does NOT redirect - just returns boolean
  */
 export function isRouteKeyAllowed(routeKey: AppRouteKey, access: UserAccess): boolean {
-    if (access.isOwner) return true;
     return access.allowedRouteKeys.includes(routeKey);
 }
 
@@ -107,6 +104,11 @@ export function isRouteKeyAllowed(routeKey: AppRouteKey, access: UserAccess): bo
  * Returns the best route the user CAN access
  */
 export function getFallbackRoute(access: UserAccess): string {
+    // If no department access, go to welcome
+    if (!hasAnyOrgAccess(access)) {
+        return "/welcome";
+    }
+
     // Priority order for fallback
     const fallbackOrder: AppRouteKey[] = [
         AppRouteKey.ORG_DASHBOARD,
@@ -127,6 +129,14 @@ export function getFallbackRoute(access: UserAccess): string {
 }
 
 /**
+ * Check if a route key is an org-level route
+ */
+function isOrgRouteKey(routeKey: AppRouteKey): boolean {
+    const orgRoutes = getOrgRouteKeys();
+    return orgRoutes.includes(routeKey);
+}
+
+/**
  * Guard tab access for organization settings
  * Returns the correct tab to show or redirects if no tabs are accessible
  */
@@ -134,8 +144,7 @@ export function guardOrgTabAccess(
     requestedTab: string | undefined,
     access: UserAccess
 ): string {
-    // OWNER can access all tabs
-    if (access.isOwner) return requestedTab || "general";
+    // OWNER bypass removed
 
     const visibleTabs = getVisibleOrgTabs(access.allowedRouteKeys);
 
