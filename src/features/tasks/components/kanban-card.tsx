@@ -6,6 +6,7 @@ import { TaskActions } from "./task-actions";
 import { LabelBadge } from "./LabelBadge";
 import { PriorityBadge } from "./priority-selector";
 import { AssigneeAvatarGroup } from "./assignee-avatar-group";
+import { WorkItemIcon } from "@/features/timeline/components/work-item-icon";
 
 import { PopulatedTask } from "../types";
 import { useTaskPreviewModal } from "../hooks/use-task-preview-modal";
@@ -49,6 +50,23 @@ export const KanbanCard = ({
     const customPriority = project?.customPriorities?.find(p => p.key === task.priority);
     const customLabels = project?.customLabels || [];
 
+    // Get work item type label
+    const getWorkItemTypeLabel = () => {
+        const typeKey = task.type || "TASK";
+        const customTypes = project?.customWorkItemTypes || [];
+        const customType = customTypes.find(t => t.key === typeKey);
+        if (customType) return customType.label;
+        
+        const defaultTypes: Record<string, string> = {
+            TASK: "Task",
+            BUG: "Bug",
+            EPIC: "Epic",
+            STORY: "Story",
+            SUBTASK: "Subtask",
+        };
+        return defaultTypes[typeKey] || typeKey;
+    };
+
     return (
         <div
             onClick={handleCardClick}
@@ -57,8 +75,21 @@ export const KanbanCard = ({
                 } ${showSelection ? 'hover:bg-gray-50' : ''}`}
         >
             <div className="flex p-4 flex-col items-start justify-between gap-x-2">
+                 <div className="flex gap-1 mb-3 items-center">
+                            <div className="border flex items-center justify-center gap-0.5 py-0.5 px-2 rounded-full border-slate-300 ">
+                                      <WorkItemIcon
+                                    type={task.type || "TASK"}
+                                    className="size-3"
+                                    project={project}
+                             />
+                                   <span className="text-xs font-medium text-gray-700">{getWorkItemTypeLabel()}</span>
 
-                <div className="flex-1 flex w-full justify-between items-start">
+                             </div>
+                      
+                        </div>
+
+                <div className="flex-1  flex w-full justify-between items-start">
+                     
 
                     <div className="flex gap-2 items-center">
 
