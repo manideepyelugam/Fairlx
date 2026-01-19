@@ -37,7 +37,6 @@ export const Tools = () => {
   const { hasPermission } = useCurrentUserOrgPermissions({
     orgId: (activeOrgId || "") as string
   });
-  const canViewBilling = hasPermission(OrgPermissionKey.BILLING_VIEW);
   const canViewAudit = hasPermission(OrgPermissionKey.AUDIT_VIEW);
 
   const [isExpanded, setIsExpanded] = useState(true);

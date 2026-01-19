@@ -13,7 +13,7 @@ import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
 // Use department-based permission checks (not role-based)
 import { hasOrgPermission } from "@/lib/permission-authority";
-import { OrganizationMember, OrganizationRole, OrgMemberStatus } from "@/features/organizations/types";
+import { OrganizationMember, OrgMemberStatus } from "@/features/organizations/types";
 import { OrgPermissionKey } from "@/features/org-permissions/types";
 import { Department, OrgMemberDepartment, DepartmentPermission, PopulatedDepartment } from "../types";
 import {

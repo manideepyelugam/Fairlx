@@ -1,4 +1,5 @@
 import { baseEmailTemplate, createButton } from "./base";
+import { colors, typography, createNotificationBadge } from "./theme";
 
 interface TaskCompletedTemplateProps {
   completerName: string;
@@ -18,71 +19,74 @@ export function taskCompletedTemplate({
   taskUrl,
 }: TaskCompletedTemplateProps): string {
   const content = `
-    <div style="margin-bottom: 24px;">
-      <div style="display: inline-block; padding: 8px 16px; background-color: #d1fae5; border-radius: 8px; margin-bottom: 20px;">
-        <span style="color: #065f46; font-size: 14px; font-weight: 600;">✅ Task Completed</span>
-      </div>
-    </div>
+    ${createNotificationBadge("✅", "Task Completed", colors.successLight, colors.successDark)}
 
-    <h2 style="margin: 0 0 20px 0; color: #111827; font-size: 24px; font-weight: 700; line-height: 1.3;">
+    <h2 style="margin: 0 0 20px 0; color: ${colors.darkText}; font-size: ${typography.sizes.h2}; font-weight: ${typography.weights.bold}; line-height: ${typography.lineHeight.tight}; font-family: ${typography.fontStack};">
       Great news! A task has been completed
     </h2>
 
-    <p style="margin: 0 0 24px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
-      <strong style="color: #111827;">${completerName}</strong> has marked this task as complete:
+    <p style="margin: 0 0 24px 0; color: ${colors.bodyText}; font-size: ${typography.sizes.body}; line-height: ${typography.lineHeight.relaxed}; font-family: ${typography.fontStack};">
+      <strong style="color: ${colors.darkText};">${completerName}</strong> has marked this task as complete:
     </p>
 
-    <div style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-left: 4px solid #10b981; padding: 24px; border-radius: 8px; margin-bottom: 24px;">
-      <div style="display: flex; align-items: center; margin-bottom: 12px;">
-        <div style="font-size: 32px; margin-right: 12px;">🎉</div>
-        <h3 style="margin: 0; color: #065f46; font-size: 20px; font-weight: 700;">
-          ${taskName}
-        </h3>
-      </div>
-      ${taskDescription ? `
-        <p style="margin: 12px 0 0 0; color: #047857; font-size: 15px; line-height: 1.6;">
-          ${taskDescription}
-        </p>
-      ` : ''}
+    <div style="background: linear-gradient(135deg, ${colors.successLight} 0%, #a7f3d0 100%); border-left: 4px solid ${colors.success}; padding: 24px; border-radius: 0 8px 8px 0; margin-bottom: 24px;">
+      <table cellpadding="0" cellspacing="0" role="presentation" style="width: 100%;">
+        <tr>
+          <td style="width: 44px; vertical-align: top;">
+            <div style="font-size: 32px;">🎉</div>
+          </td>
+          <td style="vertical-align: top;">
+            <h3 style="margin: 0 0 8px 0; color: ${colors.successDark}; font-size: ${typography.sizes.h3}; font-weight: ${typography.weights.bold}; font-family: ${typography.fontStack};">
+              ${taskName}
+            </h3>
+            ${taskDescription ? `
+              <p style="margin: 0; color: #047857; font-size: ${typography.sizes.body}; line-height: ${typography.lineHeight.relaxed}; font-family: ${typography.fontStack};">
+                ${taskDescription}
+              </p>
+            ` : ''}
+          </td>
+        </tr>
+      </table>
     </div>
 
     ${projectName || completedAt ? `
-      <table cellpadding="0" cellspacing="0" style="width: 100%; margin-bottom: 24px; background-color: #f9fafb; border-radius: 8px; padding: 16px;">
+      <table cellpadding="0" cellspacing="0" role="presentation" style="width: 100%; margin-bottom: 24px; background-color: ${colors.backgroundLight}; border-radius: 8px;">
         ${projectName ? `
           <tr>
-            <td style="padding: 8px 0;">
-              <span style="color: #6b7280; font-size: 14px; font-weight: 500;">📁 Project:</span>
+            <td style="padding: 12px 16px;">
+              <span style="color: ${colors.mutedText}; font-size: ${typography.sizes.small}; font-weight: ${typography.weights.medium}; font-family: ${typography.fontStack};">📁 Project</span>
             </td>
-            <td style="padding: 8px 0; text-align: right;">
-              <span style="color: #111827; font-size: 14px; font-weight: 600;">${projectName}</span>
+            <td style="padding: 12px 16px; text-align: right;">
+              <span style="color: ${colors.darkText}; font-size: ${typography.sizes.small}; font-weight: ${typography.weights.semibold}; font-family: ${typography.fontStack};">${projectName}</span>
             </td>
           </tr>
         ` : ''}
         ${completedAt ? `
           <tr>
-            <td style="padding: 8px 0;">
-              <span style="color: #6b7280; font-size: 14px; font-weight: 500;">✓ Completed:</span>
+            <td style="padding: 12px 16px;">
+              <span style="color: ${colors.mutedText}; font-size: ${typography.sizes.small}; font-weight: ${typography.weights.medium}; font-family: ${typography.fontStack};">✓ Completed</span>
             </td>
-            <td style="padding: 8px 0; text-align: right;">
-              <span style="color: #111827; font-size: 14px; font-weight: 600;">${new Date(completedAt).toLocaleString('en-US', { 
-                month: 'short', 
-                day: 'numeric', 
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}</span>
+            <td style="padding: 12px 16px; text-align: right;">
+              <span style="color: ${colors.darkText}; font-size: ${typography.sizes.small}; font-weight: ${typography.weights.semibold}; font-family: ${typography.fontStack};">${new Date(completedAt).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })}</span>
             </td>
           </tr>
         ` : ''}
       </table>
     ` : ''}
 
-    ${createButton("View Task", taskUrl, "#10b981")}
+    ${createButton("View Task", taskUrl, colors.success)}
 
-    <p style="margin: 20px 0 0 0; color: #6b7280; font-size: 14px; line-height: 1.5;">
+    <p style="margin: 20px 0 0 0; color: ${colors.mutedText}; font-size: ${typography.sizes.small}; line-height: ${typography.lineHeight.normal}; font-family: ${typography.fontStack};">
       Keep up the great work! Your team is making excellent progress.
     </p>
   `;
 
-  return baseEmailTemplate(content);
+  return baseEmailTemplate(content, "Task Completed");
 }
+
