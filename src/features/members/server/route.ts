@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { Hono } from "hono";
-import { Query } from "node-appwrite";
+import { Query, ID } from "node-appwrite";
 import { zValidator } from "@hono/zod-validator";
 
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
-import { DATABASE_ID, MEMBERS_ID } from "@/config";
+import { DATABASE_ID, MEMBERS_ID, NOTIFICATIONS_ID, WORKSPACES_ID } from "@/config";
 import { getPermissions } from "@/lib/rbac";
 import { validateUserOrgMembershipForWorkspace } from "@/lib/invariants";
 
@@ -200,6 +200,36 @@ const app = new Hono()
         role,
       });
 
+      // Notify the user about their role change (non-blocking)
+      try {
+        const { databases: adminDb } = await createAdminClient();
+        const workspace = await adminDb.getDocument(DATABASE_ID, WORKSPACES_ID, memberToUpdate.workspaceId);
+        const callerName = user.name || user.email || "Someone";
+
+        await adminDb.createDocument(
+          DATABASE_ID,
+          NOTIFICATIONS_ID,
+          ID.unique(),
+          {
+            userId: memberToUpdate.userId,
+            type: "task_updated", // Using existing enum for DB compatibility
+            title: "Role Updated",
+            message: `${callerName} changed your role to ${role} in "${workspace.name}"`,
+            workspaceId: memberToUpdate.workspaceId,
+            triggeredBy: user.$id,
+            metadata: JSON.stringify({ eventType: "WORKSPACE_ROLE_CHANGED", newRole: role }),
+            read: false,
+          },
+          [
+            `read("user:${memberToUpdate.userId}")`,
+            `update("user:${memberToUpdate.userId}")`,
+            `delete("user:${memberToUpdate.userId}")`
+          ]
+        );
+      } catch {
+        // Silent failure - notifications are non-critical
+      }
+
       return c.json({ data: { $id: memberToUpdate.$id } });
     }
   )
@@ -298,7 +328,6 @@ const app = new Hono()
       }
 
       // Create workspace membership
-      const { ID } = await import("node-appwrite");
       const newMember = await databases.createDocument(
         DATABASE_ID,
         MEMBERS_ID,
@@ -309,6 +338,36 @@ const app = new Hono()
           role,
         }
       );
+
+      // Notify the new member about being added (non-blocking)
+      try {
+        const { databases: adminDb } = await createAdminClient();
+        const workspace = await adminDb.getDocument(DATABASE_ID, WORKSPACES_ID, workspaceId);
+        const callerName = user.name || user.email || "Someone";
+
+        await adminDb.createDocument(
+          DATABASE_ID,
+          NOTIFICATIONS_ID,
+          ID.unique(),
+          {
+            userId,
+            type: "task_assigned", // Using existing enum for DB compatibility
+            title: "Added to Workspace",
+            message: `${callerName} added you to workspace "${workspace.name}"`,
+            workspaceId,
+            triggeredBy: user.$id,
+            metadata: JSON.stringify({ eventType: "WORKSPACE_MEMBER_ADDED", role }),
+            read: false,
+          },
+          [
+            `read("user:${userId}")`,
+            `update("user:${userId}")`,
+            `delete("user:${userId}")`
+          ]
+        );
+      } catch {
+        // Silent failure - notifications are non-critical
+      }
 
       return c.json({ data: newMember });
     }
