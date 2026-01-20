@@ -1,6 +1,7 @@
 "use client";
 
 import { Bell, Check, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +14,8 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
+import { useCurrent } from "@/features/auth/api/use-current";
+import { useRealtimeNotifications } from "@/hooks/use-realtime-notifications";
 
 import { useGetNotifications } from "../api/use-get-notifications";
 import { useGetUnreadCount } from "../api/use-get-unread-count";
@@ -21,6 +24,7 @@ import { NotificationItem } from "./notification-item";
 
 export const NotificationBell = () => {
   const workspaceId = useWorkspaceId();
+  const { data: currentUser } = useCurrent();
 
   // Only fetch notifications when we have a valid workspaceId
   // On org-level routes (like /organization), workspaceId will be undefined
@@ -39,6 +43,25 @@ export const NotificationBell = () => {
 
   const { mutate: markAllAsRead, isPending: isMarkingAllAsRead } =
     useMarkAllNotificationsRead();
+
+  // Subscribe to realtime notifications
+  useRealtimeNotifications({
+    workspaceId: workspaceId || "",
+    userId: currentUser?.$id || "",
+    enabled: hasWorkspace && Boolean(currentUser?.$id),
+    onNewNotification: (notification) => {
+      // Show toast for new notifications
+      toast(notification.title, {
+        description: notification.summary,
+        action: {
+          label: "View",
+          onClick: () => {
+            window.location.href = notification.deepLinkUrl;
+          },
+        },
+      });
+    },
+  });
 
   const handleMarkAllAsRead = () => {
     if (!workspaceId) return;

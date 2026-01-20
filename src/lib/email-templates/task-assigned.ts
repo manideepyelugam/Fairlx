@@ -1,4 +1,5 @@
 import { baseEmailTemplate, createButton, createBadge } from "./base";
+import { colors, typography, createNotificationBadge, createContentCard, getPriorityColor as themePriorityColor } from "./theme";
 
 interface TaskAssignedTemplateProps {
   assignerName: string;
@@ -19,65 +20,63 @@ export function taskAssignedTemplate({
   priority,
   taskUrl,
 }: TaskAssignedTemplateProps): string {
-  const content = `
-    <div style="margin-bottom: 24px;">
-      <div style="display: inline-block; padding: 8px 16px; background-color: #dbeafe; border-radius: 8px; margin-bottom: 20px;">
-        <span style="color: #1e40af; font-size: 14px; font-weight: 600;">📋 New Task Assignment</span>
-      </div>
-    </div>
+  const taskCardContent = `
+    <h3 style="margin: 0 0 12px 0; color: ${colors.darkText}; font-size: ${typography.sizes.h3}; font-weight: ${typography.weights.semibold}; font-family: ${typography.fontStack};">
+      ${taskName}
+    </h3>
+    ${taskDescription ? `
+      <p style="margin: 0; color: ${colors.mutedText}; font-size: ${typography.sizes.body}; line-height: ${typography.lineHeight.relaxed}; font-family: ${typography.fontStack};">
+        ${taskDescription}
+      </p>
+    ` : ''}
+  `;
 
-    <h2 style="margin: 0 0 20px 0; color: #111827; font-size: 24px; font-weight: 700; line-height: 1.3;">
+  const content = `
+    ${createNotificationBadge("📋", "New Task Assignment", colors.primaryBlueLight, colors.primaryBlueDark)}
+
+    <h2 style="margin: 0 0 20px 0; color: ${colors.darkText}; font-size: ${typography.sizes.h2}; font-weight: ${typography.weights.bold}; line-height: ${typography.lineHeight.tight}; font-family: ${typography.fontStack};">
       You've been assigned to a new task
     </h2>
 
-    <p style="margin: 0 0 24px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
-      <strong style="color: #111827;">${assignerName}</strong> has assigned you to the following task:
+    <p style="margin: 0 0 24px 0; color: ${colors.bodyText}; font-size: ${typography.sizes.body}; line-height: ${typography.lineHeight.relaxed}; font-family: ${typography.fontStack};">
+      <strong style="color: ${colors.darkText};">${assignerName}</strong> has assigned you to the following task:
     </p>
 
-    <div style="background-color: #f9fafb; border-left: 4px solid #667eea; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
-      <h3 style="margin: 0 0 12px 0; color: #111827; font-size: 18px; font-weight: 600;">
-        ${taskName}
-      </h3>
-      ${taskDescription ? `
-        <p style="margin: 0; color: #6b7280; font-size: 15px; line-height: 1.6;">
-          ${taskDescription}
-        </p>
-      ` : ''}
-    </div>
+    ${createContentCard(taskCardContent, colors.primaryBlue)}
 
     ${projectName || dueDate || priority ? `
-      <table cellpadding="0" cellspacing="0" style="width: 100%; margin-bottom: 24px;">
+      <table cellpadding="0" cellspacing="0" role="presentation" style="width: 100%; margin-bottom: 24px;">
         ${projectName ? `
           <tr>
-            <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
-              <span style="color: #6b7280; font-size: 14px; font-weight: 500;">Project:</span>
+            <td style="padding: 12px 0; border-bottom: 1px solid ${colors.borderColor};">
+              <span style="color: ${colors.mutedText}; font-size: ${typography.sizes.small}; font-weight: ${typography.weights.medium}; font-family: ${typography.fontStack};">Project</span>
             </td>
-            <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb; text-align: right;">
-              <span style="color: #111827; font-size: 14px; font-weight: 600;">${projectName}</span>
+            <td style="padding: 12px 0; border-bottom: 1px solid ${colors.borderColor}; text-align: right;">
+              <span style="color: ${colors.darkText}; font-size: ${typography.sizes.small}; font-weight: ${typography.weights.semibold}; font-family: ${typography.fontStack};">${projectName}</span>
             </td>
           </tr>
         ` : ''}
         ${dueDate ? `
           <tr>
-            <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
-              <span style="color: #6b7280; font-size: 14px; font-weight: 500;">Due Date:</span>
+            <td style="padding: 12px 0; border-bottom: 1px solid ${colors.borderColor};">
+              <span style="color: ${colors.mutedText}; font-size: ${typography.sizes.small}; font-weight: ${typography.weights.medium}; font-family: ${typography.fontStack};">Due Date</span>
             </td>
-            <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb; text-align: right;">
-              <span style="color: #111827; font-size: 14px; font-weight: 600;">📅 ${new Date(dueDate).toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric', 
-                year: 'numeric' 
-              })}</span>
+            <td style="padding: 12px 0; border-bottom: 1px solid ${colors.borderColor}; text-align: right;">
+              <span style="color: ${colors.darkText}; font-size: ${typography.sizes.small}; font-weight: ${typography.weights.semibold}; font-family: ${typography.fontStack};">📅 ${new Date(dueDate).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  })}</span>
             </td>
           </tr>
         ` : ''}
         ${priority ? `
           <tr>
             <td style="padding: 12px 0;">
-              <span style="color: #6b7280; font-size: 14px; font-weight: 500;">Priority:</span>
+              <span style="color: ${colors.mutedText}; font-size: ${typography.sizes.small}; font-weight: ${typography.weights.medium}; font-family: ${typography.fontStack};">Priority</span>
             </td>
             <td style="padding: 12px 0; text-align: right;">
-              ${createBadge(priority, getPriorityColor(priority))}
+              ${createBadge(priority, themePriorityColor(priority))}
             </td>
           </tr>
         ` : ''}
@@ -86,20 +85,11 @@ export function taskAssignedTemplate({
 
     ${createButton("View Task Details", taskUrl)}
 
-    <p style="margin: 20px 0 0 0; color: #6b7280; font-size: 14px; line-height: 1.5;">
+    <p style="margin: 20px 0 0 0; color: ${colors.mutedText}; font-size: ${typography.sizes.small}; line-height: ${typography.lineHeight.normal}; font-family: ${typography.fontStack};">
       Click the button above to view the complete task details and get started.
     </p>
   `;
 
-  return baseEmailTemplate(content);
+  return baseEmailTemplate(content, "New Task Assignment");
 }
 
-function getPriorityColor(priority: string): string {
-  const colors: Record<string, string> = {
-    LOW: "#10b981",
-    MEDIUM: "#f59e0b",
-    HIGH: "#f97316",
-    URGENT: "#ef4444",
-  };
-  return colors[priority] || "#6b7280";
-}

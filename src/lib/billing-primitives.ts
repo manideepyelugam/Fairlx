@@ -6,6 +6,7 @@ import {
     BILLING_ACCOUNTS_ID,
     WORKSPACES_ID,
 } from "@/config";
+import { createAdminClient } from "@/lib/appwrite";
 import { BillingStatus, BillingAccountType, BillingAccount } from "@/features/billing/types";
 
 /**
@@ -72,15 +73,21 @@ export interface BillingLookupOptions {
  * 1. If organizationId provided, look up org billing account
  * 2. If workspaceId provided, derive owner from workspace
  * 3. If userId provided, look up personal billing account
+ * 
+ * NOTE: Uses admin client for billing account lookups since regular users
+ * don't have read permissions on the billing accounts collection.
  */
 export async function getBillingAccount(
     databases: Databases,
     options: BillingLookupOptions
 ): Promise<BillingAccount | null> {
     try {
+        // Use admin client for billing account lookups (restricted collection)
+        const { databases: adminDatabases } = await createAdminClient();
+
         // Priority 1: Direct organization lookup
         if (options.organizationId) {
-            const accounts = await databases.listDocuments<BillingAccount>(
+            const accounts = await adminDatabases.listDocuments<BillingAccount>(
                 DATABASE_ID,
                 BILLING_ACCOUNTS_ID,
                 [
@@ -96,6 +103,8 @@ export async function getBillingAccount(
 
         // Priority 2: Derive from workspace
         if (options.workspaceId) {
+            // Workspace lookup can use either user databases or admin
+            // Using passed databases for workspace since user has access
             const workspace = await databases.getDocument(
                 DATABASE_ID,
                 WORKSPACES_ID,
@@ -103,7 +112,7 @@ export async function getBillingAccount(
             );
 
             if (workspace.organizationId) {
-                const accounts = await databases.listDocuments<BillingAccount>(
+                const accounts = await adminDatabases.listDocuments<BillingAccount>(
                     DATABASE_ID,
                     BILLING_ACCOUNTS_ID,
                     [
@@ -116,7 +125,7 @@ export async function getBillingAccount(
                     return accounts.documents[0];
                 }
             } else if (workspace.userId) {
-                const accounts = await databases.listDocuments<BillingAccount>(
+                const accounts = await adminDatabases.listDocuments<BillingAccount>(
                     DATABASE_ID,
                     BILLING_ACCOUNTS_ID,
                     [
@@ -133,7 +142,7 @@ export async function getBillingAccount(
 
         // Priority 3: Direct user lookup
         if (options.userId) {
-            const accounts = await databases.listDocuments<BillingAccount>(
+            const accounts = await adminDatabases.listDocuments<BillingAccount>(
                 DATABASE_ID,
                 BILLING_ACCOUNTS_ID,
                 [
@@ -153,6 +162,7 @@ export async function getBillingAccount(
         return null;
     }
 }
+
 
 // ============================================================================
 // BILLING STATUS ASSERTIONS
@@ -248,13 +258,16 @@ export interface LockResult {
  * 
  * Locked cycles cannot accept new usage events.
  * Late events should be rolled into the next cycle.
+ * 
+ * NOTE: Uses admin client since billing accounts is a restricted collection.
  */
 export async function isBillingCycleLocked(
-    databases: Databases,
+    _databases: Databases,
     billingAccountId: string
 ): Promise<boolean> {
     try {
-        const account = await databases.getDocument<BillingAccount>(
+        const { databases: adminDatabases } = await createAdminClient();
+        const account = await adminDatabases.getDocument<BillingAccount>(
             DATABASE_ID,
             BILLING_ACCOUNTS_ID,
             billingAccountId
@@ -281,7 +294,7 @@ export async function isBillingCycleLocked(
  * @returns LockResult with success/alreadyLocked status
  */
 export async function lockBillingCycle(
-    databases: Databases,
+    _databases: Databases,
     billingAccountId: string
 ): Promise<LockResult> {
     const lockTimestamp = new Date().toISOString();
@@ -301,8 +314,11 @@ export async function lockBillingCycle(
     };
 
     try {
+        // Use admin client for billing account operations (restricted collection)
+        const { databases: adminDatabases } = await createAdminClient();
+
         // Step 1: Read current state
-        const account = await databases.getDocument<BillingAccount>(
+        const account = await adminDatabases.getDocument<BillingAccount>(
             DATABASE_ID,
             BILLING_ACCOUNTS_ID,
             billingAccountId
@@ -323,7 +339,7 @@ export async function lockBillingCycle(
         }
 
         // Step 3: Attempt lock with our timestamp
-        await databases.updateDocument(
+        await adminDatabases.updateDocument(
             DATABASE_ID,
             BILLING_ACCOUNTS_ID,
             billingAccountId,
@@ -334,7 +350,7 @@ export async function lockBillingCycle(
         );
 
         // Step 4: Verify we won the race (compare-and-verify)
-        const verifyAccount = await databases.getDocument<BillingAccount>(
+        const verifyAccount = await adminDatabases.getDocument<BillingAccount>(
             DATABASE_ID,
             BILLING_ACCOUNTS_ID,
             billingAccountId
@@ -384,13 +400,16 @@ export async function lockBillingCycle(
  * 
  * Called after advancing to new billing cycle dates.
  * Safe to call multiple times (idempotent).
+ * 
+ * NOTE: Uses admin client since billing accounts is a restricted collection.
  */
 export async function unlockBillingCycle(
-    databases: Databases,
+    _databases: Databases,
     billingAccountId: string
 ): Promise<boolean> {
     try {
-        await databases.updateDocument(
+        const { databases: adminDatabases } = await createAdminClient();
+        await adminDatabases.updateDocument(
             DATABASE_ID,
             BILLING_ACCOUNTS_ID,
             billingAccountId,

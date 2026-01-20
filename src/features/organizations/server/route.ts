@@ -825,6 +825,7 @@ const app = new Hono()
                     loginUrl,
                     firstLoginToken: LOGIN_TOKENS_ID ? rawToken : undefined,
                     appUrl: LOGIN_TOKENS_ID ? appUrl : undefined,
+                    logoUrl: organization.imageUrl || undefined,
                 });
 
                 // Log email sent event (non-blocking)
@@ -964,6 +965,7 @@ const app = new Hono()
                     organizationName: organization.name,
                     tempPassword: newTempPassword,
                     loginUrl,
+                    logoUrl: (organization as { imageUrl?: string }).imageUrl || undefined,
                 });
 
                 if (!emailResult.success) {
@@ -1257,6 +1259,7 @@ const app = new Hono()
 
 /**
  * Helper: Get organization member
+ * @deprecated Currently unused but kept for future reference
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function getOrganizationMember(

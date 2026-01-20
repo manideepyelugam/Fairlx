@@ -6,7 +6,14 @@ import { z } from "zod";
 import { DATABASE_ID, MEMBERS_ID, PROJECTS_ID, TASKS_ID, TIME_LOGS_ID, COMMENTS_ID, WORKFLOW_TRANSITIONS_ID, TEAM_MEMBERS_ID, WORKFLOW_STATUSES_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
-import { notifyTaskAssignees, notifyWorkspaceAdmins } from "@/lib/notifications";
+import {
+  dispatchWorkitemEvent,
+  createAssignedEvent,
+  createStatusChangedEvent,
+  createCompletedEvent,
+  createPriorityChangedEvent,
+  createDueDateChangedEvent,
+} from "@/lib/notifications";
 
 
 import { getMember } from "@/features/members/utils";
@@ -91,12 +98,12 @@ async function validateStatusTransition(
         TEAM_MEMBERS_ID,
         [Query.equal("userId", userId), Query.equal("workspaceId", workspaceId)]
       );
-      
+
       const userTeamIds = userTeams.documents.map((t) => t.teamId as string);
       const hasAllowedTeam = transition.allowedTeamIds.some(
         (teamId: string) => userTeamIds.includes(teamId)
       );
-      
+
       if (!hasAllowedTeam) {
         return {
           allowed: false,
@@ -114,12 +121,12 @@ async function validateStatusTransition(
         TEAM_MEMBERS_ID,
         [Query.equal("userId", userId), Query.equal("workspaceId", workspaceId)]
       );
-      
+
       const userTeamIds = userTeams.documents.map((t) => t.teamId as string);
       const isApprover = transition.approverTeamIds?.some(
         (teamId: string) => userTeamIds.includes(teamId)
       );
-      
+
       if (!isApprover) {
         return {
           allowed: false,
@@ -492,27 +499,14 @@ const app = new Hono()
         }
       ) as Task;
 
-      // Send async notifications
-      const userName = user.name || user.email || "Someone";
-
-      notifyTaskAssignees({
-        databases,
-        task,
-        triggeredByUserId: user.$id,
-        triggeredByName: userName,
-        notificationType: "task_assigned",
-        workspaceId,
-      }).catch(() => { });
-
-      // Notify workspace admins
-      notifyWorkspaceAdmins({
-        databases,
-        task,
-        triggeredByUserId: user.$id,
-        triggeredByName: userName,
-        notificationType: "task_assigned",
-        workspaceId,
-      }).catch(() => { });
+      // Emit domain event for task assignment (non-blocking)
+      if (assigneeIds && assigneeIds.length > 0) {
+        const userName = user.name || user.email || "Someone";
+        const event = createAssignedEvent(task, user.$id, userName, assigneeIds);
+        dispatchWorkitemEvent(event).catch((err) => {
+          console.error("[TaskRoute] Failed to dispatch assignment event:", err);
+        });
+      }
 
       return c.json({ data: task });
     }
@@ -628,63 +622,78 @@ const app = new Hono()
         updateData
       ) as Task;
 
-      // Send notifications asynchronously (non-blocking)
+      // Emit domain events for task updates (non-blocking)
       const userName = user.name || user.email || "Someone";
 
-      // Track detailed changes
+      // Track what changed
       const statusChanged = status !== undefined && existingTask.status !== status;
       const priorityChanged = priority !== undefined && existingTask.priority !== priority;
       const dueDateChanged = dueDate !== undefined && String(existingTask.dueDate) !== String(dueDate);
 
-      // Determine notification type based on what changed
-      let notificationType: "task_assigned" | "task_completed" | "task_updated" | "task_status_changed" | "task_priority_changed" | "task_due_date_changed";
-
-      if (assigneesChanged) {
-        notificationType = "task_assigned"; // New assignees should get "assigned" notification
-      } else if (status === "CLOSED" && statusChanged) {
-        notificationType = "task_completed";
-      } else if (statusChanged) {
-        notificationType = "task_status_changed";
-      } else if (priorityChanged) {
-        notificationType = "task_priority_changed";
-      } else if (dueDateChanged) {
-        notificationType = "task_due_date_changed";
-      } else {
-        notificationType = "task_updated"; // This covers other updates
+      // Dispatch appropriate events based on what changed
+      // Status change events
+      if (statusChanged) {
+        if (status === "DONE" || status === "CLOSED") {
+          const event = createCompletedEvent(task, user.$id, userName);
+          dispatchWorkitemEvent(event).catch((err) => {
+            console.error("[TaskRoute] Failed to dispatch completed event:", err);
+          });
+        } else {
+          const event = createStatusChangedEvent(
+            task,
+            user.$id,
+            userName,
+            existingTask.status,
+            status
+          );
+          dispatchWorkitemEvent(event).catch((err) => {
+            console.error("[TaskRoute] Failed to dispatch status change event:", err);
+          });
+        }
       }
 
-      // Prepare metadata with change information
-      const changeMetadata = {
-        ...(statusChanged && { oldStatus: existingTask.status, newStatus: status }),
-        ...(priorityChanged && { oldPriority: existingTask.priority, newPriority: priority }),
-        ...(dueDateChanged && { oldDueDate: existingTask.dueDate, newDueDate: dueDate }),
-      };
+      // Priority change event
+      if (priorityChanged) {
+        const event = createPriorityChangedEvent(
+          task,
+          user.$id,
+          userName,
+          existingTask.priority || "MEDIUM",
+          priority
+        );
+        dispatchWorkitemEvent(event).catch((err) => {
+          console.error("[TaskRoute] Failed to dispatch priority change event:", err);
+        });
+      }
 
-      // Notify assignees
-      notifyTaskAssignees({
-        databases,
-        task,
-        triggeredByUserId: user.$id,
-        triggeredByName: userName,
-        notificationType,
-        workspaceId: existingTask.workspaceId,
-        metadata: changeMetadata,
-      }).catch((error) => {
-        console.error('Failed to notify assignees:', error);
-      });
+      // Due date change event
+      if (dueDateChanged) {
+        const oldDueDateStr = existingTask.dueDate ? String(existingTask.dueDate) : undefined;
+        const newDueDateStr = dueDate ? String(dueDate) : undefined;
+        const event = createDueDateChangedEvent(
+          task,
+          user.$id,
+          userName,
+          oldDueDateStr,
+          newDueDateStr
+        );
+        dispatchWorkitemEvent(event).catch((err) => {
+          console.error("[TaskRoute] Failed to dispatch due date change event:", err);
+        });
+      }
 
-      // Notify workspace admins
-      notifyWorkspaceAdmins({
-        databases,
-        task,
-        triggeredByUserId: user.$id,
-        triggeredByName: userName,
-        notificationType,
-        workspaceId: existingTask.workspaceId,
-        metadata: changeMetadata,
-      }).catch((error) => {
-        console.error('Failed to notify workspace admins:', error);
-      });
+      // Assignment change event (only for newly added assignees)
+      if (assigneesChanged) {
+        const addedAssignees = newAssigneeIds.filter(
+          (id: string) => !oldAssigneeIds.includes(id)
+        );
+        if (addedAssignees.length > 0) {
+          const event = createAssignedEvent(task, user.$id, userName, addedAssignees);
+          dispatchWorkitemEvent(event).catch((err) => {
+            console.error("[TaskRoute] Failed to dispatch assignment event:", err);
+          });
+        }
+      }
 
       return c.json({ data: task });
     }
@@ -877,7 +886,7 @@ const app = new Hono()
 
       for (const taskUpdate of tasks) {
         const existingTask = existingTasksMap.get(taskUpdate.$id);
-        
+
         if (!existingTask) {
           failedValidations.push({
             taskId: taskUpdate.$id,
@@ -889,7 +898,7 @@ const app = new Hono()
         // If status is changing, validate the transition
         if (taskUpdate.status && existingTask.status !== taskUpdate.status) {
           const workflowId = projectWorkflowMap.get(existingTask.projectId);
-          
+
           if (workflowId) {
             const validation = await validateStatusTransition(
               databases,
@@ -950,54 +959,32 @@ const app = new Hono()
         })
       );
 
-      // Send bulk notifications
+      // Send bulk notifications via dispatcher
       const userName = user.name || user.email || "Someone";
 
       updatedTasks.forEach(({ task, oldStatus, statusChanged }) => {
-        // Determine notification type based on what changed
-        let notificationType: "task_completed" | "task_status_changed" | "task_updated";
-
-        if (task.status === "CLOSED" && statusChanged) {
-          notificationType = "task_completed";
-        } else if (statusChanged) {
-          notificationType = "task_status_changed";
-        } else {
-          notificationType = "task_updated";
+        // Only emit events for significant changes
+        if (statusChanged) {
+          if (task.status === "DONE" || task.status === "CLOSED") {
+            const event = createCompletedEvent(task, user.$id, userName);
+            dispatchWorkitemEvent(event).catch(() => { });
+          } else {
+            const event = createStatusChangedEvent(
+              task,
+              user.$id,
+              userName,
+              oldStatus || "",
+              task.status
+            );
+            dispatchWorkitemEvent(event).catch(() => { });
+          }
         }
-
-        // Notify assignees
-        notifyTaskAssignees({
-          databases,
-          task,
-          triggeredByUserId: user.$id,
-          triggeredByName: userName,
-          notificationType,
-          workspaceId: task.workspaceId,
-          metadata: statusChanged ? {
-            oldStatus,
-            newStatus: task.status,
-          } : undefined,
-        }).catch(() => { });
-
-        // Notify workspace admins
-        notifyWorkspaceAdmins({
-          databases,
-          task,
-          triggeredByUserId: user.$id,
-          triggeredByName: userName,
-          notificationType,
-          workspaceId: task.workspaceId,
-          metadata: statusChanged ? {
-            oldStatus,
-            newStatus: task.status,
-          } : undefined,
-        }).catch(() => { });
       });
 
       // Return success with any partial failures noted
-      return c.json({ 
+      return c.json({
         data: updatedTasks.map(({ task }) => task),
-        ...(failedValidations.length > 0 && { 
+        ...(failedValidations.length > 0 && {
           partialFailures: failedValidations,
           message: `${validTasks.length} task(s) updated successfully, ${failedValidations.length} blocked by workflow rules`
         })

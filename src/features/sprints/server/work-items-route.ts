@@ -10,6 +10,14 @@ import { createAdminClient } from "@/lib/appwrite";
 import { getMember } from "@/features/members/utils";
 import { Project } from "@/features/projects/types";
 import { logComputeUsage, getComputeUnits } from "@/lib/usage-metering";
+import {
+  dispatchWorkitemEvent,
+  createAssignedEvent,
+  createStatusChangedEvent,
+  createCompletedEvent,
+  createPriorityChangedEvent,
+} from "@/lib/notifications";
+import { Task } from "@/features/tasks/types";
 
 import {
   createWorkItemSchema,
@@ -25,6 +33,7 @@ import {
   WorkItemPriority,
   PopulatedWorkItem,
 } from "../types";
+
 
 // Generate unique work item key
 async function generateWorkItemKey(
@@ -590,6 +599,21 @@ const app = new Hono()
         metadata: { workItemId: workItem.$id, type: data.type },
       });
 
+      // Dispatch notification for work item assignment (non-blocking)
+      if (data.assigneeIds && data.assigneeIds.length > 0) {
+        const userName = user.name || user.email || "Someone";
+        // Convert WorkItem to Task type for dispatcher compatibility
+        const taskLike = {
+          ...workItem,
+          title: workItem.title,
+          name: workItem.title,
+        } as unknown as Task;
+        const event = createAssignedEvent(taskLike, user.$id, userName, data.assigneeIds);
+        dispatchWorkitemEvent(event).catch(() => {
+          console.debug("[WorkItemsRoute] Notification dispatch failed (non-blocking)");
+        });
+      }
+
       return c.json({ data: workItem });
     }
   )
@@ -643,6 +667,46 @@ const app = new Hono()
         jobType: 'task_update',
         metadata: { workItemId, updatedFields: Object.keys(updates) },
       });
+
+      // Dispatch notifications for relevant changes (non-blocking)
+      const userName = user.name || user.email || "Someone";
+      const taskLike = {
+        ...updatedWorkItem,
+        title: updatedWorkItem.title,
+        name: updatedWorkItem.title,
+      } as unknown as Task;
+
+      // Status change notification
+      if (updates.status && updates.status !== workItem.status) {
+        const isDone = updates.status === "DONE";
+        const event = isDone
+          ? createCompletedEvent(taskLike, user.$id, userName)
+          : createStatusChangedEvent(taskLike, user.$id, userName, workItem.status, updates.status);
+        dispatchWorkitemEvent(event).catch(() => { });
+      }
+
+      // Priority change notification
+      if (updates.priority && updates.priority !== workItem.priority) {
+        const event = createPriorityChangedEvent(
+          taskLike,
+          user.$id,
+          userName,
+          workItem.priority || "MEDIUM",
+          updates.priority
+        );
+        dispatchWorkitemEvent(event).catch(() => { });
+      }
+
+      // Assignee change notification
+      if (updates.assigneeIds) {
+        const oldIds = workItem.assigneeIds || [];
+        const newIds = updates.assigneeIds || [];
+        const addedAssignees = newIds.filter((id: string) => !oldIds.includes(id));
+        if (addedAssignees.length > 0) {
+          const event = createAssignedEvent(taskLike, user.$id, userName, addedAssignees);
+          dispatchWorkitemEvent(event).catch(() => { });
+        }
+      }
 
       return c.json({ data: updatedWorkItem });
     }

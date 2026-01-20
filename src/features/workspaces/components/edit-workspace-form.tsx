@@ -96,7 +96,7 @@ export const EditWorkspaceForm = ({
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-2xl">
         <DeleteDialog />
-        
+
         {/* Header Section */}
         <div className="mb-12 flex flex-col items-center text-center">
           {/* <Button
@@ -112,7 +112,7 @@ export const EditWorkspaceForm = ({
             <ArrowLeftIcon className="size-4" />
             Back
           </Button> */}
-         
+
         </div>
 
         {/* Main Settings Card */}
@@ -135,7 +135,7 @@ export const EditWorkspaceForm = ({
                             JPG, PNG, SVG or JPEG, max 1MB
                           </p>
                         </div>
-                        
+
                         <div className="relative">
                           {field.value ? (
                             <div className="size-[120px] relative rounded-xl overflow-hidden ring-2 ring-primary ring-offset-2">
@@ -167,7 +167,7 @@ export const EditWorkspaceForm = ({
                           onChange={handleImageChange}
                           disabled={isPending}
                         />
-                        
+
                         <div className="flex flex-col gap-y-2 sm:flex-row gap-x-2">
                           {field.value ? (
                             <>
@@ -226,7 +226,7 @@ export const EditWorkspaceForm = ({
                           </p>
                         </div>
                         <FormControl>
-                          <Input 
+                          <Input
                             placeholder="Enter workspace name"
                             className="h-11 text-base rounded-lg"
                             {...field}
@@ -253,8 +253,8 @@ export const EditWorkspaceForm = ({
                       Cancel
                     </Button>
                   )}
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={isPending}
                     className="sm:flex-1"
                     size="lg"
@@ -277,9 +277,9 @@ export const EditWorkspaceForm = ({
               <p className="text-sm  text-muted-foreground mb-2">
                 Deleting a workspace is irreversible and will remove all associated data.
               </p>
-              
+
               <div className="h-px bg-destructive/20 mb-4" />
-              
+
               <Button
                 size="sm"
                 variant="destructive"

@@ -78,45 +78,233 @@ function getReminderEmailContent(
     daysRemaining: number
 ): { subject: string; html: string; text: string } {
     const accountName = accountType === BillingAccountType.ORG ? "organization" : "account";
+    const billingUrl = `${process.env.NEXT_PUBLIC_APP_URL}/billing`;
+
+    // Theme colors
+    const primaryBlue = "#2563eb";
+    const darkText = "#111827";
+    const mutedText = "#6b7280";
+    const lightText = "#9ca3af";
+    const bgMain = "#f8fafc";
+    const cardBg = "#ffffff";
+    const fontStack = "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+
+    // Unused but kept for reference: bodyText = "#374151", bgLight = "#f1f5f9", border = "#e2e8f0"
+
+    // Shared email wrapper function
+    const wrapInTemplate = (badgeText: string, badgeBgColor: string, badgeTextColor: string, headline: string, content: string, ctaText: string, ctaBgColor: string) => `
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="x-apple-disable-message-reformatting" />
+  <style type="text/css">
+    body, table, td, p, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    body { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+    @media only screen and (max-width: 600px) {
+      .email-container { width: 100% !important; }
+      .email-content { padding: 24px 20px !important; }
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: ${bgMain}; font-family: ${fontStack};">
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: ${bgMain};">
+    <tr>
+      <td style="padding: 40px 16px;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="560" class="email-container" style="margin: 0 auto; max-width: 560px;">
+          
+          <!-- Logo -->
+          <tr>
+            <td style="padding: 0 0 24px 0; text-align: center;">
+              <span style="font-size: 26px; font-weight: 700; color: ${primaryBlue}; font-family: ${fontStack}; letter-spacing: -0.5px;">fairlx<span style="color: ${primaryBlue};">.</span></span>
+            </td>
+          </tr>
+          
+          <!-- Main Card -->
+          <tr>
+            <td>
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: ${cardBg}; border-radius: 12px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);">
+                
+                <!-- Content -->
+                <tr>
+                  <td class="email-content" style="padding: 32px;">
+                    
+                    <!-- Badge -->
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 20px;">
+                      <tr>
+                        <td style="padding: 6px 12px; background-color: ${badgeBgColor}; border-radius: 4px;">
+                          <span style="font-size: 13px; font-weight: 600; color: ${badgeTextColor}; font-family: ${fontStack};">${badgeText}</span>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <!-- Headline -->
+                    <h1 style="margin: 0 0 20px 0; font-size: 22px; font-weight: 700; color: ${darkText}; line-height: 1.3; font-family: ${fontStack};">${headline}</h1>
+                    
+                    ${content}
+                    
+                    <!-- CTA Button -->
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 24px 0;">
+                      <tr>
+                        <td>
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                            <tr>
+                              <td style="border-radius: 8px; background-color: ${ctaBgColor}; text-align: center;">
+                                <a href="${billingUrl}" target="_blank" style="display: block; padding: 14px 24px; color: #ffffff; font-size: 15px; font-weight: 600; font-family: ${fontStack}; text-decoration: none; border-radius: 8px;">${ctaText} →</a>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 24px 16px 0 16px; text-align: center;">
+              <p style="margin: 0 0 8px 0; font-size: 12px; color: ${mutedText}; font-family: ${fontStack};">
+                You received this email because you have billing notifications enabled
+              </p>
+              <p style="margin: 0 0 8px 0; font-size: 12px; color: ${lightText}; font-family: ${fontStack};">
+                <a href="mailto:billing@fairlx.com" style="color: ${primaryBlue}; text-decoration: none;">Billing Support</a>
+                <span style="padding: 0 4px;">·</span>
+                <a href="https://fairlx.com/privacy" style="color: ${primaryBlue}; text-decoration: none;">Privacy</a>
+                <span style="padding: 0 4px;">·</span>
+                <a href="https://fairlx.com/terms" style="color: ${primaryBlue}; text-decoration: none;">Terms</a>
+              </p>
+              <p style="margin: 0; font-size: 12px; color: ${lightText}; font-family: ${fontStack};">© 2025 Stemlen. All rights reserved.</p>
+            </td>
+          </tr>
+          
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
 
     if (reminderDay === 1) {
+        const content = `
+            <p style="margin: 0 0 16px 0; color: #4b5563; font-size: 16px; line-height: 1.6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+                We were unable to process your recent payment. Your ${accountName} remains <strong style="color: #111827;">fully accessible</strong> during the 14-day grace period.
+            </p>
+            
+            <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 24px 0; border: 1px solid #e5e7eb;">
+                <table cellpadding="0" cellspacing="0" role="presentation" style="width: 100%;">
+                    <tr>
+                        <td style="padding: 8px 0;">
+                            <span style="color: #6b7280; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Grace Period Remaining</span>
+                        </td>
+                        <td style="padding: 8px 0; text-align: right;">
+                            <span style="color: #111827; font-size: 18px; font-weight: 700; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">${daysRemaining} days</span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            
+            <p style="margin: 0 0 0 0; color: #4b5563; font-size: 16px; line-height: 1.6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+                Please update your payment method to avoid service interruption:
+            </p>
+        `;
+
         return {
             subject: "Action Required: Payment Failed for Your Fairlx Account",
-            html: `
-                <h2>Payment Failed</h2>
-                <p>We were unable to process your recent payment. Your ${accountName} remains fully accessible during the 14-day grace period.</p>
-                <p><strong>Days remaining:</strong> ${daysRemaining}</p>
-                <p>Please update your payment method to avoid service interruption:</p>
-                <a href="${process.env.NEXT_PUBLIC_APP_URL}/billing" style="display: inline-block; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px;">Update Payment Method</a>
-                <p style="margin-top: 20px; color: #666;">If you have any questions, please contact our support team.</p>
-            `,
-            text: `Payment Failed\n\nWe were unable to process your recent payment. Your ${accountName} remains fully accessible during the 14-day grace period.\n\nDays remaining: ${daysRemaining}\n\nPlease update your payment method at: ${process.env.NEXT_PUBLIC_APP_URL}/billing`,
+            html: wrapInTemplate(
+                "⚠️ Payment Failed",
+                "#fef3c7",
+                "#92400e",
+                "Payment Update Required",
+                content,
+                "Update Payment Method",
+                "#2563eb"
+            ),
+            text: `Payment Failed\n\nWe were unable to process your recent payment. Your ${accountName} remains fully accessible during the 14-day grace period.\n\nDays remaining: ${daysRemaining}\n\nPlease update your payment method at: ${billingUrl}`,
         };
     } else if (reminderDay === 7) {
+        const content = `
+            <p style="margin: 0 0 16px 0; color: #4b5563; font-size: 16px; line-height: 1.6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+                This is a friendly reminder that your payment is still pending. Your ${accountName} will be suspended in <strong style="color: #111827;">${daysRemaining} days</strong> if payment is not received.
+            </p>
+            
+            <div style="background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 16px; margin: 24px 0;">
+                <table cellpadding="0" cellspacing="0" role="presentation" style="width: 100%;">
+                    <tr>
+                        <td style="width: 32px; vertical-align: top;">
+                            <div style="font-size: 18px;">⏱️</div>
+                        </td>
+                        <td style="vertical-align: top;">
+                            <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+                                <strong>${daysRemaining} days remaining</strong> until your ${accountName} is suspended.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            
+            <p style="margin: 0 0 0 0; color: #6b7280; font-size: 14px; line-height: 1.6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+                Your data is safe and will not be deleted even if your account is suspended.
+            </p>
+        `;
+
         return {
             subject: "Reminder: Update Your Payment Method - 7 Days Remaining",
-            html: `
-                <h2>Payment Reminder</h2>
-                <p>This is a friendly reminder that your payment is still pending. Your ${accountName} will be suspended in <strong>${daysRemaining} days</strong> if payment is not received.</p>
-                <p>Update your payment method now to maintain uninterrupted access:</p>
-                <a href="${process.env.NEXT_PUBLIC_APP_URL}/billing" style="display: inline-block; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px;">Update Payment Method</a>
-                <p style="margin-top: 20px; color: #666;">Your data is safe and will not be deleted even if your account is suspended.</p>
-            `,
-            text: `Payment Reminder\n\nThis is a friendly reminder that your payment is still pending. Your ${accountName} will be suspended in ${daysRemaining} days if payment is not received.\n\nUpdate your payment method at: ${process.env.NEXT_PUBLIC_APP_URL}/billing`,
+            html: wrapInTemplate(
+                "🔔 Payment Reminder",
+                "#dbeafe",
+                "#1e40af",
+                "Payment Still Pending",
+                content,
+                "Update Payment Method",
+                "#2563eb"
+            ),
+            text: `Payment Reminder\n\nThis is a friendly reminder that your payment is still pending. Your ${accountName} will be suspended in ${daysRemaining} days if payment is not received.\n\nUpdate your payment method at: ${billingUrl}`,
         };
     } else {
         // Day 13 - Final warning
+        const content = `
+            <p style="margin: 0 0 16px 0; color: #4b5563; font-size: 16px; line-height: 1.6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+                Your ${accountName} will be <strong style="color: #ef4444;">suspended tomorrow</strong> due to unpaid invoice.
+            </p>
+            
+            <div style="background-color: #fee2e2; border: 2px solid #ef4444; border-radius: 8px; padding: 16px; margin: 24px 0;">
+                <table cellpadding="0" cellspacing="0" role="presentation" style="width: 100%;">
+                    <tr>
+                        <td style="width: 32px; vertical-align: top;">
+                            <div style="font-size: 18px;">🚨</div>
+                        </td>
+                        <td style="vertical-align: top;">
+                            <p style="margin: 0; color: #991b1b; font-size: 14px; line-height: 1.5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+                                Once suspended, you will not be able to access your workspaces, projects, or data until payment is received.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            
+            <p style="margin: 0 0 0 0; color: #6b7280; font-size: 14px; line-height: 1.6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+                Don't worry — your data is safe. You can restore access anytime by completing your payment.
+            </p>
+        `;
+
         return {
             subject: "URGENT: Your Account Will Be Suspended Tomorrow",
-            html: `
-                <h2 style="color: #dc2626;">Final Warning</h2>
-                <p>Your ${accountName} will be <strong>suspended tomorrow</strong> due to unpaid invoice.</p>
-                <p>Once suspended, you will not be able to access your workspaces, projects, or data until payment is received.</p>
-                <p><strong>Take action now to avoid interruption:</strong></p>
-                <a href="${process.env.NEXT_PUBLIC_APP_URL}/billing" style="display: inline-block; padding: 12px 24px; background: #dc2626; color: white; text-decoration: none; border-radius: 6px;">Pay Now</a>
-                <p style="margin-top: 20px; color: #666;">Don't worry - your data is safe. You can restore access anytime by completing your payment.</p>
-            `,
-            text: `FINAL WARNING\n\nYour ${accountName} will be suspended tomorrow due to unpaid invoice.\n\nOnce suspended, you will not be able to access your workspaces, projects, or data until payment is received.\n\nPay now at: ${process.env.NEXT_PUBLIC_APP_URL}/billing`,
+            html: wrapInTemplate(
+                "🚨 Final Warning",
+                "#fee2e2",
+                "#991b1b",
+                "Immediate Action Required",
+                content,
+                "Pay Now",
+                "#ef4444"
+            ),
+            text: `FINAL WARNING\n\nYour ${accountName} will be suspended tomorrow due to unpaid invoice.\n\nOnce suspended, you will not be able to access your workspaces, projects, or data until payment is received.\n\nPay now at: ${billingUrl}`,
         };
     }
 }
