@@ -1,4 +1,5 @@
 import { baseEmailTemplate, createButton } from "./base";
+import { colors, typography, createNotificationBadge, createContentCard } from "./theme";
 
 interface TaskUpdatedTemplateProps {
   updaterName: string;
@@ -15,38 +16,36 @@ export function taskUpdatedTemplate({
   changesDescription,
   taskUrl,
 }: TaskUpdatedTemplateProps): string {
-  const content = `
-    <div style="margin-bottom: 24px;">
-      <div style="display: inline-block; padding: 8px 16px; background-color: #e0e7ff; border-radius: 8px; margin-bottom: 20px;">
-        <span style="color: #3730a3; font-size: 14px; font-weight: 600;">🔔 Task Updated</span>
-      </div>
-    </div>
+  const taskCardContent = `
+    <h3 style="margin: 0 0 8px 0; color: ${colors.darkText}; font-size: ${typography.sizes.h3}; font-weight: ${typography.weights.semibold}; font-family: ${typography.fontStack};">
+      ${taskName}
+    </h3>
+    ${projectName ? `
+      <p style="margin: 0; color: ${colors.mutedText}; font-size: ${typography.sizes.small}; font-family: ${typography.fontStack};">
+        Project: <strong style="color: ${colors.darkText};">${projectName}</strong>
+      </p>
+    ` : ''}
+  `;
 
-    <h2 style="margin: 0 0 20px 0; color: #111827; font-size: 24px; font-weight: 700; line-height: 1.3;">
+  const content = `
+    ${createNotificationBadge("🔔", "Task Updated", colors.infoLight, colors.infoDark)}
+
+    <h2 style="margin: 0 0 20px 0; color: ${colors.darkText}; font-size: ${typography.sizes.h2}; font-weight: ${typography.weights.bold}; line-height: ${typography.lineHeight.tight}; font-family: ${typography.fontStack};">
       A task has been updated
     </h2>
 
-    <p style="margin: 0 0 24px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
-      <strong style="color: #111827;">${updaterName}</strong> has made changes to:
+    <p style="margin: 0 0 24px 0; color: ${colors.bodyText}; font-size: ${typography.sizes.body}; line-height: ${typography.lineHeight.relaxed}; font-family: ${typography.fontStack};">
+      <strong style="color: ${colors.darkText};">${updaterName}</strong> has made changes to:
     </p>
 
-    <div style="background-color: #f9fafb; border-left: 4px solid #667eea; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
-      <h3 style="margin: 0 0 8px 0; color: #111827; font-size: 18px; font-weight: 600;">
-        ${taskName}
-      </h3>
-      ${projectName ? `
-        <p style="margin: 0; color: #6b7280; font-size: 14px;">
-          Project: <strong>${projectName}</strong>
-        </p>
-      ` : ''}
-    </div>
+    ${createContentCard(taskCardContent, colors.primaryBlue)}
 
     ${changesDescription ? `
-      <div style="background-color: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-        <div style="color: #92400e; font-size: 14px; font-weight: 500; margin-bottom: 8px;">
-          📝 Changes Made:
+      <div style="background-color: ${colors.warningLight}; border: 1px solid ${colors.warning}; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+        <div style="color: ${colors.warningDark}; font-size: ${typography.sizes.small}; font-weight: ${typography.weights.medium}; margin-bottom: 8px; font-family: ${typography.fontStack};">
+          📝 Changes Made
         </div>
-        <div style="color: #78350f; font-size: 14px; line-height: 1.6;">
+        <div style="color: #78350f; font-size: ${typography.sizes.small}; line-height: ${typography.lineHeight.relaxed}; font-family: ${typography.fontStack};">
           ${changesDescription}
         </div>
       </div>
@@ -54,10 +53,11 @@ export function taskUpdatedTemplate({
 
     ${createButton("View Task Details", taskUrl)}
 
-    <p style="margin: 20px 0 0 0; color: #6b7280; font-size: 14px; line-height: 1.5;">
+    <p style="margin: 20px 0 0 0; color: ${colors.mutedText}; font-size: ${typography.sizes.small}; line-height: ${typography.lineHeight.normal}; font-family: ${typography.fontStack};">
       Click the button above to see all the details and updates.
     </p>
   `;
 
-  return baseEmailTemplate(content);
+  return baseEmailTemplate(content, "Task Updated");
 }
+

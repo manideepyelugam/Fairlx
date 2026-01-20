@@ -2,8 +2,23 @@ import { createAdminClient } from "@/lib/appwrite";
 import { DATABASE_ID, COMMENTS_ID, TASKS_ID } from "@/config";
 import { Comment, PopulatedComment, CommentAuthor } from "../types";
 import { Query, ID } from "node-appwrite";
-import { notifyTaskAssignees, notifyWorkspaceAdmins } from "@/lib/notifications";
+import { dispatchWorkitemEvent, createCommentAddedEvent } from "@/lib/notifications";
 import { Task } from "@/features/tasks/types";
+
+/**
+ * Extract @mentioned user IDs from comment content
+ * Matches patterns like @userId or @[userId]
+ */
+function extractMentionedUserIds(content: string): string[] {
+  // Match @mentions in format @userId or @[userId]
+  const mentionRegex = /@\[?([a-zA-Z0-9_-]+)\]?/g;
+  const mentions: string[] = [];
+  let match;
+  while ((match = mentionRegex.exec(content)) !== null) {
+    mentions.push(match[1]);
+  }
+  return mentions;
+}
 
 // Get all comments for a task, optionally filtering by parentId
 export const getComments = async (
@@ -85,7 +100,7 @@ export const createComment = async (data: {
     }
   );
 
-  // Send notifications (non-blocking)
+  // Emit comment added event (non-blocking)
   try {
     const task = await databases.getDocument<Task>(
       DATABASE_ID,
@@ -93,26 +108,16 @@ export const createComment = async (data: {
       data.taskId
     );
     const authorName = data.authorName || "Someone";
+    const mentionedUserIds = extractMentionedUserIds(data.content);
 
-    // Notify assignees about new comment
-    notifyTaskAssignees({
-      databases,
+    const event = createCommentAddedEvent(
       task,
-      triggeredByUserId: data.authorId,
-      triggeredByName: authorName,
-      notificationType: "task_comment",
-      workspaceId: data.workspaceId,
-    }).catch(() => { });
-
-    // Notify workspace admins
-    notifyWorkspaceAdmins({
-      databases,
-      task,
-      triggeredByUserId: data.authorId,
-      triggeredByName: authorName,
-      notificationType: "task_comment",
-      workspaceId: data.workspaceId,
-    }).catch(() => { });
+      data.authorId,
+      authorName,
+      comment.$id,
+      mentionedUserIds.length > 0 ? mentionedUserIds : undefined
+    );
+    dispatchWorkitemEvent(event).catch(() => { });
   } catch {
     // Silently fail - notifications are non-critical
   }

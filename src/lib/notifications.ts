@@ -1,3 +1,20 @@
+/**
+ * Legacy Notification Helpers
+ * 
+ * These functions provide backward compatibility for existing task notification calls.
+ * For new implementations, use the event-driven notification system:
+ * 
+ * ```typescript
+ * import { dispatchWorkitemEvent, createAssignedEvent } from "@/lib/notifications";
+ * ```
+ * 
+ * The new system provides:
+ * - Centralized event dispatch
+ * - User preference support
+ * - Isolated channel handlers (socket, email)
+ * - Better error handling and logging
+ */
+
 import { ID, Models, Databases, Query } from "node-appwrite";
 import { DATABASE_ID, NOTIFICATIONS_ID, MEMBERS_ID, PROJECTS_ID } from "@/config";
 import { Task } from "@/features/tasks/types";
@@ -11,10 +28,57 @@ import {
   taskDueDateChangedTemplate,
 } from "@/lib/email-templates";
 
-export type NotificationType = 
-  | "task_assigned" 
-  | "task_updated" 
-  | "task_completed" 
+// =============================================================================
+// RE-EXPORT EVENT-DRIVEN NOTIFICATION SYSTEM
+// =============================================================================
+// These are re-exported from the notifications/ directory so that imports like
+// `import { dispatchWorkitemEvent } from "@/lib/notifications"` work correctly.
+
+export {
+  // Types
+  WorkitemEventType,
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  // Event creators
+  createWorkitemEvent,
+  createAssignedEvent,
+  createStatusChangedEvent,
+  createCompletedEvent,
+  createPriorityChangedEvent,
+  createDueDateChangedEvent,
+  createCommentAddedEvent,
+  createAttachmentAddedEvent,
+  createAttachmentDeletedEvent,
+  getNotificationTitle,
+  getNotificationSummary,
+  getDefaultChannelsForEvent,
+  // Dispatcher
+  dispatcher,
+  dispatchWorkitemEvent,
+  // Channel handlers
+  SocketChannelHandler,
+  socketChannelHandler,
+  EmailChannelHandler,
+  emailChannelHandler,
+} from "./notifications/index";
+
+export type {
+  NotificationChannel,
+  WorkitemEvent,
+  WorkitemEventMetadata,
+  NotificationPayload,
+  UserNotificationPreferences,
+  ChannelHandler,
+  RecipientInfo,
+} from "./notifications/index";
+
+// CRITICAL: Force execution of initialization code in notifications/index.ts
+// This ensures channel handlers are registered with the dispatcher
+import "./notifications/index";
+
+export type NotificationType =
+  | "task_assigned"
+  | "task_updated"
+  | "task_completed"
   | "task_status_changed"
   | "task_priority_changed"
   | "task_due_date_changed"
@@ -60,10 +124,10 @@ async function sendEmailNotification({
 }): Promise<void> {
   try {
     const { messaging, users, databases } = await createAdminClient();
-    
+
     // Get user details to get their email
     const user = await users.get(userId);
-    
+
     if (!user.email) {
       return;
     }
@@ -80,13 +144,13 @@ async function sendEmailNotification({
     }
 
     const taskUrl = `${process.env.NEXT_PUBLIC_APP_URL}/workspaces/${workspaceId}/tasks/${taskId}`;
-    
+
     // Get task name (use title as primary, fall back to name for compatibility)
     const emailTaskName = task.title || task.name || "Untitled Task";
-    
+
     // Generate appropriate email template based on notification type
     let emailBody: string;
-    
+
     switch (notificationType) {
       case "task_assigned":
         emailBody = taskAssignedTemplate({
@@ -99,7 +163,7 @@ async function sendEmailNotification({
           taskUrl,
         });
         break;
-        
+
       case "task_status_changed":
         emailBody = taskStatusChangedTemplate({
           updaterName: triggeredByName,
@@ -110,7 +174,7 @@ async function sendEmailNotification({
           taskUrl,
         });
         break;
-        
+
       case "task_completed":
         emailBody = taskCompletedTemplate({
           completerName: triggeredByName,
@@ -121,7 +185,7 @@ async function sendEmailNotification({
           taskUrl,
         });
         break;
-        
+
       case "task_priority_changed":
         emailBody = taskPriorityChangedTemplate({
           updaterName: triggeredByName,
@@ -132,7 +196,7 @@ async function sendEmailNotification({
           taskUrl,
         });
         break;
-        
+
       case "task_due_date_changed":
         emailBody = taskDueDateChangedTemplate({
           updaterName: triggeredByName,
@@ -143,7 +207,7 @@ async function sendEmailNotification({
           taskUrl,
         });
         break;
-        
+
       case "task_updated":
       default:
         emailBody = taskUpdatedTemplate({
@@ -210,6 +274,17 @@ export async function createNotification({
     ]
   );
 
+  // SOCKET PUSH: Fire-and-forget WebSocket notification
+  // Non-blocking, failures are logged but never thrown
+  // Import dynamically to avoid server-side issues
+  try {
+    const { pushNotificationToSocket } = await import("@/lib/socket");
+    pushNotificationToSocket(notification);
+  } catch {
+    // Silent failure - socket push is non-critical
+    console.debug("[createNotification] Socket push unavailable");
+  }
+
   // Send email notification asynchronously (don't await to avoid blocking)
   if (task && triggeredByName) {
     sendEmailNotification({
@@ -251,7 +326,7 @@ export async function notifyTaskAssignees({
   try {
     // Use admin client to ensure we can create notifications for any user
     const { databases: adminDatabases } = await createAdminClient();
-    
+
     const assigneeIds = task.assigneeIds || [];
 
     if (assigneeIds.length === 0) {
@@ -316,12 +391,12 @@ export async function notifyTaskAssignees({
     // Create notifications for each assignee's user ID
     const notificationPromises = members.documents.map(async (member) => {
       const userId = member.userId as string;
-      
+
       // Don't notify the user who made the change
       if (userId === triggeredByUserId) {
         return;
       }
-      
+
       try {
         await createNotification({
           databases: adminDatabases,
