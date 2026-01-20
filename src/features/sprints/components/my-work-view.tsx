@@ -47,6 +47,7 @@ import {
   PopulatedWorkItem
 } from "../types";
 import { useGetCustomColumns } from "@/features/custom-columns/api/use-get-custom-columns";
+import { useTaskPreviewModal } from "@/features/tasks/hooks/use-task-preview-modal";
 import { cn } from "@/lib/utils";
 import { isBefore, format } from "date-fns";
 
@@ -96,6 +97,9 @@ export const MyWorkView = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [projectFilter, setProjectFilter] = useState<string>("all");
+
+  // Task preview modal hook
+  const { open: openTaskPreview } = useTaskPreviewModal();
 
   const { data: projects } = useGetProjects({ workspaceId });
   const { mutate: updateWorkItem } = useUpdateWorkItem();
@@ -465,7 +469,7 @@ export const MyWorkView = () => {
                 const items = itemsByStatus[column.id] || [];
                 return (
                   <div
-                    key={column.id}
+                    key={`${column.id}-${column.isCustom ? "custom" : "std"}`}
                     className="flex-shrink-0 w-[280px] bg-gray-50 dark:bg-muted/30 rounded-xl flex flex-col h-[500px]"
                   >
                     {/* Column Header */}
@@ -516,6 +520,7 @@ export const MyWorkView = () => {
                                       workItem={item}
                                       workspaceId={workspaceId}
                                       isDragging={snapshot.isDragging}
+                                      onClick={() => openTaskPreview(item.$id)}
                                     />
                                   </div>
                                 )}
@@ -551,6 +556,7 @@ export const MyWorkView = () => {
                     workItem={item}
                     workspaceId={workspaceId}
                     customColumns={customColumns}
+                    onClick={() => openTaskPreview(item.$id)}
                   />
                 ))}
               </div>
@@ -567,6 +573,7 @@ interface MyWorkKanbanCardProps {
   workItem: PopulatedWorkItem;
   workspaceId: string;
   isDragging?: boolean;
+  onClick?: () => void;
 }
 
 const typeColors: Record<string, string> = {
@@ -584,10 +591,21 @@ const priorityColors: Record<string, string> = {
   URGENT: "text-red-600 bg-red-50",
 };
 
-const MyWorkKanbanCard = ({ workItem, isDragging }: MyWorkKanbanCardProps) => {
+const MyWorkKanbanCard = ({ workItem, isDragging, onClick }: MyWorkKanbanCardProps) => {
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't trigger click when interacting with menu
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-radix-dropdown-menu-trigger]') || target.closest('[role="menu"]')) {
+      return;
+    }
+    onClick?.();
+  };
+
   return (
-    <div className={cn(
-      "bg-white dark:bg-card rounded-xl border shadow-sm hover:shadow-md transition-shadow cursor-grab",
+    <div 
+      onClick={handleCardClick}
+      className={cn(
+      "bg-white dark:bg-card rounded-xl border shadow-sm hover:shadow-md transition-shadow cursor-pointer",
       isDragging && "shadow-lg ring-2 ring-primary/20 rotate-2"
     )}>
       <div className="p-3">
@@ -647,13 +665,23 @@ interface MyWorkListItemProps {
   workItem: PopulatedWorkItem;
   workspaceId: string;
   customColumns: Array<{ $id: string; name: string; color: string }>;
+  onClick?: () => void;
 }
 
-const MyWorkListItem = ({ workItem, customColumns }: MyWorkListItemProps) => {
+const MyWorkListItem = ({ workItem, customColumns, onClick }: MyWorkListItemProps) => {
   const today = new Date();
   const isOverdue = workItem.dueDate &&
     workItem.status !== WorkItemStatus.DONE &&
     isBefore(new Date(workItem.dueDate), today);
+
+  const handleRowClick = (e: React.MouseEvent) => {
+    // Don't trigger click when interacting with menu
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-radix-dropdown-menu-trigger]') || target.closest('[role="menu"]')) {
+      return;
+    }
+    onClick?.();
+  };
 
   // Get status display info - check if it's a custom column
   const getStatusDisplay = () => {
@@ -682,7 +710,10 @@ const MyWorkListItem = ({ workItem, customColumns }: MyWorkListItemProps) => {
   const statusDisplay = getStatusDisplay();
 
   return (
-    <div className="grid grid-cols-12 gap-2 px-3 py-2.5 hover:bg-muted/30 transition-colors cursor-pointer items-center group">
+    <div 
+      onClick={handleRowClick}
+      className="grid grid-cols-12 gap-2 px-3 py-2.5 hover:bg-muted/30 transition-colors cursor-pointer items-center group"
+    >
       {/* Work Item Info */}
       <div className="col-span-5 flex items-center gap-2 min-w-0">
         <div className={cn("size-1.5 rounded-full flex-shrink-0", typeColors[workItem.type] || "bg-gray-400")} />
