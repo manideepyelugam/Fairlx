@@ -12,6 +12,7 @@ import {
 } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
+import { getPublicFileUrl } from "@/lib/email-templates/utils";
 import { MemberRole } from "@/features/members/types";
 // REMOVED LEGACY IMPORT - NOW USING PERMISSION RESOLVER
 // import { hasOrgPermission } from "@/lib/permission-matrix"; 
@@ -135,13 +136,8 @@ const app = new Hono()
                     ID.unique(),
                     image
                 );
-                const arrayBuffer = await storage.getFilePreview(
-                    IMAGES_BUCKET_ID,
-                    file.$id
-                );
-                uploadedImageUrl = `data:image/png;base64,${Buffer.from(
-                    arrayBuffer
-                ).toString("base64")}`;
+                // Use public file URL instead of base64 - works in email clients
+                uploadedImageUrl = getPublicFileUrl(file.$id, IMAGES_BUCKET_ID);
             }
 
             // Create organization
@@ -228,13 +224,8 @@ const app = new Hono()
                     ID.unique(),
                     image
                 );
-                const arrayBuffer = await storage.getFilePreview(
-                    IMAGES_BUCKET_ID,
-                    file.$id
-                );
-                uploadedImageUrl = `data:image/png;base64,${Buffer.from(
-                    arrayBuffer
-                ).toString("base64")}`;
+                // Use public file URL instead of base64 - works in email clients
+                uploadedImageUrl = getPublicFileUrl(file.$id, IMAGES_BUCKET_ID);
             }
 
             const updateData: Record<string, unknown> = {};
