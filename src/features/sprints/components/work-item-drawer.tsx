@@ -194,24 +194,30 @@ export const WorkItemDrawer = ({
                 Assignee
               </Label>
               <div className="flex items-center gap-2">
-                {workItem.assignees && workItem.assignees.length > 0 ? (
-                  workItem.assignees.map((assignee) => (
-                    <div key={assignee.$id} className="flex items-center gap-2">
-                      <Avatar className="size-8">
-                        <AvatarImage src={assignee.profileImageUrl || undefined} />
-                        <AvatarFallback className="text-xs">
-                          {assignee.name.substring(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm">{assignee.name}</span>
-                    </div>
-                  ))
-                ) : (
-                  <Button variant="outline" size="sm" className="h-8 text-xs">
-                    <Plus className="size-3 mr-1" />
-                    Assign
-                  </Button>
-                )}
+                {/* Filter null assignees to handle deleted users or permission-masked relations */}
+                {(() => {
+                  const validAssignees = workItem.assignees?.filter(
+                    (a): a is NonNullable<typeof a> => a != null && typeof a.$id === "string"
+                  ) ?? [];
+                  return validAssignees.length > 0 ? (
+                    validAssignees.map((assignee) => (
+                      <div key={assignee.$id} className="flex items-center gap-2">
+                        <Avatar className="size-8">
+                          <AvatarImage src={assignee.profileImageUrl || undefined} />
+                          <AvatarFallback className="text-xs">
+                            {(assignee.name ?? "?").substring(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm">{assignee.name}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <Button variant="outline" size="sm" className="h-8 text-xs">
+                      <Plus className="size-3 mr-1" />
+                      Assign
+                    </Button>
+                  );
+                })()}
               </div>
             </div>
 
@@ -315,9 +321,9 @@ export const WorkItemDrawer = ({
 
           {/* Subtasks Tab */}
           <TabsContent value="subtasks" className="space-y-4 mt-6">
-            <SubtasksList 
-              workItemId={workItem.$id} 
-              workspaceId={workItem.workspaceId} 
+            <SubtasksList
+              workItemId={workItem.$id}
+              workspaceId={workItem.workspaceId}
             />
           </TabsContent>
 
