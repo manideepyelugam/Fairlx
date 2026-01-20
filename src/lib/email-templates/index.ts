@@ -1,3 +1,4 @@
+export { getEmailSafeLogoUrl, getPublicFileUrl } from "./utils";
 export { taskAssignedTemplate } from "./task-assigned";
 export { taskStatusChangedTemplate } from "./task-status-changed";
 export { taskCompletedTemplate } from "./task-completed";
