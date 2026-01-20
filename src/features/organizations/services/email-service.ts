@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/appwrite";
+import { getEmailSafeLogoUrl } from "@/lib/email-templates/utils";
 
 /**
  * Email Service for Organization Member Notifications
@@ -8,18 +9,18 @@ import { createAdminClient } from "@/lib/appwrite";
  */
 
 interface WelcomeEmailParams {
-    recipientEmail: string;
-    recipientName: string;
-    recipientUserId: string; // Added userId for Appwrite Messaging
-    organizationName: string;
-    tempPassword: string;
-    loginUrl: string;
-    /** Optional first-login magic link token (raw, not hashed) */
-    firstLoginToken?: string;
-    /** App base URL for constructing magic link */
-    appUrl?: string;
-    /** Optional logo URL for organization/workspace branding in email */
-    logoUrl?: string;
+  recipientEmail: string;
+  recipientName: string;
+  recipientUserId: string; // Added userId for Appwrite Messaging
+  organizationName: string;
+  tempPassword: string;
+  loginUrl: string;
+  /** Optional first-login magic link token (raw, not hashed) */
+  firstLoginToken?: string;
+  /** App base URL for constructing magic link */
+  appUrl?: string;
+  /** Optional logo URL for organization/workspace branding in email */
+  logoUrl?: string;
 }
 
 /**
@@ -30,36 +31,39 @@ interface WelcomeEmailParams {
  * If firstLoginToken is provided, includes a magic link option.
  */
 export async function sendWelcomeEmail({
-    recipientEmail,
-    recipientName,
-    recipientUserId,
-    organizationName,
-    tempPassword,
-    loginUrl,
-    firstLoginToken,
-    appUrl,
-    logoUrl,
+  recipientEmail,
+  recipientName,
+  recipientUserId,
+  organizationName,
+  tempPassword,
+  loginUrl,
+  firstLoginToken,
+  appUrl,
+  logoUrl,
 }: WelcomeEmailParams): Promise<{ success: boolean; error?: string }> {
-    try {
-        const { messaging } = await createAdminClient();
-        const { ID } = await import("node-appwrite");
+  try {
+    const { messaging } = await createAdminClient();
+    const { ID } = await import("node-appwrite");
 
-        const subject = `Welcome to ${organizationName}!`;
+    // Sanitize logo URL - email clients block base64 data URLs
+    const emailSafeLogoUrl = getEmailSafeLogoUrl(logoUrl);
 
-        // Theme colors
-        const primaryBlue = "#2563eb";
-        const darkText = "#111827";
-        const bodyText = "#374151";
-        const mutedText = "#6b7280";
-        const lightText = "#9ca3af";
-        const bgMain = "#f8fafc";
-        const bgLight = "#f1f5f9";
-        const cardBg = "#ffffff";
-        const border = "#e2e8f0";
-        const fontStack = "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+    const subject = `Welcome to ${organizationName}!`;
 
-        // Build magic link section if token provided
-        const magicLinkSection = firstLoginToken && appUrl ? `
+    // Theme colors
+    const primaryBlue = "#2563eb";
+    const darkText = "#111827";
+    const bodyText = "#374151";
+    const mutedText = "#6b7280";
+    const lightText = "#9ca3af";
+    const bgMain = "#f8fafc";
+    const bgLight = "#f1f5f9";
+    const cardBg = "#ffffff";
+    const border = "#e2e8f0";
+    const fontStack = "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+
+    // Build magic link section if token provided
+    const magicLinkSection = firstLoginToken && appUrl ? `
 <!-- Magic Link Section -->
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 24px;">
   <tr>
@@ -85,7 +89,7 @@ export async function sendWelcomeEmail({
 </table>
         ` : "";
 
-        const body = `
+    const body = `
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -126,11 +130,11 @@ export async function sendWelcomeEmail({
                   <td style="padding: 32px 32px 24px 32px; text-align: center; border-bottom: 1px solid ${border};">
                     <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto 16px auto;">
                       <tr>
-                        <td style="width: 56px; height: 56px; background-color: ${logoUrl ? 'transparent' : primaryBlue}; border-radius: 12px; text-align: center; vertical-align: middle; overflow: hidden;">
-                          ${logoUrl
-                ? `<img src="${logoUrl}" alt="${organizationName}" width="56" height="56" style="display: block; width: 56px; height: 56px; border-radius: 12px; object-fit: cover;" />`
-                : `<span style="font-size: 24px; line-height: 56px; color: #ffffff; font-weight: 700; font-family: ${fontStack};">${organizationName.charAt(0).toUpperCase()}</span>`
-            }
+                        <td style="width: 56px; height: 56px; background-color: ${emailSafeLogoUrl ? 'transparent' : primaryBlue}; border-radius: 12px; text-align: center; vertical-align: middle; overflow: hidden;">
+                          ${emailSafeLogoUrl
+        ? `<img src="${emailSafeLogoUrl}" alt="${organizationName}" width="56" height="56" style="display: block; width: 56px; height: 56px; border-radius: 12px; object-fit: cover;" />`
+        : `<span style="font-size: 24px; line-height: 56px; color: #ffffff; font-weight: 700; font-family: ${fontStack};">${organizationName.charAt(0).toUpperCase()}</span>`
+      }
                         </td>
                       </tr>
                     </table>
@@ -255,74 +259,74 @@ export async function sendWelcomeEmail({
 </html>
         `.trim();
 
-        // Send via Appwrite Messaging
-        // This requires an Email Provider (SMTP/Mailgun/SendGrid) configured in Appwrite Console
-        await messaging.createEmail(
-            ID.unique(),    // messageId
-            subject,        // subject
-            body,           // content
-            [],             // topics
-            [recipientUserId], // users (send to specific user ID)
-            [],             // targets
-            [],             // cc
-            [],             // bcc
-            [],             // attachments
-            false,          // draft (false = send immediately)
-            true            // html
-        );
+    // Send via Appwrite Messaging
+    // This requires an Email Provider (SMTP/Mailgun/SendGrid) configured in Appwrite Console
+    await messaging.createEmail(
+      ID.unique(),    // messageId
+      subject,        // subject
+      body,           // content
+      [],             // topics
+      [recipientUserId], // users (send to specific user ID)
+      [],             // targets
+      [],             // cc
+      [],             // bcc
+      [],             // attachments
+      false,          // draft (false = send immediately)
+      true            // html
+    );
 
-        console.log(`[Email Service] Welcome email sent to ${recipientEmail} (${recipientUserId})`);
+    console.log(`[Email Service] Welcome email sent to ${recipientEmail} (${recipientUserId})`);
 
-        return { success: true };
+    return { success: true };
 
-    } catch (error) {
-        console.error("[Email Service] Failed to send welcome email:", error);
+  } catch (error) {
+    console.error("[Email Service] Failed to send welcome email:", error);
 
-        // Log the content for debugging if sending fails (e.g. no provider)
-        console.log("[Email Service] FALLBACK - Welcome email content:", {
-            to: recipientEmail,
-            passwordIncluded: !!tempPassword,
-            hasMagicLink: !!firstLoginToken,
-        });
+    // Log the content for debugging if sending fails (e.g. no provider)
+    console.log("[Email Service] FALLBACK - Welcome email content:", {
+      to: recipientEmail,
+      passwordIncluded: !!tempPassword,
+      hasMagicLink: !!firstLoginToken,
+    });
 
-        const errorMessage = error instanceof Error ? error.message : "Unknown error";
-        return { success: false, error: errorMessage };
-    }
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    return { success: false, error: errorMessage };
+  }
 }
 
 /**
  * Log email sent event to audit (non-blocking)
  */
 export async function logEmailSent({
-    organizationId,
-    recipientUserId,
-    recipientEmail,
-    emailType,
+  organizationId,
+  recipientUserId,
+  recipientEmail,
+  emailType,
 }: {
-    organizationId: string;
-    recipientUserId: string;
-    recipientEmail: string;
-    emailType: "welcome" | "password_reset" | "notification";
+  organizationId: string;
+  recipientUserId: string;
+  recipientEmail: string;
+  emailType: "welcome" | "password_reset" | "notification";
 }): Promise<void> {
-    try {
-        const { logOrgAudit, OrgAuditAction } = await import("@/features/organizations/audit");
-        const { databases } = await createAdminClient();
+  try {
+    const { logOrgAudit, OrgAuditAction } = await import("@/features/organizations/audit");
+    const { databases } = await createAdminClient();
 
-        await logOrgAudit({
-            databases,
-            organizationId,
-            actorUserId: "system",
-            actionType: OrgAuditAction.MEMBER_ADDED, // Could add EMAIL_SENT action
-            metadata: {
-                eventType: "email_sent",
-                emailType,
-                recipientUserId,
-                recipientEmail,
-                timestamp: new Date().toISOString(),
-            },
-        });
-    } catch (error) {
-        // Non-blocking - just log if audit fails
-        console.error("[Email Service] Failed to log email event:", error);
-    }
+    await logOrgAudit({
+      databases,
+      organizationId,
+      actorUserId: "system",
+      actionType: OrgAuditAction.MEMBER_ADDED, // Could add EMAIL_SENT action
+      metadata: {
+        eventType: "email_sent",
+        emailType,
+        recipientUserId,
+        recipientEmail,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    // Non-blocking - just log if audit fails
+    console.error("[Email Service] Failed to log email event:", error);
+  }
 }
