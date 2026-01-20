@@ -65,7 +65,7 @@ export function TimelineHeader({
       item.startDate ? format(new Date(item.startDate), "yyyy-MM-dd") : "",
       item.dueDate ? format(new Date(item.dueDate), "yyyy-MM-dd") : "",
       `${item.progress}%`,
-      item.assignees?.map(a => a.name).join("; ") || "",
+      item.assignees?.filter(a => a != null && a.name).map(a => a.name).join("; ") || "",
       item.labels?.join("; ") || "",
     ]);
 

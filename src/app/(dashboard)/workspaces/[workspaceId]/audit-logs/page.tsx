@@ -25,7 +25,7 @@ type PageData = {
 
 export default function AuditLogsPage() {
   const workspaceId = useWorkspaceId();
-  
+
   const [selectedType, setSelectedType] = useState<ActivityType | "all">("all");
   const [selectedAction, setSelectedAction] = useState<"created" | "updated" | "deleted" | "all">("all");
   const [selectedUser, setSelectedUser] = useState<string>("all");
@@ -58,9 +58,9 @@ export default function AuditLogsPage() {
   }, [dateRange]); // Only recalculate when dateRange changes
 
   // Fetch activities with infinite query
-  const { 
-    data, 
-    isLoading: isLoadingActivities, 
+  const {
+    data,
+    isLoading: isLoadingActivities,
     error: activitiesError,
     fetchNextPage,
     hasNextPage,
@@ -128,7 +128,7 @@ export default function AuditLogsPage() {
   const uniqueUsers = useMemo(() => {
     if (!allActivities) return [];
     const usersMap = new Map<string, { id: string; name: string }>();
-    
+
     allActivities.forEach((activity) => {
       if (activity.userId && activity.userName) {
         usersMap.set(activity.userId, {
@@ -137,8 +137,8 @@ export default function AuditLogsPage() {
         });
       }
     });
-    
-    return Array.from(usersMap.values()).sort((a, b) => 
+
+    return Array.from(usersMap.values()).sort((a, b) =>
       a.name.localeCompare(b.name)
     );
   }, [allActivities]);
@@ -147,14 +147,14 @@ export default function AuditLogsPage() {
   const uniqueStatuses = useMemo(() => {
     if (!allActivities) return [];
     const statuses = new Set<string>();
-    
+
     allActivities.forEach((activity) => {
       const status = activity.metadata?.status as string | undefined;
       if (status) {
         statuses.add(status);
       }
     });
-    
+
     return Array.from(statuses).sort();
   }, [allActivities]);
 
@@ -162,14 +162,14 @@ export default function AuditLogsPage() {
   const uniquePriorities = useMemo(() => {
     if (!allActivities) return [];
     const priorities = new Set<string>();
-    
+
     allActivities.forEach((activity) => {
       const priority = activity.metadata?.priority as string | undefined;
       if (priority) {
         priorities.add(priority);
       }
     });
-    
+
     return Array.from(priorities).sort();
   }, [allActivities]);
 
@@ -217,7 +217,7 @@ export default function AuditLogsPage() {
       {/* Header Section */}
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
         <div className="flex items-center gap-3 mb-4">
-         
+
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Audit Log</h1>
             <p className="text-sm mt-1 text-muted-foreground">
@@ -225,7 +225,7 @@ export default function AuditLogsPage() {
             </p>
           </div>
         </div>
-        
+
         {/* View Mode Toggle */}
         <div className="flex items-center gap-3">
           <div className="flex items-center rounded-lg border bg-muted/30 p-0.5">
@@ -261,13 +261,13 @@ export default function AuditLogsPage() {
               </div>
               <div className="min-w-0 ">
                 <p className="text-xs font-medium text-muted-foreground truncate">Total Activities</p>
-                <h1 className="text-sm font-medium mt-0.5">
+                <div className="text-sm font-medium mt-0.5">
                   {isLoadingStats ? (
                     <Skeleton className="h-6 w-10" />
                   ) : (
                     stats?.totalActivities || 0
                   )}
-                </h1>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -280,13 +280,13 @@ export default function AuditLogsPage() {
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-medium text-muted-foreground truncate">Task Changes</p>
-                <p className="text-sm font-medium mt-0.5">
+                <div className="text-sm font-medium mt-0.5">
                   {isLoadingStats ? (
                     <Skeleton className="h-6 w-10" />
                   ) : (
                     stats?.activitiesByType?.task || 0
                   )}
-                </p>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -299,13 +299,13 @@ export default function AuditLogsPage() {
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-medium text-muted-foreground truncate">Project Changes</p>
-                <p className="text-sm font-medium mt-0.5">
+                <div className="text-sm font-medium mt-0.5">
                   {isLoadingStats ? (
                     <Skeleton className="h-6 w-10" />
                   ) : (
                     stats?.activitiesByType?.project || 0
                   )}
-                </p>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -340,9 +340,9 @@ export default function AuditLogsPage() {
                 </Badge>
               )}
             </div>
-            
+
             <div className="h-4 w-px bg-border" />
-            
+
             <Select value={selectedType} onValueChange={(value) => setSelectedType(value as ActivityType | "all")}>
               <SelectTrigger className="h-8 w-[130px] text-xs">
                 <SelectValue placeholder="All types" />
@@ -484,7 +484,7 @@ export default function AuditLogsPage() {
             ) : (
               <>
                 <ActivityTableView activities={activities || []} />
-                
+
                 {/* Load More Button */}
                 {hasNextPage && (
                   <div className="flex justify-center mt-6 pt-4 border-t">

@@ -385,7 +385,7 @@ function TaskBar({
   const typeStyle = TYPE_COLORS[item.type] || TYPE_COLORS.TASK;
   const priorityStyle = PRIORITY_COLORS[item.priority] || PRIORITY_COLORS.MEDIUM;
   const statusStyle = STATUS_COLORS[item.status] || STATUS_COLORS.TODO;
-  
+
   // Use different visual treatment based on status
   const isDone = item.status === "DONE";
   const isInProgress = item.status === "IN_PROGRESS";
@@ -491,14 +491,18 @@ function TaskBar({
             </svg>
             {item.startDate && format(new Date(item.startDate), "MMM d")} - {item.dueDate && format(new Date(item.dueDate), "MMM d, yyyy")}
           </div>
-          {item.assignees && item.assignees.length > 0 && (
-            <div className="text-xs flex items-center gap-1">
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-              {item.assignees.map((a) => a.name).join(", ")}
-            </div>
-          )}
+          {/* Filter null assignees to handle deleted users or permission-masked relations */}
+          {(() => {
+            const validAssignees = item.assignees?.filter(a => a != null && a.name) ?? [];
+            return validAssignees.length > 0 ? (
+              <div className="text-xs flex items-center gap-1">
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                {validAssignees.map((a) => a.name).join(", ")}
+              </div>
+            ) : null;
+          })()}
           <div className="flex items-center gap-3 text-xs">
             <span className={cn("px-1.5 py-0.5 rounded", statusStyle.bg, statusStyle.text)}>
               {item.status.replace(/_/g, " ")}

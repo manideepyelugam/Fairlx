@@ -145,40 +145,45 @@ export function TimelineDetailsPanel({
 
           {/* Details Grid */}
           <div className="space-y-4">
-            {/* Assignees */}
+            {/* Assignees - filter out null entries from partially populated relations */}
             <div className="flex items-start gap-3">
               <User className="h-4 w-4 text-muted-foreground mt-1" />
               <div className="flex-1 space-y-2">
                 <label className="text-sm font-medium">Assignees</label>
-                {item.assignees && item.assignees.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {item.assignees.map((assignee) => (
-                      <div
-                        key={assignee.$id}
-                        className="flex items-center gap-2 bg-muted px-2 py-1 rounded"
-                      >
-                        <Avatar className="h-5 w-5">
-                          {assignee.profileImageUrl ? (
-                            <AvatarImage
-                              src={assignee.profileImageUrl}
-                              alt={assignee.name}
-                            />
-                          ) : null}
-                          <AvatarFallback className="text-xs">
-                            {assignee.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")
-                              .toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-xs">{assignee.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Unassigned</p>
-                )}
+                {(() => {
+                  const validAssignees = item.assignees?.filter(
+                    (a): a is NonNullable<typeof a> => a != null && typeof a.name === "string"
+                  ) ?? [];
+                  return validAssignees.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {validAssignees.map((assignee) => (
+                        <div
+                          key={assignee.$id}
+                          className="flex items-center gap-2 bg-muted px-2 py-1 rounded"
+                        >
+                          <Avatar className="h-5 w-5">
+                            {assignee.profileImageUrl ? (
+                              <AvatarImage
+                                src={assignee.profileImageUrl}
+                                alt={assignee.name}
+                              />
+                            ) : null}
+                            <AvatarFallback className="text-xs">
+                              {assignee.name
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")
+                                .toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs">{assignee.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Unassigned</p>
+                  );
+                })()}
               </div>
             </div>
 

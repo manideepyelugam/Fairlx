@@ -110,7 +110,13 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails }
 
   const TypeIcon = typeConfig[workItem.type].icon;
   const priority = priorityConfig[workItem.priority];
-  const status = statusConfig[workItem.status];
+  // Status may be a custom column ID not in statusConfig, so provide a fallback
+  const status = statusConfig[workItem.status as WorkItemStatus] ?? {
+    label: workItem.status,
+    dot: "bg-gray-400",
+    bg: "bg-gray-100 dark:bg-gray-700",
+    text: "text-gray-600",
+  };
 
   const handleStatusChange = (status: string) => {
     updateWorkItem({
@@ -215,19 +221,24 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails }
               </Button>
             )}
 
-            {/* Assignees */}
-            {workItem.assignees?.length ? (
-              workItem.assignees.slice(0, 3).map((a) => (
-                <Avatar key={a.$id} className="size-5">
-                  <AvatarImage src={a.profileImageUrl || undefined} />
-                  <AvatarFallback>{a.name[0]}</AvatarFallback>
-                </Avatar>
-              ))
-            ) : (
-              <Button size="icon" variant="ghost" onClick={() => setAssignAssigneeOpen(true)}>
-                <Users className="size-4" />
-              </Button>
-            )}
+            {/* Assignees - filter null entries before iterating */}
+            {(() => {
+              const validAssignees = workItem.assignees?.filter(
+                (a): a is NonNullable<typeof a> => a != null && typeof a.$id === "string"
+              ) ?? [];
+              return validAssignees.length > 0 ? (
+                validAssignees.slice(0, 3).map((a) => (
+                  <Avatar key={a.$id} className="size-5">
+                    <AvatarImage src={a.profileImageUrl || undefined} />
+                    <AvatarFallback>{a.name?.[0] ?? "?"}</AvatarFallback>
+                  </Avatar>
+                ))
+              ) : (
+                <Button size="icon" variant="ghost" onClick={() => setAssignAssigneeOpen(true)}>
+                  <Users className="size-4" />
+                </Button>
+              );
+            })()}
           </div>
         </div>
       </div>

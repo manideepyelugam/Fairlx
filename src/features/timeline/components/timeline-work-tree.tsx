@@ -121,7 +121,7 @@ function EpicGroupRow({
   onToggleExpanded,
 }: EpicGroupRowProps) {
   const { epic, tasks, isExpanded } = epicGroup;
-  
+
   // Check if this is a virtual "No Epic" group
   const isNoEpicGroup = epic.id.startsWith('no-epic-');
 
@@ -297,29 +297,35 @@ function WorkItemRow({
       </Badge>
 
       {/* Assignee Avatars - compact */}
-      {item.assignees && item.assignees.length > 0 && (
-        <div className="flex -space-x-1 flex-shrink-0">
-          {item.assignees.slice(0, 2).map((assignee, index) => (
-            <Avatar key={index} className="h-5 w-5 border border-white">
-              {assignee.profileImageUrl ? (
-                <AvatarImage src={assignee.profileImageUrl} alt={assignee.name} />
-              ) : null}
-              <AvatarFallback className="text-[10px] bg-blue-100">
-                {assignee.name
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")
-                  .toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-          ))}
-          {item.assignees.length > 2 && (
-            <div className="h-5 w-5 rounded-full bg-gray-200 border border-white flex items-center justify-center text-[10px]">
-              +{item.assignees.length - 2}
-            </div>
-          )}
-        </div>
-      )}
+      {/* Filter out null/undefined assignees to handle deleted users, permission-masked relations, or legacy data */}
+      {(() => {
+        const validAssignees = item.assignees?.filter(
+          (a): a is NonNullable<typeof a> => a != null && typeof a.name === "string"
+        ) ?? [];
+        return validAssignees.length > 0 ? (
+          <div className="flex -space-x-1 flex-shrink-0">
+            {validAssignees.slice(0, 2).map((assignee, index) => (
+              <Avatar key={index} className="h-5 w-5 border border-white">
+                {assignee.profileImageUrl ? (
+                  <AvatarImage src={assignee.profileImageUrl} alt={assignee.name} />
+                ) : null}
+                <AvatarFallback className="text-[10px] bg-blue-100">
+                  {assignee.name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            ))}
+            {validAssignees.length > 2 && (
+              <div className="h-5 w-5 rounded-full bg-gray-200 border border-white flex items-center justify-center text-[10px]">
+                +{validAssignees.length - 2}
+              </div>
+            )}
+          </div>
+        ) : null;
+      })()}
     </div>
   );
 }

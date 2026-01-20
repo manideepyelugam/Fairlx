@@ -1610,11 +1610,14 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                     <div className="space-y-2">
                       <Label>Assignees</Label>
                       <div className="flex gap-2">
-                        {selectedItem.assignees?.map((assignee) => (
+                        {/* Filter null assignees to handle deleted users or permission-masked relations */}
+                        {selectedItem.assignees?.filter(
+                          (a): a is NonNullable<typeof a> => a != null && typeof a.$id === "string"
+                        ).map((assignee) => (
                           <Avatar key={assignee.$id} className="size-8">
                             <AvatarImage src="" />
                             <AvatarFallback className="text-xs">
-                              {assignee.name?.charAt(0).toUpperCase()}
+                              {(assignee.name ?? "?").charAt(0).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                         ))}
