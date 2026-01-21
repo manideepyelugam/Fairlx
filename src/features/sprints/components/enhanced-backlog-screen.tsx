@@ -76,6 +76,7 @@ import { CreateEpicDialog } from "./create-epic-dialog";
 import { WorkItemIcon } from "@/features/timeline/components/work-item-icon";
 import { useGetProject } from "@/features/projects/api/use-get-project";
 import { useGetCustomColumns } from "@/features/custom-columns/api/use-get-custom-columns";
+import { useCreateTaskModal } from "@/features/tasks/hooks/use-create-task-modal";
 import { SelectSeparator } from "@/components/ui/select";
 import { snakeCaseToTitleCase } from "@/lib/utils";
 import * as Icons from "react-icons/ai";
@@ -127,7 +128,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   const [sprintSettingsId, setSprintSettingsId] = useState<string | null>(null);
   const [isCreateEpicDialogOpen, setIsCreateEpicDialogOpen] = useState(false);
 
-
+  const { open: openCreateTaskModal } = useCreateTaskModal();
 
   const { can } = usePermission();
 
@@ -553,7 +554,18 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                     onClick={() => setIsCreatingInBacklog(true)}
                   >
                     <Plus className="w-4 h-4 mr-2" />
-                    Create work item
+                    Quick create
+                  </Button>
+                )}
+                {can(PERMISSIONS.WORKITEM_CREATE) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={openCreateTaskModal}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Full Workitem
                   </Button>
                 )}
                 {can(PERMISSIONS.SPRINT_CREATE) && (

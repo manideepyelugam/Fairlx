@@ -70,6 +70,7 @@ export const CreateTaskForm = ({
     resolver: zodResolver(createTaskFormSchema),
     defaultValues: {
       name: "",
+      type: "TASK", // Default to TASK type
       description: "",
       assigneeIds: [],
       labels: [],

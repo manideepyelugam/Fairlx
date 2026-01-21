@@ -106,6 +106,7 @@ const workItemToTask = (workItem: PopulatedWorkItem): PopulatedTask => {
     $permissions: workItem.$permissions,
     title: workItem.title,
     name: workItem.title,
+    type: workItem.type || "TASK", // Include work item type with fallback
     status: workItemStatusToTaskStatus(workItem.status),
     workspaceId: workItem.workspaceId,
     assigneeId: firstAssigneeId,
