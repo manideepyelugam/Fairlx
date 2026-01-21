@@ -84,8 +84,8 @@ const app = new Hono()
           deadline: deadline || undefined,
           imageUrl: uploadedImageUrl,
           workspaceId,
-          // Normalize spaceId
-          spaceId: (spaceId === null || spaceId === "" || spaceId === "null") ? null : spaceId,
+          // Normalize spaceId (handle null, empty, "null", "undefined" strings)
+          spaceId: (spaceId === null || spaceId === "" || spaceId === "null" || spaceId === "undefined") ? null : spaceId,
         }
       );
 
@@ -259,9 +259,9 @@ const app = new Hono()
         updateData.deadline = deadline || null;
       }
 
-      // Normalise space/workflow IDs
+      // Normalise space/workflow IDs (handle null, empty, "null", "undefined" strings)
       if (spaceId !== undefined) {
-        updateData.spaceId = (spaceId === null || spaceId === "" || spaceId === "null") ? null : spaceId;
+        updateData.spaceId = (spaceId === null || spaceId === "" || spaceId === "null" || spaceId === "undefined") ? null : spaceId;
       }
 
       if (workflowId !== undefined) {

@@ -198,7 +198,7 @@ const app = new Hono()
         name: data.name,
         description: data.description && data.description.trim() !== "" ? data.description : undefined,
         workspaceId: data.workspaceId,
-        spaceId: (data.spaceId === null || data.spaceId === "" || data.spaceId === "null") ? null : data.spaceId,
+        spaceId: (data.spaceId === null || data.spaceId === "" || data.spaceId === "null" || data.spaceId === "undefined") ? null : data.spaceId,
         programId: data.programId || undefined,
         teamLeadId: data.teamLeadId || undefined,
         imageUrl: data.imageUrl && data.imageUrl.trim() !== "" ? data.imageUrl : undefined,
@@ -323,9 +323,9 @@ const app = new Hono()
           lastModifiedBy: user.$id,
         };
 
-        // Handle spaceId - convert null to undefined
+        // Handle spaceId - convert null, empty, "null", "undefined" to undefined
         if (updateSpaceId !== undefined) {
-          updateData.spaceId = updateSpaceId === null ? undefined : updateSpaceId;
+          updateData.spaceId = (updateSpaceId === null || updateSpaceId === "" || updateSpaceId === "null" || updateSpaceId === "undefined") ? undefined : updateSpaceId;
         }
 
         // Handle empty imageUrl

@@ -67,7 +67,8 @@ export const CreateProjectForm = ({ onCancel, initialSpaceId }: CreateProjectFor
       ...values,
       workspaceId,
       image: values.image instanceof File ? values.image : "",
-      spaceId: values.spaceId || undefined,
+      // Use empty string instead of null/undefined to avoid type issues
+      spaceId: values.spaceId || "",
     };
 
     mutate(
