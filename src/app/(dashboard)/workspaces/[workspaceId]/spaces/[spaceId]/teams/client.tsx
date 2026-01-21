@@ -71,7 +71,7 @@ export const SpaceTeamsClient = () => {
 
   // Get teams without a space (available to add)
   const availableTeams = useMemo(() => {
-    return allTeams.filter(team => !team.spaceId || team.spaceId === null || team.spaceId === "");
+    return allTeams.filter(team => !team.spaceId || team.spaceId === null || team.spaceId === "" || team.spaceId === "undefined");
   }, [allTeams]);
 
   // Statistics
