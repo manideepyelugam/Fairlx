@@ -125,6 +125,7 @@ export const SpaceIdClient = () => {
                         project.spaceId === undefined ||
                         project.spaceId === "" ||
                         project.spaceId === "null" ||
+                        project.spaceId === "undefined" ||
                         (typeof project.spaceId === 'string' && project.spaceId.trim() === "");
       return hasNoSpace;
     });
@@ -136,7 +137,7 @@ export const SpaceIdClient = () => {
 
   // Get teams without a space (available to add)
   const availableTeams = useMemo(() => {
-    return allTeams.filter(team => !team.spaceId || team.spaceId === null || team.spaceId === "");
+    return allTeams.filter(team => !team.spaceId || team.spaceId === null || team.spaceId === "" || team.spaceId === "undefined");
   }, [allTeams]);
 
   if (isLoadingSpace || isLoadingProjects || isLoadingSpaceTeams) {
