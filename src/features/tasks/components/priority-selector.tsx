@@ -34,7 +34,7 @@ const PriorityIcon = ({ priority, className, color }: PriorityIconProps) => {
       case TaskPriority.HIGH:
         return "text-orange-500";
       case TaskPriority.URGENT:
-        return "text-red-500";
+        return "text-red-900";
       default:
         return "text-gray-500";
     }
@@ -76,15 +76,17 @@ export const PriorityBadge = ({ priority, className, color }: PriorityBadgeProps
       case TaskPriority.LOW:
         return "secondary";
       case TaskPriority.MEDIUM:
-        return "default";
+        return "secondary";
       case TaskPriority.HIGH:
-        return "destructive";
+        return "secondary";
       case TaskPriority.URGENT:
         return "destructive";
       default:
         return "secondary";
     }
   };
+const formatPriorityLabel = (value: string) =>
+  value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
 
   return (
     <Badge
@@ -92,8 +94,8 @@ export const PriorityBadge = ({ priority, className, color }: PriorityBadgeProps
       className={cn("text-xs", className)}
       style={color ? { borderColor: color, color: color, backgroundColor: `${color}1A` } : undefined}
     >
-      <PriorityIcon priority={priority} className="text-xs mr-0.5" color={color} />
-      <p className="text-xs">{priority}</p>
+      <PriorityIcon priority={priority} className="text-[8px] mr-1" color={color} />
+      <p className="text-[11px] font-medium ">{formatPriorityLabel(String(priority))}</p>
     </Badge>
   );
 };

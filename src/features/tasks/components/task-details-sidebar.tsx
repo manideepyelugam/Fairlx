@@ -36,6 +36,7 @@ import { useGetWorkflowStatuses } from "@/features/workflows/api/use-get-workflo
 import { useUpdateTask } from "../api/use-update-task";
 import { PopulatedTask, TaskStatus, TaskPriority } from "../types";
 import { toast } from "sonner";
+import { WorkItemIcon } from "@/features/timeline/components/work-item-icon";
 
 interface TaskDetailsSidebarProps {
   task: PopulatedTask;
@@ -125,6 +126,15 @@ const labelColors: Record<string, string> = {
 
 const suggestedLabels = ["Bug", "Feature", "Improvement"];
 const allLabels = ["Feature", "Improvement", "Documentation", "Design"];
+
+// Default work item types (stable constant to avoid recreating inside component)
+const defaultWorkItemTypes = [
+  { key: "TASK", label: "Task", icon: "check-square", color: "#3b82f6" },
+  { key: "BUG", label: "Bug", icon: "bug", color: "#ef4444" },
+  { key: "EPIC", label: "Epic", icon: "layers", color: "#a855f7" },
+  { key: "STORY", label: "Story", icon: "file-text", color: "#10b981" },
+  { key: "SUBTASK", label: "Subtask", icon: "arrow-right", color: "#6b7280" },
+];
 
 // Helper function to get status icon based on workflow status configuration
 const getStatusIcon = (iconName: string, color: string): React.ReactNode => {
@@ -227,6 +237,7 @@ export const TaskDetailsSidebar = ({
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [assigneeOpen, setAssigneeOpen] = useState(false);
   const [labelsOpen, setLabelsOpen] = useState(false);
+  const [typeOpen, setTypeOpen] = useState(false);
   const [projectOpen, setProjectOpen] = useState(true);
   const [labelOpen, setLabelOpen] = useState(true);
 
@@ -234,6 +245,7 @@ export const TaskDetailsSidebar = ({
   const [statusSearch, setStatusSearch] = useState("");
   const [assigneeSearch, setAssigneeSearch] = useState("");
   const [labelSearch, setLabelSearch] = useState("");
+  const [typeSearch, setTypeSearch] = useState("");
 
   const handleUpdateTask = (updates: Record<string, string | string[] | null | undefined>) => {
     updateTask(
@@ -265,6 +277,11 @@ export const TaskDetailsSidebar = ({
   const handlePriorityChange = (priority: string) => {
     handleUpdateTask({ priority: priority || undefined });
     setPriorityOpen(false);
+  };
+
+  const handleTypeChange = (type: string) => {
+    handleUpdateTask({ type });
+    setTypeOpen(false);
   };
 
   const handleAssigneeChange = (assigneeId: string) => {
@@ -313,6 +330,28 @@ export const TaskDetailsSidebar = ({
     task.assignees && task.assignees.length > 0
       ? task.assignees[0]
       : task.assignee;
+
+  // Default work item types
+  // Get available work item types (custom + defaults)
+  const workItemTypes = useMemo(() => {
+    const custom = projectData?.customWorkItemTypes || [];
+    const customKeys = new Set(custom.map((t: { key: string }) => t.key));
+    const filteredDefaults = defaultWorkItemTypes.filter(t => !customKeys.has(t.key));
+    return [...filteredDefaults, ...custom];
+  }, [projectData?.customWorkItemTypes]);
+
+  // Get current type display
+  const currentType = useMemo(() => {
+    const typeKey = task.type || "TASK";
+    return workItemTypes.find(t => t.key === typeKey) || defaultWorkItemTypes[0];
+  }, [task.type, workItemTypes]);
+
+  // Filter types by search
+  const filteredTypes = useMemo(() => {
+    return workItemTypes.filter((t) =>
+      t.label.toLowerCase().includes(typeSearch.toLowerCase())
+    );
+  }, [workItemTypes, typeSearch]);
 
   // Filter functions - use workflow statuses if available
   const filteredStatuses = useMemo(() => {
@@ -538,6 +577,53 @@ export const TaskDetailsSidebar = ({
                 <Send className="size-4" />
                 <span className="text-xs">Invite and assign...</span>
               </button>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      {/* Work Item Type */}
+      <Popover open={typeOpen} onOpenChange={setTypeOpen}>
+        <PopoverTrigger asChild disabled={!canEdit}>
+          <button className="flex items-center gap-3 px-2 py-2 hover:bg-gray-100 rounded-md w-full text-left">
+            <WorkItemIcon
+              type={currentType.key}
+              className="size-4"
+              project={projectData}
+            />
+            <span className="text-[13px] font-normal">{currentType.label}</span>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-64 p-0 bg-white border border-gray-200 text-gray-900 shadow-lg" align="start" side="left" sideOffset={8}>
+          <div className="p-2">
+            <div className="flex items-center gap-2 px-2 border-b border-gray-200 mb-1">
+              <Input
+                placeholder="Change type..."
+                value={typeSearch}
+                onChange={(e) => setTypeSearch(e.target.value)}
+                className="h-7 border-0 focus-visible:ring-0 p-0 text-xs bg-transparent text-gray-900 placeholder:text-gray-400"
+              />
+            </div>
+            <div className="space-y-0.5">
+              {filteredTypes.map((type) => (
+                <button
+                  key={type.key}
+                  onClick={() => handleTypeChange(type.key)}
+                  className="flex items-center justify-between w-full px-2 py-1.5 hover:bg-gray-100 rounded text-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    <WorkItemIcon
+                      type={type.key}
+                      className="size-4"
+                      project={projectData}
+                    />
+                    <span className="text-xs tracking-normal">{type.label}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {task.type === type.key && <Check className="size-4 text-gray-600" />}
+                  </div>
+                </button>
+              ))}
             </div>
           </div>
         </PopoverContent>
