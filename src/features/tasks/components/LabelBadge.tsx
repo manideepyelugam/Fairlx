@@ -41,7 +41,7 @@ export const LabelBadge = ({
         borderColor: `${color}33` // 20% opacity
       } : undefined}
     >
-     <p className="text-xs">{label}</p> 
+     <p className="text-[11px]">{label}</p> 
       {onRemove && (
         <button
           onClick={onRemove}

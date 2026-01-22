@@ -12,6 +12,7 @@ import {
   Trash2,
   Copy,
   ExternalLink,
+  Layers,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
-import { PopulatedWorkItem, WorkItemStatus } from "../types";
+import { PopulatedWorkItem, WorkItemStatus, WorkItemType } from "../types";
 import { SubtasksList } from "@/features/subtasks/components";
 
 interface WorkItemDrawerProps {
@@ -64,6 +65,7 @@ export const WorkItemDrawer = ({
   const [title, setTitle] = useState(workItem?.title || "");
   const [description, setDescription] = useState(workItem?.description || "");
   const [status, setStatus] = useState(workItem?.status || WorkItemStatus.TODO);
+  const [type, setType] = useState(workItem?.type || WorkItemType.TASK);
   const [storyPoints, setStoryPoints] = useState(workItem?.storyPoints?.toString() || "");
   const [comments, setComments] = useState<Array<{ id: string; author: string; text: string; date: string }>>([]);
   const [newComment, setNewComment] = useState("");
@@ -76,6 +78,7 @@ export const WorkItemDrawer = ({
         title,
         description,
         status,
+        type,
         storyPoints: storyPoints ? parseInt(storyPoints) : undefined,
       });
     }
@@ -117,10 +120,25 @@ export const WorkItemDrawer = ({
           </SheetDescription>
           <div className="flex items-start justify-between">
             <div className="flex-1 space-y-2">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Badge variant="outline" className="text-xs font-mono">
                   {workItem.key}
                 </Badge>
+                {/* Type Selector */}
+                <Select value={type} onValueChange={(value) => setType(value as WorkItemType)}>
+                  <SelectTrigger className="w-28 h-7 text-xs">
+                    <Layers className="size-3 mr-1" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={WorkItemType.TASK}>Task</SelectItem>
+                    <SelectItem value={WorkItemType.BUG}>Bug</SelectItem>
+                    <SelectItem value={WorkItemType.STORY}>Story</SelectItem>
+                    <SelectItem value={WorkItemType.EPIC}>Epic</SelectItem>
+                    <SelectItem value={WorkItemType.SUBTASK}>Subtask</SelectItem>
+                  </SelectContent>
+                </Select>
+                {/* Status Selector */}
                 <Select value={status} onValueChange={(value) => setStatus(value as WorkItemStatus)}>
                   <SelectTrigger className="w-32 h-7 text-xs">
                     <SelectValue />

@@ -6,6 +6,7 @@ import { TaskActions } from "./task-actions";
 import { LabelBadge } from "./LabelBadge";
 import { PriorityBadge } from "./priority-selector";
 import { AssigneeAvatarGroup } from "./assignee-avatar-group";
+import { WorkItemIcon } from "@/features/timeline/components/work-item-icon";
 
 import { PopulatedTask } from "../types";
 import { useTaskPreviewModal } from "../hooks/use-task-preview-modal";
@@ -61,6 +62,14 @@ export const KanbanCard = ({
                 <div className="flex-1 flex w-full justify-between items-start">
 
                     <div className="flex gap-2 items-center">
+
+                        {task.type && (
+                            <WorkItemIcon
+                                type={task.type}
+                                className="size-4"
+                                project={project}
+                            />
+                        )}
 
                         {task.priority && (
                             <PriorityBadge

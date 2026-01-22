@@ -354,6 +354,7 @@ const app = new Hono()
 
         return {
           ...task,
+          type: task.type || "TASK", // Default to TASK if type is not set
           name: task.title, // Add name as alias for title for backward compatibility
           project,
           assignee, // Keep for backward compatibility
@@ -372,7 +373,7 @@ const app = new Hono()
     async (c) => {
       const user = c.get("user");
       const databases = c.get("databases");
-      const { name, status, workspaceId, projectId, dueDate, assigneeIds, description, estimatedHours, priority, labels } =
+      const { name, type, status, workspaceId, projectId, dueDate, assigneeIds, description, estimatedHours, priority, labels } =
         c.req.valid("json");
 
       const member = await getMember({
@@ -481,7 +482,7 @@ const app = new Hono()
         ID.unique(),
         {
           title: name, // Use title for workItems collection (name is passed from form but stored as title)
-          type: "TASK", // Default type for tasks
+          type: type || "TASK", // Use provided type or default to TASK
           key,
           status,
           workspaceId,
@@ -519,7 +520,7 @@ const app = new Hono()
       const user = c.get("user");
       const databases = c.get("databases");
       // Note: endDate is in schema but not in database - we ignore it
-      const { name, status, projectId, dueDate, assigneeIds, description, estimatedHours, priority, labels, flagged, storyPoints } =
+      const { name, type, status, projectId, dueDate, assigneeIds, description, estimatedHours, priority, labels, flagged, storyPoints } =
         c.req.valid("json");
 
       const { taskId } = c.req.param();
@@ -583,6 +584,7 @@ const app = new Hono()
       if (name !== undefined) {
         updateData.title = name;
       }
+      if (type !== undefined) updateData.type = type;
       if (status !== undefined) updateData.status = status;
       if (projectId !== undefined) updateData.projectId = projectId;
       if (dueDate !== undefined) updateData.dueDate = dueDate;
@@ -792,6 +794,7 @@ const app = new Hono()
       return c.json({
         data: {
           ...task,
+          type: task.type || "TASK", // Default to TASK if type is not set
           name: task.title, // Add name as alias for title for backward compatibility
           project,
           assignee, // Keep for backward compatibility

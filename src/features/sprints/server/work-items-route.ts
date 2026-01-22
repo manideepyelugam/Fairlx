@@ -323,6 +323,7 @@ const app = new Hono()
 
           return {
             ...workItem,
+            type: workItem.type || "TASK", // Default to TASK if type is not set
             assignees,
             epic,
             parent,
