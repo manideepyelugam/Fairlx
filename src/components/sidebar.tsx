@@ -96,7 +96,8 @@ export const Sidebar = () => {
 
       <div className="flex flex-col flex-1 overflow-hidden overflow-y-auto">
         {/* Navigation: Pass allowed route keys from server */}
-        {(hasOrg || hasWorkspace) && (
+        {/* Show navigation if user has org/workspace OR if they're on a workspace URL */}
+        {(hasOrg || hasWorkspace || showWorkspaceContent) && (
           <Navigation
             allowedRouteKeys={isAccessLoading ? undefined : allowedRouteKeys}
             hasWorkspaces={hasWorkspace}
@@ -114,7 +115,7 @@ export const Sidebar = () => {
         )}
 
         {/* Empty state: Only for PERSONAL accounts with no workspaces */}
-        {!hasWorkspace && !hasOrg && (
+        {!hasWorkspace && !hasOrg && !showWorkspaceContent && (
           <div className="p-4 text-center text-sm text-muted-foreground">
             <p className="mb-2">No workspaces yet</p>
             <p>Create a workspace to get started</p>
