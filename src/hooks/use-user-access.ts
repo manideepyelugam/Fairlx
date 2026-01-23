@@ -73,12 +73,27 @@ export function useUserAccess() {
 
     // During loading, provide sensible defaults based on role
     // OWNER always has full access, so this is safe to pre-populate
+    // For non-owners, we provide workspace routes as fallback so navigation isn't empty during load
     const loadingDefaults: AppRouteKey[] = orgRole === "OWNER"
         ? [...getOrgRouteKeys(), ...getWorkspaceIndependentRouteKeys()]
-        : [];
+        : [
+            // Provide basic workspace navigation as fallback during loading
+            AppRouteKey.WORKSPACE_HOME,
+            AppRouteKey.WORKSPACE_TASKS,
+            AppRouteKey.WORKSPACE_TEAMS,
+            AppRouteKey.WORKSPACE_PROGRAMS,
+            AppRouteKey.WORKSPACE_TIMELINE,
+            AppRouteKey.WORKSPACE_SETTINGS,
+        ];
+
+    // Get the allowed route keys from query data, or use loading defaults
+    // IMPORTANT: Also check if the array is empty - an empty array could indicate a failed/incomplete fetch
+    const resolvedRouteKeys = (query.data?.allowedRouteKeys && query.data.allowedRouteKeys.length > 0)
+        ? query.data.allowedRouteKeys
+        : (query.isLoading ? loadingDefaults : loadingDefaults);  // Use defaults if loading OR if data is empty
 
     return {
-        allowedRouteKeys: query.data?.allowedRouteKeys ?? loadingDefaults,
+        allowedRouteKeys: resolvedRouteKeys,
         isOwner: query.data?.isOwner ?? (orgRole === "OWNER"),
         role: query.data?.role ?? orgRole,
         departmentIds: query.data?.departmentIds ?? [],

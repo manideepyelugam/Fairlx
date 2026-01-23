@@ -138,12 +138,16 @@ export const Navigation = ({
 
   // OWNER fallback: If allowedRouteKeys is undefined but user is OWNER, show org routes
   // This ensures OWNER always sees navigation even before API response
-  const effectiveRouteKeys = allowedRouteKeys ?? (orgRole === "OWNER" ? getOrgRouteKeys() : undefined);
+  // Also treat empty arrays as "no data yet" - show all routes based on context
+  const effectiveRouteKeys = (allowedRouteKeys && allowedRouteKeys.length > 0) 
+    ? allowedRouteKeys 
+    : (orgRole === "OWNER" ? getOrgRouteKeys() : undefined);
 
   // Filter routes based on allowed route keys
   const visibleRoutes = routes.filter((route: RouteConfig) => {
-    // If effectiveRouteKeys is provided, use permission-based filtering
-    if (effectiveRouteKeys) {
+    // If effectiveRouteKeys is provided AND non-empty, use permission-based filtering
+    // An undefined effectiveRouteKeys means "show all routes based on context" (fallback mode)
+    if (effectiveRouteKeys && effectiveRouteKeys.length > 0) {
       // Check if route key is in allowed list
       if (!effectiveRouteKeys.includes(route.routeKey)) return false;
     }
