@@ -136,6 +136,11 @@ export const Navigation = ({
   const projectId = useProjectId();
   const pathname = usePathname();
 
+  // Determine if workspace context is available
+  // Use selectedWorkspaceId (URL or context) as the source of truth, not just hasWorkspaces prop
+  // This fixes the issue where hasWorkspaces might be false during loading but URL has workspace ID
+  const hasWorkspaceContext = hasWorkspaces || !!selectedWorkspaceId;
+
   // OWNER fallback: If allowedRouteKeys is undefined but user is OWNER, show org routes
   // This ensures OWNER always sees navigation even before API response
   // Also treat empty arrays as "no data yet" - show all routes based on context
@@ -152,8 +157,8 @@ export const Navigation = ({
       if (!effectiveRouteKeys.includes(route.routeKey)) return false;
     }
 
-    // Workspace-scoped routes require workspace context
-    if (route.workspaceScoped && !hasWorkspaces) return false;
+    // Workspace-scoped routes require workspace context (from URL or lifecycle)
+    if (route.workspaceScoped && !hasWorkspaceContext) return false;
 
     // Org routes only show for org accounts
     if (route.orgRoute && !effectiveHasOrg) return false;
