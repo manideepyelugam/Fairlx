@@ -50,6 +50,7 @@ import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { useGetWorkflows } from "@/features/workflows/api/use-get-workflows";
 import { SpaceVisibility } from "@/features/spaces/types";
+import { SpaceWorkflowsModal } from "@/features/workflows/components/space-workflows-modal";
 
 const SPACE_COLORS = [
   { name: "Indigo", value: "#6366f1" },
@@ -82,6 +83,7 @@ export const SpaceSettingsClient = () => {
   const [visibility, setVisibility] = useState<SpaceVisibility>(SpaceVisibility.PUBLIC);
   const [defaultWorkflowId, setDefaultWorkflowId] = useState<string>("");
   const [hasChanges, setHasChanges] = useState(false);
+  const [isWorkflowsModalOpen, setIsWorkflowsModalOpen] = useState(false);
 
   // Initialize form values when space data loads
   useState(() => {
@@ -167,6 +169,15 @@ export const SpaceSettingsClient = () => {
 
   return (
     <div className="flex flex-col gap-y-6 max-w-4xl mx-auto">
+      {/* Space Workflows Modal */}
+      <SpaceWorkflowsModal
+        isOpen={isWorkflowsModalOpen}
+        onClose={() => setIsWorkflowsModalOpen(false)}
+        spaceId={spaceId}
+        spaceName={name || space.name}
+        workspaceId={workspaceId}
+      />
+      
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -380,12 +391,15 @@ export const SpaceSettingsClient = () => {
           </div>
           
           <div className="pt-2">
-            <Link href={`/workspaces/${workspaceId}/spaces/${spaceId}/workflows`}>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Workflow className="size-4" />
-                Manage Workflows
-              </Button>
-            </Link>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-2"
+              onClick={() => setIsWorkflowsModalOpen(true)}
+            >
+              <Workflow className="size-4" />
+              Manage Workflows
+            </Button>
           </div>
         </CardContent>
       </Card>

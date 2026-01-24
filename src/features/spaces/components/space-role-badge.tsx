@@ -115,7 +115,7 @@ export const MasterBadge = ({
       className={cn(
         "font-bold border-0 shadow-sm",
         sizeClasses[size],
-        "bg-amber-500 text-white",
+        "bg-purple-600 text-white",
         className
       )}
     >
@@ -135,7 +135,7 @@ export const MasterBadge = ({
         <TooltipContent side="top" className="max-w-xs">
           <div className="space-y-1">
             <p className="text-xs font-semibold flex items-center gap-1">
-              <Crown className="size-3 text-amber-500" />
+              <Crown className="size-3 text-purple-600" />
               Space Master
             </p>
             <p className="text-xs text-muted-foreground">

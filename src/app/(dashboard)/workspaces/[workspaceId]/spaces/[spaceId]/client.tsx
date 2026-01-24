@@ -20,6 +20,8 @@ import {
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { SpaceWorkflowsModal } from "@/features/workflows/components/space-workflows-modal";
+
 import { PageError } from "@/components/page-error";
 import { PageLoader } from "@/components/page-loader";
 import { Button } from "@/components/ui/button";
@@ -99,6 +101,7 @@ export const SpaceIdClient = () => {
 
   const [isAddProjectOpen, setIsAddProjectOpen] = useState(false);
   const [isAddTeamOpen, setIsAddTeamOpen] = useState(false);
+  const [isWorkflowsModalOpen, setIsWorkflowsModalOpen] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState("");
 
   // Workspace admins are treated as space masters
@@ -226,6 +229,15 @@ export const SpaceIdClient = () => {
       <ConfirmTeamDialog />
       <CreateProjectModal />
       
+      {/* Space Workflows Modal */}
+      <SpaceWorkflowsModal
+        isOpen={isWorkflowsModalOpen}
+        onClose={() => setIsWorkflowsModalOpen(false)}
+        spaceId={spaceId}
+        spaceName={space.name}
+        workspaceId={workspaceId}
+      />
+      
       {/* Professional Header */}
       <div className="bg-gradient-to-r from-background to-muted/30 rounded-xl border p-6">
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
@@ -255,14 +267,14 @@ export const SpaceIdClient = () => {
               {/* Space Master Info */}
               {spaceOwner && (
                 <div className="flex items-center gap-2 pt-2">
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                    <Crown className="size-4 text-amber-500" />
-                    <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+                    <Crown className="size-4 text-purple-600" />
+                    <span className="text-sm font-medium text-purple-700 dark:text-purple-400">
                       Space Master:
                     </span>
                     <Avatar className="size-5">
                       <AvatarImage src={spaceOwner.profileImageUrl || undefined} />
-                      <AvatarFallback className="text-xs bg-amber-500/20 text-amber-700 dark:text-amber-400">
+                      <AvatarFallback className="text-xs bg-purple-500/20 text-purple-700 dark:text-purple-400">
                         {spaceOwner.name?.charAt(0) || "?"}
                       </AvatarFallback>
                     </Avatar>
@@ -275,12 +287,15 @@ export const SpaceIdClient = () => {
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2 flex-wrap">
-            <Link href={`/workspaces/${workspaceId}/spaces/${spaceId}/workflows`}>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Workflow className="size-4" />
-                Workflows
-              </Button>
-            </Link>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-2"
+              onClick={() => setIsWorkflowsModalOpen(true)}
+            >
+              <Workflow className="size-4" />
+              Workflows
+            </Button>
             {isMaster && (
               <Link href={`/workspaces/${workspaceId}/spaces/${spaceId}/settings`}>
                 <Button variant="outline" size="sm" className="gap-2">
