@@ -4,3 +4,4 @@ export { WorkflowsList } from "./workflows-list";
 export { WorkflowStatusBadge } from "./workflow-status-badge";
 export { WorkflowSimpleView } from "./workflow-simple-view";
 export { ConnectProjectDialog } from "./connect-project-dialog";
+export { SpaceWorkflowsModal } from "./space-workflows-modal";
