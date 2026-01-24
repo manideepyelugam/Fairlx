@@ -65,12 +65,36 @@ interface UseRealtimeNotificationsReturn {
 // =============================================================================
 
 let clientInstance: Client | null = null;
+let realtimeSuppressionActive = false;
 
 function getAppwriteClient(): Client {
     if (!clientInstance) {
         clientInstance = new Client()
             .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
             .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT!);
+        
+        // Suppress realtime reconnection console messages (they're handled automatically)
+        if (!realtimeSuppressionActive && typeof window !== 'undefined') {
+            realtimeSuppressionActive = true;
+            const originalWarn = console.warn;
+            const originalLog = console.log;
+            
+            console.warn = (...args: unknown[]) => {
+                const message = args[0];
+                if (typeof message === 'string' && message.includes('Realtime got disconnected')) {
+                    return; // Suppress this specific warning
+                }
+                originalWarn.apply(console, args);
+            };
+            
+            console.log = (...args: unknown[]) => {
+                const message = args[0];
+                if (typeof message === 'string' && message.includes('Realtime got disconnected')) {
+                    return; // Suppress this specific log
+                }
+                originalLog.apply(console, args);
+            };
+        }
     }
     return clientInstance;
 }
@@ -168,9 +192,12 @@ export function useRealtimeNotifications({
             setIsConnected(true);
             setError(null);
 
-            console.log('[RealtimeNotifications] Subscribed to Appwrite Realtime');
+            // Silent success - no console logging to reduce noise
         } catch (err) {
-            console.error('[RealtimeNotifications] Subscription failed:', err);
+            // Only log actual subscription failures (not reconnection attempts)
+            if (process.env.NODE_ENV === 'development') {
+                console.debug('[RealtimeNotifications] Subscription failed:', err);
+            }
             setError(err instanceof Error ? err : new Error('Failed to subscribe'));
             setIsConnected(false);
         }
@@ -178,7 +205,7 @@ export function useRealtimeNotifications({
         return () => {
             if (unsubscribe) {
                 unsubscribe();
-                console.log('[RealtimeNotifications] Unsubscribed');
+                // Silent cleanup
             }
             setIsConnected(false);
         };

@@ -127,7 +127,6 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   const [dateDialogSprintId, setDateDialogSprintId] = useState<string | null>(null);
   const [sprintSettingsId, setSprintSettingsId] = useState<string | null>(null);
   const [isCreateEpicDialogOpen, setIsCreateEpicDialogOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<Partial<PopulatedWorkItem>>({});
 
   const { open: openCreateTaskModal } = useCreateTaskModal();
@@ -320,7 +319,6 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   const handleWorkItemClick = (item: PopulatedWorkItem) => {
     setSelectedItem(item);
     setIsDrawerOpen(true);
-    setIsEditMode(false);
     setPendingChanges({});
   };
 
@@ -1705,7 +1703,6 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                               if (Object.keys(pendingChanges).length > 0) {
                                 handleUpdateWorkItem(pendingChanges);
                               }
-                              setIsEditMode(false);
                               setPendingChanges({});
                             }}
                             className="flex-1"

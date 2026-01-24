@@ -412,7 +412,7 @@ const WorkflowEditor = () => {
       { param: { workflowId } },
       {
         onSuccess: () => {
-          router.push(`/workspaces/${workspaceId}/spaces/${spaceId}/workflows`);
+          router.push(`/workspaces/${workspaceId}/spaces/${spaceId}`);
         },
       }
     );
@@ -596,7 +596,7 @@ const WorkflowEditor = () => {
   // Redirect if workflow not found
   useEffect(() => {
     if (!workflowLoading && !workflow) {
-      router.push(`/workspaces/${workspaceId}/spaces/${spaceId}/workflows`);
+      router.push(`/workspaces/${workspaceId}/spaces/${spaceId}`);
     }
   }, [workflowLoading, workflow, router, workspaceId, spaceId]);
 
@@ -631,7 +631,7 @@ const WorkflowEditor = () => {
       {/* Header */}
       <div className="flex flex-col gap-4 p-4 border-b bg-background shrink-0">
         <div className="flex items-center gap-4">
-          <Link href={`/workspaces/${workspaceId}/spaces/${spaceId}/workflows`}>
+          <Link href={`/workspaces/${workspaceId}/spaces/${spaceId}`}>
             <Button variant="ghost" size="icon">
               <ArrowLeft className="size-4" />
             </Button>
