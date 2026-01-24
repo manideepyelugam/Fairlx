@@ -49,6 +49,7 @@ import {
   WorkItemType,
 } from "../types";
 import { useGetCustomColumns } from "@/features/custom-columns/api/use-get-custom-columns";
+import { useGetProject } from "@/features/projects/api/use-get-project";
 
 const allIcons = {
   ...Icons,
@@ -106,16 +107,42 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails }
     projectId: projectId || workItem.projectId,
   });
 
+  const { data: projectData } = useGetProject({
+    projectId: projectId || workItem.projectId,
+  });
+
   const customColumns = data?.documents || [];
 
-  const TypeIcon = typeConfig[workItem.type].icon;
+  // Get available work item types (custom + defaults)
+  const defaultWorkItemTypes = [
+    { key: WorkItemType.TASK, label: "Task", icon: CheckSquare, color: "text-green-600", bg: "bg-green-500", light: "bg-green-50 dark:bg-green-900/20" },
+    { key: WorkItemType.BUG, label: "Bug", icon: Bug, color: "text-red-600", bg: "bg-red-500", light: "bg-red-50 dark:bg-red-900/20" },
+    { key: WorkItemType.STORY, label: "Story", icon: Bookmark, color: "text-blue-600", bg: "bg-blue-500", light: "bg-blue-50 dark:bg-blue-900/20" },
+    { key: WorkItemType.EPIC, label: "Epic", icon: Layers, color: "text-purple-600", bg: "bg-purple-500", light: "bg-purple-50 dark:bg-purple-900/20" },
+    { key: WorkItemType.SUBTASK, label: "Subtask", icon: ListTodo, color: "text-slate-600", bg: "bg-slate-500", light: "bg-slate-50 dark:bg-slate-800" },
+  ];
+
+  const TypeIcon = typeConfig[workItem.type]?.icon || CheckSquare;
   const priority = priorityConfig[workItem.priority];
-  const status = statusConfig[workItem.status];
+  // Status may be a custom column ID not in statusConfig, so provide a fallback
+  const status = statusConfig[workItem.status as WorkItemStatus] ?? {
+    label: workItem.status,
+    dot: "bg-gray-400",
+    bg: "bg-gray-100 dark:bg-gray-700",
+    text: "text-gray-600",
+  };
 
   const handleStatusChange = (status: string) => {
     updateWorkItem({
       param: { workItemId: workItem.$id },
       json: { status },
+    });
+  };
+
+  const handleTypeChange = (type: string) => {
+    updateWorkItem({
+      param: { workItemId: workItem.$id },
+      json: { type: type as WorkItemType },
     });
   };
 
@@ -159,6 +186,42 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails }
 
           {/* Controls */}
           <div className="flex items-center gap-2 flex-wrap">
+
+            {/* Type Selector */}
+            <Select value={workItem.type} onValueChange={handleTypeChange}>
+              <SelectTrigger className={cn("h-6 px-2 text-[10px]", typeConfig[workItem.type]?.light || "bg-gray-50", typeConfig[workItem.type]?.color || "text-gray-600")}>
+                <div className="flex items-center gap-1">
+                  <TypeIcon className="size-3" />
+                  <SelectValue />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                {defaultWorkItemTypes.map((type) => {
+                  const TypeItemIcon = type.icon;
+                  return (
+                    <SelectItem key={type.key} value={type.key}>
+                      <div className="flex items-center gap-2">
+                        <TypeItemIcon className={cn("size-3.5", type.color)} />
+                        {type.label}
+                      </div>
+                    </SelectItem>
+                  );
+                })}
+                {projectData?.customWorkItemTypes && projectData.customWorkItemTypes.length > 0 && (
+                  <>
+                    <SelectSeparator />
+                    {projectData.customWorkItemTypes.map((customType: { key: string; label: string; color: string }) => (
+                      <SelectItem key={customType.key} value={customType.key}>
+                        <div className="flex items-center gap-2">
+                          <CheckSquare className="size-3.5" style={{ color: customType.color }} />
+                          {customType.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </>
+                )}
+              </SelectContent>
+            </Select>
 
             {/* Status */}
             <Select value={workItem.status} onValueChange={handleStatusChange}>
@@ -215,19 +278,24 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails }
               </Button>
             )}
 
-            {/* Assignees */}
-            {workItem.assignees?.length ? (
-              workItem.assignees.slice(0, 3).map((a) => (
-                <Avatar key={a.$id} className="size-5">
-                  <AvatarImage src={a.profileImageUrl || undefined} />
-                  <AvatarFallback>{a.name[0]}</AvatarFallback>
-                </Avatar>
-              ))
-            ) : (
-              <Button size="icon" variant="ghost" onClick={() => setAssignAssigneeOpen(true)}>
-                <Users className="size-4" />
-              </Button>
-            )}
+            {/* Assignees - filter null entries before iterating */}
+            {(() => {
+              const validAssignees = workItem.assignees?.filter(
+                (a): a is NonNullable<typeof a> => a != null && typeof a.$id === "string"
+              ) ?? [];
+              return validAssignees.length > 0 ? (
+                validAssignees.slice(0, 3).map((a) => (
+                  <Avatar key={a.$id} className="size-5">
+                    <AvatarImage src={a.profileImageUrl || undefined} />
+                    <AvatarFallback>{a.name?.[0] ?? "?"}</AvatarFallback>
+                  </Avatar>
+                ))
+              ) : (
+                <Button size="icon" variant="ghost" onClick={() => setAssignAssigneeOpen(true)}>
+                  <Users className="size-4" />
+                </Button>
+              );
+            })()}
           </div>
         </div>
       </div>

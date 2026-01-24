@@ -163,7 +163,9 @@ export async function resolveUserAccess(
         }
 
         // Add workspace routes if workspace context exists
-        if (workspaceId) {
+        // OR if user is an org member (they should always see workspace navigation
+        // when they have access to any workspace, even without explicit workspaceId)
+        if (workspaceId || orgAccess.hasDepartmentAccess || orgAccess.isOwner) {
             allRouteKeys.push(...WORKSPACE_MEMBER_ROUTES);
         }
 
@@ -210,13 +212,17 @@ export function canAccessRouteKey(access: UserAccess, routeKey: AppRouteKey): bo
 /**
  * Get user access for PERSONAL accounts (no org)
  * Personal accounts have full access to their own workspaces
+ * NOTE: Always include workspace routes for personal accounts - they should always
+ * see the navigation items even before workspace context is fully resolved
  */
 export function resolvePersonalUserAccess(workspaceId?: string): UserAccess {
     const routeKeys = [
         ...ALWAYS_ACCESSIBLE_ROUTES,
         AppRouteKey.WORKSPACES,
         AppRouteKey.WORKSPACE_CREATE,
-        ...(workspaceId ? WORKSPACE_MEMBER_ROUTES : []),
+        // Always include workspace member routes for personal accounts
+        // The UI will handle showing/hiding based on actual workspace context
+        ...WORKSPACE_MEMBER_ROUTES,
     ];
 
     return {

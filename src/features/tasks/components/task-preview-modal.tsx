@@ -36,14 +36,23 @@ import { CommentInput } from "@/features/comments/components/comment-input";
 
 import { StatusSelector } from "@/features/custom-columns/components/status-selector";
 import { PrioritySelector } from "./priority-selector";
+import { TypeSelector } from "./type-selector";
 import { AssigneeMultiSelect } from "./assignee-multi-select";
 import { DatePicker } from "@/components/date-picker";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { WorkItemIcon } from "@/features/timeline/components/work-item-icon";
+import { Badge } from "@/components/ui/badge";
 
-
-
+// Default work item type labels
+const typeLabels: Record<string, string> = {
+    TASK: "Task",
+    BUG: "Bug",
+    EPIC: "Epic",
+    STORY: "Story",
+    SUBTASK: "Subtask",
+};
 
 type UpdateTaskPayload = InferRequestType<typeof client.api.tasks[":taskId"]["$patch"]>["json"];
 
@@ -122,6 +131,13 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
     }
   };
 
+  // Get type label from custom types or defaults
+  const getTypeLabel = (typeKey: string) => {
+    const customType = project?.customWorkItemTypes?.find((t: { key: string }) => t.key === typeKey);
+    if (customType) return customType.label;
+    return typeLabels[typeKey] || typeKey;
+  };
+
   // Get recent comments (last 3) -> now handled by CommentList
 
 
@@ -130,6 +146,17 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b bg-white sticky top-0 z-10">
         <div className="flex items-center gap-3">
+          {/* Work Item Type Badge */}
+          {task.type && (
+            <Badge variant="outline" className="px-2 py-1 text-xs font-medium gap-1.5 flex items-center">
+              <WorkItemIcon
+                type={task.type}
+                className="size-3.5"
+                project={project}
+              />
+              <span>{getTypeLabel(task.type)}</span>
+            </Badge>
+          )}
           <StatusSelector
             value={task.status}
             onChange={(value) => handleUpdate({ status: value })}
@@ -279,6 +306,18 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 />
               </div>
 
+              {/* Work Item Type */}
+              <div>
+                <label className="text-xs text-gray-500 mb-1.5 block">Type</label>
+                <TypeSelector
+                  value={task.type || "TASK"}
+                  onValueChange={(value) => handleUpdate({ type: value })}
+                  project={project}
+                  customTypes={project?.customWorkItemTypes}
+                  className="w-full bg-white border-gray-200"
+                />
+              </div>
+
               {/* Priority */}
               <div>
                 <label className="text-xs text-gray-500 mb-1.5 block">Priority</label>
@@ -388,7 +427,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
           </div>
 
           {/* Edit Button */}
-          <div className="px-4 py-4 border-t sticky bottom-0">
+          <div className="px-4 py-4 bg-slate-100 border-t sticky bottom-0">
             <Button
               onClick={onEdit}
               className="w-full"

@@ -99,7 +99,7 @@ export const MyWorkView = () => {
 
   const { data: projects } = useGetProjects({ workspaceId });
   const { mutate: updateWorkItem } = useUpdateWorkItem();
-  
+
   // Fetch custom columns for all projects in the workspace
   const { data: customColumnsData } = useGetCustomColumns({ workspaceId, fetchAll: true });
   const customColumns = useMemo(
@@ -157,9 +157,17 @@ export const MyWorkView = () => {
   // Update itemsByStatus when filteredWorkItems changes
   useEffect(() => {
     const grouped: ItemsState = {};
+    const seenIds = new Set<string>(); // Track seen IDs to prevent duplicates
 
     // Group items by their actual status (including custom column IDs)
+    // Deduplicate items to prevent React key warnings
     filteredWorkItems.forEach((item) => {
+      // Skip if we've already seen this item ID (prevents duplicate key errors)
+      if (seenIds.has(item.$id)) {
+        return;
+      }
+      seenIds.add(item.$id);
+
       const status = item.status;
       if (!grouped[status]) {
         grouped[status] = [];

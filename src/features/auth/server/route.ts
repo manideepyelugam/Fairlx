@@ -71,7 +71,7 @@ const app = new Hono()
       setCookie(c, AUTH_COOKIE, session.secret, {
         path: "/",
         httpOnly: true,
-        secure: false, // Set to true when using HTTPS
+        secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
         maxAge: 60 * 60 * 24 * 30,
       });

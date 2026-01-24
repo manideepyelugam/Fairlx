@@ -280,7 +280,7 @@ class NotificationDispatcher {
             const dbType = this.mapEventTypeToDbType(event.type);
             const finalType = supportedTypes.includes(dbType) ? dbType : "task_updated";
 
-            const notification = await databases.createDocument(
+            await databases.createDocument(
                 DATABASE_ID,
                 NOTIFICATIONS_ID,
                 ID.unique(),
@@ -301,7 +301,7 @@ class NotificationDispatcher {
                     `delete("user:${userId}")`,
                 ]
             );
-            // console.log(`[Dispatcher] DB NOTIFICATION CREATED: ${notification.$id}`);
+            // console.log(`[Dispatcher] DB NOTIFICATION CREATED`);
             // console.log(`[Dispatcher] Title: "${payload.title}", Message: "${payload.summary}"`);
         } catch (error) {
             console.error(`[Dispatcher] FAILED to store in-app notification for user ${userId}:`, error);

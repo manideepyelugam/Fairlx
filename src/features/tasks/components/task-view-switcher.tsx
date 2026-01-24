@@ -58,8 +58,45 @@ const taskStatusToWorkItemStatus = (status: TaskStatus | string): WorkItemStatus
   return statusMap[status as TaskStatus] ?? status;
 };
 
-// Convert WorkItem to Task format for existing components
+/**
+ * Convert WorkItem to Task format for existing components.
+ * 
+ * IMPORTANT: This is a data normalization boundary. We defensively filter out
+ * invalid relation data here to prevent runtime crashes from:
+ * - Deleted users (tombstoned but still referenced in assigneeIds)
+ * - Permission-masked relations (user lacks read access to assignee)
+ * - Legacy data inconsistencies (partial population from backend)
+ * 
+ * Optional chaining (?.map) does NOT protect against null items inside arrays.
+ * We must explicitly filter before mapping to ensure type safety.
+ */
 const workItemToTask = (workItem: PopulatedWorkItem): PopulatedTask => {
+  // Filter out null/undefined assignees before mapping.
+  // This handles cases where the assignees array contains invalid entries
+  // (e.g., deleted users, permission-masked relations, legacy data).
+  const safeAssignees = workItem.assignees
+    ?.filter((a): a is NonNullable<typeof a> => a != null && typeof a.$id === "string")
+    .map(a => ({
+      $id: a.$id,
+      name: a.name ?? "", // Fallback for missing name
+      email: a.email,
+      profileImageUrl: a.profileImageUrl,
+    }));
+
+  // Safely extract the first valid assignee ID for backward compatibility.
+  // Prefer assigneeIds array, but validate it exists and has valid entries.
+  const firstAssigneeId = workItem.assigneeIds?.find(id => typeof id === "string" && id.length > 0) ?? "";
+
+  // Defensively populate project relation - it may be null, undefined,
+  // or partially populated depending on backend state.
+  const safeProject = workItem.project && typeof workItem.project.$id === "string"
+    ? {
+      $id: workItem.project.$id,
+      name: workItem.project.name ?? "",
+      imageUrl: workItem.project.imageUrl ?? "",
+    }
+    : undefined;
+
   return {
     $id: workItem.$id,
     $collectionId: workItem.$collectionId,
@@ -69,10 +106,11 @@ const workItemToTask = (workItem: PopulatedWorkItem): PopulatedTask => {
     $permissions: workItem.$permissions,
     title: workItem.title,
     name: workItem.title,
+    type: workItem.type || "TASK", // Include work item type with fallback
     status: workItemStatusToTaskStatus(workItem.status),
     workspaceId: workItem.workspaceId,
-    assigneeId: workItem.assigneeIds?.[0] || "",
-    assigneeIds: workItem.assigneeIds,
+    assigneeId: firstAssigneeId,
+    assigneeIds: workItem.assigneeIds ?? [],
     projectId: workItem.projectId,
     sprintId: workItem.sprintId,
     position: workItem.position,
@@ -83,19 +121,8 @@ const workItemToTask = (workItem: PopulatedWorkItem): PopulatedTask => {
     priority: workItem.priority as unknown as TaskPriority,
     labels: workItem.labels,
     flagged: workItem.flagged,
-    // Populate assignees if available
-    assignees: workItem.assignees?.map(a => ({
-      $id: a.$id,
-      name: a.name,
-      email: a.email,
-      profileImageUrl: a.profileImageUrl,
-    })),
-    // Populate project if available
-    project: workItem.project ? {
-      $id: workItem.project.$id,
-      name: workItem.project.name,
-      imageUrl: workItem.project.imageUrl || "",
-    } : undefined,
+    assignees: safeAssignees,
+    project: safeProject,
   };
 };
 

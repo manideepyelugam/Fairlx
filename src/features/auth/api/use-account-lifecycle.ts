@@ -32,6 +32,8 @@ const INITIAL_LIFECYCLE_STATE: AccountLifecycleState = {
  * 
  * This is the primary hook for accessing lifecycle state on the client.
  * It fetches from /api/auth/lifecycle and caches the result.
+ * 
+ * Note: The query is disabled during SSR to prevent hydration issues.
  */
 export const useGetAccountLifecycle = () => {
     const queryClient = useQueryClient();
@@ -56,6 +58,8 @@ export const useGetAccountLifecycle = () => {
         staleTime: 1000 * 60 * 5, // 5 minutes
         refetchOnWindowFocus: true,
         retry: 1,
+        // Disable query during SSR to prevent hydration mismatch
+        enabled: typeof window !== "undefined",
     });
 
     const refreshLifecycle = async () => {

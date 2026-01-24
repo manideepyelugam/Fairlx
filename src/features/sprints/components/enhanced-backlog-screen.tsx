@@ -76,6 +76,7 @@ import { CreateEpicDialog } from "./create-epic-dialog";
 import { WorkItemIcon } from "@/features/timeline/components/work-item-icon";
 import { useGetProject } from "@/features/projects/api/use-get-project";
 import { useGetCustomColumns } from "@/features/custom-columns/api/use-get-custom-columns";
+import { useCreateTaskModal } from "@/features/tasks/hooks/use-create-task-modal";
 import { SelectSeparator } from "@/components/ui/select";
 import { snakeCaseToTitleCase } from "@/lib/utils";
 import * as Icons from "react-icons/ai";
@@ -126,8 +127,10 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   const [dateDialogSprintId, setDateDialogSprintId] = useState<string | null>(null);
   const [sprintSettingsId, setSprintSettingsId] = useState<string | null>(null);
   const [isCreateEpicDialogOpen, setIsCreateEpicDialogOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [pendingChanges, setPendingChanges] = useState<Partial<PopulatedWorkItem>>({});
 
-
+  const { open: openCreateTaskModal } = useCreateTaskModal();
 
   const { can } = usePermission();
 
@@ -317,6 +320,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   const handleWorkItemClick = (item: PopulatedWorkItem) => {
     setSelectedItem(item);
     setIsDrawerOpen(true);
+    setIsEditMode(false);
+    setPendingChanges({});
   };
 
   const handleStatusChange = (itemId: string, status: string) => {
@@ -498,7 +503,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     <DragDropContext onDragEnd={handleDragEnd}>
       <div className="bg-white">
         {/* Header */}
-        <div className="border-b bg-white sticky top-0 z-30">
+        <div className="border-b bg-white ">
           <div className="px-4 py-4">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-4 flex-1">
@@ -507,13 +512,13 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                 {/* Search */}
                 <div className="flex-1 max-w-md">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
                     <Input
                       type="text"
                       placeholder="Search backlog..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full h-10 pl-10 pr-4"
+                      className="w-full h-8 pl-8 pr-4"
                     />
                   </div>
                 </div>
@@ -523,8 +528,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
               <div className="flex items-center gap-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="h-10 px-4 text-sm">
-                      <Filter className="w-4 h-4 mr-2" />
+                    <Button variant="outline" size={"xs"}>
+                      <Filter className="w-2 h-2 " />
                       Filter
                     </Button>
                   </DropdownMenuTrigger>
@@ -538,28 +543,36 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                 {can(PERMISSIONS.WORKITEM_CREATE) && (
                   <Button
                     onClick={() => setIsCreateEpicDialogOpen(true)}
-                    variant="outline"
-                    className="h-10 px-4 text-sm"
+                    variant="outline" size={"xs"}
                   >
-                    <Plus className="w-4 h-4 mr-2" />
+                    <Plus className="w-2 h-2" />
                     Add Epic
                   </Button>
                 )}
                 {can(PERMISSIONS.WORKITEM_CREATE) && (
                   <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-muted-foreground hover:text-foreground pl-0"
+                    variant="outline"
+                    size="xs"
                     onClick={() => setIsCreatingInBacklog(true)}
                   >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create work item
+                    <Plus className="w-3 h-3 mr-0.5" />
+                    Quick create
+                  </Button>
+                )}
+                {can(PERMISSIONS.WORKITEM_CREATE) && (
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    onClick={openCreateTaskModal}
+                  >
+                    <Plus className="w-3 h-3 mr-0.5" />
+                    Create Full Workitem
                   </Button>
                 )}
                 {can(PERMISSIONS.SPRINT_CREATE) && (
                   <Button
-                    variant="outline"
-                    size="sm"
+                    variant="primary"
+                    size="xs"
                     onClick={handleCreateSprint}
                     disabled={isCreatingSprint}
                   >
@@ -581,7 +594,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
               <div className="h-4 w-px bg-blue-200" />
               <Button
                 variant="ghost"
-                size="sm"
+                size="xs"
                 onClick={clearSelection}
                 className="text-blue-700 hover:text-blue-900 hover:bg-blue-100"
               >
@@ -622,7 +635,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
         )}
 
         {/* Content */}
-        <div className="px-4 py-4">
+        <div className="px-4 py-4 overflow-y-scroll">
           <div className="space-y-4">
             {/* Sprint Sections */}
             {sprints.map((sprint) => {
@@ -735,11 +748,11 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
 
                           {sprint.status === SprintStatus.ACTIVE && can(PERMISSIONS.SPRINT_COMPLETE) && (
                             <Button
-                              size="sm"
+                              size="xs"
                               variant="outline"
                               onClick={() => handleCompleteSprint(sprint.$id)}
                             >
-                              <CheckCircle2 className="size-3 mr-1.5" />
+                              <CheckCircle2 className="size-2" />
                               Complete sprint
                             </Button>
                           )}
@@ -817,24 +830,30 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                     <div
                                       ref={provided.innerRef}
                                       {...provided.draggableProps}
-                                      {...provided.dragHandleProps}
                                       className={`px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors group ${snapshot.isDragging ? "shadow-lg rounded-lg border border-gray-200 bg-white" : ""
                                         } ${selectedItemIds.has(item.$id) ? "bg-blue-50 hover:bg-blue-50" : ""}`}
                                       onClick={() => handleWorkItemClick(item)}
                                     >
                                       <div className="flex items-center gap-4">
                                         <div className="flex items-center gap-3">
+                                          {/* Checkbox - always accessible for bulk selection */}
                                           <div
-                                            className="flex items-center justify-center relative"
+                                            className="flex items-center justify-center w-5"
                                             onClick={(e) => e.stopPropagation()}
                                           >
-                                            <div className={`transition-opacity ${selectedItemIds.size > 0 || selectedItemIds.has(item.$id) ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
-                                              <Checkbox
-                                                checked={selectedItemIds.has(item.$id)}
-                                                onCheckedChange={() => toggleSelection(item.$id)}
-                                              />
-                                            </div>
-                                            <GripVertical className={`size-4 text-gray-400 flex-shrink-0 absolute ${selectedItemIds.size > 0 || selectedItemIds.has(item.$id) ? "opacity-0 pointer-events-none" : "opacity-100 group-hover:opacity-0"}`} />
+                                            <Checkbox
+                                              checked={selectedItemIds.has(item.$id)}
+                                              onCheckedChange={() => toggleSelection(item.$id)}
+                                              className="data-[state=unchecked]:border-gray-300"
+                                            />
+                                          </div>
+                                          {/* Drag Handle - separate from checkbox */}
+                                          <div
+                                            {...provided.dragHandleProps}
+                                            className="flex items-center justify-center cursor-grab active:cursor-grabbing"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            <GripVertical className="size-4 text-gray-400 hover:text-gray-600" />
                                           </div>
 
                                           <WorkItemIcon type={item.type} project={project ?? undefined} className="size-4 flex-shrink-0" />
@@ -979,15 +998,15 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                             className="w-[120px] h-7 text-xs flex-shrink-0"
                                             onClick={(e) => e.stopPropagation()}
                                           >
-                                            <SelectValue placeholder="Assignee">
+                                            <SelectValue className="overflow-x-hidden" placeholder="Assignee">
                                               {item.assignees?.[0] ? (
-                                                <div className="flex items-center gap-1">
+                                                <div className="flex items-center w-[80px] overflow-x-hidden gap-1">
                                                   <Avatar className="size-4">
                                                     <AvatarFallback className="text-[10px]">
                                                       {item.assignees[0].name?.charAt(0).toUpperCase()}
                                                     </AvatarFallback>
                                                   </Avatar>
-                                                  <span className="truncate">{item.assignees[0].name}</span>
+                                                  <span className="truncate overflow-x-hidden">{item.assignees[0].name}</span>
                                                 </div>
                                               ) : (
                                                 "Unassigned"
@@ -1181,24 +1200,30 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                               <div
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
-                                {...provided.dragHandleProps}
                                 className={`px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors group ${snapshot.isDragging ? "shadow-lg rounded-lg border border-gray-200 bg-white" : ""
                                   } ${selectedItemIds.has(item.$id) ? "bg-blue-50 hover:bg-blue-50" : ""}`}
                                 onClick={() => handleWorkItemClick(item)}
                               >
                                 <div className="flex items-center gap-4">
                                   <div className="flex items-center gap-3">
+                                    {/* Checkbox - always accessible for bulk selection */}
                                     <div
-                                      className="flex items-center justify-center"
+                                      className="flex items-center justify-center w-5"
                                       onClick={(e) => e.stopPropagation()}
                                     >
-                                      <div className={`transition-opacity ${selectedItemIds.size > 0 || selectedItemIds.has(item.$id) ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
-                                        <Checkbox
-                                          checked={selectedItemIds.has(item.$id)}
-                                          onCheckedChange={() => toggleSelection(item.$id)}
-                                        />
-                                      </div>
-                                      <GripVertical className={`size-4 text-gray-400 flex-shrink-0 absolute ${selectedItemIds.size > 0 || selectedItemIds.has(item.$id) ? "opacity-0 pointer-events-none" : "opacity-100 group-hover:opacity-0"}`} />
+                                      <Checkbox
+                                        checked={selectedItemIds.has(item.$id)}
+                                        onCheckedChange={() => toggleSelection(item.$id)}
+                                        className="data-[state=unchecked]:border-gray-300"
+                                      />
+                                    </div>
+                                    {/* Drag Handle - separate from checkbox */}
+                                    <div
+                                      {...provided.dragHandleProps}
+                                      className="flex items-center justify-center cursor-grab active:cursor-grabbing"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <GripVertical className="size-4 text-gray-400 hover:text-gray-600" />
                                     </div>
 
                                     <WorkItemIcon type={item.type} project={project ?? undefined} className="size-4 flex-shrink-0" />
@@ -1497,7 +1522,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
 
         {/* Work Item Detail Drawer */}
         <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-          <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+          <SheetContent className="w-full sm:max-w-md overflow-y-auto">
             {selectedItem && (
               <>
                 <SheetHeader>
@@ -1511,118 +1536,187 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                 </SheetHeader>
 
                 <Tabs defaultValue="details" className="mt-6">
-                  <TabsList className="grid w-full grid-cols-4">
+                  <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="details">Details</TabsTrigger>
                     <TabsTrigger value="subtasks">Subtasks</TabsTrigger>
-                    <TabsTrigger value="comments">Comments</TabsTrigger>
-                    <TabsTrigger value="history">History</TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="details" className="space-y-4 mt-4">
-                    <div className="space-y-2">
-                      <Label>Title</Label>
-                      <Input
-                        value={selectedItem.title}
-                        onChange={(e) => handleUpdateWorkItem({ title: e.target.value })}
-                        placeholder="Work item title"
-                      />
-                    </div>
+                  <TabsContent value="details" className="space-y-4 mt-8">
+                     
+                      <div className="space-y-4 ">
+                        <div className="space-y-2">
+                          <Label>Title</Label>
+                          <Input className="text-xs "
+                            value={pendingChanges.title ?? selectedItem.title}
+                            onChange={(e) => setPendingChanges(prev => ({ ...prev, title: e.target.value }))}
+                            placeholder="Work item title"
+                          />
+                        </div>
 
-                    <div className="space-y-2">
-                      <Label>Status</Label>
-                      <Select
-                        value={selectedItem.status}
-                        onValueChange={(value: WorkItemStatus) => handleUpdateWorkItem({ status: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={WorkItemStatus.TODO}>To Do</SelectItem>
-                          <SelectItem value={WorkItemStatus.ASSIGNED}>Assigned</SelectItem>
-                          <SelectItem value={WorkItemStatus.IN_PROGRESS}>In Progress</SelectItem>
-                          <SelectItem value={WorkItemStatus.IN_REVIEW}>In Review</SelectItem>
-                          <SelectItem value={WorkItemStatus.DONE}>Done</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                        <div className="space-y-2">
+                          <Label>Type</Label>
+                          <Select
+                            value={pendingChanges.type ?? selectedItem.type}
+                            onValueChange={(value: WorkItemType) => setPendingChanges(prev => ({ ...prev, type: value }))}
+                          >
+                            <SelectTrigger >
+                              <SelectValue>
+                                <div className="flex items-center gap-2 text-xs">
+                                  <WorkItemIcon type={pendingChanges.type ?? selectedItem.type} project={project ?? undefined} className="size-3" />
+                                  <span className="text-xs">{allWorkItemTypes.find(t => t.key === (pendingChanges.type ?? selectedItem.type))?.label || (pendingChanges.type ?? selectedItem.type)}</span>
+                                </div>
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {allWorkItemTypes.map((type) => (
+                                <SelectItem key={type.key} value={type.key}>
+                                  <div className="flex items-center gap-2 text-xs">
+                                    <WorkItemIcon type={type.key as WorkItemType} project={project ?? undefined} className="size-3" />
+                                    <span className="text-xs">{type.label}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-                    <div className="space-y-2">
-                      <Label>Description</Label>
-                      <Textarea
-                        value={selectedItem.description || ""}
-                        onChange={(e) => handleUpdateWorkItem({ description: e.target.value })}
-                        placeholder="Add a description..."
-                        className="min-h-[120px]"
-                      />
-                    </div>
+                        <div className="space-y-2">
+                          <Label>Status</Label>
+                          <Select
+                            value={pendingChanges.status ?? selectedItem.status}
+                            onValueChange={(value: WorkItemStatus) => setPendingChanges(prev => ({ ...prev, status: value }))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={WorkItemStatus.TODO}>To Do</SelectItem>
+                              <SelectItem value={WorkItemStatus.ASSIGNED}>Assigned</SelectItem>
+                              <SelectItem value={WorkItemStatus.IN_PROGRESS}>In Progress</SelectItem>
+                              <SelectItem value={WorkItemStatus.IN_REVIEW}>In Review</SelectItem>
+                              <SelectItem value={WorkItemStatus.DONE}>Done</SelectItem>
+                              {customColumns.length > 0 && (
+                                <>
+                                  <SelectSeparator />
+                                  {customColumns.map((column) => {
+                                    const IconComponent = allIcons[column.icon as keyof typeof allIcons] as React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+                                    return (
+                                      <SelectItem key={column.$id} value={column.$id}>
+                                        <div className="flex items-center gap-2">
+                                          {IconComponent ? (
+                                            <IconComponent className="size-4" style={{ color: column.color }} />
+                                          ) : (
+                                            <CircleIcon className="size-4" style={{ color: column.color }} />
+                                          )}
+                                          {column.name}
+                                        </div>
+                                      </SelectItem>
+                                    );
+                                  })}
+                                </>
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-                    <div className="space-y-2">
-                      <Label>Priority</Label>
-                      <Select
-                        value={selectedItem.priority || WorkItemPriority.MEDIUM}
-                        onValueChange={(value: WorkItemPriority) => handleUpdateWorkItem({ priority: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {allPriorities.map((p) => (
-                            <SelectItem key={p.key} value={p.key}>
-                              {p.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                        <div className="space-y-2">
+                          <Label>Description</Label>
+                          <Textarea
+                            value={pendingChanges.description ?? selectedItem.description ?? ""}
+                            onChange={(e) => setPendingChanges(prev => ({ ...prev, description: e.target.value }))}
+                            placeholder="Add a description..."
+                            className="min-h-[120px] text-xs"
+                          />
+                        </div>
 
-                    <div className="space-y-2">
-                      <Label>Epic</Label>
-                      <Select
-                        value={selectedItem.epicId || "none"}
-                        onValueChange={(value) => handleUpdateWorkItem({ epicId: value === "none" ? null : value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select epic" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No Epic</SelectItem>
-                          {epicsData?.documents?.map((epic) => (
-                            <SelectItem key={epic.$id} value={epic.$id}>
-                              {epic.key} - {epic.title}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                        <div className="space-y-2">
+                          <Label>Priority</Label>
+                          <Select
+                            value={pendingChanges.priority ?? selectedItem.priority ?? WorkItemPriority.MEDIUM}
+                            onValueChange={(value: WorkItemPriority) => setPendingChanges(prev => ({ ...prev, priority: value }))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {allPriorities.map((p) => (
+                                <SelectItem key={p.key} value={p.key}>
+                                  {p.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-                    <div className="space-y-2">
-                      <Label>Story Points</Label>
-                      <Input
-                        type="number"
-                        value={selectedItem.storyPoints || ""}
-                        onChange={(e) => handleUpdateWorkItem({ storyPoints: e.target.value ? parseInt(e.target.value) : undefined })}
-                        placeholder="Enter story points"
-                        min="0"
-                      />
-                    </div>
+                        <div className="space-y-2">
+                          <Label>Epic</Label>
+                          <Select
+                            value={pendingChanges.epicId !== undefined ? (pendingChanges.epicId || "none") : (selectedItem.epicId || "none")}
+                            onValueChange={(value) => setPendingChanges(prev => ({ ...prev, epicId: value === "none" ? null : value }))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select epic" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">No Epic</SelectItem>
+                              {epicsData?.documents?.map((epic) => (
+                                <SelectItem key={epic.$id} value={epic.$id}>
+                                  {epic.key} - {epic.title}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-                    <div className="space-y-2">
-                      <Label>Assignees</Label>
-                      <div className="flex gap-2">
-                        {selectedItem.assignees?.map((assignee) => (
-                          <Avatar key={assignee.$id} className="size-8">
-                            <AvatarImage src="" />
-                            <AvatarFallback className="text-xs">
-                              {assignee.name?.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                        ))}
-                        <Button variant="outline" size="icon" className="size-8">
-                          <Plus className="size-4" />
-                        </Button>
+                        <div className="space-y-2">
+                          <Label>Story Points</Label>
+                          <Input
+                            type="number"
+                            value={pendingChanges.storyPoints !== undefined ? (pendingChanges.storyPoints ?? "") : (selectedItem.storyPoints ?? "")}
+                            onChange={(e) => setPendingChanges(prev => ({ ...prev, storyPoints: e.target.value ? parseInt(e.target.value) : undefined }))}
+                            placeholder="Enter story points"
+                            min="0"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Assignees</Label>
+                          <div className="flex gap-2">
+                            {selectedItem.assignees?.filter(
+                              (a): a is NonNullable<typeof a> => a != null && typeof a.$id === "string"
+                            ).map((assignee) => (
+                              <Avatar key={assignee.$id} className="size-8">
+                                <AvatarImage src="" />
+                                <AvatarFallback className="text-xs">
+                                  {(assignee.name ?? "?").charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                            ))}
+                            <Button variant="outline" size="icon" className="size-8">
+                              <Plus className="size-4" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Save and Cancel Buttons */}
+                        <div className="flex gap-2 pt-4 border-t">
+                          <Button
+                            onClick={() => {
+                              if (Object.keys(pendingChanges).length > 0) {
+                                handleUpdateWorkItem(pendingChanges);
+                              }
+                              setIsEditMode(false);
+                              setPendingChanges({});
+                            }}
+                            className="flex-1"
+                            size="xs"
+                          >
+                            Save Changes
+                          </Button>
+                         
+                        </div>
                       </div>
-                    </div>
+                    
                   </TabsContent>
 
                   <TabsContent value="subtasks" className="mt-4">
@@ -1630,18 +1724,6 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                       workItemId={selectedItem.$id}
                       workspaceId={workspaceId}
                     />
-                  </TabsContent>
-
-                  <TabsContent value="comments" className="mt-4">
-                    <div className="text-sm text-muted-foreground">
-                      Comments feature coming soon...
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="history" className="mt-4">
-                    <div className="text-sm text-muted-foreground">
-                      History feature coming soon...
-                    </div>
                   </TabsContent>
                 </Tabs>
               </>
