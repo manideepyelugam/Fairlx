@@ -294,8 +294,23 @@ export interface CreateMandateOrderOptions {
  * 
  * NOTE: Razorpay requires minimum ₹1 (100 paise) for orders.
  * This ₹1 is authorized but NOT captured - it's released automatically.
+ * 
+ * FEATURE FLAG: When ENABLE_EMANDATE is false, this function throws for
+ * emandate/netbanking authTypes but allows UPI and debitcard.
  */
 export async function createMandateAuthorizationOrder(options: CreateMandateOrderOptions) {
+    // Import feature flag (dynamic to avoid circular dependency)
+    const { ENABLE_EMANDATE } = await import("@/config");
+
+    // FEATURE FLAG: Block eMandate/netbanking authorization when disabled
+    // UPI AutoPay and debit cards can still create recurring tokens
+    if (!ENABLE_EMANDATE && (options.authType === "emandate" || options.authType === "netbanking")) {
+        throw new Error(
+            "eMandate is temporarily disabled pending company incorporation. " +
+            "Please use UPI AutoPay or Card payment instead."
+        );
+    }
+
     const razorpay = getRazorpay();
 
     const receipt = `${options.receiptPrefix || "mandate"}_${Date.now()}`;

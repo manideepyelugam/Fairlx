@@ -4,6 +4,8 @@ interface RazorpayCheckoutConfig {
     subscription_id?: string;
     order_id?: string;
     recurring?: boolean;
+    /** Restrict checkout to specific payment method (upi, card, netbanking, wallet) */
+    method?: "card" | "upi" | "netbanking" | "wallet";
     name: string;
     description: string;
     prefill: {

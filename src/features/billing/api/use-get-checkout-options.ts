@@ -7,6 +7,8 @@ interface UseGetCheckoutOptionsParams {
     organizationId?: string;
     /** Phone number - REQUIRED for Razorpay recurring payments */
     phone?: string;
+    /** Optional: Force specific payment method (upi, debitcard, netbanking) */
+    paymentMethod?: "upi" | "debitcard" | "netbanking";
     enabled?: boolean;
 }
 
@@ -19,23 +21,31 @@ interface CheckoutOptionsResponse {
  * 
  * IMPORTANT: phone is required for recurring payments.
  * Call this with a valid phone before opening the payment checkout dialog.
+ * 
+ * @param options.paymentMethod - Optional: 'upi' for UPI Autopay, 'debitcard' for card, 'netbanking' for bank
  */
 export function useGetCheckoutOptions(options: UseGetCheckoutOptionsParams = {}) {
-    const { userId, organizationId, phone, enabled = true } = options;
+    const { userId, organizationId, phone, paymentMethod, enabled = true } = options;
 
     // Don't enable query if phone is missing (required for recurring)
     const isEnabled = enabled && Boolean(phone);
 
     return useQuery<CheckoutOptionsResponse>({
-        queryKey: ["billing-checkout-options", { userId, organizationId, phone }],
+        queryKey: ["billing-checkout-options", { userId, organizationId, phone, paymentMethod }],
         queryFn: async () => {
             if (!phone) {
                 throw new Error("Phone number is required for auto-debit setup");
             }
 
-            const params = { phone } as { phone: string; userId?: string; organizationId?: string };
+            const params = { phone } as {
+                phone: string;
+                userId?: string;
+                organizationId?: string;
+                paymentMethod?: "upi" | "debitcard" | "netbanking";
+            };
             if (userId) params.userId = userId;
             if (organizationId) params.organizationId = organizationId;
+            if (paymentMethod) params.paymentMethod = paymentMethod;
 
             const response = await client.api.billing["checkout-options"].$get({
                 query: params,
@@ -53,4 +63,3 @@ export function useGetCheckoutOptions(options: UseGetCheckoutOptionsParams = {})
         staleTime: 0,
     });
 }
-

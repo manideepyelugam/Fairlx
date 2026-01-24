@@ -295,6 +295,7 @@ const app = new Hono()
      * Get Razorpay checkout options for frontend
      * 
      * REQUIRES: phone parameter (for Razorpay recurring payments)
+     * OPTIONAL: paymentMethod (upi, card, netbanking) to force specific method
      */
     .get(
         "/checkout-options",
@@ -302,7 +303,7 @@ const app = new Hono()
         zValidator("query", checkoutOptionsSchema),
         async (c) => {
             const user = c.get("user");
-            const { userId, organizationId, phone } = c.req.valid("query");
+            const { userId, organizationId, phone, paymentMethod } = c.req.valid("query");
 
             // Use admin client for billing collection access
             const { databases: adminDatabases } = await createAdminClient();
@@ -336,15 +337,70 @@ const app = new Hono()
                 return c.json({ error: "Billing account not found. Call /setup first." }, 404);
             }
 
-            const account = billingAccounts.documents[0];
+            let account = billingAccounts.documents[0];
 
             // Update Razorpay customer with phone (REQUIRED for recurring payments)
-            await ensureCustomerContact(account.razorpayCustomerId, phone);
+            // Handle case where customer ID doesn't exist in Razorpay (e.g., after switching test/live mode)
+            let razorpayCustomerId = account.razorpayCustomerId;
+            try {
+                await ensureCustomerContact(razorpayCustomerId, phone);
+            } catch (error: unknown) {
+                // Check if customer doesn't exist
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const apiError = error as any;
+                if (apiError?.error?.code === "BAD_REQUEST_ERROR" &&
+                    apiError?.error?.description?.includes("does not exist")) {
+                    console.log(`[Billing] Razorpay customer ${razorpayCustomerId} not found, recreating...`);
+
+                    // Recreate the customer in Razorpay
+                    const user = c.get("user");
+                    const razorpayCustomer = await createCustomer({
+                        name: user.name || "Organization Admin",
+                        email: account.billingEmail || user.email,
+                        contact: phone,
+                        notes: {
+                            fairlx_type: account.type,
+                            fairlx_entity_id: account.organizationId || account.userId || "",
+                            fairlx_user_id: user.$id,
+                            recreated: "true",
+                        },
+                    });
+
+                    razorpayCustomerId = razorpayCustomer.id;
+
+                    // Update billing account with new customer ID
+                    account = await adminDatabases.updateDocument(
+                        DATABASE_ID,
+                        BILLING_ACCOUNTS_ID,
+                        account.$id,
+                        { razorpayCustomerId }
+                    );
+
+                    console.log(`[Billing] Recreated Razorpay customer: ${razorpayCustomerId}`);
+                } else {
+                    throw error;
+                }
+            }
+
+            // FEATURE FLAG: Check for netbanking/eMandate early with user-friendly error
+            // Note: The schema only allows "upi", "debitcard", "netbanking"
+            // eMandate is typically set up via netbanking authType
+            const { ENABLE_EMANDATE } = await import("@/config");
+            if (!ENABLE_EMANDATE && paymentMethod === "netbanking") {
+                return c.json({
+                    error: "eMandate is temporarily unavailable",
+                    message: "eMandate via Net Banking is temporarily disabled pending company incorporation. Please use UPI AutoPay or Card payment.",
+                    availableMethods: ["upi", "debitcard"],
+                    reason: "pending_company_incorporation",
+                }, 400);
+            }
 
             // Create mandate authorization order (₹1 auth, not captured)
+            // authType determines which payment method is shown
             const order = await createMandateAuthorizationOrder({
-                customerId: account.razorpayCustomerId,
+                customerId: razorpayCustomerId, // Use potentially recreated customer ID
                 maxAmount: account.mandateMaxAmount || 10000000, // ₹1,00,000 default
+                authType: paymentMethod as "upi" | "debitcard" | "netbanking" | "emandate" | undefined,
                 tokenNotes: {
                     fairlx_billing_account_id: account.$id,
                     fairlx_type: account.type,
@@ -353,13 +409,21 @@ const app = new Hono()
 
             // Return checkout options for frontend (mandate authorization)
             // NOTE: contact is REQUIRED for recurring payments (e-Mandate)
+            // Map paymentMethod to Razorpay's method parameter
+            // CRITICAL: Razorpay uses 'card' not 'debitcard' for checkout method restriction
+            const razorpayMethod = paymentMethod === "upi" ? "upi" : paymentMethod === "debitcard" ? "card" : undefined;
+
             return c.json({
                 data: {
                     key: getPublicKey(),
                     orderId: order.id,
-                    customerId: account.razorpayCustomerId,
+                    customerId: razorpayCustomerId, // Use potentially recreated customer ID
+                    // Method restriction - tells Razorpay which payment method to show
+                    method: razorpayMethod,
                     name: "Fairlx Auto-Debit Authorization",
-                    description: "Authorize automatic billing for your usage (no charge today)",
+                    description: paymentMethod === "upi"
+                        ? "Authorize UPI Autopay for automatic billing (no charge today)"
+                        : "Authorize automatic billing for your usage (no charge today)",
                     prefill: {
                         name: user.name || "",
                         email: account.billingEmail || user.email,

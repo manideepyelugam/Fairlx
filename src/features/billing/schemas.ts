@@ -51,6 +51,13 @@ export const getBillingAccountSchema = z.object({
 );
 
 /**
+ * Payment method types for mandate authorization
+ * Maps directly to Razorpay's authType parameter
+ * NOTE: Razorpay uses 'debitcard' not 'card' for recurring mandates
+ */
+export const paymentMethodSchema = z.enum(["upi", "debitcard", "netbanking"]);
+
+/**
  * Schema for getting checkout options (mandate authorization)
  * Phone is REQUIRED for recurring payments (Razorpay requirement)
  */
@@ -61,6 +68,8 @@ export const checkoutOptionsSchema = z.object({
         /^[+]?[0-9]{10,15}$/,
         "Invalid phone number format"
     ),
+    /** Optional: Force specific payment method (upi, card, netbanking). If not specified, Razorpay shows all options. */
+    paymentMethod: paymentMethodSchema.optional(),
 }).refine(
     (data) => data.userId || data.organizationId,
     { message: "Either userId or organizationId is required" }
