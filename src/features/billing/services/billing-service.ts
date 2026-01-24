@@ -355,8 +355,22 @@ export async function processBillingCycle(): Promise<{
             // 3. UNLOCK for new cycle (new usage can now be recorded)
             await unlockBillingCycle(databases, account.$id);
 
-            // 3. ATTEMPT AUTO-DEBIT using mandate (if authorized)
-            if (account.razorpayTokenId && account.mandateStatus === MandateStatus.AUTHORIZED) {
+            // 4. ATTEMPT AUTO-DEBIT using mandate (if authorized and eMandate is enabled)
+            // Import feature flag to check if eMandate is enabled
+            const { ENABLE_EMANDATE } = await import("@/config");
+
+            // Check if mandate is valid for auto-debit:
+            // - Must have token ID
+            // - Must be AUTHORIZED status (not SUSPENDED, FAILED, CANCELLED)
+            // - eMandate must be enabled OR payment method is UPI/Card (not netbanking)
+            const isMandateAuthorized = account.razorpayTokenId &&
+                account.mandateStatus === MandateStatus.AUTHORIZED;
+            const isNetbankingMandate = account.paymentMethodType === "netbanking" ||
+                account.paymentMethodType === "emandate";
+            const canAutoDebit = isMandateAuthorized &&
+                (ENABLE_EMANDATE || !isNetbankingMandate);
+
+            if (canAutoDebit) {
                 try {
                     results.paymentsAttempted++;
 
@@ -365,7 +379,7 @@ export async function processBillingCycle(): Promise<{
 
                     await createRecurringPayment({
                         customerId: account.razorpayCustomerId,
-                        tokenId: account.razorpayTokenId,
+                        tokenId: account.razorpayTokenId!,
                         amount: invoice.amount,
                         invoiceId: invoice.invoiceId,
                         description: `Fairlx Invoice ${invoice.invoiceId}`,
@@ -383,6 +397,32 @@ export async function processBillingCycle(): Promise<{
                     // Start grace period on payment failure
                     await startGracePeriod(databases, account.$id);
                 }
+            } else if (account.mandateStatus === MandateStatus.SUSPENDED) {
+                // Mandate is suspended - log and start grace period
+                console.log(`[Billing] Mandate SUSPENDED for account ${account.$id} (${account.mandateSuspendedReason || "no reason"}), skipping auto-debit`);
+                await startGracePeriod(databases, account.$id);
+            } else if (!ENABLE_EMANDATE && isNetbankingMandate) {
+                // eMandate disabled and this is a netbanking mandate - log and start grace period
+                console.log(`[Billing] eMandate disabled for account ${account.$id} (netbanking mandate), skipping auto-debit`);
+
+                // Log audit event for eMandate suspension
+                await databases.createDocument(
+                    DATABASE_ID,
+                    BILLING_AUDIT_LOGS_ID,
+                    ID.unique(),
+                    {
+                        billingAccountId: account.$id,
+                        eventType: BillingAuditEventType.EMANDATE_SUSPENDED,
+                        metadata: JSON.stringify({
+                            reason: "ENABLE_EMANDATE feature flag is disabled",
+                            paymentMethodType: account.paymentMethodType,
+                            mandateStatus: account.mandateStatus,
+                            timestamp: new Date().toISOString(),
+                        }),
+                    }
+                );
+
+                await startGracePeriod(databases, account.$id);
             } else {
                 // No mandate authorized - start grace period immediately
                 console.log(`[Billing] No mandate for account ${account.$id}, starting grace period`);

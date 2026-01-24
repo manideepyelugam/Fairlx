@@ -43,12 +43,14 @@ export enum BillingAccountType {
  * AUTHORIZED: Mandate successfully authorized, ready for auto-debit
  * FAILED: Mandate authorization failed
  * CANCELLED: Mandate was cancelled by user or expired
+ * SUSPENDED: Mandate temporarily suspended (e.g., pending company incorporation)
  */
 export enum MandateStatus {
     PENDING = "PENDING",
     AUTHORIZED = "AUTHORIZED",
     FAILED = "FAILED",
     CANCELLED = "CANCELLED",
+    SUSPENDED = "SUSPENDED",
 }
 
 // ===============================
@@ -84,6 +86,9 @@ export enum BillingAuditEventType {
     // Account Status Events
     ACCOUNT_SUSPENDED = "ACCOUNT_SUSPENDED",
     ACCOUNT_RESTORED = "ACCOUNT_RESTORED",
+
+    // eMandate Events
+    EMANDATE_SUSPENDED = "EMANDATE_SUSPENDED",
 
     // Subscription Events
     SUBSCRIPTION_CREATED = "SUBSCRIPTION_CREATED",
@@ -194,6 +199,16 @@ export type BillingAccount = Models.Document & {
 
     /** When the cycle was locked */
     billingCycleLockedAt?: string;
+
+    // ============================================================================
+    // MANDATE SUSPENSION (for eMandate temporary disable)
+    // ============================================================================
+
+    /** Reason for mandate suspension (e.g., "pending_company_incorporation") */
+    mandateSuspendedReason?: string;
+
+    /** When mandate was suspended (ISO datetime) */
+    mandateSuspendedAt?: string;
 };
 
 /**
@@ -387,6 +402,8 @@ export type RazorpayCheckoutOptions = {
     key: string;
     subscriptionId?: string;
     orderId?: string;
+    /** Restrict checkout to specific payment method (Razorpay uses 'card' not 'debitcard') */
+    method?: "card" | "upi" | "netbanking";
     name: string;
     description: string;
     prefill: {

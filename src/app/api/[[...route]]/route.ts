@@ -47,6 +47,9 @@ import departments from "@/features/departments/server/route";
 import orgPermissions from "@/features/org-permissions/server/route";
 // User Access (permission-driven navigation)
 import userAccess from "@/features/user-access/server/route";
+// Wallet & Billing Mode
+import wallet from "@/features/wallet/server/route";
+import billingMode from "@/features/wallet/server/billing-mode";
 // Global Traffic Metering
 import { trafficMeteringMiddleware } from "@/lib/traffic-metering-middleware";
 
@@ -104,7 +107,10 @@ const routes = app
   // Scheduled Jobs (protected by CRON_SECRET)
   .route("/cron", cron)
   // User Access (permission-driven navigation)
-  .route("/user-access", userAccess);
+  .route("/user-access", userAccess)
+  // Wallet & Prepaid Billing
+  .route("/wallet", wallet)
+  .route("/billing-mode", billingMode);
 
 export const GET = handle(app);
 export const POST = handle(app);

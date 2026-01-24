@@ -109,3 +109,18 @@ export const PROCESSED_EVENTS_ID = process.env.NEXT_PUBLIC_APPWRITE_PROCESSED_EV
 // ===============================
 export const BILLING_GRACE_PERIOD_DAYS = parseInt(process.env.BILLING_GRACE_PERIOD_DAYS || "14");
 export const BILLING_CURRENCY = process.env.BILLING_CURRENCY || "INR";
+
+// ===============================
+// eMandate Feature Flag
+// ===============================
+// Set to "false" to temporarily disable eMandate creation
+// (e.g., pending company incorporation)
+export const ENABLE_EMANDATE = process.env.ENABLE_EMANDATE !== "false";
+
+// ===============================
+// Wallet & Billing Mode Collections
+// ===============================
+export const WALLETS_ID = process.env.NEXT_PUBLIC_APPWRITE_WALLETS_ID!;
+export const WALLET_TRANSACTIONS_ID = process.env.NEXT_PUBLIC_APPWRITE_WALLET_TRANSACTIONS_ID!;
+export const BILLING_SETTINGS_ID = process.env.NEXT_PUBLIC_APPWRITE_BILLING_SETTINGS_ID!;
+

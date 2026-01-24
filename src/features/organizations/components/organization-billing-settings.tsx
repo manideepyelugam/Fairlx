@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { CreditCard, DollarSign, FileText, ExternalLink, Calendar, Loader2, CheckCircle2, AlertTriangle, Info } from "lucide-react";
+import { CreditCard, DollarSign, FileText, ExternalLink, Calendar, Loader2, CheckCircle2, AlertTriangle, Info, Smartphone } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,10 +28,11 @@ import {
     useUpdatePaymentMethod,
     useSetupBilling
 } from "@/features/billing/api";
-import { BillingStatus, BillingAccountType } from "@/features/billing/types";
+import { BillingStatus, BillingAccountType, RazorpayCheckoutOptions } from "@/features/billing/types";
 import { BillingWarningBanner } from "@/features/billing/components/billing-warning-banner";
 import { useCurrentUserOrgPermissions } from "@/features/org-permissions/api/use-current-user-permissions";
 import { OrgPermissionKey } from "@/features/org-permissions/types";
+import { client } from "@/lib/rpc";
 
 
 
@@ -66,13 +67,17 @@ export function OrganizationBillingSettings({
         enabled: !!organizationId
     });
     const [billingPhone, setBillingPhone] = useState("");
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"upi" | "debitcard" | undefined>(undefined);
 
     // Checkout options - requires phone for e-Mandate
-    const { refetch: refetchCheckoutOptions } = useGetCheckoutOptions({
+    // Note: We call the API directly in handleAddPaymentMethod for fresh params
+    useGetCheckoutOptions({
         organizationId,
         phone: billingPhone,
+        paymentMethod: selectedPaymentMethod,
         enabled: false // Only fetch when needed
     });
+
     const { mutateAsync: updatePaymentMethod } = useUpdatePaymentMethod();
     const { mutateAsync: setupBilling } = useSetupBilling();
 
@@ -154,7 +159,7 @@ export function OrganizationBillingSettings({
     }, [organizationId, billingEmailValue, alternativeEmailValue, ownerEmail, updateOrganization]);
 
     // Handler for add/update payment method - must be defined before any conditional returns
-    const handleAddPaymentMethod = useCallback(async () => {
+    const handleAddPaymentMethod = useCallback(async (paymentMethodOverride?: "upi" | "debitcard") => {
         if (!organizationId) {
             toast.error("Organization ID is required");
             return;
@@ -170,6 +175,14 @@ export function OrganizationBillingSettings({
         if (!isScriptLoaded) {
             toast.error("Payment system not ready. Please refresh the page.");
             return;
+        }
+
+        // Use the override if provided, otherwise fall back to state
+        const methodToUse = paymentMethodOverride || selectedPaymentMethod;
+
+        // Update state for UI display
+        if (paymentMethodOverride) {
+            setSelectedPaymentMethod(paymentMethodOverride);
         }
 
         setIsAddingPayment(true);
@@ -195,9 +208,30 @@ export function OrganizationBillingSettings({
                 }
             }
 
-            // Fetch checkout options
-            const result = await refetchCheckoutOptions();
-            const checkoutOptions = result.data?.data;
+            // Fetch checkout options directly with the correct payment method
+            // Build params for the API call
+            const params: {
+                phone: string;
+                organizationId?: string;
+                paymentMethod?: "upi" | "debitcard" | "netbanking";
+            } = {
+                phone: billingPhone,
+            };
+            if (organizationId) params.organizationId = organizationId;
+            if (methodToUse) params.paymentMethod = methodToUse;
+
+            // Call the API directly instead of using refetch to ensure fresh params
+            const response = await client.api.billing["checkout-options"].$get({
+                query: params,
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error((errorData as { error?: string }).error || "Failed to get checkout options");
+            }
+
+            const checkoutResult = await response.json() as { data: RazorpayCheckoutOptions };
+            const checkoutOptions = checkoutResult.data;
 
             if (!checkoutOptions) {
                 toast.error("Failed to initialize payment configuration. Please try again.");
@@ -212,6 +246,9 @@ export function OrganizationBillingSettings({
                 subscription_id: checkoutOptions.subscriptionId,
                 order_id: checkoutOptions.orderId, // Required for e-Mandate
                 recurring: checkoutOptions.recurring, // Required for e-Mandate
+                // CRITICAL: method restriction tells Razorpay which payment UI to show
+                // This fixes the bug where UPI AutoPay was opening Card modal
+                method: checkoutOptions.method,
                 name: checkoutOptions.name,
                 description: checkoutOptions.description,
                 prefill: {
@@ -251,7 +288,7 @@ export function OrganizationBillingSettings({
             toast.error("Failed to initialize payment. Please try again.");
             setIsAddingPayment(false);
         }
-    }, [organizationId, isScriptLoaded, refetchCheckoutOptions, updatePaymentMethod, billingAccountData?.data, billingEmailValue, organization?.email, organization?.name, ownerEmail, setupBilling, billingPhone]);
+    }, [organizationId, isScriptLoaded, updatePaymentMethod, billingAccountData?.data, billingEmailValue, organization?.email, organization?.name, ownerEmail, setupBilling, billingPhone, selectedPaymentMethod]);
 
     if (isLoading) {
         return (
@@ -486,33 +523,57 @@ export function OrganizationBillingSettings({
                         </Alert>
 
                         {hasPaymentMethod ? (
-                            <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/50">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/30">
-                                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                            <div className="space-y-4">
+                                {/* Phone Input - Required for updating payment method */}
+                                {showPhoneInput && (
+                                    <div className="p-4 rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/30">
+                                        <Label htmlFor="update-billing-phone" className="text-sm font-medium mb-2 block">
+                                            Phone Number <span className="text-red-500">*</span>
+                                        </Label>
+                                        <Input
+                                            id="update-billing-phone"
+                                            type="tel"
+                                            placeholder="+91 9876543210"
+                                            value={billingPhone}
+                                            onChange={(e) => setBillingPhone(e.target.value)}
+                                            className={`${!billingPhone || billingPhone.length < 10 ? 'border-red-500' : ''}`}
+                                        />
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            Required for auto-debit authorization
+                                        </p>
                                     </div>
-                                    <div>
-                                        <div className="font-medium">{paymentMethodDisplay}</div>
-                                        <div className="text-sm text-muted-foreground">
-                                            {billingAccount?.lastPaymentAt
-                                                ? `Last payment: ${format(new Date(billingAccount.lastPaymentAt), "PPP")}`
-                                                : "Auto-billing enabled"
-                                            }
+                                )}
+
+                                <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/50">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/30">
+                                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                        </div>
+                                        <div>
+                                            <div className="font-medium">{paymentMethodDisplay}</div>
+                                            <div className="text-sm text-muted-foreground">
+                                                {billingAccount?.lastPaymentAt
+                                                    ? `Last payment: ${format(new Date(billingAccount.lastPaymentAt), "PPP")}`
+                                                    : "Auto-billing enabled"
+                                                }
+                                            </div>
                                         </div>
                                     </div>
+                                    <Button
+                                        variant={showPhoneInput && billingPhone && billingPhone.length >= 10 ? "primary" : "outline"}
+                                        size="sm"
+                                        onClick={() => handleAddPaymentMethod()}
+                                        disabled={isAddingPayment || !canManageBilling || (showPhoneInput && (!billingPhone || billingPhone.length < 10))}
+                                    >
+                                        {isAddingPayment ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : showPhoneInput ? (
+                                            "Continue"
+                                        ) : (
+                                            "Update"
+                                        )}
+                                    </Button>
                                 </div>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handleAddPaymentMethod}
-                                    disabled={isAddingPayment || !canManageBilling}
-                                >
-                                    {isAddingPayment ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                        "Update"
-                                    )}
-                                </Button>
                             </div>
                         ) : (
                             <div className="border rounded-lg border-dashed p-6">
@@ -537,27 +598,55 @@ export function OrganizationBillingSettings({
                                 </div>
 
                                 <div className="text-center py-4">
-                                    <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                                     <p className="text-muted-foreground mb-4">
-                                        No payment method configured
+                                        Choose your preferred auto-debit method
                                     </p>
-                                    <Button
-                                        onClick={handleAddPaymentMethod}
-                                        disabled={isAddingPayment || !isScriptLoaded || !billingPhone || billingPhone.length < 10 || !canManageBilling}
-                                        size="lg"
-                                    >
-                                        {isAddingPayment ? (
-                                            <>
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                Setting up...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <CreditCard className="mr-2 h-4 w-4" />
-                                                Add Payment Method
-                                            </>
-                                        )}
-                                    </Button>
+
+                                    {/* Payment Method Selection Buttons */}
+                                    <div className="flex flex-col sm:flex-row gap-3 justify-center mb-4">
+                                        {/* UPI AutoPay Button */}
+                                        <Button
+                                            onClick={() => handleAddPaymentMethod("upi")}
+                                            disabled={isAddingPayment || !isScriptLoaded || !billingPhone || billingPhone.length < 10 || !canManageBilling}
+                                            size="lg"
+                                            variant={selectedPaymentMethod === "upi" ? "primary" : "outline"}
+                                            className="min-w-[180px]"
+                                        >
+                                            {isAddingPayment && selectedPaymentMethod === "upi" ? (
+                                                <>
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                    Setting up...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Smartphone className="mr-2 h-4 w-4" />
+                                                    UPI AutoPay
+                                                </>
+                                            )}
+                                        </Button>
+
+                                        {/* Card Auto-Debit Button */}
+                                        <Button
+                                            onClick={() => handleAddPaymentMethod("debitcard")}
+                                            disabled={isAddingPayment || !isScriptLoaded || !billingPhone || billingPhone.length < 10 || !canManageBilling}
+                                            size="lg"
+                                            variant={selectedPaymentMethod === "debitcard" ? "primary" : "outline"}
+                                            className="min-w-[180px]"
+                                        >
+                                            {isAddingPayment && selectedPaymentMethod === "debitcard" ? (
+                                                <>
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                    Setting up...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <CreditCard className="mr-2 h-4 w-4" />
+                                                    Card Auto-Debit
+                                                </>
+                                            )}
+                                        </Button>
+                                    </div>
+
                                     <p className="text-xs text-muted-foreground mt-3">
                                         Payments processed securely by Razorpay
                                     </p>
