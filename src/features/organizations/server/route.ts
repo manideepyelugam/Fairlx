@@ -394,6 +394,25 @@ const app = new Hono()
             );
 
             if (existing.total > 0) {
+                const existingMember = existing.documents[0];
+
+                // Allow re-adding tombstoned members (email reuse)
+                if (existingMember.status === "DELETED" || existingMember.deletedAt) {
+                    // Reactivate the tombstoned member
+                    const reactivated = await databases.updateDocument(
+                        DATABASE_ID,
+                        ORGANIZATION_MEMBERS_ID,
+                        existingMember.$id,
+                        {
+                            role,
+                            status: OrgMemberStatus.ACTIVE,
+                            deletedAt: null,
+                            deletedBy: null,
+                        }
+                    );
+                    return c.json({ data: reactivated, reactivated: true });
+                }
+
                 return c.json({ error: "User is already a member" }, 400);
             }
 
@@ -662,65 +681,59 @@ const app = new Hono()
 
             try {
                 const { users, databases: adminDatabases } = await createAdminClient();
+                const targetEmail = email.toLowerCase();
                 let targetUserId: string;
                 let isExistingUser = false;
+                let tempPassword = "";
 
-                // Try to find existing Appwrite user by email
-                try {
-                    const existingUsers = await users.list([
-                        Query.equal("email", email),
-                    ]);
+                // 1. Try to find existing Appwrite user by email
+                const existingUsers = await users.list([
+                    Query.equal("email", targetEmail),
+                ]);
 
-                    if (existingUsers.total > 0) {
-                        // User exists in Appwrite - reuse them
-                        isExistingUser = true;
-                        targetUserId = existingUsers.users[0].$id;
+                if (existingUsers.total > 0) {
+                    // EXISTING USER: Reuse identity
+                    isExistingUser = true;
+                    const existingUser = existingUsers.users[0];
+                    targetUserId = existingUser.$id;
 
-                        // Update their password with new temp password
-                        await users.updatePassword(targetUserId, tempPassword);
+                    // Update verification status (Org Admin verification)
+                    if (!existingUser.emailVerification) {
+                        await users.updateEmailVerification(targetUserId, true);
+                    }
 
-                        // Update user prefs
-                        const existingPrefs = existingUsers.users[0].prefs || {};
+                    // Update user prefs if needed
+                    const existingPrefs = existingUser.prefs || {};
+                    // If they have no account type, set to ORG
+                    if (!existingPrefs.accountType) {
                         await users.updatePrefs(targetUserId, {
                             ...existingPrefs,
-                            mustResetPassword: true,
                             accountType: "ORG",
-                            primaryOrganizationId: orgId,
-                        });
-
-                        // Update name if different
-                        if (existingUsers.users[0].name !== fullName) {
-                            await users.updateName(targetUserId, fullName);
-                        }
-                    } else {
-                        // No existing user - create new one
-                        const newUser = await users.create(
-                            ID.unique(),
-                            email,
-                            undefined, // phone
-                            tempPassword,
-                            fullName
-                        );
-                        targetUserId = newUser.$id;
-
-                        // Set user prefs to indicate password reset required
-                        await users.updatePrefs(targetUserId, {
-                            mustResetPassword: true,
-                            accountType: "ORG",
-                            primaryOrganizationId: orgId,
+                            // Only set primaryOrg if not set
+                            primaryOrganizationId: existingPrefs.primaryOrganizationId || orgId,
                         });
                     }
-                } catch {
-                    // If user lookup fails, try to create new user
+
+                    // Do NOT update password for existing users!
+                } else {
+                    // NEW USER: Create identity
+                    isExistingUser = false;
+
+                    // Generate secure temporary password
+                    const crypto = await import("crypto");
+                    tempPassword = crypto.randomBytes(12).toString("base64").slice(0, 16);
+
                     const newUser = await users.create(
                         ID.unique(),
-                        email,
+                        targetEmail,
                         undefined, // phone
                         tempPassword,
                         fullName
                     );
                     targetUserId = newUser.$id;
 
+                    // Auto-verify & Set Prefs
+                    await users.updateEmailVerification(targetUserId, true);
                     await users.updatePrefs(targetUserId, {
                         mustResetPassword: true,
                         accountType: "ORG",
@@ -728,16 +741,13 @@ const app = new Hono()
                     });
                 }
 
-                // ORG-ADDED: Mark user as verified (skip email verification step)
-                // This improves UX while maintaining security via password reset requirement
-                await users.updateEmailVerification(targetUserId, true);
-
-                // Generate first-login magic link token
+                // 2. Generate Magic Link Token (for both new and existing)
+                const crypto = await import("crypto");
                 const rawToken = crypto.randomBytes(32).toString("hex");
                 const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
                 const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
 
-                // Store hashed token (raw token is never persisted)
+                // Store hashed token
                 const { LOGIN_TOKENS_ID } = await import("@/config");
                 if (LOGIN_TOKENS_ID) {
                     await adminDatabases.createDocument(
@@ -755,7 +765,7 @@ const app = new Hono()
                     );
                 }
 
-                // Create org_member record
+                // 3. Create org_member record
                 const member = await databases.createDocument(
                     DATABASE_ID,
                     ORGANIZATION_MEMBERS_ID,
@@ -765,13 +775,13 @@ const app = new Hono()
                         userId: targetUserId,
                         role,
                         status: OrgMemberStatus.INVITED,
-                        mustResetPassword: true,
+                        mustResetPassword: !isExistingUser, // Only force reset for NEW users
                         name: fullName,
-                        email: email,
+                        email: targetEmail,
                     }
                 );
 
-                // Log audit events
+                // 4. Log audit events
                 const { logOrgAudit, OrgAuditAction } = await import("../audit");
                 await logOrgAudit({
                     databases: adminDatabases,
@@ -780,7 +790,7 @@ const app = new Hono()
                     actionType: OrgAuditAction.MEMBER_ADDED,
                     metadata: {
                         targetUserId,
-                        targetEmail: email,
+                        targetEmail: targetEmail,
                         role,
                         creationType: isExistingUser ? "readded_existing_user" : "admin_created",
                         isExistingUser,
@@ -788,43 +798,28 @@ const app = new Hono()
                     },
                 });
 
-                // Log token creation (never log raw token)
-                if (LOGIN_TOKENS_ID) {
-                    await logOrgAudit({
-                        databases: adminDatabases,
-                        organizationId: orgId,
-                        actorUserId: user.$id,
-                        actionType: OrgAuditAction.FIRST_LOGIN_TOKEN_CREATED,
-                        metadata: {
-                            targetUserId,
-                            expiresAt,
-                        },
-                    });
-                }
-
-                // Send welcome email with magic link
+                // 5. Send Email
                 const { sendWelcomeEmail, logEmailSent } = await import("../services/email-service");
                 const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL}/sign-in`;
                 const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
 
                 const emailResult = await sendWelcomeEmail({
-                    recipientEmail: email,
+                    recipientEmail: targetEmail,
                     recipientName: fullName,
                     recipientUserId: targetUserId,
                     organizationName: organization.name,
-                    tempPassword,
+                    tempPassword: isExistingUser ? undefined : tempPassword, // Only send password to NEW users
                     loginUrl,
                     firstLoginToken: LOGIN_TOKENS_ID ? rawToken : undefined,
                     appUrl: LOGIN_TOKENS_ID ? appUrl : undefined,
                     logoUrl: organization.imageUrl || undefined,
                 });
 
-                // Log email sent event (non-blocking)
                 if (emailResult.success) {
                     logEmailSent({
                         organizationId: orgId,
                         recipientUserId: targetUserId,
-                        recipientEmail: email,
+                        recipientEmail: targetEmail,
                         emailType: "welcome",
                     });
                 }
@@ -838,17 +833,15 @@ const app = new Hono()
                         isExistingUser,
                         hasMagicLink: !!LOGIN_TOKENS_ID,
                         // SECURITY: In production, remove this - send via email only
-                        tempPassword: process.env.NODE_ENV === "development" ? tempPassword : undefined,
+                        tempPassword: (process.env.NODE_ENV === "development" && !isExistingUser) ? tempPassword : undefined,
                     },
                     message: isExistingUser
-                        ? "Member re-added successfully. Welcome email sent with new password."
+                        ? "Existing user invited. Login link sent."
                         : "Member created successfully. Welcome email sent.",
                 });
 
             } catch (error: unknown) {
                 const appwriteError = error as { code?: number; message?: string };
-
-                // Handle duplicate email in Appwrite (shouldn't happen with our flow, but safety check)
                 if (appwriteError.code === 409) {
                     return c.json({
                         error: "EMAIL_EXISTS",
@@ -856,7 +849,6 @@ const app = new Hono()
                         message: "This email is already registered. Please try again.",
                     }, 400);
                 }
-
                 console.error("Create org member error:", error);
                 return c.json({
                     error: appwriteError.message || "Failed to create member",

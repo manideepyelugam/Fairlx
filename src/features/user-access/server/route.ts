@@ -37,22 +37,52 @@ const app = new Hono()
             });
         }
 
-        // For ORG accounts, resolve access from database
-        const access = await resolveUserAccess(
-            databases,
-            user.$id,
-            organizationId,
-            workspaceId
-        );
+        // SECURITY: For ORG accounts, validate the organizationId belongs to the user
+        // If organizationId is provided, verify user is actually a member
+        // The resolveUserAccess function will do this implicitly, but we add
+        // explicit validation for defense in depth
+        if (organizationId) {
+            const access = await resolveUserAccess(
+                databases,
+                user.$id,
+                organizationId,
+                workspaceId
+            );
 
+            // If user has no access (not a member), return empty access
+            // This prevents info leakage about org existence
+            if (!access.isOwner && !access.hasDepartmentAccess) {
+                return c.json({
+                    allowedRouteKeys: [],
+                    permissions: [],
+                    isOwner: false,
+                    role: null,
+                    orgMemberId: null,
+                    departmentIds: [],
+                    hasDepartmentAccess: false,
+                });
+            }
+
+            return c.json({
+                allowedRouteKeys: access.allowedRouteKeys,
+                permissions: access.permissions,
+                isOwner: access.isOwner,
+                role: access.role,
+                orgMemberId: access.orgMemberId,
+                departmentIds: access.departmentIds,
+                hasDepartmentAccess: access.hasDepartmentAccess,
+            });
+        }
+
+        // Fallback: No organizationId provided
         return c.json({
-            allowedRouteKeys: access.allowedRouteKeys,
-            permissions: access.permissions,  // Added for client hooks
-            isOwner: access.isOwner,
-            role: access.role,
-            orgMemberId: access.orgMemberId,  // Added for client hooks
-            departmentIds: access.departmentIds,
-            hasDepartmentAccess: access.hasDepartmentAccess,
+            allowedRouteKeys: [],
+            permissions: [],
+            isOwner: false,
+            role: null,
+            orgMemberId: null,
+            departmentIds: [],
+            hasDepartmentAccess: false,
         });
     });
 

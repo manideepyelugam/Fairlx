@@ -1,6 +1,8 @@
 import { Query, type Databases } from "node-appwrite";
 
 import { DATABASE_ID, MEMBERS_ID, WORKSPACES_ID, ORGANIZATION_MEMBERS_ID } from "@/config";
+import { resolveUserOrgAccess, hasAnyOrgAccess } from "@/lib/permissions/resolveUserOrgAccess";
+import { resolveUserWorkspaceAccess } from "@/lib/permissions/resolveUserWorkspaceAccess";
 
 interface GetMemberProps {
   databases: Databases;
@@ -24,35 +26,9 @@ export const getMember = async ({
   workspaceId,
   userId,
 }: GetMemberProps) => {
-  // Check direct workspace membership
-  const members = await databases.listDocuments(DATABASE_ID, MEMBERS_ID, [
-    Query.equal("workspaceId", workspaceId),
-    Query.equal("userId", userId),
-  ]);
-
-  if (members.documents[0]) {
-    return members.documents[0];
-  }
-
-  // Check if user has org-level access to this workspace
-  const orgMember = await getOrganizationMemberForWorkspace({
-    databases,
-    workspaceId,
-    userId,
-  });
-
-  // If user is org member, they have implicit workspace access
-  if (orgMember) {
-    // Return a synthetic member with org-derived role
-    return {
-      ...orgMember,
-      workspaceId,
-      role: orgMember.role, // Org role propagates to workspace
-      isOrgMember: true, // Flag to indicate org-level membership
-    };
-  }
-
-  return undefined;
+  // Use authoritative resolver
+  const access = await resolveUserWorkspaceAccess(databases, userId, workspaceId);
+  return access.memberDocument;
 };
 
 interface GetOrgMemberForWorkspaceProps {
@@ -62,9 +38,7 @@ interface GetOrgMemberForWorkspaceProps {
 }
 
 /**
- * Check if user has organization membership for workspace's org
- * 
- * WHY: Enables org-level permissions to apply to all workspaces in org
+ * @deprecated Use resolveUserWorkspaceAccess instead
  */
 export const getOrganizationMemberForWorkspace = async ({
   databases,
@@ -236,35 +210,17 @@ export const canAccessWorkspaceData = async ({
   userId,
   requiredLevel,
 }: CanAccessWorkspaceDataProps): Promise<boolean> => {
-  // LIST level can use org membership
-  if (requiredLevel === WorkspaceAccessLevel.LIST) {
-    const member = await getMember({ databases, workspaceId, userId });
-    return !!member;
-  }
-
-  // For READ/WRITE/ADMIN, require EXPLICIT workspace membership
-  // Organization-level membership is NOT sufficient
-  const directMember = await databases.listDocuments(DATABASE_ID, MEMBERS_ID, [
-    Query.equal("workspaceId", workspaceId),
-    Query.equal("userId", userId),
-  ]);
-
-  if (directMember.total === 0) {
-    return false;
-  }
-
-  const member = directMember.documents[0];
+  const access = await resolveUserWorkspaceAccess(databases, userId, workspaceId);
 
   switch (requiredLevel) {
+    case WorkspaceAccessLevel.LIST:
+      return access.canList;
     case WorkspaceAccessLevel.READ:
-      // Any direct member can read
-      return true;
+      return access.canRead;
     case WorkspaceAccessLevel.WRITE:
-      // MEMBER, ADMIN, OWNER can write
-      return true;
+      return access.canWrite;
     case WorkspaceAccessLevel.ADMIN:
-      // Only ADMIN or OWNER
-      return member.role === "ADMIN" || member.role === "OWNER";
+      return access.canDelete;
     default:
       return false;
   }
@@ -283,17 +239,7 @@ export const canListOrgWorkspaces = async ({
   organizationId: string;
   userId: string;
 }): Promise<boolean> => {
-  const { ORGANIZATION_MEMBERS_ID } = await import("@/config");
-
-  const orgMember = await databases.listDocuments(
-    DATABASE_ID,
-    ORGANIZATION_MEMBERS_ID,
-    [
-      Query.equal("organizationId", organizationId),
-      Query.equal("userId", userId),
-    ]
-  );
-
-  return orgMember.total > 0;
+  const access = await resolveUserOrgAccess(databases, userId, organizationId);
+  return hasAnyOrgAccess(access);
 };
 

@@ -132,7 +132,8 @@ const app = new Hono()
         });
       }
 
-      // Filter projects by team
+      // Filter projects by team membership (STRICT MODE)
+      // Non-admins only see projects assigned to their teams
       const userTeamMemberships = await databases.listDocuments<TeamMember>(
         DATABASE_ID,
         TEAM_MEMBERS_ID,
@@ -142,10 +143,12 @@ const app = new Hono()
       const userTeamIds = userTeamMemberships.documents.map(
         (membership) => membership.teamId
       );
+
       const filteredProjects = allProjects.documents.filter((project) => {
-        // If no teams assigned, project is visible to all
+        // STRICT MODE: Projects without teams are ONLY visible to admins
+        // Non-admins must be in an assigned team to see the project
         if (!project.assignedTeamIds || project.assignedTeamIds.length === 0) {
-          return true;
+          return false; // Not visible to non-admins
         }
         // Check if user is in any of the assigned teams
         return project.assignedTeamIds.some((teamId) =>
@@ -550,7 +553,7 @@ const app = new Hono()
 
         // Check if user is admin OR team lead of the team being assigned
         const isAdmin = member.role === MemberRole.ADMIN;
-        
+
         // Check if user is team lead of this team
         let isTeamLead = false;
         if (!isAdmin) {
@@ -591,7 +594,7 @@ const app = new Hono()
         return c.json({ data: transformProject(updatedProject) });
       } catch (error) {
         console.error("Error assigning project to team:", error);
-        return c.json({ 
+        return c.json({
           error: "Failed to assign project to team",
           details: error instanceof Error ? error.message : String(error)
         }, 400);
@@ -631,7 +634,7 @@ const app = new Hono()
 
         // Check if user is admin OR team lead of the team being unassigned
         const isAdmin = member.role === MemberRole.ADMIN;
-        
+
         // Check if user is team lead of this team
         let isTeamLead = false;
         if (!isAdmin) {
@@ -670,7 +673,7 @@ const app = new Hono()
         return c.json({ data: transformProject(updatedProject) });
       } catch (error) {
         console.error("Error unassigning project from team:", error);
-        return c.json({ 
+        return c.json({
           error: "Failed to unassign project from team",
           details: error instanceof Error ? error.message : String(error)
         }, 400);

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useCurrent } from "@/features/auth/api/use-current";
 import { OrganizationRole } from "@/features/organizations/types";
 import { OrgPermissionKey } from "../types";
+import { AppRouteKey } from "@/lib/permissions/appRouteKeys";
 
 interface UseCurrentUserOrgPermissionsProps {
     orgId: string;
@@ -15,6 +16,7 @@ interface UseCurrentUserOrgPermissionsProps {
  * SECURITY: Fetches permissions from server API.
  * - OWNER: Gets all permissions (from server)
  * - Non-owners: Get department-based permissions only
+ * - Route Keys: Authoritative navigation items
  * 
  * NOTE: This is for UI rendering only. Server-side checks are authoritative.
  */
@@ -28,9 +30,16 @@ export const useCurrentUserOrgPermissions = ({ orgId }: UseCurrentUserOrgPermiss
             role: OrganizationRole | null;
             isOwner: boolean;
             orgMemberId: string | null;
+            allowedRouteKeys: AppRouteKey[];
         }> => {
             if (!user?.$id || !orgId) {
-                return { permissions: [] as OrgPermissionKey[], role: null, isOwner: false, orgMemberId: null };
+                return {
+                    permissions: [] as OrgPermissionKey[],
+                    role: null,
+                    isOwner: false,
+                    orgMemberId: null,
+                    allowedRouteKeys: [],
+                };
             }
 
             // Fetch permissions from server (authoritative source)
@@ -40,7 +49,13 @@ export const useCurrentUserOrgPermissions = ({ orgId }: UseCurrentUserOrgPermiss
             );
 
             if (!response.ok) {
-                return { permissions: [] as OrgPermissionKey[], role: null, isOwner: false, orgMemberId: null };
+                return {
+                    permissions: [] as OrgPermissionKey[],
+                    role: null,
+                    isOwner: false,
+                    orgMemberId: null,
+                    allowedRouteKeys: [],
+                };
             }
 
             const data = await response.json();
@@ -51,6 +66,7 @@ export const useCurrentUserOrgPermissions = ({ orgId }: UseCurrentUserOrgPermiss
                 role: data.role as OrganizationRole | null,
                 isOwner: data.isOwner ?? false,
                 orgMemberId: data.orgMemberId || null,
+                allowedRouteKeys: (data.allowedRouteKeys || []) as AppRouteKey[],
             };
         },
         enabled: !!orgId && !!user?.$id,
@@ -64,10 +80,17 @@ export const useCurrentUserOrgPermissions = ({ orgId }: UseCurrentUserOrgPermiss
         return query.data?.permissions?.includes(permission) ?? false;
     };
 
+    const canAccessRoute = (routeKey: AppRouteKey): boolean => {
+        if (query.data?.isOwner) return true;
+        return query.data?.allowedRouteKeys?.includes(routeKey) ?? false;
+    };
+
     return {
         ...query,
         hasPermission,
+        canAccessRoute,
         isOwner: query.data?.isOwner ?? false,
         role: query.data?.role ?? null,
+        allowedRouteKeys: query.data?.allowedRouteKeys ?? [],
     };
 };

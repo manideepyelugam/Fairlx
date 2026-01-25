@@ -13,7 +13,6 @@
  */
 
 import { createServer, IncomingMessage, ServerResponse } from "http";
-import { parse } from "url";
 import next from "next";
 import { initSocketServer, emitToUser } from "./src/lib/socket";
 
@@ -80,8 +79,7 @@ app.prepare().then(() => {
         const handled = await handleInternalPush(req, res);
         if (handled) return;
 
-        const parsedUrl = parse(req.url!, true);
-        handle(req, res, parsedUrl);
+        handle(req, res);
     });
 
     // Initialize Socket.IO

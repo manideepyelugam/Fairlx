@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useMemo } from "react";
-import { useGetAccountLifecycle } from "@/features/auth/api/use-account-lifecycle";
+import { useGetAccountLifecycle, LifecycleRouting } from "@/features/auth/api/use-account-lifecycle";
 import { AccountLifecycleState } from "@/features/auth/types";
 
 /**
@@ -26,9 +26,18 @@ const INITIAL_STATE: AccountLifecycleState = {
     orgRole: null,
 };
 
+const INITIAL_ROUTING: LifecycleRouting = {
+    state: "UNAUTHENTICATED",
+    redirectTo: "/sign-in",
+    allowedPaths: [],
+    blockedPaths: ["*"],
+};
+
 interface AccountLifecycleContextValue {
     /** The full lifecycle state */
     lifecycleState: AccountLifecycleState;
+    /** Server-derived lifecycle routing (state, redirectTo, allowed/blocked paths) */
+    lifecycleRouting: LifecycleRouting;
     /** Refresh lifecycle state from server */
     refreshLifecycle: () => Promise<void>;
     /** Derived: Is this a PERSONAL account? */
@@ -71,16 +80,18 @@ interface AccountLifecycleProviderProps {
  * 
  * Wraps the application and provides:
  * - lifecycleState: Full account lifecycle state
+ * - lifecycleRouting: Server-derived routing rules
  * - refreshLifecycle: Function to refresh state
  * - Derived helpers: isPersonal, isOrg, isFullySetup, isRestrictedOrgMember, canCreateWorkspace, canManageAuthProviders
  * 
  * All components should use useAccountLifecycle() to access lifecycle state.
  */
 export function AccountLifecycleProvider({ children }: AccountLifecycleProviderProps) {
-    const { lifecycleState, refreshLifecycle, isLoaded } = useGetAccountLifecycle();
+    const { lifecycleState, lifecycleRouting, refreshLifecycle, isLoaded } = useGetAccountLifecycle();
 
     const value = useMemo<AccountLifecycleContextValue>(() => {
         const state = lifecycleState ?? INITIAL_STATE;
+        const routing = lifecycleRouting ?? INITIAL_ROUTING;
         const isOrg = state.accountType === "ORG";
         const isPersonal = state.accountType === "PERSONAL";
         const isOwner = state.orgRole === "OWNER";
@@ -99,6 +110,7 @@ export function AccountLifecycleProvider({ children }: AccountLifecycleProviderP
 
         return {
             lifecycleState: state,
+            lifecycleRouting: routing,
             refreshLifecycle,
             isPersonal,
             isOrg,
@@ -109,7 +121,7 @@ export function AccountLifecycleProvider({ children }: AccountLifecycleProviderP
             canCreateWorkspace,
             canManageAuthProviders,
         };
-    }, [lifecycleState, refreshLifecycle, isLoaded]);
+    }, [lifecycleState, lifecycleRouting, refreshLifecycle, isLoaded]);
 
     return (
         <AccountLifecycleContext.Provider value={value}>

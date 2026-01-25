@@ -316,6 +316,17 @@ const app = new Hono()
             const databases = c.get("databases");
             const data = c.req.valid("json");
 
+            // SECURITY: Check billing suspension before allowing usage writes
+            const { assertBillingNotSuspended } = await import("@/lib/billing-primitives");
+            try {
+                await assertBillingNotSuspended(databases, { workspaceId: data.workspaceId });
+            } catch {
+                return c.json({
+                    error: "Account suspended - cannot record usage",
+                    code: "BILLING_SUSPENDED"
+                }, 403);
+            }
+
             // Check admin access (or allow internal service calls)
             const isAdmin = await checkAdminAccess(databases, data.workspaceId, user.$id);
             if (!isAdmin) {

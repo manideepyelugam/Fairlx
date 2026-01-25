@@ -112,15 +112,15 @@ export async function getWalletBalance(
 // TOP-UP OPERATIONS
 // ============================================================================
 
+// ============================================================================
+// TOP-UP OPERATIONS
+// ============================================================================
+
 /**
  * Top up wallet balance
  * 
  * IDEMPOTENT: Uses idempotencyKey to prevent duplicate top-ups
- * 
- * @param databases - Appwrite databases instance
- * @param walletId - Target wallet ID
- * @param amount - Amount in smallest currency unit (paise)
- * @param options - Top-up options
+ * Uses Distributed Lock to prevent race conditions.
  */
 export async function topUpWallet(
     databases: Databases,
@@ -132,70 +132,74 @@ export async function topUpWallet(
         description?: string;
     }
 ): Promise<{ success: boolean; transaction?: WalletTransaction; error?: string }> {
-    // Validate amount
     if (amount <= 0) {
         return { success: false, error: "Amount must be positive" };
     }
 
-    // Check idempotency
+    const { acquireProcessingLock, releaseProcessingLock } = await import("@/lib/processed-events-registry");
     const eventKey = `wallet_topup:${options.idempotencyKey}`;
-    if (await isEventProcessed(databases, eventKey, "wallet")) {
-        console.log(`[Wallet] Duplicate top-up detected: ${options.idempotencyKey}`);
+
+    // 1. Acquire Distributed Lock (Atomic)
+    // This returns false if event is already processed OR currently being processed
+    if (!(await acquireProcessingLock(databases, eventKey, "wallet"))) {
+        console.log(`[Wallet] Duplicate top-up ignored: ${options.idempotencyKey}`);
         return { success: true, error: "already_processed" };
     }
 
-    // Get current wallet
-    const wallet = await databases.getDocument<Wallet>(
-        DATABASE_ID,
-        WALLETS_ID,
-        walletId
-    );
+    try {
+        // 2. Get current wallet
+        const wallet = await databases.getDocument<Wallet>(
+            DATABASE_ID,
+            WALLETS_ID,
+            walletId
+        );
 
-    const balanceBefore = wallet.balance;
-    const balanceAfter = balanceBefore + amount;
+        const balanceBefore = wallet.balance;
+        const balanceAfter = balanceBefore + amount;
 
-    // Update wallet balance
-    await databases.updateDocument(
-        DATABASE_ID,
-        WALLETS_ID,
-        walletId,
-        {
-            balance: balanceAfter,
-            lastTopupAt: new Date().toISOString(),
-        }
-    );
-
-    // Create transaction record
-    const transaction = await databases.createDocument<WalletTransaction>(
-        DATABASE_ID,
-        WALLET_TRANSACTIONS_ID,
-        ID.unique(),
-        {
+        // 3. Update wallet balance
+        await databases.updateDocument(
+            DATABASE_ID,
+            WALLETS_ID,
             walletId,
-            type: WalletTransactionType.TOPUP,
-            amount,
-            direction: "credit",
-            balanceBefore,
-            balanceAfter,
-            currency: wallet.currency,
-            referenceId: options.paymentId || null,
-            idempotencyKey: options.idempotencyKey,
-            description: options.description || "Wallet top-up",
-            metadata: JSON.stringify({
-                paymentId: options.paymentId,
-            }),
-        }
-    );
+            {
+                balance: balanceAfter,
+                lastTopupAt: new Date().toISOString(),
+            }
+        );
 
-    // Mark as processed
-    await markEventProcessed(databases, eventKey, "wallet", {
-        transactionId: transaction.$id,
-        amount,
-    });
+        // 4. Create transaction record
+        const transaction = await databases.createDocument<WalletTransaction>(
+            DATABASE_ID,
+            WALLET_TRANSACTIONS_ID,
+            ID.unique(),
+            {
+                walletId,
+                type: WalletTransactionType.TOPUP,
+                amount,
+                direction: "credit",
+                balanceBefore,
+                balanceAfter,
+                currency: wallet.currency,
+                referenceId: options.paymentId || null,
+                idempotencyKey: options.idempotencyKey,
+                description: options.description || "Wallet top-up",
+                metadata: JSON.stringify({
+                    paymentId: options.paymentId,
+                }),
+            }
+        );
 
-    console.log(`[Wallet] Top-up successful: ${walletId} +${amount} (${wallet.currency})`);
+        console.log(`[Wallet] Top-up successful: ${walletId} +${amount} (${wallet.currency})`);
 
-    return { success: true, transaction };
+        return { success: true, transaction };
+
+    } catch (error) {
+        console.error(`[Wallet] Top-up failed: ${error}`);
+        // Rollback lock mechanisms so it can be retried
+        await releaseProcessingLock(databases, eventKey, "wallet");
+        throw error;
+    }
 }
 
 // ============================================================================
@@ -205,15 +209,8 @@ export async function topUpWallet(
 /**
  * Deduct from wallet balance
  * 
- * CRITICAL: Uses idempotency and balance checks to prevent:
- * - Double-deduction
- * - Race conditions
- * - Negative balances
- * 
- * @param databases - Appwrite databases instance
- * @param walletId - Target wallet ID
- * @param amount - Amount in smallest currency unit (paise)
- * @param options - Deduction options
+ * IDEMPOTENT: Uses idempotencyKey to prevent duplicate deductions.
+ * Uses Distributed Lock to prevent race conditions (Double Deduction).
  */
 export async function deductFromWallet(
     databases: Databases,
@@ -225,74 +222,86 @@ export async function deductFromWallet(
         description?: string;
     }
 ): Promise<{ success: boolean; transaction?: WalletTransaction; error?: string }> {
-    // Validate amount
     if (amount <= 0) {
         return { success: false, error: "Amount must be positive" };
     }
 
-    // Check idempotency
+    const { acquireProcessingLock, releaseProcessingLock } = await import("@/lib/processed-events-registry");
     const eventKey = `wallet_deduct:${options.idempotencyKey}`;
-    if (await isEventProcessed(databases, eventKey, "wallet")) {
-        console.log(`[Wallet] Duplicate deduction detected: ${options.idempotencyKey}`);
+
+    // 1. Acquire Distributed Lock
+    if (!(await acquireProcessingLock(databases, eventKey, "wallet"))) {
+        console.log(`[Wallet] Duplicate deduction ignored: ${options.idempotencyKey}`);
         return { success: true, error: "already_processed" };
     }
 
-    // Get current wallet
-    const wallet = await databases.getDocument<Wallet>(
-        DATABASE_ID,
-        WALLETS_ID,
-        walletId
-    );
+    try {
+        // 2. Get current wallet
+        const wallet = await databases.getDocument<Wallet>(
+            DATABASE_ID,
+            WALLETS_ID,
+            walletId
+        );
 
-    // Check sufficient balance
-    const availableBalance = wallet.balance - wallet.lockedBalance;
-    if (availableBalance < amount) {
-        console.log(`[Wallet] Insufficient balance: ${walletId} has ${availableBalance}, needs ${amount}`);
-        return { success: false, error: "insufficient_balance" };
-    }
-
-    const balanceBefore = wallet.balance;
-    const balanceAfter = balanceBefore - amount;
-
-    // Update wallet balance
-    await databases.updateDocument(
-        DATABASE_ID,
-        WALLETS_ID,
-        walletId,
-        {
-            balance: balanceAfter,
-            lastDeductionAt: new Date().toISOString(),
+        // 3. Status Check (Balance)
+        const availableBalance = wallet.balance - wallet.lockedBalance;
+        if (availableBalance < amount) {
+            console.log(`[Wallet] Insufficient balance: ${walletId} has ${availableBalance}, needs ${amount}`);
+            // Release lock because logic failed, not system error?
+            // If we release lock, they can retry. But balance is still insufficient.
+            // If we KEEP lock, they cannot retry.
+            // Result is "Failed", so we should probably allow retry if they top up?
+            // But retry with SAME idempotency key?
+            // If they top up, they should send NEW request.
+            // If they retry SAME request, it will fail again.
+            // So releasing lock is fine.
+            await releaseProcessingLock(databases, eventKey, "wallet");
+            return { success: false, error: "insufficient_balance" };
         }
-    );
 
-    // Create transaction record
-    const transaction = await databases.createDocument<WalletTransaction>(
-        DATABASE_ID,
-        WALLET_TRANSACTIONS_ID,
-        ID.unique(),
-        {
+        const balanceBefore = wallet.balance;
+        const balanceAfter = balanceBefore - amount;
+
+        // 4. Update wallet balance
+        await databases.updateDocument(
+            DATABASE_ID,
+            WALLETS_ID,
             walletId,
-            type: WalletTransactionType.USAGE,
-            amount,
-            direction: "debit",
-            balanceBefore,
-            balanceAfter,
-            currency: wallet.currency,
-            referenceId: options.referenceId,
-            idempotencyKey: options.idempotencyKey,
-            description: options.description || "Usage charge",
-        }
-    );
+            {
+                balance: balanceAfter,
+                lastDeductionAt: new Date().toISOString(),
+            }
+        );
 
-    // Mark as processed
-    await markEventProcessed(databases, eventKey, "wallet", {
-        transactionId: transaction.$id,
-        amount,
-    });
+        // 5. Create transaction record
+        const transaction = await databases.createDocument<WalletTransaction>(
+            DATABASE_ID,
+            WALLET_TRANSACTIONS_ID,
+            ID.unique(),
+            {
+                walletId,
+                type: WalletTransactionType.USAGE,
+                amount,
+                direction: "debit",
+                balanceBefore,
+                balanceAfter,
+                currency: wallet.currency,
+                referenceId: options.referenceId,
+                idempotencyKey: options.idempotencyKey,
+                description: options.description || "Usage charge",
+            }
+        );
 
-    console.log(`[Wallet] Deduction successful: ${walletId} -${amount} (${wallet.currency})`);
+        console.log(`[Wallet] Deduction successful: ${walletId} -${amount} (${wallet.currency})`);
 
-    return { success: true, transaction };
+        return { success: true, transaction };
+
+    } catch (error) {
+        console.error(`[Wallet] Deduction failed: ${error}`);
+        // Rollback lock to allow retry
+        await releaseProcessingLock(databases, eventKey, "wallet");
+        throw error;
+    }
 }
 
 // ============================================================================
@@ -314,64 +323,65 @@ export async function refundToWallet(
         reason?: string;
     }
 ): Promise<{ success: boolean; transaction?: WalletTransaction; error?: string }> {
-    // Validate amount
     if (amount <= 0) {
         return { success: false, error: "Amount must be positive" };
     }
 
-    // Check idempotency
+    const { acquireProcessingLock, releaseProcessingLock } = await import("@/lib/processed-events-registry");
     const eventKey = `wallet_refund:${options.idempotencyKey}`;
-    if (await isEventProcessed(databases, eventKey, "wallet")) {
-        console.log(`[Wallet] Duplicate refund detected: ${options.idempotencyKey}`);
+
+    // 1. Acquire Distributed Lock
+    if (!(await acquireProcessingLock(databases, eventKey, "wallet"))) {
+        console.log(`[Wallet] Duplicate refund ignored: ${options.idempotencyKey}`);
         return { success: true, error: "already_processed" };
     }
 
-    // Get current wallet
-    const wallet = await databases.getDocument<Wallet>(
-        DATABASE_ID,
-        WALLETS_ID,
-        walletId
-    );
+    try {
+        const wallet = await databases.getDocument<Wallet>(
+            DATABASE_ID,
+            WALLETS_ID,
+            walletId
+        );
 
-    const balanceBefore = wallet.balance;
-    const balanceAfter = balanceBefore + amount;
+        const balanceBefore = wallet.balance;
+        const balanceAfter = balanceBefore + amount;
 
-    // Update wallet balance
-    await databases.updateDocument(
-        DATABASE_ID,
-        WALLETS_ID,
-        walletId,
-        { balance: balanceAfter }
-    );
-
-    // Create transaction record
-    const transaction = await databases.createDocument<WalletTransaction>(
-        DATABASE_ID,
-        WALLET_TRANSACTIONS_ID,
-        ID.unique(),
-        {
+        // Update wallet balance
+        await databases.updateDocument(
+            DATABASE_ID,
+            WALLETS_ID,
             walletId,
-            type: WalletTransactionType.REFUND,
-            amount,
-            direction: "credit",
-            balanceBefore,
-            balanceAfter,
-            currency: wallet.currency,
-            referenceId: options.referenceId,
-            idempotencyKey: options.idempotencyKey,
-            description: options.reason || "Refund",
-        }
-    );
+            { balance: balanceAfter }
+        );
 
-    // Mark as processed
-    await markEventProcessed(databases, eventKey, "wallet", {
-        transactionId: transaction.$id,
-        amount,
-    });
+        // Create transaction record
+        const transaction = await databases.createDocument<WalletTransaction>(
+            DATABASE_ID,
+            WALLET_TRANSACTIONS_ID,
+            ID.unique(),
+            {
+                walletId,
+                type: WalletTransactionType.REFUND,
+                amount,
+                direction: "credit",
+                balanceBefore,
+                balanceAfter,
+                currency: wallet.currency,
+                referenceId: options.referenceId,
+                idempotencyKey: options.idempotencyKey,
+                description: options.reason || "Refund",
+            }
+        );
 
-    console.log(`[Wallet] Refund successful: ${walletId} +${amount} (${wallet.currency})`);
+        console.log(`[Wallet] Refund successful: ${walletId} +${amount} (${wallet.currency})`);
 
-    return { success: true, transaction };
+        return { success: true, transaction };
+
+    } catch (error) {
+        console.error(`[Wallet] Refund failed: ${error}`);
+        await releaseProcessingLock(databases, eventKey, "wallet");
+        throw error;
+    }
 }
 
 // ============================================================================

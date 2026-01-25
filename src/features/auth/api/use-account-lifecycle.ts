@@ -5,6 +5,21 @@ import { client } from "@/lib/rpc";
 import { AccountLifecycleState } from "../types";
 
 /**
+ * Lifecycle routing information from the server.
+ * This is the authoritative source for routing decisions.
+ */
+export interface LifecycleRouting {
+    /** The computed lifecycle state enum value */
+    state: string;
+    /** Redirect target (null if no redirect needed) */
+    redirectTo: string | null;
+    /** Paths allowed in current state */
+    allowedPaths: string[];
+    /** Paths blocked in current state */
+    blockedPaths: string[];
+}
+
+/**
  * Initial unresolved lifecycle state.
  * isLoaded: false indicates state has not been fetched yet.
  */
@@ -27,6 +42,18 @@ const INITIAL_LIFECYCLE_STATE: AccountLifecycleState = {
     orgRole: null,
 };
 
+const INITIAL_ROUTING: LifecycleRouting = {
+    state: "UNAUTHENTICATED",
+    redirectTo: "/sign-in",
+    allowedPaths: [],
+    blockedPaths: ["*"],
+};
+
+interface LifecycleQueryResult {
+    data: AccountLifecycleState;
+    lifecycle?: LifecycleRouting;
+}
+
 /**
  * Hook to fetch and manage account lifecycle state.
  * 
@@ -40,20 +67,23 @@ export const useGetAccountLifecycle = () => {
 
     const query = useQuery({
         queryKey: ["account-lifecycle"],
-        queryFn: async (): Promise<AccountLifecycleState> => {
+        queryFn: async (): Promise<LifecycleQueryResult> => {
             const response = await client.api.auth.lifecycle.$get();
 
             if (!response.ok) {
                 // If unauthorized, return unauthenticated state
                 return {
-                    ...INITIAL_LIFECYCLE_STATE,
-                    isLoaded: true,
-                    isLoading: false,
+                    data: {
+                        ...INITIAL_LIFECYCLE_STATE,
+                        isLoaded: true,
+                        isLoading: false,
+                    },
+                    lifecycle: INITIAL_ROUTING,
                 };
             }
 
-            const { data } = await response.json();
-            return data as AccountLifecycleState;
+            const result = await response.json();
+            return result as LifecycleQueryResult;
         },
         staleTime: 1000 * 60 * 5, // 5 minutes
         refetchOnWindowFocus: true,
@@ -67,8 +97,10 @@ export const useGetAccountLifecycle = () => {
     };
 
     return {
-        lifecycleState: query.data ?? INITIAL_LIFECYCLE_STATE,
-        isLoaded: query.data?.isLoaded ?? false,
+        lifecycleState: query.data?.data ?? INITIAL_LIFECYCLE_STATE,
+        /** New: Server-derived lifecycle routing */
+        lifecycleRouting: query.data?.lifecycle ?? INITIAL_ROUTING,
+        isLoaded: query.data?.data?.isLoaded ?? false,
         isLoading: query.isLoading,
         isError: query.isError,
         refreshLifecycle,

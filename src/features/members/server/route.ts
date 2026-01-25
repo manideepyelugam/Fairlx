@@ -10,7 +10,7 @@ import { getPermissions } from "@/lib/rbac";
 import { validateUserOrgMembershipForWorkspace } from "@/lib/invariants";
 
 import { getMember } from "../utils";
-import { Member, MemberRole, WorkspaceMemberRole } from "../types";
+import { Member, MemberRole, WorkspaceMemberRole, MemberStatus } from "../types";
 
 const app = new Hono()
   .get(
@@ -149,7 +149,11 @@ const app = new Hono()
       }, 400);
     }
 
-    await databases.deleteDocument(DATABASE_ID, MEMBERS_ID, memberId);
+    await databases.updateDocument(DATABASE_ID, MEMBERS_ID, memberId, {
+      status: MemberStatus.DELETED,
+      deletedAt: new Date().toISOString(),
+      deletedBy: user.$id,
+    });
 
     return c.json({ data: { $id: memberToDelete.$id } });
   })
@@ -194,6 +198,18 @@ const app = new Hono()
 
       if (allMembersInWorkspace.total === 1) {
         return c.json({ error: "Cannot downgrade the only member." }, 400);
+      }
+
+      // PRIVILEGE ESCALATION CHECK
+      // 1. Prevent setting role to OWNER unless caller is OWNER
+      if (role === MemberRole.OWNER && member.role !== MemberRole.OWNER) {
+        return c.json({ error: "Only the Workspace Owner can grant Owner privileges." }, 403);
+      }
+
+      // 2. Prevent modifying an existing OWNER unless caller is OWNER
+      // (Self-update allowed if caller is OWNER, but redundant check since only Owner passes)
+      if (memberToUpdate.role === MemberRole.OWNER && member.role !== MemberRole.OWNER) {
+        return c.json({ error: "Only the Workspace Owner can modify the Owner's role." }, 403);
       }
 
       await databases.updateDocument(DATABASE_ID, MEMBERS_ID, memberId, {
@@ -272,9 +288,10 @@ const app = new Hono()
       );
 
       // Check 2: Org-level WORKSPACE_ASSIGN permission (from departments)
+      // Check 2: Org-level WORKSPACE_ASSIGN permission (from departments)
       let hasOrgAssignPermission = false;
       try {
-        const { hasOrgPermission } = await import("@/lib/permission-authority");
+        const { resolveUserOrgAccess, hasOrgPermissionFromAccess } = await import("@/lib/permissions/resolveUserOrgAccess");
         const { OrgPermissionKey } = await import("@/features/org-permissions/types");
         const { WORKSPACES_ID } = await import("@/config");
 
@@ -282,12 +299,8 @@ const app = new Hono()
         const workspace = await databases.getDocument(DATABASE_ID, WORKSPACES_ID, workspaceId);
 
         if (workspace.organizationId) {
-          hasOrgAssignPermission = await hasOrgPermission(
-            databases,
-            user.$id,
-            workspace.organizationId,
-            OrgPermissionKey.WORKSPACE_ASSIGN
-          );
+          const orgAccess = await resolveUserOrgAccess(databases, user.$id, workspace.organizationId);
+          hasOrgAssignPermission = hasOrgPermissionFromAccess(orgAccess, OrgPermissionKey.WORKSPACE_ASSIGN);
         }
       } catch (error) {
         console.warn("[members/from-org] Org permission check failed:", error);
@@ -314,8 +327,57 @@ const app = new Hono()
         ]
       );
 
+      const existingMember = existingMembers.documents[0] as Member;
+
+      // LEDGER LOGIC: Handle Soft-Deleted Members
       if (existingMembers.total > 0) {
-        return c.json({ error: "User is already a workspace member" }, 400);
+        if (existingMember.status === MemberStatus.DELETED) {
+          // Reactivate the deleted member (Soft Restore)
+          const reactivatedMember = await databases.updateDocument(
+            DATABASE_ID,
+            MEMBERS_ID,
+            existingMember.$id,
+            {
+              status: MemberStatus.ACTIVE,
+              role,
+            }
+          );
+
+          // Notify about reactivation
+          try {
+            const { databases: adminDb } = await createAdminClient();
+            const workspace = await adminDb.getDocument(DATABASE_ID, WORKSPACES_ID, workspaceId);
+            const callerName = user.name || user.email || "Someone";
+
+            await adminDb.createDocument(
+              DATABASE_ID,
+              NOTIFICATIONS_ID,
+              ID.unique(),
+              {
+                userId,
+                type: "task_assigned",
+                title: "Re-added to Workspace",
+                message: `${callerName} added you back to workspace "${workspace.name}"`,
+                workspaceId,
+                triggeredBy: user.$id,
+                metadata: JSON.stringify({ eventType: "WORKSPACE_MEMBER_RESTORED", role }),
+                read: false,
+              },
+              [
+                `read("user:${userId}")`,
+                `update("user:${userId}")`,
+                `delete("user:${userId}")`
+              ]
+            );
+          } catch {
+            // silent
+          }
+
+          return c.json({ data: reactivatedMember });
+        } else {
+          // Active member already exists
+          return c.json({ error: "User is already a workspace member" }, 400);
+        }
       }
 
       // For org workspaces, validate org membership
@@ -336,6 +398,7 @@ const app = new Hono()
           workspaceId,
           userId,
           role,
+          status: MemberStatus.ACTIVE, // Default explicit status
         }
       );
 

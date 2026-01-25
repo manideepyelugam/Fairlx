@@ -141,20 +141,28 @@ export const Navigation = ({
   // This fixes the issue where hasWorkspaces might be false during loading but URL has workspace ID
   const hasWorkspaceContext = hasWorkspaces || !!selectedWorkspaceId;
 
-  // OWNER fallback: If allowedRouteKeys is undefined but user is OWNER, show org routes
-  // This ensures OWNER always sees navigation even before API response
-  // Also treat empty arrays as "no data yet" - show all routes based on context
-  const effectiveRouteKeys = (allowedRouteKeys && allowedRouteKeys.length > 0) 
-    ? allowedRouteKeys 
-    : (orgRole === "OWNER" ? getOrgRouteKeys() : undefined);
+  // STRICT AUTHORITY: Use allowedRouteKeys provided by server.
+  // We do NOT implement client-side overrides for Owners here.
+  // The server implementation of resolveUserAccess handles Owner permissions correctly.
 
-  // Filter routes based on allowed route keys
+  // DEV MODE WARNING: Warn if allowedRouteKeys is not provided
+  if (process.env.NODE_ENV === "development" && !allowedRouteKeys) {
+    console.warn(
+      "[Navigation] STRICT MODE: allowedRouteKeys not provided. " +
+      "Navigation will not render workspace-scoped routes without explicit permissions."
+    );
+  }
+
+  // Filter routes based on allowed route keys (STRICT MODE - no fallback)
   const visibleRoutes = routes.filter((route: RouteConfig) => {
-    // If effectiveRouteKeys is provided AND non-empty, use permission-based filtering
-    // An undefined effectiveRouteKeys means "show all routes based on context" (fallback mode)
-    if (effectiveRouteKeys && effectiveRouteKeys.length > 0) {
-      // Check if route key is in allowed list
-      if (!effectiveRouteKeys.includes(route.routeKey)) return false;
+    // STRICT: Route must be in allowedRouteKeys to be visible
+    // Empty or undefined allowedRouteKeys = no permission-gated routes
+    if (allowedRouteKeys && allowedRouteKeys.length > 0) {
+      if (!allowedRouteKeys.includes(route.routeKey)) return false;
+    } else {
+      // No permissions provided - only show org route if user has org
+      // This is the minimal fallback for initial load states
+      if (route.workspaceScoped) return false;
     }
 
     // Workspace-scoped routes require workspace context (from URL or lifecycle)

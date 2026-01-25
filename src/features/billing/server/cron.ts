@@ -7,6 +7,8 @@ import {
     enforceGracePeriods
 } from "@/features/billing/services/billing-service";
 import { sendGracePeriodReminders } from "@/features/billing/services/reminder-service";
+import { evaluateAllAlerts } from "@/lib/alert-evaluation-job";
+
 
 /**
  * Billing Cron Job Endpoints
@@ -25,14 +27,24 @@ import { sendGracePeriodReminders } from "@/features/billing/services/reminder-s
  */
 
 const CRON_SECRET = process.env.CRON_SECRET || "";
+const IS_DEVELOPMENT = process.env.NODE_ENV === "development";
 
 /**
  * Verify cron request is authorized
+ * 
+ * SECURITY:
+ * - In production: CRON_SECRET MUST be configured
+ * - In development: Allows bypass with warning for testing
  */
 function verifyCronSecret(authHeader: string | undefined): boolean {
     if (!CRON_SECRET) {
-        console.warn("[Cron] CRON_SECRET not configured - allowing request (dangerous in production!)");
-        return true;
+        if (IS_DEVELOPMENT) {
+            console.warn("[Cron] CRON_SECRET not configured - allowing request in DEV mode only!");
+            return true;
+        }
+        // PRODUCTION: Must have secret configured
+        console.error("[Cron] CRITICAL: CRON_SECRET not configured in production!");
+        return false;
     }
 
     if (!authHeader) {
@@ -167,6 +179,50 @@ const app = new Hono()
             });
         } catch (error) {
             console.error("[Cron] Reminder processing failed:", error);
+            return c.json({
+                success: false,
+                error: error instanceof Error ? error.message : "Unknown error",
+            }, 500);
+        }
+    })
+
+    /**
+     * POST /cron/billing/evaluate-alerts
+     * 
+     * Evaluate usage alerts for all active accounts.
+     * Triggers notifications if thresholds trigger.
+     * 
+     * Schedule: Hourly
+     */
+    .post("/billing/evaluate-alerts", async (c) => {
+        const authHeader = c.req.header("Authorization");
+
+        if (!verifyCronSecret(authHeader)) {
+            console.warn("[Cron] Unauthorized alert evaluation request");
+            return c.json({ error: "Unauthorized" }, 401);
+        }
+
+        console.log("[Cron] Starting alert evaluation...");
+        const startTime = Date.now();
+
+        try {
+            const { createAdminClient } = await import("@/lib/appwrite");
+            const { databases: adminDb } = await createAdminClient();
+
+            const results = await evaluateAllAlerts(adminDb);
+
+            const duration = Date.now() - startTime;
+            console.log(`[Cron] Alert evaluation completed in ${duration}ms`);
+
+            return c.json({
+                success: true,
+                alertsEvaluated: results.length,
+                alertsTriggered: results.filter(r => r.triggered).length,
+                results: results,
+                durationMs: duration,
+            });
+        } catch (error) {
+            console.error("[Cron] Alert evaluation failed:", error);
             return c.json({
                 success: false,
                 error: error instanceof Error ? error.message : "Unknown error",

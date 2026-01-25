@@ -66,8 +66,10 @@ export function useUserAccess() {
 
             return response.json();
         },
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        staleTime: 1 * 60 * 1000, // 1 minute - shorter for responsive permission updates
         gcTime: 10 * 60 * 1000, // 10 minutes
+        refetchOnWindowFocus: true, // Auto-refresh when user returns to tab
+        refetchOnReconnect: true, // Auto-refresh on network reconnect
         enabled: true, // Always run, but behavior changes based on account type
     });
 

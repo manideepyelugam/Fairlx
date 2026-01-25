@@ -1,0 +1,55 @@
+name: Cron Jobs
+
+on:
+  schedule:
+    # Billing Cycle: Monthly on the 1st at 00:00 UTC
+    - cron: '0 0 1 * *'
+    # Grace Period: Daily at 01:00 UTC
+    - cron: '0 1 * * *'
+    # Reminders: Daily at 09:00 UTC
+    - cron: '0 9 * * *'
+    # Alerts: Hourly
+    - cron: '0 * * * *'
+  workflow_dispatch: # Allow manual triggering for testing
+
+jobs:
+  run-cron:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Cron Endpoint
+        run: |
+          # Determine endpoint based on schedule or manual input
+          # Note: GitHub Actions schedule event doesn't easily expose which cron triggered it.
+          # We will check the current time or run all relevant checks safely (idempotent).
+          
+          # 1. Evaluate Alerts (Hourly - Always Run)
+          echo "Triggering Alert Evaluation..."
+          curl -X POST ${{ secrets.NEXT_PUBLIC_APP_URL }}/api/cron/billing/evaluate-alerts \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            --fail
+            
+          # 2. Daily Jobs (Check if hour is 09 or 01 UTC)
+          HOUR=$(date -u +%H)
+          DAY=$(date -u +%d)
+          
+          if [ "$HOUR" -eq "09" ]; then
+             echo "Triggering Daily Reminders..."
+             curl -X POST ${{ secrets.NEXT_PUBLIC_APP_URL }}/api/cron/billing/send-reminders \
+               -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+               --fail
+          fi
+          
+          if [ "$HOUR" -eq "01" ]; then
+             echo "Triggering Grace Period Enforcement..."
+             curl -X POST ${{ secrets.NEXT_PUBLIC_APP_URL }}/api/cron/billing/enforce-grace \
+               -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+               --fail
+          fi
+          
+          # 3. Monthly Job (Check if Day 01 AND Hour 00)
+          if [ "$DAY" -eq "01" ] && [ "$HOUR" -eq "00" ]; then
+             echo "Triggering Billing Cycle..."
+             curl -X POST ${{ secrets.NEXT_PUBLIC_APP_URL }}/api/cron/billing/process-cycle \
+               -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+               --fail
+          fi

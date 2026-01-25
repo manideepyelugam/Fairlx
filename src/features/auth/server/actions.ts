@@ -1,152 +1,39 @@
 "use server";
 
 import { createSessionClient } from "@/lib/appwrite";
-import {
-    DATABASE_ID,
-    ORGANIZATIONS_ID,
-    ORGANIZATION_MEMBERS_ID,
-    MEMBERS_ID,
-} from "@/config";
-import { Query } from "node-appwrite";
 import { AccountLifecycleState } from "../types";
+import {
+    resolveUserLifecycleState,
+    LifecycleState,
+    type ResolvedLifecycle
+} from "@/lib/identity-lifecycle";
 
 /**
  * Resolves the full account lifecycle state for routing guards.
  * This is the SINGLE SOURCE OF TRUTH for: Has User -> Has Org -> Has Workspace.
  * 
  * All routing decisions in the app should be based on this resolved state.
+ * 
+ * @deprecated Use resolveUserLifecycleState from @/lib/identity-lifecycle directly
+ *             for new code. This function maintains backward compatibility.
  */
 export async function resolveAccountLifecycleState(): Promise<AccountLifecycleState> {
     try {
         const { account, databases } = await createSessionClient();
 
         // 1. Get User
-        const user = await account.get();
-        if (!user) {
-            return {
-                isLoaded: true,
-                isLoading: false,
-                isAuthenticated: false,
-                hasUser: false,
-                isEmailVerified: false,
-                hasOrg: false,
-                hasWorkspace: false,
-                user: null,
-                accountType: null,
-                activeMember: null,
-                activeOrgId: null,
-                activeOrgName: null,
-                activeOrgImageUrl: null,
-                activeWorkspaceId: null,
-                mustResetPassword: false,
-                orgRole: null,
-            };
+        let user = null;
+        try {
+            user = await account.get();
+        } catch {
+            // Not authenticated
         }
 
-        const isEmailVerified = user.emailVerification;
-        const accountType = user.prefs?.accountType || null;
+        // 2. Use the new lifecycle resolver (SINGLE AUTHORITY)
+        const lifecycle = await resolveUserLifecycleState(databases, user);
 
-        // 2. Resolve Active Organization
-        let activeOrgId = user.prefs?.primaryOrganizationId || null;
-        let hasOrg = false;
-        let activeMember = null;
-
-        // If user has a preferred org, verify membership
-        if (activeOrgId) {
-            try {
-                const memberships = await databases.listDocuments(
-                    DATABASE_ID,
-                    ORGANIZATION_MEMBERS_ID,
-                    [
-                        Query.equal("organizationId", activeOrgId),
-                        Query.equal("userId", user.$id)
-                    ]
-                );
-
-                if (memberships.total > 0) {
-                    hasOrg = true;
-                    activeMember = memberships.documents[0];
-                } else {
-                    activeOrgId = null;
-                }
-            } catch {
-                activeOrgId = null;
-            }
-        }
-
-        // If no active org found via prefs, try to find ANY org
-        if (!hasOrg) {
-            const anyMembership = await databases.listDocuments(
-                DATABASE_ID,
-                ORGANIZATION_MEMBERS_ID,
-                [Query.equal("userId", user.$id), Query.limit(1)]
-            );
-
-            if (anyMembership.total > 0) {
-                hasOrg = true;
-                activeMember = anyMembership.documents[0];
-                activeOrgId = anyMembership.documents[0].organizationId;
-            }
-        }
-
-        // 2.5. Fetch organization details for display (name, imageUrl)
-        let activeOrgName: string | null = null;
-        let activeOrgImageUrl: string | null = null;
-
-        if (activeOrgId) {
-            try {
-                const orgDoc = await databases.getDocument(
-                    DATABASE_ID,
-                    ORGANIZATIONS_ID,
-                    activeOrgId
-                );
-                activeOrgName = orgDoc.name || null;
-                activeOrgImageUrl = orgDoc.imageUrl || null;
-            } catch {
-                // Organization fetch might fail due to permissions, but we still have activeOrgId
-                // This is acceptable - the UI will show fallbacks
-            }
-        }
-
-        // 3. Resolve Active Workspace
-        let hasWorkspace = false;
-        let activeWorkspaceId = null;
-
-        const workspaceMemberships = await databases.listDocuments(
-            DATABASE_ID,
-            MEMBERS_ID,
-            [Query.equal("userId", user.$id), Query.limit(1)]
-        );
-
-        if (workspaceMemberships.total > 0) {
-            hasWorkspace = true;
-            activeWorkspaceId = workspaceMemberships.documents[0].workspaceId;
-        }
-
-        // 4. Check if user must reset password (ORG member first login)
-        const mustResetPassword = user.prefs?.mustResetPassword === true;
-
-        // 5. Extract org role from active membership
-        const orgRole = activeMember?.role as "OWNER" | "ADMIN" | "MODERATOR" | "MEMBER" | null ?? null;
-
-        return {
-            isLoaded: true,
-            isLoading: false,
-            isAuthenticated: true,
-            hasUser: true,
-            isEmailVerified,
-            hasOrg,
-            hasWorkspace,
-            user,
-            accountType: accountType as "PERSONAL" | "ORG" | null,
-            activeMember,
-            activeOrgId,
-            activeOrgName,
-            activeOrgImageUrl,
-            activeWorkspaceId,
-            mustResetPassword,
-            orgRole,
-        };
+        // 3. Convert to legacy format for backward compatibility
+        return convertToLegacyState(lifecycle, user);
     } catch {
         // If unauthenticated or error
         return {
@@ -166,6 +53,84 @@ export async function resolveAccountLifecycleState(): Promise<AccountLifecycleSt
             activeWorkspaceId: null,
             mustResetPassword: false,
             orgRole: null,
+        };
+    }
+}
+
+/**
+ * Convert new lifecycle format to legacy AccountLifecycleState.
+ * This maintains backward compatibility during migration.
+ */
+function convertToLegacyState(
+    lifecycle: ResolvedLifecycle,
+    user: { $id: string; emailVerification: boolean; prefs?: Record<string, unknown> } | null
+): AccountLifecycleState {
+    // Map new state to legacy hasOrg logic
+    const hasOrg = [
+        LifecycleState.ORG_OWNER_NO_WORKSPACE,
+        LifecycleState.ORG_OWNER_ACTIVE,
+        LifecycleState.ORG_ADMIN_NO_WORKSPACE,
+        LifecycleState.ORG_ADMIN_ACTIVE,
+        LifecycleState.ORG_MEMBER_PENDING,
+        LifecycleState.ORG_MEMBER_NO_WORKSPACE,
+        LifecycleState.ORG_MEMBER_ACTIVE,
+    ].includes(lifecycle.state);
+
+    return {
+        isLoaded: true,
+        isLoading: false,
+        isAuthenticated: lifecycle.state !== LifecycleState.UNAUTHENTICATED,
+        hasUser: lifecycle.userId !== null,
+        isEmailVerified: lifecycle.isEmailVerified,
+        hasOrg,
+        hasWorkspace: lifecycle.hasWorkspace,
+        user: user as AccountLifecycleState["user"],
+        accountType: lifecycle.accountType,
+        activeMember: null, // Legacy field - deprecated
+        activeOrgId: lifecycle.orgId,
+        activeOrgName: lifecycle.orgName,
+        activeOrgImageUrl: lifecycle.orgImageUrl,
+        activeWorkspaceId: lifecycle.workspaceId,
+        mustResetPassword: lifecycle.mustResetPassword,
+        orgRole: lifecycle.orgRole,
+    };
+}
+
+/**
+ * Get the new lifecycle state directly.
+ * Use this for new code that needs the full lifecycle resolution.
+ */
+export async function getLifecycleState(): Promise<ResolvedLifecycle> {
+    try {
+        const { account, databases } = await createSessionClient();
+
+        let user = null;
+        try {
+            user = await account.get();
+        } catch {
+            // Not authenticated
+        }
+
+        return resolveUserLifecycleState(databases, user);
+    } catch {
+        // Return unauthenticated state
+        return {
+            state: LifecycleState.UNAUTHENTICATED,
+            userId: null,
+            accountType: null,
+            orgId: null,
+            orgName: null,
+            orgImageUrl: null,
+            orgRole: null,
+            orgMemberStatus: null,
+            workspaceId: null,
+            hasWorkspace: false,
+            mustResetPassword: false,
+            isEmailVerified: false,
+            billingStatus: null,
+            redirectTo: "/sign-in",
+            allowedPaths: ["/sign-in", "/sign-up", "/oauth"],
+            blockedPaths: ["*"],
         };
     }
 }
