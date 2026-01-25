@@ -65,7 +65,7 @@ export const Tools = () => {
       adminOnly: true,
     },
     {
-      label: "Members",
+      label: "WS Members",
       href: "/members",
       icon: <User className="size-4" />,
     },

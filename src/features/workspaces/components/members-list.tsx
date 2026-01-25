@@ -354,7 +354,7 @@ export const MembersList = () => {
 
 
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Team Members</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Workspace Members</h1>
             <p className="text-sm mt-0.5 mb-4 text-muted-foreground">Manage workspace members and permissions</p>
           </div>
         </div>
