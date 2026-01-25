@@ -14,7 +14,7 @@ import { usePathname } from "next/navigation";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
 import { useAccountLifecycle } from "@/components/account-lifecycle-provider";
-import { AppRouteKey, getOrgRouteKeys } from "@/lib/permissions/appRouteKeys";
+import { AppRouteKey } from "@/lib/permissions/appRouteKeys";
 
 /**
  * Navigation Component (Permission-Driven)
@@ -128,7 +128,7 @@ export const Navigation = ({
 }: NavigationProps) => {
   const urlWorkspaceId = useWorkspaceId();
   const { lifecycleState: state } = useAccountLifecycle();
-  const { activeWorkspaceId, hasOrg: contextHasOrg, orgRole } = state;
+  const { activeWorkspaceId, hasOrg: contextHasOrg } = state;
 
   // Use props if provided, otherwise fall back to context
   const effectiveHasOrg = hasOrg || contextHasOrg;

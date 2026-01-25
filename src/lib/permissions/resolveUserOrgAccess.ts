@@ -13,7 +13,7 @@ import { OrgMemberDepartment, DepartmentPermission } from "@/features/department
 import { OrgPermissionKey } from "@/features/org-permissions/types";
 import { AppRouteKey } from "./appRouteKeys";
 import { getRouteKeysForPermissions, getPathsForRouteKeys, getAllRouteKeys } from "./permissionRouteMap";
-import { assertOwnerHasFullAccess, assertOwnerHasAllPermissions } from "@/lib/invariants";
+import { assertOwnerHasFullAccess } from "@/lib/invariants";
 
 /**
  * Resolve User Org Access (Department-Driven)

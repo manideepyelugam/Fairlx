@@ -8,7 +8,7 @@ import {
     WALLET_TRANSACTIONS_ID,
 } from "@/config";
 import { createAdminClient } from "@/lib/appwrite";
-import { isEventProcessed, markEventProcessed } from "@/lib/processed-events-registry";
+// Lock functions imported dynamically in transaction methods
 
 import {
     Wallet,

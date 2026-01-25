@@ -675,16 +675,14 @@ const app = new Hono()
                 }, 400);
             }
 
-            // Generate secure temporary password (16 chars, mixed)
-            const crypto = await import("crypto");
-            const tempPassword = crypto.randomBytes(12).toString("base64").slice(0, 16);
+            // Temporary password placeholder (will be set for new users)
+            let tempPassword = "";
 
             try {
                 const { users, databases: adminDatabases } = await createAdminClient();
                 const targetEmail = email.toLowerCase();
                 let targetUserId: string;
                 let isExistingUser = false;
-                let tempPassword = "";
 
                 // 1. Try to find existing Appwrite user by email
                 const existingUsers = await users.list([

@@ -127,6 +127,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   const [dateDialogSprintId, setDateDialogSprintId] = useState<string | null>(null);
   const [sprintSettingsId, setSprintSettingsId] = useState<string | null>(null);
   const [isCreateEpicDialogOpen, setIsCreateEpicDialogOpen] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_isEditMode, setIsEditMode] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<Partial<PopulatedWorkItem>>({});
 
   const { open: openCreateTaskModal } = useCreateTaskModal();
@@ -1540,162 +1542,158 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                   </TabsList>
 
                   <TabsContent value="details" className="space-y-4 mt-8">
-                     
-                      <div className="space-y-4 ">
-                        <div className="space-y-2">
-                          <Label>Title</Label>
-                          <Input className="text-xs "
-                            value={pendingChanges.title ?? selectedItem.title}
-                            onChange={(e) => setPendingChanges(prev => ({ ...prev, title: e.target.value }))}
-                            placeholder="Work item title"
-                          />
-                        </div>
 
-                        <div className="space-y-2">
-                          <Label>Type</Label>
-                          <Select
-                            value={pendingChanges.type ?? selectedItem.type}
-                            onValueChange={(value: WorkItemType) => setPendingChanges(prev => ({ ...prev, type: value }))}
-                          >
-                            <SelectTrigger >
-                              <SelectValue>
+                    <div className="space-y-4 ">
+                      <div className="space-y-2">
+                        <Label>Title</Label>
+                        <Input className="text-xs "
+                          value={pendingChanges.title ?? selectedItem.title}
+                          onChange={(e) => setPendingChanges(prev => ({ ...prev, title: e.target.value }))}
+                          placeholder="Work item title"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Type</Label>
+                        <Select
+                          value={pendingChanges.type ?? selectedItem.type}
+                          onValueChange={(value: WorkItemType) => setPendingChanges(prev => ({ ...prev, type: value }))}
+                        >
+                          <SelectTrigger >
+                            <SelectValue>
+                              <div className="flex items-center gap-2 text-xs">
+                                <WorkItemIcon type={pendingChanges.type ?? selectedItem.type} project={project ?? undefined} className="size-3" />
+                                <span className="text-xs">{allWorkItemTypes.find(t => t.key === (pendingChanges.type ?? selectedItem.type))?.label || (pendingChanges.type ?? selectedItem.type)}</span>
+                              </div>
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {allWorkItemTypes.map((type) => (
+                              <SelectItem key={type.key} value={type.key}>
                                 <div className="flex items-center gap-2 text-xs">
-                                  <WorkItemIcon type={pendingChanges.type ?? selectedItem.type} project={project ?? undefined} className="size-3" />
-                                  <span className="text-xs">{allWorkItemTypes.find(t => t.key === (pendingChanges.type ?? selectedItem.type))?.label || (pendingChanges.type ?? selectedItem.type)}</span>
+                                  <WorkItemIcon type={type.key as WorkItemType} project={project ?? undefined} className="size-3" />
+                                  <span className="text-xs">{type.label}</span>
                                 </div>
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                              {allWorkItemTypes.map((type) => (
-                                <SelectItem key={type.key} value={type.key}>
-                                  <div className="flex items-center gap-2 text-xs">
-                                    <WorkItemIcon type={type.key as WorkItemType} project={project ?? undefined} className="size-3" />
-                                    <span className="text-xs">{type.label}</span>
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Status</Label>
-                          <Select
-                            value={pendingChanges.status ?? selectedItem.status}
-                            onValueChange={(value: WorkItemStatus) => setPendingChanges(prev => ({ ...prev, status: value }))}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value={WorkItemStatus.TODO}>To Do</SelectItem>
-                              <SelectItem value={WorkItemStatus.ASSIGNED}>Assigned</SelectItem>
-                              <SelectItem value={WorkItemStatus.IN_PROGRESS}>In Progress</SelectItem>
-                              <SelectItem value={WorkItemStatus.IN_REVIEW}>In Review</SelectItem>
-                              <SelectItem value={WorkItemStatus.DONE}>Done</SelectItem>
-                              {customColumns.length > 0 && (
-                                <>
-                                  <SelectSeparator />
-                                  {customColumns.map((column) => {
-                                    const IconComponent = allIcons[column.icon as keyof typeof allIcons] as React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
-                                    return (
-                                      <SelectItem key={column.$id} value={column.$id}>
-                                        <div className="flex items-center gap-2">
-                                          {IconComponent ? (
-                                            <IconComponent className="size-4" style={{ color: column.color }} />
-                                          ) : (
-                                            <CircleIcon className="size-4" style={{ color: column.color }} />
-                                          )}
-                                          {column.name}
-                                        </div>
-                                      </SelectItem>
-                                    );
-                                  })}
-                                </>
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Description</Label>
-                          <Textarea
-                            value={pendingChanges.description ?? selectedItem.description ?? ""}
-                            onChange={(e) => setPendingChanges(prev => ({ ...prev, description: e.target.value }))}
-                            placeholder="Add a description..."
-                            className="min-h-[120px] text-xs"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Priority</Label>
-                          <Select
-                            value={pendingChanges.priority ?? selectedItem.priority ?? WorkItemPriority.MEDIUM}
-                            onValueChange={(value: WorkItemPriority) => setPendingChanges(prev => ({ ...prev, priority: value }))}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {allPriorities.map((p) => (
-                                <SelectItem key={p.key} value={p.key}>
-                                  {p.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Epic</Label>
-                          <Select
-                            value={pendingChanges.epicId !== undefined ? (pendingChanges.epicId || "none") : (selectedItem.epicId || "none")}
-                            onValueChange={(value) => setPendingChanges(prev => ({ ...prev, epicId: value === "none" ? null : value }))}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select epic" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">No Epic</SelectItem>
-                              {epicsData?.documents?.map((epic) => (
-                                <SelectItem key={epic.$id} value={epic.$id}>
-                                  {epic.key} - {epic.title}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Story Points</Label>
-                          <Input
-                            type="number"
-                            value={pendingChanges.storyPoints !== undefined ? (pendingChanges.storyPoints ?? "") : (selectedItem.storyPoints ?? "")}
-                            onChange={(e) => setPendingChanges(prev => ({ ...prev, storyPoints: e.target.value ? parseInt(e.target.value) : undefined }))}
-                            placeholder="Enter story points"
-                            min="0"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Assignees</Label>
-                          <div className="flex gap-2">
-                            {selectedItem.assignees?.filter(
-                              (a): a is NonNullable<typeof a> => a != null && typeof a.$id === "string"
-                            ).map((assignee) => (
-                              <Avatar key={assignee.$id} className="size-8">
-                                <AvatarImage src="" />
-                                <AvatarFallback className="text-xs">
-                                  {(assignee.name ?? "?").charAt(0).toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
+                              </SelectItem>
                             ))}
-                            <Button variant="outline" size="icon" className="size-8">
-                              <Plus className="size-4" />
-                            </Button>
-                          </div>
-                        </div>
+                          </SelectContent>
+                        </Select>
+                      </div>
 
+                      <div className="space-y-2">
+                        <Label>Status</Label>
+                        <Select
+                          value={pendingChanges.status ?? selectedItem.status}
+                          onValueChange={(value: WorkItemStatus) => setPendingChanges(prev => ({ ...prev, status: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={WorkItemStatus.TODO}>To Do</SelectItem>
+                            <SelectItem value={WorkItemStatus.ASSIGNED}>Assigned</SelectItem>
+                            <SelectItem value={WorkItemStatus.IN_PROGRESS}>In Progress</SelectItem>
+                            <SelectItem value={WorkItemStatus.IN_REVIEW}>In Review</SelectItem>
+                            <SelectItem value={WorkItemStatus.DONE}>Done</SelectItem>
+                            {customColumns.length > 0 && (
+                              <>
+                                <SelectSeparator />
+                                {customColumns.map((column) => {
+                                  const IconComponent = allIcons[column.icon as keyof typeof allIcons] as React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+                                  return (
+                                    <SelectItem key={column.$id} value={column.$id}>
+                                      <div className="flex items-center gap-2">
+                                        {IconComponent ? (
+                                          <IconComponent className="size-4" style={{ color: column.color }} />
+                                        ) : (
+                                          <CircleIcon className="size-4" style={{ color: column.color }} />
+                                        )}
+                                        {column.name}
+                                      </div>
+                                    </SelectItem>
+                                  );
+                                })}
+                              </>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Description</Label>
+                        <Textarea
+                          value={pendingChanges.description ?? selectedItem.description ?? ""}
+                          onChange={(e) => setPendingChanges(prev => ({ ...prev, description: e.target.value }))}
+                          placeholder="Add a description..."
+                          className="min-h-[120px] text-xs"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Priority</Label>
+                        <Select
+                          value={pendingChanges.priority ?? selectedItem.priority ?? WorkItemPriority.MEDIUM}
+                          onValueChange={(value: WorkItemPriority) => setPendingChanges(prev => ({ ...prev, priority: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {allPriorities.map((p) => (
+                              <SelectItem key={p.key} value={p.key}>
+                                {p.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Epic</Label>
+                        <Select
+                          value={pendingChanges.epicId !== undefined ? (pendingChanges.epicId || "none") : (selectedItem.epicId || "none")}
+                          onValueChange={(value) => setPendingChanges(prev => ({ ...prev, epicId: value === "none" ? null : value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select epic" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">No Epic</SelectItem>
+                            {epicsData?.documents?.map((epic) => (
+                              <SelectItem key={epic.$id} value={epic.$id}>
+                                {epic.key} - {epic.title}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Story Points</Label>
+                        <Input
+                          type="number"
+                          value={pendingChanges.storyPoints !== undefined ? (pendingChanges.storyPoints ?? "") : (selectedItem.storyPoints ?? "")}
+                          onChange={(e) => setPendingChanges(prev => ({ ...prev, storyPoints: e.target.value ? parseInt(e.target.value) : undefined }))}
+                          placeholder="Enter story points"
+                          min="0"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Assignees</Label>
+                        <div className="flex gap-2">
+                          {selectedItem.assignees?.filter(
+                            (a): a is NonNullable<typeof a> => a != null && typeof a.$id === "string"
+                          ).map((assignee) => (
+                            <Avatar key={assignee.$id} className="size-8">
+                              <AvatarImage src="" />
+                              <AvatarFallback className="text-xs">
+                                {(assignee.name ?? "?").charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          ))}
+                          <Button variant="outline" size="icon" className="size-8">
+                            <Plus className="size-4" />
                         {/* Save and Cancel Buttons */}
                         <div className="flex gap-2 pt-4 border-t">
                           <Button
@@ -1710,10 +1708,28 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                           >
                             Save Changes
                           </Button>
-                         
                         </div>
                       </div>
-                    
+
+                      {/* Save and Cancel Buttons */}
+                      <div className="flex gap-2 pt-4 border-t">
+                        <Button
+                          onClick={() => {
+                            if (Object.keys(pendingChanges).length > 0) {
+                              handleUpdateWorkItem(pendingChanges);
+                            }
+                            setIsEditMode(false);
+                            setPendingChanges({});
+                          }}
+                          className="flex-1"
+                          size="xs"
+                        >
+                          Save Changes
+                        </Button>
+
+                      </div>
+                    </div>
+
                   </TabsContent>
 
                   <TabsContent value="subtasks" className="mt-4">

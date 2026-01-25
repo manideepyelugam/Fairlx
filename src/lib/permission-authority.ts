@@ -61,7 +61,8 @@ export function hasMinimumRole(
 /**
  * @deprecated Use resolveUserOrgAccess instead.
  */
-export function getRoleDefaultPermissions(role: OrganizationRole): OrgPermissionKey[] {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function getRoleDefaultPermissions(_role: OrganizationRole): OrgPermissionKey[] {
     console.warn(
         "[DEPRECATED] getRoleDefaultPermissions is deprecated. Use department-based permissions."
     );
