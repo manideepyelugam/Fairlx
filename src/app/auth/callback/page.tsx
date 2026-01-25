@@ -57,6 +57,9 @@ async function fetchUserState(): Promise<UserState | null> {
         const emailVerified = user.emailVerification === true;
         const accountType = prefs.accountType as "PERSONAL" | "ORG" | null ?? null;
         const orgSetupComplete = prefs.orgSetupComplete === true;
+        
+        // Get stored default workspace preference
+        const storedDefaultWorkspaceId = prefs.defaultWorkspaceId as string | null ?? null;
 
         // Check if user needs onboarding (new user without account type)
         const needsOnboarding = !accountType && !prefs.signupCompletedAt;
@@ -77,14 +80,23 @@ async function fetchUserState(): Promise<UserState | null> {
         }
 
         // Try to get default workspace
-        let defaultWorkspaceId: string | null = null;
+        // Priority: 1) Stored preference, 2) First workspace in list
+        let defaultWorkspaceId: string | null = storedDefaultWorkspaceId;
 
         try {
             const workspacesResponse = await client.api.workspaces.$get();
             if (workspacesResponse.ok) {
                 const { data: workspaces } = await workspacesResponse.json();
                 if (workspaces?.documents?.length > 0) {
-                    defaultWorkspaceId = workspaces.documents[0].$id;
+                    // If no stored preference, use first workspace
+                    if (!defaultWorkspaceId) {
+                        defaultWorkspaceId = workspaces.documents[0].$id;
+                    }
+                    // Validate that stored workspace still exists
+                    else if (!workspaces.documents.some((w: { $id: string }) => w.$id === defaultWorkspaceId)) {
+                        // Stored workspace no longer exists, fallback to first
+                        defaultWorkspaceId = workspaces.documents[0].$id;
+                    }
                 }
             }
         } catch {

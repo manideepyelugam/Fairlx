@@ -35,7 +35,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Card } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
@@ -678,23 +677,6 @@ const WorkflowEditor = () => {
               Workflow Guide
             </Link>
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowInfoPanel(!showInfoPanel)}
-          >
-            {showInfoPanel ? (
-              <>
-                <PanelLeftClose className="size-4 mr-2" />
-                Hide Info
-              </>
-            ) : (
-              <>
-                <PanelLeft className="size-4 mr-2" />
-                Show Info
-              </>
-            )}
-          </Button>
           {isAdmin && !workflow.isSystem && (
             <>
               <Button
@@ -739,9 +721,8 @@ const WorkflowEditor = () => {
               </div>
 
               {/* Builder Tab Content */}
-              <TabsContent value="builder" className="flex-1 overflow-hidden m-0 data-[state=inactive]:hidden">
-                <ScrollArea className="h-full">
-                  <div className="p-4">
+              <TabsContent value="builder" className="flex-1 overflow-y-auto m-0 data-[state=inactive]:hidden">
+                <div className="p-4">
                     {/* Workflow Warnings */}
                     {workflowWarnings.length > 0 && (
                       <div className="mb-4 space-y-2">
@@ -778,8 +759,7 @@ const WorkflowEditor = () => {
                       isSyncing={isSyncing}
                       onRemoveStatus={handleRemoveStatus}
                     />
-                  </div>
-                </ScrollArea>
+                </div>
               </TabsContent>
 
               {/* AI Assistant Tab Content */}
@@ -792,6 +772,28 @@ const WorkflowEditor = () => {
                 />
               </TabsContent>
             </Tabs>
+          </div>
+        )}
+
+        {/* Collapsible Divider / Expand Button */}
+        {showInfoPanel ? (
+          <div className="w-1 bg-border hover:bg-primary/30 transition-colors relative group cursor-pointer flex items-center justify-center">
+            <button
+              onClick={() => setShowInfoPanel(false)}
+              className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-background border border-border rounded-md p-1 shadow-md"
+            >
+              <PanelLeftClose className="size-4 text-muted-foreground hover:text-foreground" />
+            </button>
+          </div>
+        ) : (
+          <div className="border-r bg-background flex flex-col items-center py-3">
+            <button
+              onClick={() => setShowInfoPanel(true)}
+              className="p-1.5 rounded-md hover:bg-muted transition-colors"
+              title="Show Info Panel"
+            >
+              <PanelLeft className="size-4 text-muted-foreground hover:text-foreground" />
+            </button>
           </div>
         )}
 

@@ -20,7 +20,20 @@ export default async function Home() {
         redirect("/onboarding/workspace");
       }
     } else {
-      redirect(`/workspaces/${workspaces.documents[0].$id}`);
+      // Get stored default workspace preference
+      const prefs = user.prefs || {};
+      const defaultWorkspaceId = prefs.defaultWorkspaceId as string | undefined;
+      
+      // Check if stored default workspace exists in the list
+      const validDefaultWorkspace = defaultWorkspaceId && 
+        workspaces.documents.some(w => w.$id === defaultWorkspaceId);
+      
+      // Use stored default if valid, otherwise use first workspace
+      const targetWorkspaceId = validDefaultWorkspace 
+        ? defaultWorkspaceId 
+        : workspaces.documents[0].$id;
+      
+      redirect(`/workspaces/${targetWorkspaceId}`);
     }
   }
 

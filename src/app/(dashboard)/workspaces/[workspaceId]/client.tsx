@@ -308,44 +308,53 @@ export const WorkspaceIdClient = () => {
             {/* Top Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Total Task Card */}
-              <Card className="p-4 bg-white border border-slate-200 shadow-none text-slate-900">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-normal text-slate-600 dark:text-slate-400">Total Tasks</span>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
-                    <ArrowUpRight className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
-                  </Button>
-                </div>
-                <div className="flex items-end justify-between">
-                  <span className="text-3xl font-bold text-slate-900 dark:text-white">{totalTasks}</span>
-                  <MiniBarChart value={totalTasks} max={totalTasks + 50} variant="default" />
+              <Card className="relative overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-slate-400 dark:bg-slate-500" />
+                <div className="p-4 pl-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Tasks</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                      <ArrowUpRight className="h-3.5 w-3.5 text-slate-400" />
+                    </Button>
+                  </div>
+                  <div className="flex items-end justify-between">
+                    <span className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">{totalTasks}</span>
+                    <MiniBarChart value={totalTasks} max={totalTasks + 50} variant="default" />
+                  </div>
                 </div>
               </Card>
 
               {/* Pending Task Card */}
-              <Card className="p-4 bg-amber-50 border border-amber-200 shadow-none text-amber-600">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-normal text-amber-600 dark:text-slate-400">Pending Tasks</span>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-amber-50 dark:hover:bg-amber-900/20">
-                    <ArrowUpRight className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                  </Button>
-                </div>
-                <div className="flex items-end justify-between">
-                  <span className="text-3xl font-bold text-amber-600 dark:text-white">{pendingTasks}</span>
-                  <MiniBarChart value={pendingTasks} max={totalTasks} variant="dotted" />
+              <Card className="relative overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500" />
+                <div className="p-4 pl-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Pending Tasks</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                      <ArrowUpRight className="h-3.5 w-3.5 text-slate-400" />
+                    </Button>
+                  </div>
+                  <div className="flex items-end justify-between">
+                    <span className="text-3xl font-semibold tracking-tight text-amber-600 dark:text-amber-400">{pendingTasks}</span>
+                    <MiniBarChart value={pendingTasks} max={totalTasks} variant="dotted" />
+                  </div>
                 </div>
               </Card>
 
               {/* Completed Task Card */}
-              <Card className="p-4 bg-emerald-50 border border-emerald-200 shadow-none text-emerald-600">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-normal text-emerald-600 dark:text-slate-400">Completed Tasks</span>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
-                    <ArrowUpRight className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                  </Button>
-                </div>
-                <div className="flex items-end justify-between">
-                  <span className="text-3xl font-bold text-emerald-600 dark:text-white">{completedTasks}</span>
-                  <MiniBarChart value={completedTasks} max={totalTasks} variant="blocks" />
+              <Card className="relative overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500" />
+                <div className="p-4 pl-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Completed Tasks</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                      <ArrowUpRight className="h-3.5 w-3.5 text-slate-400" />
+                    </Button>
+                  </div>
+                  <div className="flex items-end justify-between">
+                    <span className="text-3xl font-semibold tracking-tight text-emerald-600 dark:text-emerald-400">{completedTasks}</span>
+                    <MiniBarChart value={completedTasks} max={totalTasks} variant="blocks" />
+                  </div>
                 </div>
               </Card>
             </div>

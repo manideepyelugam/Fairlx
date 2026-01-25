@@ -14,6 +14,8 @@ import { usePathname } from "next/navigation";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
 import { useAccountLifecycle } from "@/components/account-lifecycle-provider";
+import { useCurrent } from "@/features/auth/api/use-current";
+import { useGetWorkspaces } from "@/features/workspaces/api/use-get-workspaces";
 import { AppRouteKey } from "@/lib/permissions/appRouteKeys";
 
 /**
@@ -129,10 +131,34 @@ export const Navigation = ({
   const urlWorkspaceId = useWorkspaceId();
   const { lifecycleState: state } = useAccountLifecycle();
   const { activeWorkspaceId, hasOrg: contextHasOrg } = state;
+  const { data: user } = useCurrent();
+  const { data: workspacesData } = useGetWorkspaces();
+
+  // Get user's default workspace preference
+  const userPrefs = user?.prefs as { defaultWorkspaceId?: string } | undefined;
+  const defaultWorkspaceId = userPrefs?.defaultWorkspaceId;
+  const workspaces = workspacesData?.documents || [];
 
   // Use props if provided, otherwise fall back to context
   const effectiveHasOrg = hasOrg || contextHasOrg;
-  const selectedWorkspaceId = urlWorkspaceId || activeWorkspaceId;
+  
+  // Determine the workspace ID to use for navigation:
+  // Priority: 1) URL workspace ID, 2) User's default workspace, 3) First workspace, 4) Active workspace from context
+  let selectedWorkspaceId = urlWorkspaceId;
+  if (!selectedWorkspaceId && defaultWorkspaceId) {
+    // Validate that default workspace exists
+    const defaultExists = workspaces.some(w => w.$id === defaultWorkspaceId);
+    if (defaultExists) {
+      selectedWorkspaceId = defaultWorkspaceId;
+    }
+  }
+  if (!selectedWorkspaceId && workspaces.length > 0) {
+    selectedWorkspaceId = workspaces[0].$id;
+  }
+  if (!selectedWorkspaceId) {
+    selectedWorkspaceId = activeWorkspaceId;
+  }
+  
   const projectId = useProjectId();
   const pathname = usePathname();
 
