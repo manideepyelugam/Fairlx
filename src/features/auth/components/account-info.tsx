@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
   const { data: workspacesData, isLoading: isLoadingWorkspaces } = useGetWorkspaces();
   const { mutate: updateDefaultPreferences, isPending: isUpdating } = useUpdateDefaultPreferences();
 
-  const workspaces = workspacesData?.documents || [];
+  const workspaces = useMemo(() => workspacesData?.documents || [], [workspacesData?.documents]);
 
   // Set first workspace as default if no default is set and workspaces are available
   useEffect(() => {
