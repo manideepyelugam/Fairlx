@@ -144,20 +144,19 @@ export const Navigation = ({
   
   // Determine the workspace ID to use for navigation:
   // Priority: 1) URL workspace ID, 2) User's default workspace, 3) First workspace, 4) Active workspace from context
-  let selectedWorkspaceId = urlWorkspaceId;
-  if (!selectedWorkspaceId && defaultWorkspaceId) {
-    // Validate that default workspace exists
-    const defaultExists = workspaces.some(w => w.$id === defaultWorkspaceId);
-    if (defaultExists) {
-      selectedWorkspaceId = defaultWorkspaceId;
+  const selectedWorkspaceId = (() => {
+    if (urlWorkspaceId) return urlWorkspaceId;
+    
+    if (defaultWorkspaceId) {
+      // Validate that default workspace exists
+      const defaultExists = workspaces.some(w => w.$id === defaultWorkspaceId);
+      if (defaultExists) return defaultWorkspaceId;
     }
-  }
-  if (!selectedWorkspaceId && workspaces.length > 0) {
-    selectedWorkspaceId = workspaces[0].$id;
-  }
-  if (!selectedWorkspaceId) {
-    selectedWorkspaceId = activeWorkspaceId;
-  }
+    
+    if (workspaces.length > 0) return workspaces[0].$id;
+    
+    return activeWorkspaceId;
+  })();
   
   const projectId = useProjectId();
   const pathname = usePathname();
