@@ -67,6 +67,7 @@ import { OrgPermissionKey } from "@/features/org-permissions/types";
 
 export const OrganizationSettingsClient = () => {
     const router = useRouter();
+    const queryClient = useQueryClient();
     const { isOrg, primaryOrganizationId } = useAccountType();
     const [activeTab, setActiveTab] = useState("general");
 
@@ -97,8 +98,6 @@ export const OrganizationSettingsClient = () => {
     const canManageDepartments = hasPermission(OrgPermissionKey.DEPARTMENTS_MANAGE);
     const canViewSecurity = hasPermission(OrgPermissionKey.SECURITY_VIEW);
 
-
-
     // General settings form state
     const [orgName, setOrgName] = useState("");
     const [orgLogo, setOrgLogo] = useState<File | null>(null);
@@ -121,6 +120,13 @@ export const OrganizationSettingsClient = () => {
     const [newMemberName, setNewMemberName] = useState("");
     const [newMemberEmail, setNewMemberEmail] = useState("");
     const [newMemberRole, setNewMemberRole] = useState<OrganizationRole>(OrganizationRole.MEMBER);
+
+    // Redirect if not an organization account
+    useEffect(() => {
+        if (isOrg === false) {
+            router.push('/');
+        }
+    }, [isOrg, router]);
 
     // Sync form state with fetched data
     useEffect(() => {
@@ -168,7 +174,11 @@ export const OrganizationSettingsClient = () => {
 
     const members = membersData?.documents || [];
     const ownerCount = members.filter((m: OrgMember) => m.role === "OWNER").length;
-    const queryClient = useQueryClient();
+
+    // Don't render anything if not an org account
+    if (isOrg === false) {
+        return null;
+    }
 
     // Handler: Save organization changes
     const handleSaveOrg = () => {

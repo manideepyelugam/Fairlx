@@ -40,7 +40,11 @@ export const useCurrentOrgMember = ({ organizationId }: UseCurrentOrgMemberProps
             );
 
             if (!response.ok) {
-                return null;
+                // Silently return null for 401/403 errors (user not in org)
+                if (response.status === 401 || response.status === 403) {
+                    return null;
+                }
+                throw new Error(`Failed to fetch organization member: ${response.statusText}`);
             }
 
             const data = await response.json();
@@ -53,7 +57,8 @@ export const useCurrentOrgMember = ({ organizationId }: UseCurrentOrgMemberProps
 
             return membership || null;
         },
-        enabled: !!organizationId && !!user?.$id,
+        enabled: !!organizationId && !!user?.$id && organizationId !== "",
+        retry: false, // Don't retry on 401/403 errors
     });
 
     const role = query.data?.role || null;
