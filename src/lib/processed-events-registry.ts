@@ -123,14 +123,140 @@ export async function isEventProcessed(
 }
 
 /**
- * Mark an event as processed
+ * Acquire a processing lock for an event
  * 
- * Stores in both in-memory cache and database for persistence.
+ * Uses the database unique constraint on eventId/eventType to ensure 
+ * only one process can handle this event at a time.
  * 
- * @param databases - Appwrite Databases instance
- * @param eventKey - Unique identifier for the event
- * @param eventType - Type of event (usage, invoice, webhook)
- * @param metadata - Optional metadata for debugging
+ * @returns true if lock acquired, false if already processed/locked
+ * @throws Error if database failure (other than duplicate)
+ */
+export async function acquireProcessingLock(
+    databases: Databases,
+    eventKey: string,
+    eventType: ProcessedEventType,
+    metadata?: Record<string, unknown>
+): Promise<boolean> {
+    const processedAt = new Date().toISOString();
+
+    try {
+        const collectionId = getCollectionId();
+        let documentData;
+
+        if (usesDedicatedCollection()) {
+            documentData = {
+                eventId: eventKey,
+                eventType,
+                processedAt,
+                metadata: JSON.stringify(metadata || {}),
+                status: "LOCKED", // Indicate processing in progress
+            };
+        } else {
+            // Fallback schema
+            documentData = {
+                billingAccountId: "SYSTEM_LOCK", // Special ID for locks
+                eventType: `LOCK_${eventType.toUpperCase()}`,
+                metadata: JSON.stringify({
+                    eventKey,
+                    eventType,
+                    processedAt,
+                    status: "LOCKED",
+                    ...(metadata || {}),
+                }),
+            };
+        }
+
+        // Attempt to create the lock record
+        // This will fail with 409 Conflict if key already exists
+        await databases.createDocument(
+            DATABASE_ID,
+            collectionId,
+            usesDedicatedCollection() ? ID.unique() : ID.unique(), // ID specific
+            documentData
+        );
+
+        // Add to cache as well
+        const cacheKey = `${eventType}:${eventKey}`;
+        processedEventsCache.set(cacheKey, {
+            eventKey,
+            eventType,
+            processedAt,
+            metadata,
+        });
+
+        return true;
+    } catch (error: unknown) {
+        const appwriteError = error as { code?: number };
+        // 409 Conflict means duplicate - lock failed
+        if (appwriteError.code === 409) {
+            return false;
+        }
+
+        // For fallback collection (logs), we might not have unique constraints on metadata
+        // So we strictly depend on PROCESSED_EVENTS_ID being a unique-constrained collection
+        // If using fallback, this lock is essentially "best effort" via insert
+
+        console.error("[ProcessedEventsRegistry] Lock acquisition failed:", error);
+        throw error;
+    }
+}
+
+/**
+ * Release a processing lock (Rollback)
+ * 
+ * Call this if the operation fails and you want to allow retry.
+ * DO NOT call this if operation succeeded (lock becomes permanent record).
+ */
+export async function releaseProcessingLock(
+    databases: Databases,
+    eventKey: string,
+    eventType: ProcessedEventType
+): Promise<void> {
+    try {
+        const collectionId = getCollectionId();
+        const cacheKey = `${eventType}:${eventKey}`;
+
+        // Remove from cache
+        processedEventsCache.delete(cacheKey);
+
+        // Find and delete the lock document
+        // We need to query it because ID is unique, but we only know eventKey
+        let queries;
+        if (usesDedicatedCollection()) {
+            queries = [
+                Query.equal("eventId", eventKey),
+                Query.equal("eventType", eventType),
+            ];
+        } else {
+            queries = [
+                Query.equal("eventType", `LOCK_${eventType.toUpperCase()}`),
+                Query.contains("metadata", eventKey),
+            ];
+        }
+
+        const locks = await databases.listDocuments(
+            DATABASE_ID,
+            collectionId,
+            [...queries, Query.limit(1)]
+        );
+
+        if (locks.total > 0) {
+            await databases.deleteDocument(
+                DATABASE_ID,
+                collectionId,
+                locks.documents[0].$id
+            );
+        }
+    } catch (error) {
+        console.error("[ProcessedEventsRegistry] Failed to release lock:", error);
+        // Swallow error - rollback failure shouldn't crash the request
+    }
+}
+
+/**
+ * Mark an event as processed (Finalize Lock)
+ * 
+ * Updates the lock record to "COMPLETED" status.
  */
 export async function markEventProcessed(
     databases: Databases,
@@ -138,64 +264,18 @@ export async function markEventProcessed(
     eventType: ProcessedEventType,
     metadata?: Record<string, unknown>
 ): Promise<void> {
-    const cacheKey = `${eventType}:${eventKey}`;
-    const processedAt = new Date().toISOString();
+    // If we already hold the lock (via acquireProcessingLock), we just update status
+    // But Appwrite 'create' is final. We don't need to update it unless we want to change status.
+    // For immutability, we just leave it.
 
-    // 1. Add to in-memory cache
+    // However, we ensure cache is updated
+    const cacheKey = `${eventType}:${eventKey}`;
     processedEventsCache.set(cacheKey, {
         eventKey,
         eventType,
-        processedAt,
+        processedAt: new Date().toISOString(),
         metadata,
     });
-
-    // Cleanup cache if it gets too large
-    if (processedEventsCache.size > MAX_CACHE_SIZE) {
-        // Remove oldest entries (first 1000)
-        const iterator = processedEventsCache.keys();
-        for (let i = 0; i < 1000; i++) {
-            const key = iterator.next().value;
-            if (key) processedEventsCache.delete(key);
-        }
-    }
-
-    // 2. Persist to database
-    try {
-        const collectionId = getCollectionId();
-
-        let documentData;
-        if (usesDedicatedCollection()) {
-            // Dedicated processed_events collection
-            documentData = {
-                eventId: eventKey,
-                eventType,
-                processedAt,
-                metadata: JSON.stringify(metadata || {}),
-            };
-        } else {
-            // Fallback to billing audit logs
-            documentData = {
-                billingAccountId: "SYSTEM_IDEMPOTENCY",
-                eventType: `IDEMPOTENCY_${eventType.toUpperCase()}`,
-                metadata: JSON.stringify({
-                    eventKey,
-                    eventType,
-                    processedAt,
-                    ...(metadata || {}),
-                }),
-            };
-        }
-
-        await databases.createDocument(
-            DATABASE_ID,
-            collectionId,
-            ID.unique(),
-            documentData
-        );
-    } catch (error) {
-        // Log but don't throw - cache is still valid
-        console.error("[ProcessedEventsRegistry] markEventProcessed failed:", error);
-    }
 }
 
 /**

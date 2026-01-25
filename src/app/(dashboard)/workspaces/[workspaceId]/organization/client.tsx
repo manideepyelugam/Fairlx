@@ -310,30 +310,36 @@ export const OrganizationSettingsClient = () => {
                         <Settings2 className="size-4 mr-2" />
                         General
                     </TabsTrigger>
-                    <TabsTrigger
-                        value="members"
-                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
-                    >
-                        <Users className="size-4 mr-2" />
-                        Members
-                        <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">
-                            {members.length}
-                        </Badge>
-                    </TabsTrigger>
-                    <TabsTrigger
-                        value="security"
-                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
-                    >
-                        <Shield className="size-4 mr-2" />
-                        Security
-                    </TabsTrigger>
-                    <TabsTrigger
-                        value="departments"
-                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
-                    >
-                        <Building2 className="size-4 mr-2" />
-                        Departments
-                    </TabsTrigger>
+                    {hasPermission(OrgPermissionKey.MEMBERS_VIEW) && (
+                        <TabsTrigger
+                            value="members"
+                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
+                        >
+                            <Users className="size-4 mr-2" />
+                            Members
+                            <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">
+                                {members.length}
+                            </Badge>
+                        </TabsTrigger>
+                    )}
+                    {hasPermission(OrgPermissionKey.SECURITY_VIEW) && (
+                        <TabsTrigger
+                            value="security"
+                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
+                        >
+                            <Shield className="size-4 mr-2" />
+                            Security
+                        </TabsTrigger>
+                    )}
+                    {hasPermission(OrgPermissionKey.DEPARTMENTS_MANAGE) && (
+                        <TabsTrigger
+                            value="departments"
+                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
+                        >
+                            <Building2 className="size-4 mr-2" />
+                            Departments
+                        </TabsTrigger>
+                    )}
                     {hasPermission(OrgPermissionKey.BILLING_VIEW) && (
                         <TabsTrigger
                             value="billing"

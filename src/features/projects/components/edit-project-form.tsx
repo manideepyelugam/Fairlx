@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { DottedSeparator } from "@/components/dotted-separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form,
@@ -47,6 +48,8 @@ export const EditProjectForm = ({
   const { mutate, isPending } = useUpdateProject();
   const { mutate: deleteProject, isPending: isDeletingProject } =
     useDeleteProject();
+
+  const { isAdmin } = useCurrentMember({ workspaceId: initialValues.workspaceId });
 
   const [DeleteDialog, confirmDelete] = useConfirm(
     "Delete Project",
@@ -331,28 +334,30 @@ export const EditProjectForm = ({
       </Card>
 
       {/* Moved Danger Zone to its own card outside the main form card, always visible at bottom */}
-      <Card className="w-full h-full border-none shadow-none bg-red-50/50">
-        <CardContent className="p-7">
-          <div className="flex flex-col">
-            <h3 className="font-bold text-red-600">Danger Zone</h3>
-            <p className="text-sm text-muted-foreground">
-              Deleting a project is irreversible and will remove all
-              associated data.
-            </p>
-            <DottedSeparator className="py-7" />
-            <Button
-              className="mt-6 w-fit ml-auto"
-              size="sm"
-              variant="destructive"
-              type="button"
-              disabled={isPending || isDeletingProject}
-              onClick={handleDelete}
-            >
-              Delete Project
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {isAdmin && (
+        <Card className="w-full h-full border-none shadow-none bg-red-50/50">
+          <CardContent className="p-7">
+            <div className="flex flex-col">
+              <h3 className="font-bold text-red-600">Danger Zone</h3>
+              <p className="text-sm text-muted-foreground">
+                Deleting a project is irreversible and will remove all
+                associated data.
+              </p>
+              <DottedSeparator className="py-7" />
+              <Button
+                className="mt-6 w-fit ml-auto"
+                size="sm"
+                variant="destructive"
+                type="button"
+                disabled={isPending || isDeletingProject}
+                onClick={handleDelete}
+              >
+                Delete Project
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

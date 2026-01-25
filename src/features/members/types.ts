@@ -34,7 +34,30 @@ export type Member = Models.Document & {
   name?: string;
   email?: string;
   profileImageUrl?: string | null;
+  status?: MemberStatus;
+  /**
+   * Soft-delete tombstone timestamp.
+   * When set, member is considered deleted.
+   * Data retained for audit trail.
+   */
+  deletedAt?: string;
+  /**
+   * User ID who initiated the deletion.
+   * Required for audit trail.
+   */
+  deletedBy?: string;
 };
+
+// ===============================
+// Member Status (Ledger)
+// ===============================
+
+export enum MemberStatus {
+  ACTIVE = "ACTIVE",
+  INVITED = "INVITED",
+  INACTIVE = "INACTIVE",
+  DELETED = "DELETED",
+}
 
 // ===============================
 // NEW: Workspace Member Roles (Target Model)
@@ -84,6 +107,7 @@ export type WorkspaceMember = Models.Document & {
    */
   orgMemberId: string;
   role: WorkspaceMemberRole;
+  status: MemberStatus;
   createdAt: string;
   /**
    * Denormalized from org member for display efficiency
@@ -92,6 +116,17 @@ export type WorkspaceMember = Models.Document & {
   name?: string;
   email?: string;
   profileImageUrl?: string | null;
+  /**
+   * Soft-delete tombstone timestamp.
+   * When set, member is considered deleted.
+   * Data retained for audit trail.
+   */
+  deletedAt?: string;
+  /**
+   * User ID who initiated the deletion.
+   * Required for audit trail.
+   */
+  deletedBy?: string;
 };
 
 // ===============================

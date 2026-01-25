@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAccountLifecycle } from "@/components/account-lifecycle-provider";
-import { PUBLIC_ROUTES, ONBOARDING_ROUTES } from "@/features/auth/constants";
+import { PUBLIC_ROUTES } from "@/features/auth/constants";
 import { Loader2 } from "lucide-react";
 import { ForcePasswordReset } from "@/features/auth/components/force-password-reset";
 
@@ -14,114 +14,100 @@ interface LifecycleGuardProps {
 /**
  * LifecycleGuard - Authoritative route guard for account lifecycle.
  * 
- * CRITICAL: This component enforces routing rules BEFORE rendering children.
- * It returns null (or loader) while redirecting to prevent any flash of invalid content.
- * 
- * Rules:
- * 1. Unauthenticated → /sign-in (unless PUBLIC_ROUTE)
- * 2. Authenticated, mustResetPassword → show ForcePasswordReset screen
- * 3. Authenticated, no account type → /onboarding
- * 4. PERSONAL, no workspace → /onboarding
- * 5. ORG, no org → /onboarding
- * 6. ORG, no workspace → allow /welcome ONLY, block /workspaces/*
- * 7. Fully setup → block /onboarding and /welcome
+ * MIGRATED: Now consumes server-side routing rules via `lifecycleRouting`.
+ * The UI no longer guesses permissions; it strictly enforces what the server says.
  */
 export function LifecycleGuard({ children }: LifecycleGuardProps) {
     const router = useRouter();
     const pathname = usePathname();
-    const { lifecycleState, isLoaded, refreshLifecycle } = useAccountLifecycle();
+    const { lifecycleState, lifecycleRouting, isLoaded, refreshLifecycle } = useAccountLifecycle();
     const redirectingRef = useRef(false);
+    const lastPathnameRef = useRef(pathname);
+
+    // Reset redirecting flag when pathname actually changes
+    useEffect(() => {
+        if (pathname !== lastPathnameRef.current) {
+            redirectingRef.current = false;
+            lastPathnameRef.current = pathname;
+        }
+    }, [pathname]);
 
     // Determine route type
     const isPublicRoute = PUBLIC_ROUTES.some(route => pathname.startsWith(route));
-    const isOnboardingRoute = ONBOARDING_ROUTES.some(route => pathname.startsWith(route));
 
     useEffect(() => {
         // Skip if not loaded yet or already redirecting
         if (!isLoaded || redirectingRef.current) return;
 
         // Skip guards for public routes
-        if (isPublicRoute) return;
-
-        // Skip if mustResetPassword - we'll show the reset screen instead
-        if (lifecycleState.mustResetPassword) return;
-
-        const { isAuthenticated, accountType, hasOrg, hasWorkspace, activeWorkspaceId, orgRole } = lifecycleState;
-
-        // Rule 1: Unauthenticated on protected route
-        if (!isAuthenticated) {
-            redirectingRef.current = true;
-            router.push("/sign-in");
-            return;
-        }
-
-        // Rule 3: No account type selected
-        if (!accountType && !pathname.startsWith("/onboarding")) {
-            redirectingRef.current = true;
-            router.push("/onboarding");
-            return;
-        }
-
-        // Rule 4: PERSONAL account without workspace
-        if (accountType === "PERSONAL" && !hasWorkspace && !pathname.startsWith("/onboarding")) {
-            redirectingRef.current = true;
-            router.push("/onboarding");
-            return;
-        }
-
-        // ============================================================
-        // CRITICAL ROLE-BASED RULE: Non-OWNER ORG members
-        // ============================================================
-        // ADMIN, MODERATOR, MEMBER must NEVER see org onboarding.
-        // They are added by an OWNER, not responsible for setup.
-        if (accountType === "ORG" && orgRole && orgRole !== "OWNER") {
-            // HARD BLOCK onboarding routes for non-owners
-            if (pathname.startsWith("/onboarding")) {
-                redirectingRef.current = true;
-                // Send to workspace if assigned, else welcome
-                if (hasWorkspace && activeWorkspaceId) {
-                    router.push(`/workspaces/${activeWorkspaceId}`);
-                } else {
-                    router.push("/welcome");
+        if (isPublicRoute) {
+            // Special case: If user is authenticated and on sign-in/sign-up,
+            // redirect them to their allowed home
+            if (lifecycleState.isAuthenticated) {
+                if (lifecycleRouting.redirectTo && lifecycleRouting.redirectTo !== pathname) {
+                    redirectingRef.current = true;
+                    router.push(lifecycleRouting.redirectTo);
+                    return;
                 }
-                return;
             }
-        }
-
-        // Rule 5: ORG OWNER without org → onboarding
-        if (accountType === "ORG" && !hasOrg && !isOnboardingRoute) {
-            redirectingRef.current = true;
-            router.push("/onboarding");
             return;
         }
 
-        // Rule 6: ORG account with org but no workspace
-        if (accountType === "ORG" && hasOrg && !hasWorkspace) {
-            // Allow /welcome, /organization, onboarding routes (for OWNER only)
-            const allowedPaths = ["/welcome", "/organization", ...ONBOARDING_ROUTES];
-            const isAllowed = allowedPaths.some(p => pathname.startsWith(p));
+        // 1. Force Redirect (Server Authority)
+        // If server explicitly says "Go here" AND we aren't already there.
+        if (lifecycleRouting.redirectTo) {
+            const targetPath = lifecycleRouting.redirectTo;
+            const isAtTarget = pathname === targetPath || pathname.startsWith(targetPath + "/");
 
-            if (!isAllowed && pathname.startsWith("/workspaces")) {
+            if (!isAtTarget) {
                 redirectingRef.current = true;
-                router.push("/welcome");
+                router.push(targetPath);
                 return;
             }
+            // We're at the redirect target - no further checks needed
+            return;
         }
 
-        // Rule 7: Fully setup - block onboarding and welcome
-        if (hasWorkspace) {
-            if (pathname.startsWith("/onboarding") || pathname === "/welcome") {
-                redirectingRef.current = true;
-                router.push(activeWorkspaceId ? `/workspaces/${activeWorkspaceId}` : "/");
-                return;
+        // 2. Blocked Paths (Server Authority)
+        // Check if current path is strictly blocked by server state
+        const isBlocked = lifecycleRouting.blockedPaths.some(blocked => {
+            if (blocked === "*") return true;
+            if (blocked.endsWith("/*")) {
+                const prefix = blocked.slice(0, -2);
+                return pathname.startsWith(prefix);
             }
+            return pathname === blocked || pathname.startsWith(blocked + "/");
+        });
+
+        if (isBlocked) {
+            // Find a safe fallback - prefer redirectTo if set, else check allowedPaths
+            let fallback = "/welcome";
+
+            // Check if /welcome is blocked
+            const welcomeBlocked = lifecycleRouting.blockedPaths.some(b =>
+                b === "/welcome" || b === "*"
+            );
+
+            if (welcomeBlocked && lifecycleRouting.allowedPaths.length > 0) {
+                // Find first allowed concrete path
+                const firstAllowed = lifecycleRouting.allowedPaths.find(p =>
+                    !p.includes("*") && !p.includes("?")
+                );
+                if (firstAllowed) {
+                    fallback = firstAllowed;
+                }
+            }
+
+            if (pathname !== fallback) {
+                redirectingRef.current = true;
+                router.push(fallback);
+            }
+            return;
         }
 
-        // Reset redirect flag since no redirect happened
-        redirectingRef.current = false;
-    }, [isLoaded, isPublicRoute, isOnboardingRoute, lifecycleState, pathname, router]);
+    }, [isLoaded, isPublicRoute, lifecycleState.isAuthenticated, lifecycleRouting, pathname, router]);
 
-    // ZERO-FLASH: Show loader while state is loading or redirecting
+    // ZERO-FLASH: Show loader while state is loading
     if (!isLoaded) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-background">
@@ -133,12 +119,12 @@ export function LifecycleGuard({ children }: LifecycleGuardProps) {
         );
     }
 
-    // Rule 2: Force password reset for ORG members on first login
+    // Special Component Interception: ForcePasswordReset
     if (lifecycleState.isAuthenticated && lifecycleState.mustResetPassword) {
         return <ForcePasswordReset onSuccess={() => refreshLifecycle()} />;
     }
 
-    // If redirecting, don't render children
+    // If redirecting, show spinner (but with timeout protection)
     if (redirectingRef.current) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-background">

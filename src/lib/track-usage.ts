@@ -31,8 +31,11 @@ export interface TrackUsageParams {
     source: UsageSource;
     /** Additional metadata as object (will be JSON stringified) */
     metadata?: Record<string, unknown>;
-    /** Unique key to prevent duplicate events on retries */
-    idempotencyKey?: string;
+    /** 
+     * Unique key to prevent duplicate events on retries.
+     * CRITICAL: Must be deterministic for the same operation.
+     */
+    idempotencyKey: string;
     /** Account type that generated the usage */
     ownerType?: OwnerType;
     /** Owner ID - userId for PERSONAL, orgId for ORG */
@@ -58,7 +61,7 @@ export interface TrackUsageParams {
  *     units: 1,
  *     source: UsageSource.AI,
  *     metadata: { operation: "ask_question", tokensEstimate: 500 },
- *     idempotencyKey: `docs:ask:${project.$id}:${Date.now()}`,
+ *     idempotencyKey: `docs:ask:${project.$id}:${messageId}`,
  *     ownerType: "ORG",
  *     ownerId: orgId,
  * });
@@ -99,8 +102,11 @@ export async function trackUsageAsync(params: TrackUsageParams): Promise<void> {
             ownerId,
         } = params;
 
-        // REQUIRE idempotency key - generate if not provided
-        const key = idempotencyKey || `${workspaceId}:${module || resourceType}:${Date.now()}`;
+        // REQUIRE idempotency key (Type enforced, but runtime check safety)
+        if (!idempotencyKey) {
+            console.error("[Usage] Missing idempotencyKey in trackUsage call");
+            return;
+        }
 
         // Only run on server-side
         if (typeof window !== "undefined") {
@@ -115,7 +121,7 @@ export async function trackUsageAsync(params: TrackUsageParams): Promise<void> {
 
         // DELEGATE to centralized usage ledger (SINGLE SOURCE OF TRUTH)
         const result = await writeUsageEvent(databases, {
-            idempotencyKey: key,
+            idempotencyKey,
             workspaceId,
             projectId,
             resourceType,
@@ -130,7 +136,7 @@ export async function trackUsageAsync(params: TrackUsageParams): Promise<void> {
         if (!result.written) {
             // Log but don't throw - duplicates are expected for retries
             if (result.reason === "DUPLICATE" || result.reason === "RACE_DUPLICATE") {
-                console.log(`[Usage] Duplicate event ignored: ${key}`);
+                console.log(`[Usage] Duplicate event ignored: ${idempotencyKey}`);
             } else {
                 console.warn(`[Usage] Event not written: ${result.reason} - ${result.message}`);
             }

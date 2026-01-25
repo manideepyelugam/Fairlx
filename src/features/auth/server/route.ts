@@ -34,9 +34,24 @@ const app = new Hono()
   })
   .get("/lifecycle", sessionMiddleware, async (c) => {
     // Dynamic import to avoid circular dependency
-    const { resolveAccountLifecycleState } = await import("./actions");
-    const lifecycleState = await resolveAccountLifecycleState();
-    return c.json({ data: lifecycleState });
+    const { resolveAccountLifecycleState, getLifecycleState } = await import("./actions");
+
+    // Get both legacy state (backward compatible) and new lifecycle state (with routing)
+    const [legacyState, lifecycleState] = await Promise.all([
+      resolveAccountLifecycleState(),
+      getLifecycleState(),
+    ]);
+
+    return c.json({
+      data: legacyState,
+      // New: Full lifecycle state with routing for modern consumption
+      lifecycle: {
+        state: lifecycleState.state,
+        redirectTo: lifecycleState.redirectTo,
+        allowedPaths: lifecycleState.allowedPaths,
+        blockedPaths: lifecycleState.blockedPaths,
+      }
+    });
   })
   .post("/login", zValidator("json", loginSchema), async (c) => {
     const { email, password } = c.req.valid("json");

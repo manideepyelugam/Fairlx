@@ -12,7 +12,7 @@
 import "server-only";
 
 import { type Databases, Query } from "node-appwrite";
-import { DATABASE_ID, ORGANIZATION_MEMBERS_ID, WORKSPACES_ID } from "@/config";
+import { DATABASE_ID, ORGANIZATION_MEMBERS_ID, WORKSPACES_ID, MEMBERS_ID } from "@/config";
 
 // ============================================================================
 // INVARIANT ASSERTION
@@ -285,4 +285,179 @@ export async function runOrgInvariantSelfChecks(
         passed: violations.length === 0,
         violations,
     };
+}
+
+// ============================================================================
+// OWNER SAFETY INVARIANT (CRITICAL)
+// ============================================================================
+
+/**
+ * INVARIANT: OWNER must NEVER be blocked from org access
+ * 
+ * This is a CRITICAL safety check that should be called whenever
+ * org access is computed. If an OWNER somehow has no access,
+ * this represents a catastrophic logic error.
+ * 
+ * BEHAVIOR:
+ * - Development: THROWS (fail fast for debugging)
+ * - Production: LOGS CRITICAL ERROR (for alerting)
+ */
+export function assertOwnerHasFullAccess(
+    role: string | null,
+    hasOrgAccess: boolean,
+    context?: Record<string, unknown>
+): void {
+    if (role === "OWNER" && !hasOrgAccess) {
+        assertInvariant(
+            false,
+            "OWNER_ACCESS_BLOCKED",
+            "CRITICAL: Organization OWNER has been denied access. This is a logic error.",
+            {
+                role,
+                hasOrgAccess,
+                ...context,
+            }
+        );
+    }
+}
+
+/**
+ * INVARIANT: OWNER must have all permissions
+ * 
+ * Verify that an OWNER has the expected full set of permissions.
+ * Used for sanity checking permission resolution.
+ */
+export function assertOwnerHasAllPermissions(
+    role: string | null,
+    permissions: string[],
+    expectedMinimum: number,
+    context?: Record<string, unknown>
+): void {
+    if (role === "OWNER" && permissions.length < expectedMinimum) {
+        assertInvariant(
+            false,
+            "OWNER_MISSING_PERMISSIONS",
+            `CRITICAL: OWNER has ${permissions.length} permissions but expected at least ${expectedMinimum}`,
+            {
+                role,
+                permissionCount: permissions.length,
+                expectedMinimum,
+                ...context,
+            }
+        );
+    }
+}
+
+// ============================================================================
+// GHOST MEMBERSHIP DETECTION & CLEANUP
+// ============================================================================
+
+export interface GhostMember {
+    memberId: string;
+    userId: string;
+    workspaceId: string;
+    reason: "WORKSPACE_NOT_FOUND" | "USER_NOT_IN_ORG";
+}
+
+/**
+ * Find ghost workspace members (orphaned records)
+ * 
+ * Ghost members are:
+ * 1. Members referencing non-existent workspaces
+ * 2. Members in org workspaces where user is not an org member
+ * 
+ * @param databases - Appwrite databases instance
+ * @returns Array of ghost member records
+ */
+export async function findGhostWorkspaceMembers(
+    databases: Databases
+): Promise<GhostMember[]> {
+    const ghosts: GhostMember[] = [];
+
+    // Get all workspace members
+    const allMembers = await databases.listDocuments(
+        DATABASE_ID,
+        MEMBERS_ID,
+        [Query.limit(1000)] // Pagination needed for production
+    );
+
+    for (const member of allMembers.documents) {
+        // Check 1: Does the workspace still exist?
+        try {
+            const workspace = await databases.getDocument(
+                DATABASE_ID,
+                WORKSPACES_ID,
+                member.workspaceId
+            );
+
+            // Check 2: For org workspaces, is the user still an org member?
+            if (workspace.organizationId) {
+                const orgMembership = await databases.listDocuments(
+                    DATABASE_ID,
+                    ORGANIZATION_MEMBERS_ID,
+                    [
+                        Query.equal("organizationId", workspace.organizationId),
+                        Query.equal("userId", member.userId),
+                        Query.limit(1),
+                    ]
+                );
+
+                if (orgMembership.total === 0) {
+                    ghosts.push({
+                        memberId: member.$id,
+                        userId: member.userId,
+                        workspaceId: member.workspaceId,
+                        reason: "USER_NOT_IN_ORG",
+                    });
+                }
+            }
+        } catch {
+            // Workspace doesn't exist - this is a ghost
+            ghosts.push({
+                memberId: member.$id,
+                userId: member.userId,
+                workspaceId: member.workspaceId,
+                reason: "WORKSPACE_NOT_FOUND",
+            });
+        }
+    }
+
+    return ghosts;
+}
+
+/**
+ * Cleanup ghost workspace members
+ * 
+ * CAUTION: This permanently deletes orphaned member records.
+ * Run findGhostWorkspaceMembers first to review what will be deleted.
+ * 
+ * @param databases - Appwrite databases instance
+ * @param ghosts - Array of ghost members to delete
+ * @param dryRun - If true, only log what would be deleted
+ * @returns Cleanup results
+ */
+export async function cleanupGhostMembers(
+    databases: Databases,
+    ghosts: GhostMember[],
+    dryRun: boolean = true
+): Promise<{ deleted: number; errors: string[] }> {
+    const errors: string[] = [];
+    let deleted = 0;
+
+    for (const ghost of ghosts) {
+        if (dryRun) {
+            console.log(`[DRY RUN] Would delete ghost member: ${ghost.memberId} (${ghost.reason})`);
+            deleted++;
+        } else {
+            try {
+                await databases.deleteDocument(DATABASE_ID, MEMBERS_ID, ghost.memberId);
+                console.log(`[CLEANUP] Deleted ghost member: ${ghost.memberId} (${ghost.reason})`);
+                deleted++;
+            } catch (error) {
+                errors.push(`Failed to delete ${ghost.memberId}: ${error}`);
+            }
+        }
+    }
+
+    return { deleted, errors };
 }

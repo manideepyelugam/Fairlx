@@ -118,6 +118,12 @@ export const BILLING_CURRENCY = process.env.BILLING_CURRENCY || "INR";
 export const ENABLE_EMANDATE = process.env.ENABLE_EMANDATE !== "false";
 
 // ===============================
+// Cron Job Security
+// ===============================
+// Secret token to authenticate cron job requests
+export const CRON_SECRET = process.env.CRON_SECRET;
+
+// ===============================
 // Wallet & Billing Mode Collections
 // ===============================
 export const WALLETS_ID = process.env.NEXT_PUBLIC_APPWRITE_WALLETS_ID!;

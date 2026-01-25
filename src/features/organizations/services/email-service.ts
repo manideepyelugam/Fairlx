@@ -13,7 +13,7 @@ interface WelcomeEmailParams {
   recipientName: string;
   recipientUserId: string; // Added userId for Appwrite Messaging
   organizationName: string;
-  tempPassword: string;
+  tempPassword?: string;
   loginUrl: string;
   /** Optional first-login magic link token (raw, not hashed) */
   firstLoginToken?: string;
@@ -88,6 +88,35 @@ export async function sendWelcomeEmail({
   </tr>
 </table>
         ` : "";
+
+    // Conditional Password Section
+    const passwordRow = tempPassword ? `
+                            <tr>
+                              <td style="padding: 10px 12px; background-color: ${cardBg}; border: 1px solid ${border}; border-radius: 0 0 6px 6px;">
+                                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                  <tr>
+                                    <td style="font-size: 12px; color: ${mutedText}; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; font-family: ${fontStack};">Password</td>
+                                    <td style="text-align: right;">
+                                      <code style="padding: 4px 10px; background-color: #1e293b; color: #ffffff; border-radius: 4px; font-size: 13px; font-weight: 600; font-family: 'SF Mono', Monaco, monospace; letter-spacing: 0.5px;">${tempPassword}</code>
+                                    </td>
+                                  </tr>
+                                </table>
+                              </td>
+                            </tr>
+    ` : `
+                            <tr>
+                              <td style="padding: 10px 12px; background-color: ${cardBg}; border: 1px solid ${border}; border-radius: 0 0 6px 6px;">
+                                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                  <tr>
+                                    <td style="font-size: 12px; color: ${mutedText}; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; font-family: ${fontStack};">Password</td>
+                                    <td style="text-align: right; font-size: 13px; color: ${darkText}; font-family: ${fontStack};">
+                                      Use your existing password
+                                    </td>
+                                  </tr>
+                                </table>
+                              </td>
+                            </tr>
+    `;
 
     const body = `
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -183,18 +212,7 @@ export async function sendWelcomeEmail({
                                 </table>
                               </td>
                             </tr>
-                            <tr>
-                              <td style="padding: 10px 12px; background-color: ${cardBg}; border: 1px solid ${border}; border-radius: 0 0 6px 6px;">
-                                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-                                  <tr>
-                                    <td style="font-size: 12px; color: ${mutedText}; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; font-family: ${fontStack};">Password</td>
-                                    <td style="text-align: right;">
-                                      <code style="padding: 4px 10px; background-color: #1e293b; color: #ffffff; border-radius: 4px; font-size: 13px; font-weight: 600; font-family: 'SF Mono', Monaco, monospace; letter-spacing: 0.5px;">${tempPassword}</code>
-                                    </td>
-                                  </tr>
-                                </table>
-                              </td>
-                            </tr>
+                            ${passwordRow}
                           </table>
                         </td>
                       </tr>

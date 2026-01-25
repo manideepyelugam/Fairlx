@@ -2,28 +2,36 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 /**
- * Auth & Billing Middleware
+ * Lightweight Auth Middleware
  * 
- * ROUTING GUARDS:
- * - Public routes: sign-in, sign-up, verify-email, etc.
- * - Onboarding: Requires auth, redirects if already completed
- * - Billing routes: Always accessible for account recovery
- * - Protected routes: Requires auth + completed onboarding
+ * DESIGN PRINCIPLE:
+ * Middleware only does cookie-based checks. All routing logic
+ * is delegated to LifecycleGuard which consumes resolveUserLifecycleState().
  * 
- * BILLING STATUS:
- * - Checks X-Billing-Status header from API responses
- * - DUE: Shows warning banner (handled by components)
- * - SUSPENDED: Redirects to billing page (except billing routes)
+ * This prevents routing logic duplication and ensures single source of truth.
  * 
- * NOTE: Full user state verification happens in /auth/callback
- * Middleware only does lightweight cookie checks
+ * WHAT THIS DOES:
+ * 1. Allows public paths (auth, static, API)
+ * 2. Redirects unauthenticated users to sign-in
+ * 3. Passes billing status header for client awareness
+ * 
+ * WHAT THIS DOES NOT DO:
+ * - No onboarding routing (handled by LifecycleGuard)
+ * - No billing redirect logic (handled by LifecycleGuard)
+ * - No path-based permission checks
  */
 
-// Billing-related paths that are always accessible
-const BILLING_PATHS = [
-  "/organization/settings/billing",
-  "/settings/billing",
-  "/billing",
+// Public paths that never require authentication
+const PUBLIC_PATHS = [
+  "/sign-in",
+  "/sign-up",
+  "/verify-email",
+  "/verify-email-sent",
+  "/verify-email-needed",
+  "/forgot-password",
+  "/reset-password",
+  "/oauth",
+  "/auth/callback",
 ];
 
 export function middleware(request: NextRequest) {
@@ -31,68 +39,29 @@ export function middleware(request: NextRequest) {
   const authCookie = request.cookies.get("fairlx-session");
   const billingStatusCookie = request.cookies.get("fairlx-billing-status");
 
-  // Public routes - always accessible
-  const publicPaths = [
-    "/sign-in",
-    "/sign-up",
-    "/verify-email",
-    "/verify-email-sent",
-    "/verify-email-needed",
-    "/forgot-password",
-    "/reset-password",
-    "/oauth",
-    "/auth/callback",
-  ];
-
-  // Check if the current path is a public path
-  const isPublicPath = publicPaths.some(path => pathname.startsWith(path));
-
-  // Check if this is a billing-related path
-  const isBillingPath = BILLING_PATHS.some(path => pathname.startsWith(path));
-
-  // Allow static files, API routes, and public paths to pass through
+  // 1. Allow static files, API routes
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
-    pathname.includes(".") ||
-    isPublicPath
+    pathname.includes(".")
   ) {
     return NextResponse.next();
   }
 
-  // Onboarding routes - require auth but not completed onboarding
-  if (pathname.startsWith("/onboarding")) {
-    if (!authCookie) {
-      return NextResponse.redirect(new URL("/sign-in", request.url));
-    }
-    // Allow access to onboarding
+  // 2. Allow public paths
+  const isPublicPath = PUBLIC_PATHS.some(path => pathname.startsWith(path));
+  if (isPublicPath) {
     return NextResponse.next();
   }
 
-  // Protected routes - require auth
+  // 3. Redirect unauthenticated users to sign-in
   if (!authCookie) {
     const returnUrl = encodeURIComponent(pathname);
     return NextResponse.redirect(new URL(`/sign-in?returnUrl=${returnUrl}`, request.url));
   }
 
-  // Billing status check (from cookie set by client after API response)
-  // If account is SUSPENDED and not on a billing page, redirect to billing
-  if (billingStatusCookie?.value === "SUSPENDED" && !isBillingPath) {
-    // Get the appropriate billing URL based on current path
-    const billingUrl = pathname.startsWith("/organization")
-      ? "/organization/settings/billing"
-      : pathname.startsWith("/workspaces/")
-        ? `${pathname.split("/").slice(0, 3).join("/")}/billing`
-        : "/settings/billing";
-
-    return NextResponse.redirect(new URL(billingUrl, request.url));
-  }
-
-  // For authenticated users on protected routes, let the page handle verification
-  // Full state checks happen in components/pages
+  // 4. Pass through with billing status header
   const response = NextResponse.next();
-
-  // Add billing status header for client-side awareness
   if (billingStatusCookie) {
     response.headers.set("X-Billing-Status", billingStatusCookie.value);
   }

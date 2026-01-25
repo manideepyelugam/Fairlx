@@ -13,6 +13,7 @@ import { OrgMemberDepartment, DepartmentPermission } from "@/features/department
 import { OrgPermissionKey } from "@/features/org-permissions/types";
 import { AppRouteKey } from "./appRouteKeys";
 import { getRouteKeysForPermissions, getPathsForRouteKeys, getAllRouteKeys } from "./permissionRouteMap";
+import { assertOwnerHasFullAccess, assertOwnerHasAllPermissions } from "@/lib/invariants";
 
 /**
  * Resolve User Org Access (Department-Driven)
@@ -196,7 +197,7 @@ export async function resolveUserOrgAccess(
         // ============================================================
         const routeKeys = getRouteKeysForPermissions(permissions);
 
-        return {
+        const result: UserOrgAccessResult = {
             isOwner: false,
             role,
             departmentIds,
@@ -207,6 +208,19 @@ export async function resolveUserOrgAccess(
             orgMemberId: member.$id,
             organizationId,
         };
+
+        // ============================================================
+        // STEP 7: OWNER SAFETY INVARIANT CHECK
+        // ============================================================
+        // This should NEVER trigger because OWNER returns early above.
+        // If it does trigger, we have a logic error that needs immediate fix.
+        assertOwnerHasFullAccess(role, result.hasDepartmentAccess, {
+            userId,
+            organizationId,
+            orgMemberId: member.$id,
+        });
+
+        return result;
     } catch (error) {
         console.error("[resolveUserOrgAccess] Error resolving access:", error);
         return noAccess;
