@@ -899,6 +899,7 @@ const app = new Hono()
         "signupCompletedAt",
         "needsOnboarding",
         "accountType",
+        "defaultWorkspaceId",
       ];
 
       for (const field of allowedFields) {
