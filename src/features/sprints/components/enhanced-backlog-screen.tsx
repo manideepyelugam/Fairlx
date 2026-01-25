@@ -1694,19 +1694,6 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                           ))}
                           <Button variant="outline" size="icon" className="size-8">
                             <Plus className="size-4" />
-                        {/* Save and Cancel Buttons */}
-                        <div className="flex gap-2 pt-4 border-t">
-                          <Button
-                            onClick={() => {
-                              if (Object.keys(pendingChanges).length > 0) {
-                                handleUpdateWorkItem(pendingChanges);
-                              }
-                              setPendingChanges({});
-                            }}
-                            className="flex-1"
-                            size="xs"
-                          >
-                            Save Changes
                           </Button>
                         </div>
                       </div>

@@ -1324,7 +1324,7 @@ const app = new Hono()
           projectId,
           {
             workflowId: workflowId,
-            customWorkItemTypes: newCustomTypes,
+            customWorkItemTypes: JSON.stringify(newCustomTypes),
           }
         );
 
