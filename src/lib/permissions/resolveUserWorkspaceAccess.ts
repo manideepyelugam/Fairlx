@@ -130,6 +130,7 @@ export async function resolveUserWorkspaceAccess(
 
         // CASE 1: Org Owner (Full Access Override)
         if (isOrgOwner) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const syntheticMember: any = directMember || {
                 $id: "synthetic-org-owner",
                 userId,
@@ -191,6 +192,7 @@ export async function resolveUserWorkspaceAccess(
         const canDelete = !!directMember && ["OWNER", "ADMIN"].includes(directRole || "");
 
         // Construct synthetic member for listing purposes only (if not direct)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const memberDoc: any = directMember || (canList ? {
             $id: "synthetic-org-member",
             userId,
@@ -215,8 +217,9 @@ export async function resolveUserWorkspaceAccess(
             memberDocument: memberDoc,
         };
 
-    } catch (error: any) {
-        if (error.code === 404 || error.type === "document_not_found") {
+    } catch (error: unknown) {
+        const appwriteError = error as { code?: number; type?: string };
+        if (appwriteError.code === 404 || appwriteError.type === "document_not_found") {
             // Workspace not found - return no access without spamming logs
             return noAccess;
         }

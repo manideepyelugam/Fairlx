@@ -907,7 +907,8 @@ export function isRestrictedOrgMember(state: LifecycleState): boolean {
 
 function validateLifecycleInvariant(lifecycle: ResolvedLifecycle) {
     const { state, accountType, orgId, hasWorkspace, orgRole } = lifecycle;
-    const hasOrg = !!orgId; // Derived from orgId
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _hasOrg = !!orgId; // Derived from orgId (for invariant documentation)
 
     // 1. Account Type Consistency
     if (state.startsWith("PERSONAL_")) {
