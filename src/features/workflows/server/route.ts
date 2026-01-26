@@ -13,7 +13,7 @@ import {
   WORKFLOW_STATUSES_ID,
   WORKFLOW_TRANSITIONS_ID,
   PROJECTS_ID,
-  TEAM_MEMBERS_ID,
+  PROJECT_TEAM_MEMBERS_ID,
   SPACE_MEMBERS_ID,
   CUSTOM_COLUMNS_ID,
   DEFAULT_COLUMN_SETTINGS_ID,
@@ -281,7 +281,7 @@ const app = new Hono()
       }
 
       const queries = [Query.equal("workspaceId", workspaceId)];
-      
+
       if (projectId) {
         queries.push(Query.equal("projectId", projectId));
       } else if (spaceId) {
@@ -918,16 +918,16 @@ const app = new Hono()
         // Get user's team memberships
         const userTeamMemberships = await databases.listDocuments(
           DATABASE_ID,
-          TEAM_MEMBERS_ID,
-          [Query.equal("userId", user.$id), Query.equal("workspaceId", workflow.workspaceId)]
+          PROJECT_TEAM_MEMBERS_ID,
+          [Query.equal("userId", user.$id)]
         );
-        
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const userTeamIds = userTeamMemberships.documents.map((m) => (m as any).teamId);
-        const hasAllowedTeam = transitionDoc.allowedTeamIds.some((teamId: string) => 
+        const hasAllowedTeam = transitionDoc.allowedTeamIds.some((teamId: string) =>
           userTeamIds.includes(teamId)
         );
-        
+
         if (!hasAllowedTeam) {
           return c.json({
             data: {
@@ -944,16 +944,16 @@ const app = new Hono()
         // Check if user is in an approver team
         const userTeamMemberships = await databases.listDocuments(
           DATABASE_ID,
-          TEAM_MEMBERS_ID,
-          [Query.equal("userId", user.$id), Query.equal("workspaceId", workflow.workspaceId)]
+          PROJECT_TEAM_MEMBERS_ID,
+          [Query.equal("userId", user.$id)]
         );
-        
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const userTeamIds = userTeamMemberships.documents.map((m) => (m as any).teamId);
-        const isApprover = transitionDoc.approverTeamIds?.some((teamId: string) => 
+        const isApprover = transitionDoc.approverTeamIds?.some((teamId: string) =>
           userTeamIds.includes(teamId)
         );
-        
+
         if (!isApprover) {
           return c.json({
             data: {
@@ -1021,8 +1021,8 @@ const app = new Hono()
       // Get user's team memberships for filtering
       const userTeamMemberships = await databases.listDocuments(
         DATABASE_ID,
-        TEAM_MEMBERS_ID,
-        [Query.equal("userId", user.$id), Query.equal("workspaceId", workflow.workspaceId)]
+        PROJECT_TEAM_MEMBERS_ID,
+        [Query.equal("userId", user.$id)]
       );
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const userTeamIds = userTeamMemberships.documents.map((m) => (m as any).teamId);
@@ -1035,17 +1035,17 @@ const app = new Hono()
             return false;
           }
         }
-        
+
         // Check team restrictions
         if (t.allowedTeamIds && t.allowedTeamIds.length > 0) {
-          const hasAllowedTeam = t.allowedTeamIds.some((teamId: string) => 
+          const hasAllowedTeam = t.allowedTeamIds.some((teamId: string) =>
             userTeamIds.includes(teamId)
           );
           if (!hasAllowedTeam) {
             return false;
           }
         }
-        
+
         return true;
       });
 
@@ -1054,10 +1054,10 @@ const app = new Hono()
       const targetStatuses =
         targetStatusIds.length > 0
           ? await databases.listDocuments<WorkflowStatus>(
-              DATABASE_ID,
-              WORKFLOW_STATUSES_ID,
-              [Query.equal("$id", targetStatusIds)]
-            )
+            DATABASE_ID,
+            WORKFLOW_STATUSES_ID,
+            [Query.equal("$id", targetStatusIds)]
+          )
           : { documents: [] };
 
       const statusMap = new Map(
@@ -1252,12 +1252,12 @@ const app = new Hono()
         // - Sync workflow statuses → project columns
         // - Statuses on canvas become visible columns
         // - Statuses off canvas (0,0) become hidden columns
-        
+
         const newCustomTypes = workflowStatuses.documents.map((status) => {
-          const isOnCanvas = 
-            (status.positionX !== undefined && status.positionX > 0) || 
+          const isOnCanvas =
+            (status.positionX !== undefined && status.positionX > 0) ||
             (status.positionY !== undefined && status.positionY > 0);
-          
+
           return {
             key: status.key,
             label: status.name,
@@ -1276,7 +1276,7 @@ const app = new Hono()
         let position = 1000;
         for (const status of workflowStatuses.documents) {
           const existingColumn = existingColumnMap.get(status.name.toLowerCase());
-          
+
           if (existingColumn) {
             // Update existing column
             await databases.updateDocument(
@@ -1372,10 +1372,10 @@ const app = new Hono()
           const normalizedName = defaultStatus.label.toLowerCase();
           // Check if this default column is enabled (visible)
           // If no setting exists, default to visible (true)
-          const isVisible = columnVisibility.has(defaultStatus.key) 
-            ? columnVisibility.get(defaultStatus.key) 
+          const isVisible = columnVisibility.has(defaultStatus.key)
+            ? columnVisibility.get(defaultStatus.key)
             : true;
-          
+
           if (!seenNames.has(normalizedName)) {
             seenNames.add(normalizedName);
             allProjectStatuses.push({
@@ -1396,7 +1396,7 @@ const app = new Hono()
           const existingIndex = allProjectStatuses.findIndex(
             s => s.name.toLowerCase() === normalizedName
           );
-          
+
           if (existingIndex >= 0) {
             // Update existing status with custom column properties
             allProjectStatuses[existingIndex] = {
@@ -1425,7 +1425,7 @@ const app = new Hono()
           const existingIndex = allProjectStatuses.findIndex(
             s => s.name.toLowerCase() === normalizedName
           );
-          
+
           if (existingIndex >= 0) {
             // Update existing status
             allProjectStatuses[existingIndex] = {
@@ -1472,7 +1472,7 @@ const app = new Hono()
           if (existingWorkflowStatus) {
             // Status exists in workflow - update visibility based on project
             const shouldBeOnCanvas = projectStatus.isVisible;
-            const isCurrentlyOnCanvas = 
+            const isCurrentlyOnCanvas =
               (existingWorkflowStatus.positionX !== undefined && existingWorkflowStatus.positionX > 0) ||
               (existingWorkflowStatus.positionY !== undefined && existingWorkflowStatus.positionY > 0);
 
@@ -1510,7 +1510,7 @@ const app = new Hono()
           } else {
             // Status doesn't exist in workflow - create it
             const newPosition = workflowStatuses.total + addedCount;
-            
+
             await databases.createDocument<WorkflowStatus>(
               DATABASE_ID,
               WORKFLOW_STATUSES_ID,
@@ -1639,11 +1639,11 @@ const app = new Hono()
           [Query.equal("workflowId", project.workflowId), Query.orderAsc("position")]
         );
 
-        return c.json({ 
-          data: { 
+        return c.json({
+          data: {
             statuses: statuses.documents,
             workflowId: project.workflowId,
-          } 
+          }
         });
       }
 
@@ -1656,11 +1656,11 @@ const app = new Hono()
         { $id: "DONE", name: "Done", key: "DONE", icon: "CheckCircle", color: "#10B981", statusType: StatusType.CLOSED, position: 4, isInitial: false, isFinal: true },
       ];
 
-      return c.json({ 
-        data: { 
+      return c.json({
+        data: {
           statuses: defaultStatuses,
           workflowId: null,
-        } 
+        }
       });
     }
   );
