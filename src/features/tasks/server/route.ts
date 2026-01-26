@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 
-import { DATABASE_ID, MEMBERS_ID, PROJECTS_ID, TASKS_ID, TIME_LOGS_ID, COMMENTS_ID, WORKFLOW_TRANSITIONS_ID, TEAM_MEMBERS_ID, WORKFLOW_STATUSES_ID } from "@/config";
+import { DATABASE_ID, MEMBERS_ID, PROJECTS_ID, TASKS_ID, TIME_LOGS_ID, COMMENTS_ID, WORKFLOW_TRANSITIONS_ID, PROJECT_TEAM_MEMBERS_ID, WORKFLOW_STATUSES_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
 import {
@@ -95,8 +95,8 @@ async function validateStatusTransition(
     if (transition.allowedTeamIds && transition.allowedTeamIds.length > 0) {
       const userTeams = await databases.listDocuments(
         DATABASE_ID,
-        TEAM_MEMBERS_ID,
-        [Query.equal("userId", userId), Query.equal("workspaceId", workspaceId)]
+        PROJECT_TEAM_MEMBERS_ID,
+        [Query.equal("userId", userId), Query.equal("projectId", transition.projectId)] // Assuming transition has projectId, otherwise we need to look it up
       );
 
       const userTeamIds = userTeams.documents.map((t) => t.teamId as string);
@@ -118,8 +118,8 @@ async function validateStatusTransition(
       // Check if user is in approver team
       const userTeams = await databases.listDocuments(
         DATABASE_ID,
-        TEAM_MEMBERS_ID,
-        [Query.equal("userId", userId), Query.equal("workspaceId", workspaceId)]
+        PROJECT_TEAM_MEMBERS_ID,
+        [Query.equal("userId", userId), Query.equal("projectId", transition.projectId)]
       );
 
       const userTeamIds = userTeams.documents.map((t) => t.teamId as string);

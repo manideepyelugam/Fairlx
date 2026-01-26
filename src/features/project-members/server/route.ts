@@ -8,7 +8,7 @@ import {
     DATABASE_ID,
     PROJECT_MEMBERS_ID,
     PROJECT_ROLES_ID,
-    TEAMS_ID,
+    PROJECT_TEAMS_ID,
 } from "@/config";
 import {
     getProjectPermissionResult,
@@ -82,7 +82,7 @@ const app = new Hono()
                     // Get team
                     const team = await adminDb.getDocument(
                         DATABASE_ID,
-                        TEAMS_ID,
+                        PROJECT_TEAMS_ID,
                         membership.teamId
                     ).catch(() => ({ $id: membership.teamId, name: "Unknown" }));
 
@@ -172,7 +172,7 @@ const app = new Hono()
                 memberships.documents.map(async (membership) => {
                     const team = await adminDb.getDocument(
                         DATABASE_ID,
-                        TEAMS_ID,
+                        PROJECT_TEAMS_ID,
                         membership.teamId
                     ).catch(() => ({ $id: membership.teamId, name: "Unknown" }));
 
