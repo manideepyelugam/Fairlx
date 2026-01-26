@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
-import { 
+import {
   ArrowLeft,
   Settings,
   Palette,
@@ -127,7 +127,7 @@ export const SpaceSettingsClient = () => {
         setVisibility(value as SpaceVisibility);
         break;
       case "defaultWorkflowId":
-        setDefaultWorkflowId(value);
+        setDefaultWorkflowId(value === "NO_WORKFLOW_VALUE" ? "" : value);
         break;
     }
     setHasChanges(true);
@@ -177,7 +177,7 @@ export const SpaceSettingsClient = () => {
         spaceName={name || space.name}
         workspaceId={workspaceId}
       />
-      
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -189,7 +189,7 @@ export const SpaceSettingsClient = () => {
           <div className="flex items-center gap-3">
             <div
               className="size-12 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-md"
-              style={{ 
+              style={{
                 backgroundColor: color || space.color || "#6366f1",
                 boxShadow: `0 4px 12px -2px ${color || space.color || "#6366f1"}40`
               }}
@@ -210,8 +210,8 @@ export const SpaceSettingsClient = () => {
           </div>
         </div>
 
-        <Button 
-          onClick={handleSave} 
+        <Button
+          onClick={handleSave}
           disabled={!hasChanges || isUpdating}
           className="gap-2"
         >
@@ -292,11 +292,10 @@ export const SpaceSettingsClient = () => {
                 <button
                   key={colorOption.value}
                   type="button"
-                  className={`size-10 rounded-lg transition-all hover:scale-110 ${
-                    (color || space.color) === colorOption.value
-                      ? "ring-2 ring-offset-2 ring-primary"
-                      : ""
-                  }`}
+                  className={`size-10 rounded-lg transition-all hover:scale-110 ${(color || space.color) === colorOption.value
+                    ? "ring-2 ring-offset-2 ring-primary"
+                    : ""
+                    }`}
                   style={{ backgroundColor: colorOption.value }}
                   onClick={() => handleFieldChange("color", colorOption.value)}
                   title={colorOption.name}
@@ -321,8 +320,8 @@ export const SpaceSettingsClient = () => {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>Visibility</Label>
-            <Select 
-              value={visibility || space.visibility} 
+            <Select
+              value={visibility || space.visibility}
               onValueChange={(v) => handleFieldChange("visibility", v)}
             >
               <SelectTrigger className="w-full md:w-[300px]">
@@ -367,15 +366,15 @@ export const SpaceSettingsClient = () => {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>Default Workflow</Label>
-            <Select 
-              value={defaultWorkflowId || space.defaultWorkflowId || ""} 
+            <Select
+              value={defaultWorkflowId || space.defaultWorkflowId || "NO_WORKFLOW_VALUE"}
               onValueChange={(v) => handleFieldChange("defaultWorkflowId", v)}
             >
               <SelectTrigger className="w-full md:w-[300px]">
                 <SelectValue placeholder="Select a workflow" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">
+                <SelectItem value="NO_WORKFLOW_VALUE">
                   <span className="text-muted-foreground">No default workflow</span>
                 </SelectItem>
                 {workflows.map((workflow) => (
@@ -389,11 +388,11 @@ export const SpaceSettingsClient = () => {
               New projects will use this workflow by default. Projects can override with their own workflow.
             </p>
           </div>
-          
+
           <div className="pt-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               className="gap-2"
               onClick={() => setIsWorkflowsModalOpen(true)}
             >

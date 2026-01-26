@@ -220,6 +220,15 @@ const app = new Hono()
         return c.json({ error: "Unauthorized" }, 401);
       }
 
+      // Project membership check: if projectId provided, verify access
+      if (projectId) {
+        const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+        const access = await resolveUserProjectAccess(databases, user.$id, projectId);
+        if (!access.hasAccess || !hasProjectPermission(access, ProjectPermissionKey.VIEW_TASKS)) {
+          return c.json({ error: "Forbidden: No access to this project" }, 403);
+        }
+      }
+
       const query = [
         Query.equal("workspaceId", workspaceId),
         Query.orderDesc("$createdAt"),
@@ -386,6 +395,13 @@ const app = new Hono()
         return c.json({ error: "Unauthorized" }, 401);
       }
 
+      // Project membership check: verify user can create tasks in this project
+      const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+      const access = await resolveUserProjectAccess(databases, user.$id, projectId);
+      if (!access.hasAccess || !hasProjectPermission(access, ProjectPermissionKey.CREATE_TASKS)) {
+        return c.json({ error: "Forbidden: No permission to create tasks in this project" }, 403);
+      }
+
       // Auto-assign to sprint
       const { SPRINTS_ID } = await import("@/config");
       const { SprintStatus } = await import("@/features/sprints/types");
@@ -539,6 +555,13 @@ const app = new Hono()
 
       if (!member) {
         return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      // Project membership check: verify user can edit tasks in this project
+      const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+      const projectAccess = await resolveUserProjectAccess(databases, user.$id, existingTask.projectId);
+      if (!projectAccess.hasAccess || !hasProjectPermission(projectAccess, ProjectPermissionKey.EDIT_TASKS)) {
+        return c.json({ error: "Forbidden: No permission to edit tasks in this project" }, 403);
       }
 
       // ======= WORKFLOW TRANSITION VALIDATION =======

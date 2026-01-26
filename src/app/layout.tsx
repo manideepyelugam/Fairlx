@@ -5,8 +5,7 @@ import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
 import { QueryProvider } from "@/components/query-provider";
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
-import { AccountProvider } from "@/components/account-provider";
-import { resolveAccountState } from "@/features/auth/server/actions";
+import { AccountLifecycleProvider } from "@/components/account-lifecycle-provider";
 
 import "./globals.css";
 
@@ -22,12 +21,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const initialState = await resolveAccountState();
+  // const initialState = await resolveAccountState();
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -35,9 +34,9 @@ export default async function RootLayout({
         <NuqsAdapter>
           <QueryProvider>
             <Toaster />
-            <AccountProvider initialState={initialState}>
+            <AccountLifecycleProvider>
               {children}
-            </AccountProvider>
+            </AccountLifecycleProvider>
           </QueryProvider>
         </NuqsAdapter>
       </body>

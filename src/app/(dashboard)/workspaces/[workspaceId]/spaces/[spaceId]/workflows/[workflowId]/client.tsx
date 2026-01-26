@@ -38,7 +38,7 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
-import { useGetTeams } from "@/features/teams/api/use-get-teams";
+// import { useGetTeams } from "@/features/teams/api/use-get-teams";
 import { useGetWorkflow } from "@/features/workflows/api/use-get-workflow";
 import { useDeleteWorkflow } from "@/features/workflows/api/use-delete-workflow";
 import { useCreateWorkflowStatus } from "@/features/workflows/api/use-create-workflow-status";
@@ -96,7 +96,9 @@ const WorkflowEditor = () => {
 
   const { data: workflow, isLoading: workflowLoading } = useGetWorkflow({ workflowId });
   const { data: projectsData } = useGetProjects({ workspaceId });
-  const { data: teamsData, isLoading: isLoadingTeams } = useGetTeams({ workspaceId, spaceId });
+  // const { data: teamsData, isLoading: isLoadingTeams } = useGetTeams({ workspaceId, spaceId });
+  const teamsData = { documents: [], total: 0 };
+  const isLoadingTeams = false;
   const { mutate: deleteWorkflow, isPending: isDeleting } = useDeleteWorkflow();
   const { mutateAsync: createStatus } = useCreateWorkflowStatus();
   const { mutateAsync: updateStatus } = useUpdateStatus();
@@ -116,7 +118,7 @@ const WorkflowEditor = () => {
   }, [projectsData, spaceId]);
 
   // Available projects to connect (those without this workflow or different workflow)
-  const availableProjects = useMemo(() => 
+  const availableProjects = useMemo(() =>
     projects.filter(p => p.workflowId !== workflowId),
     [projects, workflowId]
   );
@@ -125,15 +127,15 @@ const WorkflowEditor = () => {
   // Orphaned statuses have no incoming or outgoing transitions (unreachable)
   const orphanedStatuses = useMemo(() => {
     if (!workflow?.statuses || !workflow?.transitions) return [];
-    
+
     const transitions = workflow.transitions ?? [];
     return workflow.statuses.filter(status => {
       // Initial statuses are entry points, so they can have no incoming transitions
       if (status.isInitial) return false;
-      
+
       const hasIncoming = transitions.some(t => t.toStatusId === status.$id);
       const hasOutgoing = transitions.some(t => t.fromStatusId === status.$id);
-      
+
       // A status is orphaned if it has neither incoming nor outgoing transitions
       return !hasIncoming && !hasOutgoing;
     });
@@ -142,14 +144,14 @@ const WorkflowEditor = () => {
   // Detect unreachable statuses (have outgoing but no incoming transitions and not initial)
   const unreachableStatuses = useMemo(() => {
     if (!workflow?.statuses || !workflow?.transitions) return [];
-    
+
     const transitions = workflow.transitions ?? [];
     return workflow.statuses.filter(status => {
       if (status.isInitial) return false;
-      
+
       const hasIncoming = transitions.some(t => t.toStatusId === status.$id);
       const hasOutgoing = transitions.some(t => t.fromStatusId === status.$id);
-      
+
       // Unreachable = has outgoing but no way to get there
       return !hasIncoming && hasOutgoing;
     });
@@ -158,14 +160,14 @@ const WorkflowEditor = () => {
   // Detect dead-end statuses (have incoming but no outgoing and not final)
   const deadEndStatuses = useMemo(() => {
     if (!workflow?.statuses || !workflow?.transitions) return [];
-    
+
     const transitions = workflow.transitions ?? [];
     return workflow.statuses.filter(status => {
       if (status.isFinal) return false;
-      
+
       const hasIncoming = transitions.some(t => t.toStatusId === status.$id);
       const hasOutgoing = transitions.some(t => t.fromStatusId === status.$id);
-      
+
       // Dead-end = can get there but can't leave (and not marked as final)
       return hasIncoming && !hasOutgoing;
     });
@@ -174,7 +176,7 @@ const WorkflowEditor = () => {
   // Combine all workflow warnings
   const workflowWarnings = useMemo(() => {
     const warnings: Array<{ type: string; message: string; statuses: string[] }> = [];
-    
+
     if (orphanedStatuses.length > 0) {
       warnings.push({
         type: "orphaned",
@@ -182,7 +184,7 @@ const WorkflowEditor = () => {
         statuses: orphanedStatuses.map(s => s.name),
       });
     }
-    
+
     if (unreachableStatuses.length > 0) {
       warnings.push({
         type: "unreachable",
@@ -190,7 +192,7 @@ const WorkflowEditor = () => {
         statuses: unreachableStatuses.map(s => s.name),
       });
     }
-    
+
     if (deadEndStatuses.length > 0) {
       warnings.push({
         type: "deadend",
@@ -198,7 +200,7 @@ const WorkflowEditor = () => {
         statuses: deadEndStatuses.map(s => s.name),
       });
     }
-    
+
     return warnings;
   }, [orphanedStatuses, unreachableStatuses, deadEndStatuses]);
 
@@ -254,7 +256,7 @@ const WorkflowEditor = () => {
   // Debounced save function - batches all pending position updates
   const savePositions = useCallback(async () => {
     if (isSavingPositions.current) return;
-    
+
     const updates = pendingPositionUpdates.current;
     if (updates.size === 0) return;
 
@@ -432,11 +434,11 @@ const WorkflowEditor = () => {
     // No conflict, just connect and sync
     updateProject(
       { param: { projectId }, form: { workflowId } },
-      { 
+      {
         onSuccess: () => {
           setConnectProjectOpen(false);
           syncFromProject({ param: { workflowId, projectId } });
-        } 
+        }
       }
     );
   }, [workflowId, updateProject, syncFromProject, syncWithResolution]);
@@ -723,42 +725,42 @@ const WorkflowEditor = () => {
               {/* Builder Tab Content */}
               <TabsContent value="builder" className="flex-1 overflow-y-auto m-0 data-[state=inactive]:hidden">
                 <div className="p-4">
-                    {/* Workflow Warnings */}
-                    {workflowWarnings.length > 0 && (
-                      <div className="mb-4 space-y-2">
-                        {workflowWarnings.map((warning, index) => (
-                          <div
-                            key={index}
-                            className="p-3 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800/50 rounded-lg"
-                          >
-                            <div className="flex items-start gap-2">
-                              <AlertTriangle className="size-4 text-yellow-600 dark:text-yellow-500 mt-0.5 shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                                  {warning.message}
-                                </p>
-                                <p className="text-xs text-yellow-700 dark:text-yellow-300/80 mt-1">
-                                  {warning.statuses.join(", ")}
-                                </p>
-                              </div>
+                  {/* Workflow Warnings */}
+                  {workflowWarnings.length > 0 && (
+                    <div className="mb-4 space-y-2">
+                      {workflowWarnings.map((warning, index) => (
+                        <div
+                          key={index}
+                          className="p-3 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800/50 rounded-lg"
+                        >
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="size-4 text-yellow-600 dark:text-yellow-500 mt-0.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                                {warning.message}
+                              </p>
+                              <p className="text-xs text-yellow-700 dark:text-yellow-300/80 mt-1">
+                                {warning.statuses.join(", ")}
+                              </p>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                    
-                    <WorkflowSimpleView
-                      workflow={workflow as PopulatedWorkflow}
-                      projects={projects}
-                      workspaceId={workspaceId}
-                      spaceId={spaceId}
-                      isAdmin={isAdmin}
-                      onConnectProject={() => setConnectProjectOpen(true)}
-                      onDisconnectProject={handleDisconnectProject}
-                      onSyncFromProject={handleSyncFromProject}
-                      isSyncing={isSyncing}
-                      onRemoveStatus={handleRemoveStatus}
-                    />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <WorkflowSimpleView
+                    workflow={workflow as PopulatedWorkflow}
+                    projects={projects}
+                    workspaceId={workspaceId}
+                    spaceId={spaceId}
+                    isAdmin={isAdmin}
+                    onConnectProject={() => setConnectProjectOpen(true)}
+                    onDisconnectProject={handleDisconnectProject}
+                    onSyncFromProject={handleSyncFromProject}
+                    isSyncing={isSyncing}
+                    onRemoveStatus={handleRemoveStatus}
+                  />
                 </div>
               </TabsContent>
 
@@ -827,69 +829,69 @@ const WorkflowEditor = () => {
             proOptions={{ hideAttribution: true }}
             className="bg-muted/30"
           >
-          <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
-          <Controls showInteractive={false} />
-          <MiniMap
-            nodeStrokeWidth={3}
-            zoomable
-            pannable
-            className="!bg-background/80 !border-border !right-3 !bottom-3"
-          />
+            <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
+            <Controls showInteractive={false} />
+            <MiniMap
+              nodeStrokeWidth={3}
+              zoomable
+              pannable
+              className="!bg-background/80 !border-border !right-3 !bottom-3"
+            />
 
-          {/* Zoom Indicator - moved to top-left next to Controls */}
-          <Panel position="top-left" className="!top-14 !left-3 !z-50">
-            <Badge variant="secondary" className="text-xs font-mono !bg-primary/7 !text-primary !border-primary/10">
-              {zoomLevel}%
-            </Badge>
-          </Panel>
+            {/* Zoom Indicator - moved to top-left next to Controls */}
+            <Panel position="top-left" className="!top-14 !left-3 !z-50">
+              <Badge variant="secondary" className="text-xs font-mono !bg-primary/7 !text-primary !border-primary/10">
+                {zoomLevel}%
+              </Badge>
+            </Panel>
 
-          <Panel position="top-right" className="flex gap-2">
-            <Card className="p-2">
-              <div className="flex items-center gap-2 text-xs">
-                <div className="flex items-center gap-1">
-                  <div className="w-2.5 h-2.5 rounded-full bg-gray-500" />
-                  <span>To Do</span>
+            <Panel position="top-right" className="flex gap-2">
+              <Card className="p-2">
+                <div className="flex items-center gap-2 text-xs">
+                  <div className="flex items-center gap-1">
+                    <div className="w-2.5 h-2.5 rounded-full bg-gray-500" />
+                    <span>To Do</span>
+                  </div>
+                  <Separator orientation="vertical" className="h-3" />
+                  <div className="flex items-center gap-1">
+                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                    <span>In Progress</span>
+                  </div>
+                  <Separator orientation="vertical" className="h-3" />
+                  <div className="flex items-center gap-1">
+                    <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
+                    <span>Done</span>
+                  </div>
                 </div>
-                <Separator orientation="vertical" className="h-3" />
-                <div className="flex items-center gap-1">
-                  <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                  <span>In Progress</span>
-                </div>
-                <Separator orientation="vertical" className="h-3" />
-                <div className="flex items-center gap-1">
-                  <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
-                  <span>Done</span>
-                </div>
-              </div>
-            </Card>
-          </Panel>
-
-          {/* Help Tip - moved and restyled */}
-          <Panel position="top-right" className="!top-20 !right-2 !z-40">
-            <Card className="p-2 max-w-[220px] !bg-primary/6 !border !border-primary/10 shadow-md">
-              <p className="text-[12px] text-primary leading-snug">
-                💡 <strong>Tip:</strong> Drag from one status to another to create transitions. Click the transition label then the Edit icon to set approval rules.
-              </p>
-            </Card>
-          </Panel>
-
-          {statuses.length === 0 && (
-            <Panel position="top-center" className="!top-1/2 !-translate-y-1/2">
-              <Card className="p-6 text-center">
-                <GitBranch className="size-12 text-muted-foreground mx-auto mb-3" />
-                <h3 className="font-medium mb-2">No Statuses Yet</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Add statuses to define workflow stages, then connect them with transitions.
-                </p>
-                {isAdmin && (
-                  <Button onClick={handleAddStatus}>
-                    <Plus className="size-4 mr-2" />
-                    Add First Status
-                  </Button>
-                )}
               </Card>
             </Panel>
-          )}
+
+            {/* Help Tip - moved and restyled */}
+            <Panel position="top-right" className="!top-20 !right-2 !z-40">
+              <Card className="p-2 max-w-[220px] !bg-primary/6 !border !border-primary/10 shadow-md">
+                <p className="text-[12px] text-primary leading-snug">
+                  💡 <strong>Tip:</strong> Drag from one status to another to create transitions. Click the transition label then the Edit icon to set approval rules.
+                </p>
+              </Card>
+            </Panel>
+
+            {statuses.length === 0 && (
+              <Panel position="top-center" className="!top-1/2 !-translate-y-1/2">
+                <Card className="p-6 text-center">
+                  <GitBranch className="size-12 text-muted-foreground mx-auto mb-3" />
+                  <h3 className="font-medium mb-2">No Statuses Yet</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Add statuses to define workflow stages, then connect them with transitions.
+                  </p>
+                  {isAdmin && (
+                    <Button onClick={handleAddStatus}>
+                      <Plus className="size-4 mr-2" />
+                      Add First Status
+                    </Button>
+                  )}
+                </Card>
+              </Panel>
+            )}
           </ReactFlow>
         </div>
       </div>

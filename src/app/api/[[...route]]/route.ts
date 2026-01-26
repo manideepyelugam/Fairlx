@@ -17,7 +17,9 @@ import personalBacklog from "@/features/personal-backlog/server/route";
 import githubIntegration from "@/features/github-integration/server/index";
 import auditLogs from "@/features/audit-logs/api/route";
 import subtasks from "@/features/subtasks/server/route";
-import teams from "@/features/teams/server/route";
+// import teams from "@/features/teams/server/route";
+// NEW: Project-scoped teams (replacing workspace teams)
+import projectTeams from "@/features/project-teams/server/route";
 import programs from "@/features/programs/server/route";
 import comments from "@/features/comments/api/route";
 import projectDocs from "@/features/project-docs/server/route";
@@ -77,7 +79,7 @@ const routes = app
   .route("/github", githubIntegration)
   .route("/audit-logs", auditLogs)
   .route("/subtasks", subtasks)
-  .route("/teams", teams)
+  // .route("/teams", teams)
   .route("/programs", programs)
   .route("/comments", comments)
   .route("/project-docs", projectDocs)
@@ -91,6 +93,8 @@ const routes = app
   .route("/roles", roles)
   // Project-scoped RBAC
   .route("/project-members", projectMembers)
+  // NEW: Project-scoped teams
+  .route("/project-teams", projectTeams)
   // Usage-Based Billing
   .route("/usage", usage)
   // Organizations & Account Management

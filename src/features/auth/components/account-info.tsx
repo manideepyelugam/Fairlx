@@ -36,7 +36,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
   const { data: workspacesData, isLoading: isLoadingWorkspaces } = useGetWorkspaces();
   const { mutate: updateDefaultPreferences, isPending: isUpdating } = useUpdateDefaultPreferences();
 
-  const workspaces = useMemo(() => workspacesData?.documents || [], [workspacesData?.documents]);
+  const workspaces = useMemo(() => workspacesData?.documents || [], [workspacesData]);
 
   // Set first workspace as default if no default is set and workspaces are available
   useEffect(() => {
@@ -194,7 +194,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
               </div>
             </div>
           </CardContent>
-        </Card> 
+        </Card>
 
       </div>
     </div>

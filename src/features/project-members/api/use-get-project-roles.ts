@@ -15,7 +15,7 @@ export const useGetProjectRoles = ({
     workspaceId,
 }: UseGetProjectRolesProps) => {
     return useQuery({
-        queryKey: ["project-roles", projectId],
+        queryKey: ["project-roles", projectId, workspaceId],
         queryFn: async () => {
             if (!projectId) return null;
 
@@ -27,12 +27,21 @@ export const useGetProjectRoles = ({
             });
 
             if (!response.ok) {
+                await response.json().catch(() => ({}));
+                if (response.status === 401 || response.status === 403) {
+                    throw new Error(`Auth Error: ${response.status}`);
+                }
                 throw new Error("Failed to fetch project roles");
             }
 
             const json = await response.json();
             return json.data as { documents: ProjectRole[]; total: number };
         },
-        enabled: !!projectId,
+        enabled: !!projectId && (workspaceId !== undefined ? !!workspaceId : true),
+        retry: (failureCount, error) => {
+            if (error.message.includes("Auth Error")) return false;
+            if (error.message.includes("401") || error.message.includes("403")) return false;
+            return failureCount < 3;
+        },
     });
 };

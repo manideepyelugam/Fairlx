@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Settings, FolderKanban, Users2, Calendar, Building2 } from "lucide-react";
+import { Settings, FolderKanban, Calendar, Building2 } from "lucide-react";
 import Link from "next/link";
 import {
   GoCheckCircle,
@@ -76,14 +76,7 @@ const routes: RouteConfig[] = [
     routeKey: AppRouteKey.WORKSPACE_PROGRAMS,
     workspaceScoped: true,
   },
-  {
-    label: "Teams",
-    href: "/teams",
-    icon: Users2,
-    activeIcon: Users2,
-    routeKey: AppRouteKey.WORKSPACE_TEAMS,
-    workspaceScoped: true,
-  },
+  // Teams removed - now project-scoped via project header
   {
     label: "Timeline",
     href: "/timeline",
@@ -141,7 +134,7 @@ export const Navigation = ({
 
   // Use props if provided, otherwise fall back to context
   const effectiveHasOrg = hasOrg || contextHasOrg;
-  
+
   // Determine the workspace ID to use for navigation:
   // Priority: 1) URL workspace ID, 2) User's default workspace, 3) First workspace, 4) Active workspace from context
   const selectedWorkspaceId = (() => {
@@ -152,12 +145,14 @@ export const Navigation = ({
       const defaultExists = workspaces.some(w => w.$id === defaultWorkspaceId);
       if (defaultExists) return defaultWorkspaceId;
     }
-    
-    if (workspaces.length > 0) return workspaces[0].$id;
-    
-    return activeWorkspaceId;
-  })();
-  
+  }
+  if (!selectedWorkspaceId && workspaces.length > 0) {
+    selectedWorkspaceId = workspaces[0].$id;
+  }
+  if (!selectedWorkspaceId) {
+    selectedWorkspaceId = activeWorkspaceId || "";
+  }
+
   const projectId = useProjectId();
   const pathname = usePathname();
 

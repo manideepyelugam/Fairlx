@@ -20,7 +20,7 @@ import { useState } from "react";
 import { RoleEditorModal } from "./role-editor-modal";
 import { useConfirm } from "@/hooks/use-confirm";
 
-import { CustomRole } from "@/features/teams/types";
+import { CustomRole } from "../types";
 
 export const RolesList = () => {
     const workspaceId = useWorkspaceId();

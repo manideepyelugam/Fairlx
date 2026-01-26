@@ -5,7 +5,22 @@ import { PROJECT_PERMISSIONS, DEFAULT_PROJECT_ROLES } from "./project-permission
 import { MemberRole } from "@/features/members/types";
 
 /**
+ * @deprecated This module is deprecated.
+ * Use `@/lib/permissions/resolveUserProjectAccess` instead.
+ * 
+ * Migration Guide:
+ * - `getProjectPermissions()` → `resolveUserProjectAccess()` → `.permissions`
+ * - `canProject()` → `hasProjectPermission()`
+ * - `isProjectMember()` → `resolveUserProjectAccess()` → `.hasAccess`
+ * - Route handlers → Use `requireProjectAuth()` from `@/lib/middleware/project-auth`
+ * 
+ * This module will be removed in a future release.
+ */
+
+/**
  * Central Permission Resolver for Project-Scoped RBAC
+ * 
+ * @deprecated Use resolveUserProjectAccess from @/lib/permissions/resolveUserProjectAccess
  * 
  * Resolution Logic:
  * 1. Fetch ALL project_members for (userId + projectId)
@@ -50,14 +65,23 @@ export async function getProjectPermissions(
         }
 
         // Fetch all project memberships for this user in this project
-        const memberships = await databases.listDocuments<ProjectMember>(
-            DATABASE_ID,
-            PROJECT_MEMBERS_ID,
-            [
-                Query.equal("userId", userId),
-                Query.equal("projectId", projectId),
-            ]
-        );
+        // Fetch all project memberships for this user in this project
+        let memberships;
+        try {
+            memberships = await databases.listDocuments<ProjectMember>(
+                DATABASE_ID,
+                PROJECT_MEMBERS_ID,
+                [
+                    Query.equal("userId", userId),
+                    Query.equal("projectId", projectId),
+                ]
+            );
+        } catch {
+            // If user is not authorized to list members (e.g. not a member), return empty
+            // This handles the "401 The current user is not authorized" error
+            // console.warn("[Project-RBAC] User not authorized to list memberships (likely not a member):", error);
+            return [];
+        }
 
         if (memberships.total === 0) {
             console.log(`[Project-RBAC] No memberships found for user ${userId} in project ${projectId}`);
@@ -126,14 +150,27 @@ export async function getProjectPermissionResult(
 ): Promise<ProjectPermissionResult> {
     try {
         // Fetch all project memberships
-        const memberships = await databases.listDocuments<ProjectMember>(
-            DATABASE_ID,
-            PROJECT_MEMBERS_ID,
-            [
-                Query.equal("userId", userId),
-                Query.equal("projectId", projectId),
-            ]
-        );
+        // Fetch all project memberships
+        let memberships;
+        try {
+            memberships = await databases.listDocuments<ProjectMember>(
+                DATABASE_ID,
+                PROJECT_MEMBERS_ID,
+                [
+                    Query.equal("userId", userId),
+                    Query.equal("projectId", projectId),
+                ]
+            );
+        } catch {
+            // If unauthorized (401), treat as no membership
+            return {
+                projectId,
+                userId,
+                permissions: [],
+                roles: [],
+                isProjectAdmin: false,
+            };
+        }
 
         if (memberships.total === 0) {
             return {
