@@ -29,16 +29,6 @@ export const PROJECT_DOCS_ID = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_DOCS_ID!
 export const PROJECT_DOCS_BUCKET_ID = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_DOCS_BUCKET_ID!;
 
 // Teams & Programs Collections
-/**
- * @deprecated Workspace-scoped teams have been removed.
- * Use PROJECT_TEAMS_ID for project-scoped teams instead.
- */
-export const TEAMS_ID = process.env.NEXT_PUBLIC_APPWRITE_TEAMS_ID!;
-/**
- * @deprecated Workspace-scoped team members have been removed.
- * Use PROJECT_TEAM_MEMBERS_ID for project-scoped team members instead.
- */
-export const TEAM_MEMBERS_ID = process.env.NEXT_PUBLIC_APPWRITE_TEAM_MEMBERS_ID!;
 export const PROGRAMS_ID = process.env.NEXT_PUBLIC_APPWRITE_PROGRAMS_ID!;
 export const CUSTOM_ROLES_ID = process.env.NEXT_PUBLIC_APPWRITE_CUSTOM_ROLES_ID!;
 

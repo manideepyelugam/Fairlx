@@ -542,14 +542,14 @@ const app = new Hono()
         // Check if user is team lead of this team
         let isTeamLead = false;
         if (!isAdmin) {
-          const { TEAM_MEMBERS_ID } = await import("@/config");
+          const { PROJECT_TEAM_MEMBERS_ID } = await import("@/config");
           const { Query } = await import("node-appwrite");
           const teamMembers = await databases.listDocuments(
             DATABASE_ID,
-            TEAM_MEMBERS_ID,
+            PROJECT_TEAM_MEMBERS_ID,
             [
               Query.equal("teamId", teamId),
-              Query.equal("memberId", member.$id),
+              Query.equal("userId", user.$id), // Changed from memberId to userId as project teams link to users
               Query.equal("role", "LEAD"),
               Query.equal("isActive", true),
             ]
@@ -623,14 +623,14 @@ const app = new Hono()
         // Check if user is team lead of this team
         let isTeamLead = false;
         if (!isAdmin) {
-          const { TEAM_MEMBERS_ID } = await import("@/config");
+          const { PROJECT_TEAM_MEMBERS_ID } = await import("@/config");
           const { Query } = await import("node-appwrite");
           const teamMembers = await databases.listDocuments(
             DATABASE_ID,
-            TEAM_MEMBERS_ID,
+            PROJECT_TEAM_MEMBERS_ID,
             [
               Query.equal("teamId", teamId),
-              Query.equal("memberId", member.$id),
+              Query.equal("userId", user.$id), // Changed memberId to userId
               Query.equal("role", "LEAD"),
               Query.equal("isActive", true),
             ]
