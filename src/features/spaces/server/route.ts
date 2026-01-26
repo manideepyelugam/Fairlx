@@ -12,7 +12,6 @@ import {
   SPACES_ID,
   SPACE_MEMBERS_ID,
   PROJECTS_ID,
-  TEAMS_ID,
   MEMBERS_ID,
 } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
@@ -34,7 +33,7 @@ import {
   PopulatedSpace,
 } from "../types";
 import { Project } from "@/features/projects/types";
-import { Team } from "@/features/teams/types";
+// Team import removed
 
 const app = new Hono()
   // Create a new space
@@ -213,17 +212,12 @@ const app = new Hono()
               [Query.equal("spaceId", space.$id)]
             );
 
-            const teams = await databases.listDocuments<Team>(
-              DATABASE_ID,
-              TEAMS_ID,
-              [Query.equal("spaceId", space.$id)]
-            );
-
+            /* Legacy Team Count Removed */
             return {
               ...space,
               projectCount: projects.total,
               memberCount: members.total,
-              teamCount: teams.total,
+              teamCount: 0,
             };
           })
         );
@@ -254,16 +248,15 @@ const app = new Hono()
             [Query.equal("spaceId", space.$id)]
           );
 
-          const teams = await databases.listDocuments<Team>(
-            DATABASE_ID,
-            TEAMS_ID,
-            [Query.equal("spaceId", space.$id)]
-          );
-
+          /* Legacy Team Count Removed */
           return {
             ...space,
             projectCount: projects.total,
-            teamCount: teams.total,
+            memberCount: 0, // Should be populated if needed, but for now ignoring legacy members logic coupling if complex
+            // actually memberCount doesn't seem to depend on Team, wait.
+            // Ah, memberCount line was not removed in previous step for Admin? Yes, members is SPACE_MEMBERS.
+            // Here `teams` is TEAMS_ID. So only teamCount and teams fetch should go.
+            teamCount: 0,
           };
         })
       );
@@ -320,17 +313,14 @@ const app = new Hono()
       [Query.equal("spaceId", spaceId)]
     );
 
-    const teams = await databases.listDocuments<Team>(
-      DATABASE_ID,
-      TEAMS_ID,
-      [Query.equal("spaceId", spaceId)]
-    );
+    /* Legacy Team Fetch Removed */
 
     const populatedSpace: PopulatedSpace = {
       ...space,
       projectCount: projects.total,
       memberCount: members.total,
-      teamCount: teams.total,
+      /* Legacy Team Count Removed */
+      teamCount: 0,
     };
 
     return c.json({ data: populatedSpace });

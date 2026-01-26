@@ -5,8 +5,6 @@ import { CreateWorkspaceModal } from "@/features/workspaces/components/create-wo
 import { CreateWorkItemModal } from "@/features/sprints/components/create-work-item-modal";
 import { CreateCustomColumnModalWrapper } from "@/features/custom-columns/components/create-custom-column-modal-wrapper";
 import { ManageColumnsModalWrapper } from "@/features/custom-columns/components/manage-columns-modal-wrapper";
-import { CreateTeamModal } from "@/features/teams/components/create-team-modal";
-import { EditTeamModal } from "@/features/teams/components/edit-team-modal";
 import { CreateProgramModal } from "@/features/programs/components/create-program-modal";
 import { EditProgramModal } from "@/features/programs/components/edit-program-modal";
 import { ProjectAIChatWrapper } from "@/features/project-docs/components";
@@ -22,7 +20,7 @@ import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { Navbar } from "@/components/navbar";
 import { Sidebar } from "@/components/sidebar";
 import { ProfileSidebar } from "@/components/ProfileSidebar";
-import { AccountLifecycleProvider, useAccountLifecycle } from "@/components/account-lifecycle-provider";
+import { useAccountLifecycle } from "@/components/account-lifecycle-provider";
 import { LifecycleGuard } from "@/components/lifecycle-guard";
 import { cn } from "@/lib/utils";
 
@@ -56,8 +54,6 @@ const DashboardContent = ({ children }: DashboardLayoutProps) => {
       <TaskPreviewModalWrapper />
       <CreateCustomColumnModalWrapper />
       <ManageColumnsModalWrapper />
-      <CreateTeamModal />
-      <EditTeamModal />
       <CreateProgramModal />
       <EditProgramModal />
       {workspaceId && (
@@ -108,11 +104,9 @@ const DashboardContent = ({ children }: DashboardLayoutProps) => {
  */
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   return (
-    <AccountLifecycleProvider>
-      <LifecycleGuard>
-        <DashboardContent>{children}</DashboardContent>
-      </LifecycleGuard>
-    </AccountLifecycleProvider>
+    <LifecycleGuard>
+      <DashboardContent>{children}</DashboardContent>
+    </LifecycleGuard>
   );
 };
 

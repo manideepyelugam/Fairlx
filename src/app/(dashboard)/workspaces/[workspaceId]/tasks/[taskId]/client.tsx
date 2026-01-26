@@ -20,7 +20,6 @@ import { TaskAttachments } from "@/features/attachments/components/task-attachme
 import { TaskComments } from "@/features/comments/components/task-comments";
 import { TaskTimeLogs } from "@/features/time-tracking/components/task-time-logs";
 import { WorkItemLinksSection } from "@/features/work-item-links/components/work-item-links-section";
-import { useCurrentTeamMember } from "@/features/teams/hooks/use-current-team-member";
 import { useDeleteTask } from "@/features/tasks/api/use-delete-task";
 import { useCurrent } from "@/features/auth/api/use-current";
 import { useConfirm } from "@/hooks/use-confirm";
@@ -41,12 +40,9 @@ export const TaskIdClient = () => {
 
   console.log("Task Data:", data);
 
-  // Get team permissions if task has assigned team
-  const teamId = data?.assignedTeamId || "";
-  const teamPermissions = useCurrentTeamMember({ teamId: teamId || "" });
-  // If no team is assigned, allow editing by default
-  const canEditTasks = teamId ? (teamPermissions.canEditTasks ?? false) : true;
-  const canDeleteTasks = teamId ? (teamPermissions.canDeleteTasks ?? false) : true;
+  // Permissions handled by backend. UI optimistic for now or TODO: useGetProjectMember
+  const canEditTasks = true;
+  const canDeleteTasks = true;
 
   const handleDeleteTask = async () => {
     const ok = await confirm();
@@ -85,7 +81,7 @@ export const TaskIdClient = () => {
 
           {/* Description Section */}
           <div className="px-6 pb-4">
-                <span className="text-xs text-gray-500 mb-3 mt-4 block">Description</span>
+            <span className="text-xs text-gray-500 mb-3 mt-4 block">Description</span>
             <TaskDescription task={data} canEdit={canEditTasks} />
           </div>
 
@@ -97,7 +93,7 @@ export const TaskIdClient = () => {
             </button>
           </div>
 
-             {/* Connected Work Items Section */}
+          {/* Connected Work Items Section */}
           <div className="px-6 pb-4 pt-5 border-t border-gray-200">
             <WorkItemLinksSection workItemId={data.$id} />
           </div>
@@ -175,74 +171,74 @@ export const TaskIdClient = () => {
             )}
           </div>
 
-       
+
         </div>
 
         {/* Right Section - Details Panel */}
         <div className="w-[280px] border-l bg-[#fafafa] flex flex-col overflow-y-auto">
           <div className="">
             <div className="flex items-center justify-between  pt-2">
-              <div className="flex items-center justify-between px-3 pt-2 pb-4 w-full  border-b"> 
-                     <h2 className="font-medium text-sm text-[#2b2b2b]">Properties</h2>
+              <div className="flex items-center justify-between px-3 pt-2 pb-4 w-full  border-b">
+                <h2 className="font-medium text-sm text-[#2b2b2b]">Properties</h2>
 
-                     <div className="flex items-center ">
-                          <IconHelp content="Copy task URL" side="bottom"> 
-                              <button
-                                className="hover:bg-[#cfcfcf89] p-1.5 rounded-sm"
-                                onClick={async () => {
-                                  try {
-                                    const url = typeof window !== "undefined"
-                                      ? `${window.location.origin}/workspaces/${workspaceId}/tasks/${data.$id}`
-                                      : `/workspaces/${workspaceId}/tasks/${data.$id}`;
-                                    await navigator.clipboard.writeText(url);
-                                    toast.success("Task URL copied to clipboard.");
-                                  } catch (err) {
-                                    console.error(err);
-                                    toast.error("Failed to copy task URL.");
-                                  }
-                                }}
-                              >
-                                <Link size={17} strokeWidth={1.5} color="#696969"/>
-                              </button>
-                          </IconHelp>
+                <div className="flex items-center ">
+                  <IconHelp content="Copy task URL" side="bottom">
+                    <button
+                      className="hover:bg-[#cfcfcf89] p-1.5 rounded-sm"
+                      onClick={async () => {
+                        try {
+                          const url = typeof window !== "undefined"
+                            ? `${window.location.origin}/workspaces/${workspaceId}/tasks/${data.$id}`
+                            : `/workspaces/${workspaceId}/tasks/${data.$id}`;
+                          await navigator.clipboard.writeText(url);
+                          toast.success("Task URL copied to clipboard.");
+                        } catch (err) {
+                          console.error(err);
+                          toast.error("Failed to copy task URL.");
+                        }
+                      }}
+                    >
+                      <Link size={17} strokeWidth={1.5} color="#696969" />
+                    </button>
+                  </IconHelp>
 
-                          <IconHelp content="Copy task ID" side="bottom"> 
-                                 <button
-                                   className="hover:bg-[#cfcfcf89] p-1.5 rounded-sm"
-                                   onClick={async () => {
-                                     try {
-                                       await navigator.clipboard.writeText(data.$id);
-                                       toast.success("Task ID copied to clipboard.");
-                                     } catch (err) {
-                                       console.error(err);
-                                       toast.error("Failed to copy task ID.");
-                                     }
-                                   }}
-                                 >
-                                   <Copy size={17} color="#696969" strokeWidth={1.5}/>
-                                 </button>
-                          </IconHelp>
+                  <IconHelp content="Copy task ID" side="bottom">
+                    <button
+                      className="hover:bg-[#cfcfcf89] p-1.5 rounded-sm"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(data.$id);
+                          toast.success("Task ID copied to clipboard.");
+                        } catch (err) {
+                          console.error(err);
+                          toast.error("Failed to copy task ID.");
+                        }
+                      }}
+                    >
+                      <Copy size={17} color="#696969" strokeWidth={1.5} />
+                    </button>
+                  </IconHelp>
 
-                            {canDeleteTasks && (
-                          <IconHelp content="Delete Task" side="bottom"> 
+                  {canDeleteTasks && (
+                    <IconHelp content="Delete Task" side="bottom">
 
-                <Button
-                  onClick={handleDeleteTask}
-                  disabled={isPending}
-                  variant="ghost"
-                  size="sm"
-                  className=" text-[#ff0000] p-1.5 rounded-sm"                  
-                >
-                  <TrashIcon className="size-4" color="#ff000089" /> 
-                </Button>
+                      <Button
+                        onClick={handleDeleteTask}
+                        disabled={isPending}
+                        variant="ghost"
+                        size="sm"
+                        className=" text-[#ff0000] p-1.5 rounded-sm"
+                      >
+                        <TrashIcon className="size-4" color="#ff000089" />
+                      </Button>
                     </IconHelp>
 
-              )}
-                     </div>
-                
+                  )}
+                </div>
+
 
               </div>
-            
+
             </div>
 
             {/* Task Overview in sidebar */}
@@ -258,7 +254,7 @@ export const TaskIdClient = () => {
 
 
             <div className=" pt-3 border-t">
-                 
+
             </div>
           </div>
         </div>

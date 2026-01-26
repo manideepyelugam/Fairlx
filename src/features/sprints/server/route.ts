@@ -48,6 +48,13 @@ const app = new Hono()
         return c.json({ error: "Unauthorized" }, 401);
       }
 
+      // Project membership check
+      const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+      const access = await resolveUserProjectAccess(databases, user.$id, projectId);
+      if (!access.hasAccess || !hasProjectPermission(access, ProjectPermissionKey.VIEW_SPRINTS)) {
+        return c.json({ error: "Forbidden: No access to this project" }, 403);
+      }
+
       const query = [
         Query.equal("workspaceId", workspaceId),
         Query.equal("projectId", projectId),
@@ -277,6 +284,13 @@ const app = new Hono()
 
       if (!member) {
         return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      // Project membership check
+      const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+      const access = await resolveUserProjectAccess(databases, user.$id, projectId);
+      if (!access.hasAccess || !hasProjectPermission(access, ProjectPermissionKey.CREATE_SPRINTS)) {
+        return c.json({ error: "Forbidden: No permission to create sprints in this project" }, 403);
       }
 
       if (!(await can(databases, workspaceId, user.$id, PERMISSIONS.SPRINT_CREATE))) {

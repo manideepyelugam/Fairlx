@@ -37,7 +37,7 @@ import { useGetRoles } from "@/features/roles/api/use-get-roles";
 import { useGetOrgMembers } from "@/features/organizations/api/use-get-org-members";
 import { SpaceRole } from "@/features/spaces/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CustomRole } from "@/features/teams/types";
+import { CustomRole } from "@/features/roles/types";
 import { useCurrentUserOrgPermissions } from "@/features/org-permissions/api/use-current-user-permissions";
 import { OrgPermissionKey } from "@/features/org-permissions/types";
 

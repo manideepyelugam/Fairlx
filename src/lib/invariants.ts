@@ -461,3 +461,159 @@ export async function cleanupGhostMembers(
 
     return { deleted, errors };
 }
+
+// ============================================================================
+// PROJECT ACCESS INVARIANTS
+// ============================================================================
+
+/**
+ * INVARIANT: Project access REQUIRES project membership (or admin override)
+ * 
+ * Non-admin users MUST be project members to access any project resource.
+ * This prevents unauthorized access to project data.
+ */
+export function assertProjectMembershipRequired(
+    hasProjectMembership: boolean,
+    hasAdminOverride: boolean,
+    context?: Record<string, unknown>
+): void {
+    const hasValidAccess = hasProjectMembership || hasAdminOverride;
+
+    assertInvariant(
+        hasValidAccess,
+        "PROJECT_ACCESS_WITHOUT_MEMBERSHIP",
+        "User attempted to access project without membership or admin override",
+        context
+    );
+}
+
+/**
+ * INVARIANT: Teams NEVER cross project boundaries
+ * 
+ * A team must belong to exactly one project. Team operations must verify
+ * that the team being accessed belongs to the expected project.
+ */
+export async function assertTeamBelongsToProject(
+    databases: Databases,
+    teamId: string,
+    expectedProjectId: string
+): Promise<void> {
+    const { PROJECT_TEAMS_ID } = await import("@/config");
+
+    try {
+        const team = await databases.getDocument(
+            DATABASE_ID,
+            PROJECT_TEAMS_ID,
+            teamId
+        );
+
+        assertInvariant(
+            team.projectId === expectedProjectId,
+            "TEAM_CROSSES_PROJECT_BOUNDARY",
+            "Team does not belong to the expected project",
+            {
+                teamId,
+                expectedProjectId,
+                actualProjectId: team.projectId,
+            }
+        );
+    } catch (error) {
+        // Team not found - also a violation
+        assertInvariant(
+            false,
+            "TEAM_NOT_FOUND",
+            "Referenced team does not exist",
+            { teamId, expectedProjectId, error: String(error) }
+        );
+    }
+}
+
+/**
+ * INVARIANT: User cannot be added to team without project membership
+ * 
+ * Before adding a user to a project team, verify they are a project member.
+ */
+export async function assertUserIsProjectMemberBeforeTeamAdd(
+    databases: Databases,
+    userId: string,
+    projectId: string
+): Promise<void> {
+    const { PROJECT_MEMBERS_ID } = await import("@/config");
+
+    const memberships = await databases.listDocuments(
+        DATABASE_ID,
+        PROJECT_MEMBERS_ID,
+        [
+            Query.equal("projectId", projectId),
+            Query.equal("userId", userId),
+            Query.equal("status", "ACTIVE"),
+            Query.limit(1),
+        ]
+    );
+
+    assertInvariant(
+        memberships.total > 0,
+        "TEAM_ADD_WITHOUT_PROJECT_MEMBERSHIP",
+        "Cannot add user to project team: user is not a project member",
+        { userId, projectId }
+    );
+}
+
+/**
+ * INVARIANT: No cross-org project access
+ * 
+ * Verify that a user's org membership matches the project's workspace org.
+ */
+export async function assertNoCrossOrgProjectAccess(
+    databases: Databases,
+    userId: string,
+    projectId: string,
+    expectedOrgId: string
+): Promise<void> {
+    const { PROJECTS_ID, WORKSPACES_ID, ORGANIZATION_MEMBERS_ID } = await import("@/config");
+
+    // Get project -> workspace -> org chain
+    const project = await databases.getDocument(DATABASE_ID, PROJECTS_ID, projectId);
+    const workspace = await databases.getDocument(DATABASE_ID, WORKSPACES_ID, project.workspaceId);
+
+    // Personal workspaces don't have org
+    if (!workspace.organizationId) {
+        return;
+    }
+
+    // Verify org matches
+    assertInvariant(
+        workspace.organizationId === expectedOrgId,
+        "CROSS_ORG_PROJECT_ACCESS",
+        "Project workspace org does not match expected org",
+        {
+            projectId,
+            workspaceId: project.workspaceId,
+            expectedOrgId,
+            actualOrgId: workspace.organizationId,
+        }
+    );
+
+    // Verify user is org member
+    const orgMembership = await databases.listDocuments(
+        DATABASE_ID,
+        ORGANIZATION_MEMBERS_ID,
+        [
+            Query.equal("organizationId", workspace.organizationId),
+            Query.equal("userId", userId),
+            Query.limit(1),
+        ]
+    );
+
+    assertInvariant(
+        orgMembership.total > 0,
+        "PROJECT_ACCESS_WITHOUT_ORG_MEMBERSHIP",
+        "User is not a member of the project's organization",
+        {
+            userId,
+            projectId,
+            organizationId: workspace.organizationId,
+        }
+    );
+}
+

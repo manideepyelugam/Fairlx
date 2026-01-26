@@ -1,6 +1,26 @@
 import { Models } from "node-appwrite";
 
+// ============================================================================
+// RE-EXPORT CANONICAL TYPES
+// ============================================================================
+// These are the authoritative type definitions for project access.
+// Import from here for consistency.
+export {
+    type ProjectMember as ProjectDirectMember,
+    ProjectMemberRole,
+    ProjectMemberStatus,
+    type ProjectTeam,
+    type ProjectTeamMember,
+    type ProjectPermission,
+    type ProjectAccessResult,
+} from "@/features/project-teams/types";
+
 /**
+ * @deprecated Use ProjectDirectMember from @/features/project-teams/types
+ * 
+ * This legacy type uses roleId reference pattern.
+ * The new ProjectDirectMember type uses inline ProjectMemberRole enum.
+ * 
  * Project Member - Links a user to a team within a project with a role
  * 
  * Permission Hierarchy:

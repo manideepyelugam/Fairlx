@@ -29,7 +29,15 @@ export const PROJECT_DOCS_ID = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_DOCS_ID!
 export const PROJECT_DOCS_BUCKET_ID = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_DOCS_BUCKET_ID!;
 
 // Teams & Programs Collections
+/**
+ * @deprecated Workspace-scoped teams have been removed.
+ * Use PROJECT_TEAMS_ID for project-scoped teams instead.
+ */
 export const TEAMS_ID = process.env.NEXT_PUBLIC_APPWRITE_TEAMS_ID!;
+/**
+ * @deprecated Workspace-scoped team members have been removed.
+ * Use PROJECT_TEAM_MEMBERS_ID for project-scoped team members instead.
+ */
 export const TEAM_MEMBERS_ID = process.env.NEXT_PUBLIC_APPWRITE_TEAM_MEMBERS_ID!;
 export const PROGRAMS_ID = process.env.NEXT_PUBLIC_APPWRITE_PROGRAMS_ID!;
 export const CUSTOM_ROLES_ID = process.env.NEXT_PUBLIC_APPWRITE_CUSTOM_ROLES_ID!;
@@ -37,6 +45,10 @@ export const CUSTOM_ROLES_ID = process.env.NEXT_PUBLIC_APPWRITE_CUSTOM_ROLES_ID!
 // Project-Scoped RBAC Collections
 export const PROJECT_MEMBERS_ID = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_MEMBERS_ID!;
 export const PROJECT_ROLES_ID = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ROLES_ID!;
+// NEW: Project-scoped teams (replacing workspace teams)
+export const PROJECT_TEAMS_ID = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_TEAMS_ID!;
+export const PROJECT_TEAM_MEMBERS_ID = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_TEAM_MEMBERS_ID!;
+export const PROJECT_PERMISSIONS_ID = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_PERMISSIONS_ID!;
 
 // Email/Messaging Configuration
 export const SMTP_PROVIDER_ID = process.env.NEXT_PUBLIC_APPWRITE_SMTP_PROVIDER_ID!;
