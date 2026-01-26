@@ -4,7 +4,7 @@ import { zValidator } from "@hono/zod-validator";
 
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
-import { DATABASE_ID, PROGRAMS_ID, TEAMS_ID, MEMBERS_ID } from "@/config";
+import { DATABASE_ID, PROGRAMS_ID, MEMBERS_ID } from "@/config";
 
 import { getMember } from "@/features/members/utils";
 import { MemberRole } from "@/features/members/types";
@@ -111,16 +111,12 @@ const app = new Hono()
         }
       }
 
-      // Get team count
-      const teams = await databases.listDocuments(DATABASE_ID, TEAMS_ID, [
-        Query.equal("programId", programId),
-      ]);
-
+      // Team count removed (dependent on legacy teams)
       const populatedProgram = {
         ...program,
         programLead,
         statistics: {
-          teamCount: teams.total,
+          teamCount: 0,
         },
       };
 
@@ -290,19 +286,8 @@ const app = new Hono()
         );
       }
 
-      // Check if program has teams
-      const teams = await databases.listDocuments(DATABASE_ID, TEAMS_ID, [
-        Query.equal("programId", programId),
-      ]);
-
-      if (teams.total > 0) {
-        return c.json(
-          {
-            error: `Cannot delete program with ${teams.total} team(s). Please reassign or delete teams first.`,
-          },
-          400
-        );
-      }
+      // Legacy team check removed
+      // if (teams.total > 0) { ... }
 
       // Delete the program
       await databases.deleteDocument(DATABASE_ID, PROGRAMS_ID, programId);
@@ -313,41 +298,14 @@ const app = new Hono()
     }
   })
 
-  // ========================================
-  // GET /api/programs/:programId/teams - Get all teams in program
-  // ========================================
-  .get("/:programId/teams", sessionMiddleware, async (c) => {
-    const databases = c.get("databases");
-    const user = c.get("user");
-    const { programId } = c.req.param();
-
-    try {
-      const program = await databases.getDocument<Program>(
-        DATABASE_ID,
-        PROGRAMS_ID,
-        programId
-      );
-
-      // Verify user is a member of the workspace
-      const member = await getMember({
-        databases,
-        workspaceId: program.workspaceId,
-        userId: user.$id,
-      });
-
-      if (!member) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      // Get all teams in this program
-      const teams = await databases.listDocuments(DATABASE_ID, TEAMS_ID, [
-        Query.equal("programId", programId),
-      ]);
-
-      return c.json({ data: teams });
-    } catch {
-      return c.json({ error: "Program not found" }, 404);
-    }
-  });
+// ========================================
+// GET /api/programs/:programId/teams - Get all teams in program
+// ========================================
+/* Legacy team endpoint removed
+.get("/:programId/teams", sessionMiddleware, async (c) => {
+  // ... removed
+  return c.json({ data: { documents: [], total: 0 } });
+});
+*/
 
 export default app;

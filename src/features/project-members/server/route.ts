@@ -36,12 +36,12 @@ const app = new Hono()
         sessionMiddleware,
         zValidator("query", getPermissionsSchema),
         async (c) => {
-            const databases = c.get("databases");
+            const { databases: adminDb } = await createAdminClient();
             const user = c.get("user");
             const { projectId } = c.req.valid("query");
 
             const result = await getProjectPermissionResult(
-                databases,
+                adminDb,
                 user.$id,
                 projectId
             );
@@ -59,12 +59,11 @@ const app = new Hono()
         sessionMiddleware,
         zValidator("query", getPermissionsSchema),
         async (c) => {
-            const { users } = await createAdminClient();
-            const databases = c.get("databases");
+            const { users, databases: adminDb } = await createAdminClient();
             const user = c.get("user");
             const { projectId } = c.req.valid("query");
 
-            const memberships = await databases.listDocuments<ProjectMember>(
+            const memberships = await adminDb.listDocuments<ProjectMember>(
                 DATABASE_ID,
                 PROJECT_MEMBERS_ID,
                 [
@@ -81,14 +80,14 @@ const app = new Hono()
             const populated: PopulatedProjectMember[] = await Promise.all(
                 memberships.documents.map(async (membership) => {
                     // Get team
-                    const team = await databases.getDocument(
+                    const team = await adminDb.getDocument(
                         DATABASE_ID,
                         TEAMS_ID,
                         membership.teamId
                     ).catch(() => ({ $id: membership.teamId, name: "Unknown" }));
 
                     // Get role
-                    const role = await databases.getDocument<ProjectRole>(
+                    const role = await adminDb.getDocument<ProjectRole>(
                         DATABASE_ID,
                         PROJECT_ROLES_ID,
                         membership.roleId
@@ -138,14 +137,14 @@ const app = new Hono()
         sessionMiddleware,
         zValidator("query", getProjectMembersSchema),
         async (c) => {
-            const { users } = await createAdminClient();
-            const databases = c.get("databases");
+            const { users, databases: adminDb } = await createAdminClient();
             const user = c.get("user");
             const { projectId, teamId, workspaceId } = c.req.valid("query");
 
             // Check if user has permission to view members
+            // Use Admin DB for permission check to avoid catch-22
             const hasPermission = await canProject(
-                databases,
+                adminDb,
                 user.$id,
                 projectId,
                 PROJECT_PERMISSIONS.PROJECT_VIEW,
@@ -162,7 +161,7 @@ const app = new Hono()
                 queries.push(Query.equal("teamId", teamId));
             }
 
-            const memberships = await databases.listDocuments<ProjectMember>(
+            const memberships = await adminDb.listDocuments<ProjectMember>(
                 DATABASE_ID,
                 PROJECT_MEMBERS_ID,
                 queries
@@ -171,13 +170,13 @@ const app = new Hono()
             // Populate members
             const populated: PopulatedProjectMember[] = await Promise.all(
                 memberships.documents.map(async (membership) => {
-                    const team = await databases.getDocument(
+                    const team = await adminDb.getDocument(
                         DATABASE_ID,
                         TEAMS_ID,
                         membership.teamId
                     ).catch(() => ({ $id: membership.teamId, name: "Unknown" }));
 
-                    const role = await databases.getDocument<ProjectRole>(
+                    const role = await adminDb.getDocument<ProjectRole>(
                         DATABASE_ID,
                         PROJECT_ROLES_ID,
                         membership.roleId
@@ -226,13 +225,14 @@ const app = new Hono()
         sessionMiddleware,
         zValidator("json", createProjectMemberSchema),
         async (c) => {
-            const databases = c.get("databases");
+            // Remove databases from user client, we need adminDb
+            const { databases: adminDb } = await createAdminClient();
             const user = c.get("user");
             const data = c.req.valid("json");
 
             // Check permission to invite members
             const hasPermission = await canProject(
-                databases,
+                adminDb,
                 user.$id,
                 data.projectId,
                 PROJECT_PERMISSIONS.MEMBER_INVITE,
@@ -243,23 +243,34 @@ const app = new Hono()
                 return c.json({ error: "Unauthorized. You cannot invite members to this project." }, 403);
             }
 
-            // Check if user is already a member of this team in this project
-            const existing = await databases.listDocuments<ProjectMember>(
+            // Check if user is already a member of this project (and team if specified)
+            const existingQueries = [
+                Query.equal("userId", data.userId),
+                Query.equal("projectId", data.projectId),
+            ];
+            // If teamId is provided, check for duplicate team membership
+            // If no teamId, check for any existing membership in project
+            if (data.teamId && data.teamId !== "__none__") {
+                existingQueries.push(Query.equal("teamId", data.teamId));
+            }
+
+            const existing = await adminDb.listDocuments<ProjectMember>(
                 DATABASE_ID,
                 PROJECT_MEMBERS_ID,
-                [
-                    Query.equal("userId", data.userId),
-                    Query.equal("projectId", data.projectId),
-                    Query.equal("teamId", data.teamId),
-                ]
+                existingQueries
             );
 
             if (existing.total > 0) {
-                return c.json({ error: "User is already a member of this team" }, 400);
+                // If teamId specified, they're already in the team
+                // If no teamId, they're already a project member
+                const errorMsg = data.teamId && data.teamId !== "__none__"
+                    ? "User is already a member of this team"
+                    : "User is already a project member";
+                return c.json({ error: errorMsg }, 400);
             }
 
             // Verify role exists and belongs to this project
-            const role = await databases.getDocument<ProjectRole>(
+            const role = await adminDb.getDocument<ProjectRole>(
                 DATABASE_ID,
                 PROJECT_ROLES_ID,
                 data.roleId
@@ -270,14 +281,15 @@ const app = new Hono()
             }
 
             // Create membership
-            const membership = await databases.createDocument<ProjectMember>(
+            const membership = await adminDb.createDocument<ProjectMember>(
                 DATABASE_ID,
                 PROJECT_MEMBERS_ID,
                 ID.unique(),
                 {
                     workspaceId: data.workspaceId,
                     projectId: data.projectId,
-                    teamId: data.teamId,
+                    // Appwrite requires teamId field - use empty string for "no team"
+                    teamId: data.teamId && data.teamId !== "__none__" ? data.teamId : "",
                     userId: data.userId,
                     roleId: data.roleId,
                     roleName: role.name,
@@ -299,13 +311,13 @@ const app = new Hono()
         sessionMiddleware,
         zValidator("json", updateProjectMemberSchema),
         async (c) => {
-            const databases = c.get("databases");
+            const { databases: adminDb } = await createAdminClient();
             const user = c.get("user");
             const { memberId } = c.req.param();
             const updates = c.req.valid("json");
 
             // Get the membership to update
-            const membership = await databases.getDocument<ProjectMember>(
+            const membership = await adminDb.getDocument<ProjectMember>(
                 DATABASE_ID,
                 PROJECT_MEMBERS_ID,
                 memberId
@@ -313,7 +325,7 @@ const app = new Hono()
 
             // Check permission
             const hasPermission = await canProject(
-                databases,
+                adminDb,
                 user.$id,
                 membership.projectId,
                 PROJECT_PERMISSIONS.MEMBER_INVITE, // Same permission for role changes
@@ -327,7 +339,7 @@ const app = new Hono()
             // If changing role, verify it exists
             let roleName = membership.roleName;
             if (updates.roleId) {
-                const role = await databases.getDocument<ProjectRole>(
+                const role = await adminDb.getDocument<ProjectRole>(
                     DATABASE_ID,
                     PROJECT_ROLES_ID,
                     updates.roleId
@@ -339,7 +351,7 @@ const app = new Hono()
                 roleName = role.name;
             }
 
-            const updated = await databases.updateDocument<ProjectMember>(
+            const updated = await adminDb.updateDocument<ProjectMember>(
                 DATABASE_ID,
                 PROJECT_MEMBERS_ID,
                 memberId,
@@ -361,11 +373,11 @@ const app = new Hono()
         "/:memberId",
         sessionMiddleware,
         async (c) => {
-            const databases = c.get("databases");
+            const { databases: adminDb } = await createAdminClient();
             const user = c.get("user");
             const { memberId } = c.req.param();
 
-            const membership = await databases.getDocument<ProjectMember>(
+            const membership = await adminDb.getDocument<ProjectMember>(
                 DATABASE_ID,
                 PROJECT_MEMBERS_ID,
                 memberId
@@ -373,7 +385,7 @@ const app = new Hono()
 
             // Check permission
             const hasPermission = await canProject(
-                databases,
+                adminDb,
                 user.$id,
                 membership.projectId,
                 PROJECT_PERMISSIONS.MEMBER_REMOVE,
@@ -384,7 +396,7 @@ const app = new Hono()
                 return c.json({ error: "Unauthorized" }, 403);
             }
 
-            await databases.deleteDocument(DATABASE_ID, PROJECT_MEMBERS_ID, memberId);
+            await adminDb.deleteDocument(DATABASE_ID, PROJECT_MEMBERS_ID, memberId);
 
             return c.json({ data: { $id: memberId } });
         }
@@ -399,13 +411,13 @@ const app = new Hono()
         sessionMiddleware,
         zValidator("query", getProjectRolesSchema),
         async (c) => {
-            const databases = c.get("databases");
+            const { databases: adminDb } = await createAdminClient();
             const user = c.get("user");
             const { projectId, workspaceId } = c.req.valid("query");
 
             // Check basic project access
             const hasPermission = await canProject(
-                databases,
+                adminDb,
                 user.$id,
                 projectId,
                 PROJECT_PERMISSIONS.PROJECT_VIEW,
@@ -416,7 +428,7 @@ const app = new Hono()
                 return c.json({ error: "Unauthorized" }, 401);
             }
 
-            const roles = await databases.listDocuments<ProjectRole>(
+            const roles = await adminDb.listDocuments<ProjectRole>(
                 DATABASE_ID,
                 PROJECT_ROLES_ID,
                 [Query.equal("projectId", projectId)]

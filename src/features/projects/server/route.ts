@@ -5,15 +5,16 @@ import { ID, Query, Models } from "node-appwrite";
 import { z } from "zod";
 
 import { getMember } from "@/features/members/utils";
+import { seedProjectRoles } from "@/features/projects/lib/utils";
 import { TaskStatus } from "@/features/tasks/types";
 
-import { DATABASE_ID, IMAGES_BUCKET_ID, PROJECTS_ID, TASKS_ID, TIME_LOGS_ID, TEAM_MEMBERS_ID } from "@/config";
+import { DATABASE_ID, IMAGES_BUCKET_ID, PROJECTS_ID, TASKS_ID, TIME_LOGS_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 
 import { createProjectSchema, updateProjectSchema } from "../schemas";
 import { Project } from "../types";
 import { MemberRole } from "@/features/members/types";
-import { TeamMember } from "@/features/teams/types";
+// import { TeamMember } from "@/features/teams/types"; // Legacy Teams Removed
 
 // Parse Appwrite JSON
 const transformProject = (project: Models.Document): Project => {
@@ -89,6 +90,10 @@ const app = new Hono()
         }
       );
 
+      // Seed default project roles
+      await seedProjectRoles(databases, project.$id, workspaceId, user.$id);
+
+
       return c.json({ data: transformProject(project) });
     }
   )
@@ -132,35 +137,15 @@ const app = new Hono()
         });
       }
 
-      // Filter projects by team membership (STRICT MODE)
-      // Non-admins only see projects assigned to their teams
-      const userTeamMemberships = await databases.listDocuments<TeamMember>(
-        DATABASE_ID,
-        TEAM_MEMBERS_ID,
-        [Query.equal("memberId", member.$id), Query.equal("isActive", true)]
-      );
-
-      const userTeamIds = userTeamMemberships.documents.map(
-        (membership) => membership.teamId
-      );
-
-      const filteredProjects = allProjects.documents.filter((project) => {
-        // STRICT MODE: Projects without teams are ONLY visible to admins
-        // Non-admins must be in an assigned team to see the project
-        if (!project.assignedTeamIds || project.assignedTeamIds.length === 0) {
-          return false; // Not visible to non-admins
-        }
-        // Check if user is in any of the assigned teams
-        return project.assignedTeamIds.some((teamId) =>
-          userTeamIds.includes(teamId)
-        );
-      });
+      // Filter projects by team membership (STRICT MODE) -> REMOVED (Legacy Team logic)
+      // Now all projects in a workspace are visible to workspace members (or filter by new project members if needed)
+      // For now, returning all projects in workspace for members
 
       return c.json({
         data: {
-          documents: filteredProjects.map(transformProject),
-          total: filteredProjects.length,
-        },
+          ...allProjects,
+          documents: allProjects.documents.map(transformProject)
+        }
       });
     }
   )
@@ -330,7 +315,7 @@ const app = new Hono()
         [Query.equal("projectId", projectId)]
       );
 
-      // Delete all time logs for this project
+      // Legacy Team check removed/ Delete all time logs for this project
       for (const timeLog of timeLogs.documents) {
         await databases.deleteDocument(DATABASE_ID, TIME_LOGS_ID, timeLog.$id);
       }

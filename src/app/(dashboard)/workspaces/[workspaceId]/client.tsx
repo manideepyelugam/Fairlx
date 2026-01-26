@@ -8,7 +8,6 @@ import { useGetMembers } from "@/features/members/api/use-get-members"
 import { MemberAvatar } from "@/features/members/components/member-avatar"
 import type { Member } from "@/features/members/types"
 import { useGetProjects } from "@/features/projects/api/use-get-projects"
-import { useGetTeams } from "@/features/teams/api/use-get-teams"
 import { ProjectAvatar } from "@/features/projects/components/project-avatar"
 import { useCreateProjectModal } from "@/features/projects/hooks/use-create-project-modal"
 import type { Project } from "@/features/projects/types"
@@ -24,7 +23,7 @@ import {
   PlusIcon,
   SettingsIcon,
   Users,
- 
+
   Clock,
   ListTodo,
   Layers,
@@ -37,8 +36,8 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { useMemo } from "react"
-import { 
-  ResponsiveContainer, 
+import {
+  ResponsiveContainer,
   Tooltip,
   BarChart as RechartsBarChart,
   Bar,
@@ -51,7 +50,7 @@ import {
 const MiniBarChart = ({ value, max, variant = "default" }: { value: number; max: number; variant?: "default" | "dotted" | "blocks" }) => {
   const bars = 12
   const filledBars = Math.round((value / Math.max(max, 1)) * bars)
-  
+
   // dotted variant - used for pending/warning states (amber)
   if (variant === "dotted") {
     return (
@@ -66,7 +65,7 @@ const MiniBarChart = ({ value, max, variant = "default" }: { value: number; max:
       </div>
     )
   }
-  
+
   // blocks variant - used for completed/success states (emerald)
   if (variant === "blocks") {
     return (
@@ -80,7 +79,7 @@ const MiniBarChart = ({ value, max, variant = "default" }: { value: number; max:
       </div>
     )
   }
-  
+
   // default variant - neutral/black for totals
   return (
     <div className="flex items-end gap-0.5 h-8">
@@ -102,9 +101,8 @@ export const WorkspaceIdClient = () => {
   const { data: workItems, isLoading: isLoadingWorkItems } = useGetWorkItems({ workspaceId })
   const { data: projects, isLoading: isLoadingProjects } = useGetProjects({ workspaceId })
   const { data: members, isLoading: isLoadingMembers } = useGetMembers({ workspaceId })
-  const { data: teams, isLoading: isLoadingTeams } = useGetTeams({ workspaceId })
 
-  const isLoading = isLoadingAnalytics || isLoadingWorkItems || isLoadingProjects || isLoadingMembers || isLoadingTeams
+  const isLoading = isLoadingAnalytics || isLoadingWorkItems || isLoadingProjects || isLoadingMembers
 
   // Calculate dynamic data from real work items
   const dynamicData = useMemo(() => {
@@ -140,8 +138,8 @@ export const WorkspaceIdClient = () => {
     ]
 
     // Completion rate
-    const completionRate = itemDocs.length > 0 
-      ? Math.round((statusCounts.completed / itemDocs.length) * 100) 
+    const completionRate = itemDocs.length > 0
+      ? Math.round((statusCounts.completed / itemDocs.length) * 100)
       : 0
 
     // Flagged count
@@ -166,7 +164,7 @@ export const WorkspaceIdClient = () => {
         return createdDate.getMonth() === monthIndex
       })
       const completedMonthItems = monthItems.filter(t => t.status === WorkItemStatus.DONE)
-      
+
       return {
         name: month,
         total: monthItems.length > 0 ? monthItems.length : 0,
@@ -176,10 +174,10 @@ export const WorkspaceIdClient = () => {
 
     // Member workload
     const memberWorkload = memberDocs.map(member => {
-      const memberItems = itemDocs.filter(t => 
+      const memberItems = itemDocs.filter(t =>
         t.assigneeIds?.includes(member.$id)
       )
-      const completedItems = memberItems.filter(t => 
+      const completedItems = memberItems.filter(t =>
         t.status === WorkItemStatus.DONE
       ).length
 
@@ -195,10 +193,10 @@ export const WorkspaceIdClient = () => {
 
     // Contribution data - work items completed per member (for GitHub-style graph)
     const contributionData = memberDocs.map(member => {
-      const memberItems = itemDocs.filter(t => 
+      const memberItems = itemDocs.filter(t =>
         t.assigneeIds?.includes(member.$id)
       )
-      const completedItems = memberItems.filter(t => 
+      const completedItems = memberItems.filter(t =>
         t.status === WorkItemStatus.DONE
       ).length
 
@@ -221,7 +219,7 @@ export const WorkspaceIdClient = () => {
           id: item.$id,
           title: item.title,
           status: item.status === WorkItemStatus.DONE ? "Completed" :
-                  item.status === WorkItemStatus.IN_PROGRESS || item.status === WorkItemStatus.IN_REVIEW ? "In Progress" : "To Do",
+            item.status === WorkItemStatus.IN_PROGRESS || item.status === WorkItemStatus.IN_REVIEW ? "In Progress" : "To Do",
           assignee: assignee?.name || "Unassigned",
           assigneeImage: assignee?.profileImageUrl,
           priority: item.priority || "MEDIUM",
@@ -255,7 +253,7 @@ export const WorkspaceIdClient = () => {
         const dueDate = new Date(t.dueDate)
         return dueDate >= now && dueDate <= weekFromNow
       }).length
-      
+
       return {
         id: project.$id,
         name: project.name,
@@ -282,7 +280,7 @@ export const WorkspaceIdClient = () => {
     return <PageLoader />
   }
 
-  if (!analytics || !workItems || !projects || !members || !teams) {
+  if (!analytics || !workItems || !projects || !members) {
     return <PageError message="Failed to load workspace data." />
   }
 
@@ -379,21 +377,21 @@ export const WorkspaceIdClient = () => {
                         margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" className="dark:stroke-slate-700" />
-                        <XAxis 
-                          dataKey="name" 
+                        <XAxis
+                          dataKey="name"
                           tick={{ fontSize: 12, fill: '#64748b' }}
                           axisLine={false}
                           tickLine={false}
                         />
-                        <YAxis 
+                        <YAxis
                           tick={{ fontSize: 12, fill: '#64748b' }}
                           axisLine={false}
                           tickLine={false}
                           allowDecimals={false}
                         />
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: 'white', 
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'white',
                             border: '1px solid #e5e7eb',
                             borderRadius: '8px',
                             fontSize: '12px',
@@ -401,15 +399,15 @@ export const WorkspaceIdClient = () => {
                           }}
                           labelStyle={{ color: '#1e293b' }}
                         />
-                        <Bar 
-                          dataKey="total" 
+                        <Bar
+                          dataKey="total"
                           fill="#c7d2fe"
                           radius={[4, 4, 0, 0]}
                           maxBarSize={40}
                           name="Total"
                         />
-                        <Bar 
-                          dataKey="completed" 
+                        <Bar
+                          dataKey="completed"
                           fill="#10b981"
                           radius={[4, 4, 0, 0]}
                           maxBarSize={40}
@@ -435,7 +433,7 @@ export const WorkspaceIdClient = () => {
                     <option>Daily</option>
                   </select>
                 </div>
-                
+
                 {/* Total Project Count with Trend */}
                 <div className="mb-4">
                   <div className="flex items-center gap-2">
@@ -461,12 +459,12 @@ export const WorkspaceIdClient = () => {
 
                 {/* Progress Bar Visualization */}
                 <div className="h-3 flex rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700 mb-6">
-                  <div 
-                    className="bg-emerald-600 transition-all" 
+                  <div
+                    className="bg-emerald-600 transition-all"
                     style={{ width: `${(completedTasks / Math.max(totalTasks, 1)) * 100}%` }}
                   />
-                  <div 
-                    className="bg-amber-500 transition-all" 
+                  <div
+                    className="bg-amber-500 transition-all"
                     style={{ width: `${(pendingTasks / Math.max(totalTasks, 1)) * 100}%` }}
                   />
                 </div>
@@ -513,7 +511,7 @@ export const WorkspaceIdClient = () => {
                   <MoreHorizontal className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                 </Button>
               </div>
-              
+
               {/* Table Header */}
               <div className="grid grid-cols-12 gap-4 pb-3 border-b border-blue-100 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-400">
                 <div className="col-span-4">Name</div>
@@ -533,10 +531,10 @@ export const WorkspaceIdClient = () => {
                       className="grid grid-cols-12 gap-4 py-3 items-center hover:bg-blue-50 dark:hover:bg-slate-700/50 -mx-5 px-5 transition-colors"
                     >
                       <div className="col-span-4 flex items-center gap-3">
-                        <MemberAvatar 
-                          name={task.assignee} 
+                        <MemberAvatar
+                          name={task.assignee}
                           imageUrl={task.assigneeImage}
-                          className="h-8 w-8" 
+                          className="h-8 w-8"
                         />
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate text-slate-900 dark:text-white">{task.assignee}</p>
@@ -552,30 +550,27 @@ export const WorkspaceIdClient = () => {
                         </p>
                       </div>
                       <div className="col-span-2">
-                        <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
-                          task.status === "Completed" 
-                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400" 
-                            : task.status === "In Progress"
+                        <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full ${task.status === "Completed"
+                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400"
+                          : task.status === "In Progress"
                             ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
                             : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${
-                            task.status === "Completed" ? "bg-emerald-600" : 
+                          }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${task.status === "Completed" ? "bg-emerald-600" :
                             task.status === "In Progress" ? "bg-amber-600" : "bg-blue-600"
-                          }`} />
+                            }`} />
                           {task.status}
                         </span>
                       </div>
                       <div className="col-span-2">
-                        <span className={`text-xs font-medium px-2 py-1 rounded ${
-                          task.priority === "URGENT" 
-                            ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200" 
-                            : task.priority === "HIGH"
+                        <span className={`text-xs font-medium px-2 py-1 rounded ${task.priority === "URGENT"
+                          ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200"
+                          : task.priority === "HIGH"
                             ? "bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-300"
                             : task.priority === "MEDIUM"
-                            ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-200"
-                            : "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200"
-                        }`}>
+                              ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-200"
+                              : "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200"
+                          }`}>
                           {task.priority}
                         </span>
                       </div>
@@ -597,7 +592,7 @@ export const WorkspaceIdClient = () => {
               )}
             </Card>
 
-          
+
           </div>
 
           {/* Right Sidebar (3 columns) */}
@@ -610,7 +605,7 @@ export const WorkspaceIdClient = () => {
                   <PlusIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 </Button>
               </div>
-              
+
               {dynamicData.dueSoonWorkItems.length > 0 ? (
                 <div className="space-y-3">
                   {dynamicData.dueSoonWorkItems.slice(0, 1).map((alert) => (
@@ -630,8 +625,8 @@ export const WorkspaceIdClient = () => {
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </div>
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         className="w-full mt-3 bg-white text-blue-700 hover:bg-blue-50 dark:bg-blue-950 dark:text-blue-100 dark:hover:bg-blue-900"
                       >
                         <Clock className="mr-2 h-3 w-3" />
@@ -639,7 +634,7 @@ export const WorkspaceIdClient = () => {
                       </Button>
                     </Link>
                   ))}
-                  
+
                   {dynamicData.dueSoonWorkItems.slice(1, 4).map((alert) => (
                     <Link
                       key={alert.id}
@@ -671,7 +666,7 @@ export const WorkspaceIdClient = () => {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-medium tracking-tight  text-slate-900 dark:text-white">Project Statistics</h3>
               </div>
-              
+
               <div className="space-y-2 max-h-[280px] overflow-y-auto">
                 {projects.documents.slice(0, 5).map((project, idx) => {
                   const projectItems = (workItems.documents as PopulatedWorkItem[]).filter(t => t.projectId === project.$id)
@@ -682,32 +677,30 @@ export const WorkspaceIdClient = () => {
                     const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
                     return dueDate >= now && dueDate <= weekFromNow
                   }).length
-                  
+
                   return (
                     <Link
                       key={project.$id}
                       href={`/workspaces/${workspaceId}/projects/${project.$id}`}
-                      className={`flex items-center gap-3 p-3 rounded-xl transition-all ${
-                        idx === 0 ? 'bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 text-white hover:from-blue-700 hover:to-blue-800' : 'hover:bg-blue-50 dark:hover:bg-slate-700/50'
-                      }`}
+                      className={`flex items-center gap-3 p-3 rounded-xl transition-all ${idx === 0 ? 'bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 text-white hover:from-blue-700 hover:to-blue-800' : 'hover:bg-blue-50 dark:hover:bg-slate-700/50'
+                        }`}
                     >
-                      <div className={`flex items-center justify-center w-8 h-8 rounded-lg text-sm font-bold ${
-                        idx === 0 ? 'bg-white/20' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                      }`}>
+                      <div className={`flex items-center justify-center w-8 h-8 rounded-lg text-sm font-bold ${idx === 0 ? 'bg-white/20' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                        }`}>
                         {idx + 1}
                       </div>
-                    
+
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-medium truncate ${idx === 0 ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{project.name}</p>
                         <p className={`text-xs ${idx === 0 ? 'text-white/80' : 'text-slate-600 dark:text-slate-400'}`}>
                           {dueSoon > 0 ? `${dueSoon} tasks due soon` : `${projectItems.length} total tasks`}
                         </p>
                       </div>
-                     
+
                     </Link>
                   )
                 })}
-                
+
                 {projects.total === 0 && (
                   <div className="text-center py-8">
                     <FolderKanban className="h-8 w-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
@@ -715,7 +708,7 @@ export const WorkspaceIdClient = () => {
                   </div>
                 )}
               </div>
-              
+
               {projects.total > 5 && (
                 <Link href={`/workspaces/${workspaceId}/projects`}>
                   <Button variant="ghost" size="sm" className="w-full mt-3 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20">
@@ -735,7 +728,7 @@ export const WorkspaceIdClient = () => {
                   </Button>
                 </Link>
               </div>
-              
+
               <div className="flex flex-wrap gap-2">
                 {members.documents.slice(0, 8).map((member) => (
                   <MemberAvatar
@@ -751,141 +744,138 @@ export const WorkspaceIdClient = () => {
                   </div>
                 )}
               </div>
-              
+
               <div className="mt-4 pt-4 border-t border-blue-100 dark:border-slate-700">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-600 text-xs dark:text-slate-400">Total Members</span>
                   <span className="font-semibold text-slate-900 dark:text-white">{members.total}</span>
                 </div>
-                <div className="flex items-center justify-between text-sm mt-2">
-                  <span className="text-slate-600 text-xs dark:text-slate-400">Active Teams</span>
-                  <span className="font-semibold text-slate-900 dark:text-white">{teams.total}</span>
-                </div>
+                {/* Active Teams Stat Removed */}
               </div>
             </Card>
           </div>
         </div>
 
-          {/* Bottom Row - Workload, Priority & Top Contributors */}
-            <div className="grid grid-cols-1 w-full mt-4  lg:grid-cols-3 gap-4">
-              {/* Workload Distribution */}
-              <Card className="p-5 bg-white  border border-slate-200 dark:border-slate-700 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Workload Distribution</h3>
-                  <Users className="h-4 w-4 text-slate-600" />
-                </div>
-                <div className="space-y-4">
-                  {dynamicData.memberWorkload.length > 0 ? (
-                    dynamicData.memberWorkload.map((member) => {
-                      const workloadPercentage = analytics.taskCount > 0 ? (member.tasks / analytics.taskCount) * 100 : 0
-                      return (
-                        <div key={member.id} className="space-y-2 pt-2 ">
-                          <div className="flex items-center gap-3">
-                            <MemberAvatar
-                              name={member.name}
-                              imageUrl={member.imageUrl}
-                              className="h-8 w-8"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between mb-1">
-                                <p className="text-sm font-medium truncate text-slate-900 dark:text-white">{member.name}</p>
-                                <span className="text-xs text-slate-600 dark:text-slate-400">{member.tasks} tasks</span>
-                              </div>
-                              <Progress 
-                                value={workloadPercentage} 
-                                className="h-2 text-slate-600" 
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })
-                  ) : (
-                    <div className="text-sm text-center text-slate-500 dark:text-slate-400 py-8">
-                      No assigned tasks yet
-                    </div>
-                  )}
-                </div>
-              </Card>
-
-              {/* Priority Distribution */}
-              <Card className="p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Priority Distribution</h3>
-                  <Layers className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                </div>
-                <div className="h-[200px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RechartsBarChart
-                      data={dynamicData.priorityDistribution}
-                      margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" className="dark:stroke-slate-700" />
-                      <XAxis 
-                        dataKey="name" 
-                        tick={{ fontSize: 11, fill: '#64748b' }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <YAxis 
-                        tick={{ fontSize: 11, fill: '#64748b' }}
-                        axisLine={false}
-                        tickLine={false}
-                        allowDecimals={false}
-                      />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'white', 
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          fontSize: '12px'
-                        }}
-                      />
-                      <Bar 
-                        dataKey="count" 
-                        radius={[4, 4, 0, 0]}
-                        maxBarSize={50}
-                      />
-                    </RechartsBarChart>
-                  </ResponsiveContainer>
-                </div>
-              </Card>
-
-              {/* Top Contributors */}
-              <Card className="p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Top Contributors</h3>
-                  <TrendingUp className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                </div>
-                {dynamicData.contributionData.length > 0 ? (
-                  <div className="space-y-3">
-                    {dynamicData.contributionData.slice(0, 5).map((contributor) => (
-                      <div key={contributor.id} className="flex items-center py-1 gap-3">
-                      
+        {/* Bottom Row - Workload, Priority & Top Contributors */}
+        <div className="grid grid-cols-1 w-full mt-4  lg:grid-cols-3 gap-4">
+          {/* Workload Distribution */}
+          <Card className="p-5 bg-white  border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Workload Distribution</h3>
+              <Users className="h-4 w-4 text-slate-600" />
+            </div>
+            <div className="space-y-4">
+              {dynamicData.memberWorkload.length > 0 ? (
+                dynamicData.memberWorkload.map((member) => {
+                  const workloadPercentage = analytics.taskCount > 0 ? (member.tasks / analytics.taskCount) * 100 : 0
+                  return (
+                    <div key={member.id} className="space-y-2 pt-2 ">
+                      <div className="flex items-center gap-3">
                         <MemberAvatar
-                          name={contributor.name}
-                          imageUrl={contributor.imageUrl}
+                          name={member.name}
+                          imageUrl={member.imageUrl}
                           className="h-8 w-8"
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate text-slate-900 dark:text-white">{contributor.name}</p>
-                          <p className="text-xs text-slate-600 dark:text-slate-400">{contributor.completed} completed</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">{contributor.completed}</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">/{contributor.total}</p>
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-sm font-medium truncate text-slate-900 dark:text-white">{member.name}</p>
+                            <span className="text-xs text-slate-600 dark:text-slate-400">{member.tasks} tasks</span>
+                          </div>
+                          <Progress
+                            value={workloadPercentage}
+                            className="h-2 text-slate-600"
+                          />
                         </div>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="h-[200px] flex flex-col items-center justify-center text-center">
-                    <TrendingUp className="h-8 w-8 text-slate-300 dark:text-slate-600 mb-2" />
-                    <p className="text-sm text-slate-500 dark:text-slate-400">No completed tasks yet</p>
-                  </div>
-                )}
-              </Card>
+                    </div>
+                  )
+                })
+              ) : (
+                <div className="text-sm text-center text-slate-500 dark:text-slate-400 py-8">
+                  No assigned tasks yet
+                </div>
+              )}
             </div>
+          </Card>
+
+          {/* Priority Distribution */}
+          <Card className="p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Priority Distribution</h3>
+              <Layers className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+            </div>
+            <div className="h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsBarChart
+                  data={dynamicData.priorityDistribution}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" className="dark:stroke-slate-700" />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    axisLine={false}
+                    tickLine={false}
+                    allowDecimals={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '12px'
+                    }}
+                  />
+                  <Bar
+                    dataKey="count"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={50}
+                  />
+                </RechartsBarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          {/* Top Contributors */}
+          <Card className="p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Top Contributors</h3>
+              <TrendingUp className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+            </div>
+            {dynamicData.contributionData.length > 0 ? (
+              <div className="space-y-3">
+                {dynamicData.contributionData.slice(0, 5).map((contributor) => (
+                  <div key={contributor.id} className="flex items-center py-1 gap-3">
+
+                    <MemberAvatar
+                      name={contributor.name}
+                      imageUrl={contributor.imageUrl}
+                      className="h-8 w-8"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate text-slate-900 dark:text-white">{contributor.name}</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-400">{contributor.completed} completed</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">{contributor.completed}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">/{contributor.total}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="h-[200px] flex flex-col items-center justify-center text-center">
+                <TrendingUp className="h-8 w-8 text-slate-300 dark:text-slate-600 mb-2" />
+                <p className="text-sm text-slate-500 dark:text-slate-400">No completed tasks yet</p>
+              </div>
+            )}
+          </Card>
+        </div>
       </div>
     </div>
   )

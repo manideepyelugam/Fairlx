@@ -7,7 +7,7 @@ import { ChevronRight } from "lucide-react";
 import { useGetWorkspace } from "@/features/workspaces/api/use-get-workspace";
 import { useGetProject } from "@/features/projects/api/use-get-project";
 import { useGetTask } from "@/features/tasks/api/use-get-task";
-import { useGetTeam } from "@/features/teams/api/use-get-team";
+// import { useGetTeam } from "@/features/teams/api/use-get-team"; // Legacy Teams Removed
 import { useGetSpace } from "@/features/spaces/api/use-get-space";
 import { useGetSprint } from "@/features/sprints/api/use-get-sprint";
 import { useGetProgram } from "@/features/programs/api/use-get-program";
@@ -70,7 +70,6 @@ export const Breadcrumb = () => {
   const shouldFetchWorkspace = isWorkspaceRoute && Boolean(workspaceId);
   const shouldFetchProject = Boolean(itemId && sectionType === "projects");
   const shouldFetchTask = Boolean(itemId && sectionType === "tasks");
-  const shouldFetchTeam = Boolean(itemId && sectionType === "teams");
   const shouldFetchSpace = Boolean(itemId && sectionType === "spaces");
   const shouldFetchSprint = Boolean(
     (sectionType === "sprints" && itemId) ||
@@ -94,9 +93,11 @@ export const Breadcrumb = () => {
     enabled: shouldFetchTask,
   });
 
+  /* Legacy Teams Removed
   const { data: team } = useGetTeam({
     teamId: shouldFetchTeam ? (itemId ?? null) : null,
   });
+  */
 
   const { data: space } = useGetSpace({
     spaceId: shouldFetchSpace ? (itemId ?? "") : "",
@@ -225,20 +226,7 @@ export const Breadcrumb = () => {
         });
       }
     }
-  } else if (sectionType === "teams") {
-    breadcrumbs.push({
-      label: "Teams",
-      href: `/workspaces/${workspaceId}/teams`,
-      isClickable: true,
-    });
-
-    if (team && itemId) {
-      breadcrumbs.push({
-        label: team.name,
-        href: `/workspaces/${workspaceId}/teams/${itemId}`,
-        isClickable: true,
-      });
-    }
+    /* Legacy Teams Breadcrumb Removed */
   } else if (sectionType === "spaces") {
     breadcrumbs.push({
       label: "Spaces",

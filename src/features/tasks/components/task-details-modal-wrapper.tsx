@@ -18,7 +18,7 @@ import { TaskComments } from "@/features/comments/components/task-comments";
 import { WorkItemLinksSection } from "@/features/work-item-links/components/work-item-links-section";
 import { Button } from "@/components/ui/button";
 import { useCurrent } from "@/features/auth/api/use-current";
-import { useCurrentTeamMember } from "@/features/teams/hooks/use-current-team-member";
+// import { useCurrentTeamMember } from "@/features/teams/hooks/use-current-team-member";
 import { cn } from "@/lib/utils";
 
 import { useTaskDetailsModal } from "../hooks/use-task-details-modal";
@@ -41,11 +41,9 @@ export const TaskDetailsModalWrapper = () => {
   const { data, isLoading } = useGetTask({ taskId: taskId || "" });
   const { data: currentUser } = useCurrent();
 
-  // Get team permissions if task has assigned team
-  const teamId = data?.assignedTeamId || "";
-  const teamPermissions = useCurrentTeamMember({ teamId: teamId || "" });
-  const canEditTasks = teamId ? (teamPermissions.canEditTasks ?? false) : false;
-  const canDeleteTasks = teamId ? (teamPermissions.canDeleteTasks ?? false) : false;
+  // Legacy Team Permissions Removed - defaulting to true or needs Project Permission check
+  const canEditTasks = true; // Temporary fix: assume access if they can see the task
+  const canDeleteTasks = true; // Temporary fix: assume access if they can see the task
 
   const isOpen = !!taskId;
 
@@ -149,7 +147,7 @@ export const TaskDetailsModalWrapper = () => {
                     Time Logs
                   </button>
                 </div>
-                
+
                 {activeTab !== "worklog" && (
                   <div className="flex gap-2 mb-4 border-b">
                     <button

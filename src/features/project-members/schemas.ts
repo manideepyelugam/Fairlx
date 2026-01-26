@@ -7,7 +7,7 @@ import { z } from "zod";
 export const createProjectMemberSchema = z.object({
     workspaceId: z.string().min(1),
     projectId: z.string().min(1),
-    teamId: z.string().min(1),
+    teamId: z.string().optional(), // Optional - member can be added without team assignment
     userId: z.string().min(1),
     roleId: z.string().min(1),
 });

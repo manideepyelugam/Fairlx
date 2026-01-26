@@ -1,6 +1,6 @@
 "use client";
 
-import { Layers, Github, FileText, Settings, Calendar } from "lucide-react";
+import { Layers, Github, FileText, Settings, Calendar, Users2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { format, isPast, differenceInDays } from "date-fns";
 
@@ -28,11 +28,11 @@ export const ProjectIdClient = () => {
 
   const getDeadlineBadge = () => {
     if (!project.deadline) return null;
-    
+
     const deadlineDate = new Date(project.deadline);
     const isOverdue = isPast(deadlineDate);
     const daysRemaining = differenceInDays(deadlineDate, new Date());
-    
+
     if (isOverdue) {
       return (
         <Badge variant="destructive" className="text-xs">
@@ -41,7 +41,7 @@ export const ProjectIdClient = () => {
         </Badge>
       );
     }
-    
+
     if (daysRemaining <= 7) {
       return (
         <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 hover:bg-amber-100">
@@ -50,7 +50,7 @@ export const ProjectIdClient = () => {
         </Badge>
       );
     }
-    
+
     return (
       <Badge variant="outline" className="text-xs">
         <Calendar className="size-3 mr-1" />
@@ -61,7 +61,7 @@ export const ProjectIdClient = () => {
 
   return (
     <div className="flex flex-col gap-y-4">
-      
+
       <div className="flex items-center mb-4 justify-between">
 
         <div className="flex gap-x-2 flex-col items-start gap-y-1.5">
@@ -76,8 +76,8 @@ export const ProjectIdClient = () => {
 
         <div className="flex items-center gap-2">
           <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/sprints`} className="!text-sm">
-            <button 
-              type="button" 
+            <button
+              type="button"
               className="inline-flex items-center rounded-md border border-input px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <Layers className="size-4 mr-3" />
@@ -86,8 +86,8 @@ export const ProjectIdClient = () => {
           </Link>
 
           <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/docs`} className="!text-sm">
-            <button 
-              type="button" 
+            <button
+              type="button"
               className="inline-flex items-center rounded-md border border-input px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <FileText className="size-4 mr-3" />
@@ -96,8 +96,8 @@ export const ProjectIdClient = () => {
           </Link>
 
           <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/github`} className="!text-sm">
-            <button 
-              type="button" 
+            <button
+              type="button"
               className="inline-flex items-center rounded-md border border-input px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <Github className="size-4 mr-3" />
@@ -105,9 +105,29 @@ export const ProjectIdClient = () => {
             </button>
           </Link>
 
+          <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/teams`} className="!text-sm">
+            <button
+              type="button"
+              className="inline-flex items-center rounded-md border border-input px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <Users2 className="size-4 mr-3" />
+              Teams
+            </button>
+          </Link>
+
+          <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/members`} className="!text-sm">
+            <button
+              type="button"
+              className="inline-flex items-center rounded-md border border-input px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <UserPlus className="size-4 mr-3" />
+              Members
+            </button>
+          </Link>
+
           <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/settings`} className="!text-sm">
-            <button 
-              type="button" 
+            <button
+              type="button"
               className="inline-flex items-center rounded-md border border-input px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <Settings className="size-4 mr-3" />

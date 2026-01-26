@@ -9,12 +9,9 @@ import { z } from "zod";
 import { format } from "date-fns";
 import {
   Settings,
-  Users,
   Shield,
   Trash2,
   ImageIcon,
-  Info,
-  X,
   Loader,
   Calendar,
   FolderKanban,
@@ -39,8 +36,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
-import { Label } from "@/components/ui/label";
 import {
   Form,
   FormControl,
@@ -49,13 +44,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -67,12 +55,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 import { useGetProject } from "@/features/projects/api/use-get-project";
@@ -80,10 +62,6 @@ import { useUpdateProject, UpdateProjectRequest } from "@/features/projects/api/
 import { useDeleteProject } from "@/features/projects/api/use-delete-project";
 import { useGetProjectAnalytics } from "@/features/projects/api/use-get-project-analytics";
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
-import { useGetTeams } from "@/features/teams/api/use-get-teams";
-import { useAssignProjectToTeam } from "@/features/projects/api/use-assign-project-to-team";
-import { useUnassignProjectFromTeam } from "@/features/projects/api/use-unassign-project-from-team";
-import { useGetMembers } from "@/features/members/api/use-get-members";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { updateProjectSchema } from "@/features/projects/schemas";
 import { WorkTypesSettings } from "@/features/projects/components/work-types-settings";
@@ -94,19 +72,13 @@ import { CopySettingsDialog } from "@/features/projects/components/copy-settings
 export const ProjectIdSettingsClient = () => {
   const projectId = useProjectId();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [selectedTeamId, setSelectedTeamId] = useState<string>("");
   const [activeTab, setActiveTab] = useState("general");
   const [isCopySettingsOpen, setIsCopySettingsOpen] = useState(false);
 
   // Data fetching
   const { data: project, isLoading: isLoadingProject } = useGetProject({ projectId });
   const { data: analytics, isLoading: isLoadingAnalytics } = useGetProjectAnalytics({ projectId });
-  const { data: teamsData, isLoading: isLoadingTeams } = useGetTeams({
-    workspaceId: project?.workspaceId || "",
-  });
-  const { data: membersData } = useGetMembers({
-    workspaceId: project?.workspaceId || "",
-  });
+
   const { isLoading: isMemberLoading, isAdmin } = useCurrentMember({
     workspaceId: project?.workspaceId || "",
   });
@@ -114,8 +86,6 @@ export const ProjectIdSettingsClient = () => {
   // Mutations
   const { mutate: updateProject, isPending: isUpdating } = useUpdateProject();
   const { mutate: deleteProject, isPending: isDeleting } = useDeleteProject();
-  const { mutate: assignTeam, isPending: isAssigning } = useAssignProjectToTeam();
-  const { mutate: unassignTeam, isPending: isUnassigning } = useUnassignProjectFromTeam();
 
   // Form setup
   const form = useForm<z.infer<typeof updateProjectSchema>>({
@@ -145,10 +115,6 @@ export const ProjectIdSettingsClient = () => {
   }
 
   const isLoading = isLoadingProject || isMemberLoading;
-  const teams = teamsData?.documents || [];
-  const members = membersData?.documents || [];
-  const assignedTeamIds = project?.assignedTeamIds || [];
-  const availableTeams = teams.filter((team) => !assignedTeamIds.includes(team.$id));
 
   if (isLoading) {
     return <PageLoader />;
@@ -197,40 +163,9 @@ export const ProjectIdSettingsClient = () => {
     );
   };
 
-  const handleAssignTeam = () => {
-    if (!selectedTeamId) return;
-    assignTeam(
-      { param: { projectId: project.$id, teamId: selectedTeamId } },
-      { onSuccess: () => setSelectedTeamId("") }
-    );
-  };
-
-  const handleUnassignTeam = (teamId: string) => {
-    unassignTeam({ param: { projectId: project.$id, teamId } });
-  };
-
-  const getTeamName = (teamId: string) => {
-    return teams.find((team) => team.$id === teamId)?.name || "Unknown Team";
-  };
-
-  const getTeamMembers = (teamId: string) => {
-    const team = teams.find((t) => t.$id === teamId);
-    return team?.memberCount || 0;
-  };
-
-  // Get members working on this project (from assigned teams)
-  const getProjectMembers = () => {
-    // Return all workspace members for now
-    // TODO: When team member IDs are available in Team type, filter by team membership
-    return members;
-  };
-
-  const projectMembers = getProjectMembers();
-
   // Navigation items for the settings sidebar
   const settingsNavItems = [
     { id: "general", label: "General", icon: Settings },
-    { id: "team", label: "Team Access", icon: Users },
     { id: "overview", label: "Overview", icon: BarChart3 },
     { id: "types", label: "Work Types", icon: Layers },
     { id: "priorities", label: "Priorities", icon: Flag },
@@ -503,176 +438,7 @@ export const ProjectIdSettingsClient = () => {
               </Card>
             )}
 
-            {/* Team Access */}
-            {activeTab === "team" && (
-              <Card>
-                <CardHeader className="mb-3">
-                  <CardTitle className="!text-[18px] flex items-center gap-2">
-                    Team Access Control
-                    <TooltipProvider delayDuration={100}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" className="size-6">
-                            <Info className="size-4 text-neutral-400" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="right" className="max-w-xs">
-                          <p className="text-sm">
-                            Assign teams to control project access. If no teams are assigned,
-                            all workspace members can access the project.
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </CardTitle>
-                  <CardDescription className="!text-xs font-normal">
-                    Manage which teams have access to this project
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Assigned Teams */}
-                  <div>
-                    <Label className="text-sm font-semibold mb-3 block">Assigned Teams</Label>
-                    {assignedTeamIds.length === 0 ? (
-                      <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                        <AlertCircle className="size-5 text-amber-600" />
-                        <div>
-                          <p className="text-sm font-medium text-amber-800">No teams assigned</p>
-                          <p className="text-xs text-amber-600">
-                            All workspace members can access this project
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        {assignedTeamIds.map((teamId) => (
-                          <div
-                            key={teamId}
-                            className="flex items-center justify-between p-4 bg-neutral-50 border rounded-lg hover:border-neutral-300 transition-colors"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="size-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
-                                {getTeamName(teamId).charAt(0)}
-                              </div>
-                              <div>
-                                <p className="font-medium text-sm">{getTeamName(teamId)}</p>
-                                <p className="text-xs text-neutral-500">
-                                  {getTeamMembers(teamId)} members
-                                </p>
-                              </div>
-                            </div>
-                            {isAdmin && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-neutral-400 hover:text-red-600 hover:bg-red-50"
-                                onClick={() => handleUnassignTeam(teamId)}
-                                disabled={isAssigning || isUnassigning}
-                              >
-                                <X className="size-4" />
-                              </Button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
 
-                  {/* Add Team */}
-                  {isAdmin && (
-                    <>
-                      <Separator />
-                      <div>
-                        <Label className="text-sm font-semibold mb-3 block">Add Team</Label>
-                        {isLoadingTeams ? (
-                          <div className="flex items-center gap-2 text-neutral-500">
-                            <Loader className="size-4 animate-spin" />
-                            Loading teams...
-                          </div>
-                        ) : availableTeams.length === 0 ? (
-                          <p className="text-sm text-neutral-500 italic">
-                            {teams.length === 0
-                              ? "No teams exist yet. Create a team first."
-                              : "All teams are already assigned."}
-                          </p>
-                        ) : (
-                          <div className="flex items-center gap-3">
-                            <Select
-                              value={selectedTeamId}
-                              onValueChange={setSelectedTeamId}
-                              disabled={isAssigning || isUnassigning}
-                            >
-                              <SelectTrigger className="w-64">
-                                <SelectValue placeholder="Select a team" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {availableTeams.map((team) => (
-                                  <SelectItem key={team.$id} value={team.$id}>
-                                    {team.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <Button
-                              onClick={handleAssignTeam}
-                              disabled={!selectedTeamId || isAssigning || isUnassigning}
-                              size="xs"
-                              className="text-xs font-medium px-6 rounded-sm py-3"
-                            >
-                              {isAssigning ? (
-                                <Loader className="size-4 animate-spin" />
-                              ) : (
-                                "Add"
-                              )}
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
-
-                  {/* Project Members */}
-                  <Separator />
-                  <div>
-                    <Label className="text-sm font-semibold mb-3 block">
-                      Project Members ({projectMembers.length})
-                    </Label>
-                    <p className="text-xs text-neutral-500 mb-4">
-                      {assignedTeamIds.length === 0
-                        ? "All workspace members have access"
-                        : "Members from assigned teams"}
-                    </p>
-                    {projectMembers.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {projectMembers.slice(0, 20).map((member) => (
-                          <TooltipProvider key={member.$id} delayDuration={100}>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Avatar className="size-10 border-2 border-white shadow-sm cursor-default">
-                                  <AvatarFallback className="bg-gradient-to-br from-green-500 to-teal-600 text-white text-sm">
-                                    {member.name?.charAt(0)?.toUpperCase() || "U"}
-                                  </AvatarFallback>
-                                </Avatar>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>{member.name || member.email}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        ))}
-                        {projectMembers.length > 20 && (
-                          <div className="size-10 rounded-full bg-neutral-200 flex items-center justify-center text-sm font-medium text-neutral-600">
-                            +{projectMembers.length - 20}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-neutral-500 italic">No members found</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
 
             {/* Overview */}
             {activeTab === "overview" && (
@@ -765,24 +531,6 @@ export const ProjectIdSettingsClient = () => {
                           <p className="font-medium text-sm">
                             {format(new Date(project.$updatedAt), "MMMM d, yyyy")}
                           </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 p-4 bg-neutral-50 rounded-lg">
-                        <Users className="size-5 text-neutral-500" />
-                        <div>
-                          <p className="text-sm text-neutral-500">Teams Assigned</p>
-                          <p className="font-medium text-sm">
-                            {assignedTeamIds.length === 0
-                              ? "All workspace members"
-                              : `${assignedTeamIds.length} team${assignedTeamIds.length > 1 ? "s" : ""}`}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 p-4 bg-neutral-50 rounded-lg">
-                        <Users className="size-5 text-neutral-500" />
-                        <div>
-                          <p className="text-sm text-neutral-500">Members with Access</p>
-                          <p className="font-medium text-sm">{projectMembers.length} members</p>
                         </div>
                       </div>
                     </div>
@@ -970,7 +718,7 @@ export const ProjectIdSettingsClient = () => {
         </div>
       </div>
 
-      
+
     </div>
   );
 };
