@@ -8,11 +8,6 @@ import IconHelp from "@/components/icon-help";
 import { PageError } from "@/components/page-error";
 import { PageLoader } from "@/components/page-loader";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 import { useGetTask } from "@/features/tasks/api/use-get-task";
@@ -98,11 +93,7 @@ export const TaskIdClient = () => {
             </button>
           </div>
 
-          <Select value={selectedCategory} onValueChange={(v) => setSelectedCategory(v as DocumentCategory | "all")}>
-            <SelectTrigger className="w-[180px] h-9 text-xs font-light bg-background border-border rounded-lg">
-              <SelectValue placeholder="All categories" className="truncate" />
-            </SelectTrigger>
-          </Select>
+
 
           {/* Connected Work Items Section */}
           <div className="px-6 pb-4 pt-5 border-t border-border">
