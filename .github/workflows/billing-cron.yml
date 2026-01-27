@@ -21,7 +21,7 @@ on:
           - send-reminders
 
 env:
-  API_BASE_URL: ${{ secrets.API_BASE_URL }}
+  API_BASE_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
   CRON_SECRET: ${{ secrets.CRON_SECRET }}
 
 jobs:
