@@ -72,7 +72,7 @@ export const CopySettingsDialog = ({ open, onOpenChange, currentProjectId, works
                     <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
                         Cancel
                     </Button>
-                    <Button onClick={handleCopy} disabled={!selectedProjectId || isPending}>
+                    <Button onClick={handleCopy} disabled={!selectedProjectId || isPending} className="bg-blue-600 hover:bg-blue-700 text-white">
                         {isPending ? "Copying..." : "Copy Settings"}
                     </Button>
                 </DialogFooter>

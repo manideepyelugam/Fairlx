@@ -194,7 +194,7 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
             placeholder="Search documents"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-9 text-xs font-light bg-background border-border rounded-lg"
+            className="pl-9 h-9 text-xs font-light bg-background border-border rounded-lg text-foreground placeholder:text-muted-foreground"
           />
         </div>
 
@@ -235,7 +235,7 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          <span className="text-[10px] border p-2.5 rounded-md  font-light text-black">
+          <span className="text-[10px] border p-2.5 rounded-md font-light text-muted-foreground">
             {formatFileSize(stats?.totalSize || 0)} / {formatFileSize(MAX_TOTAL_PROJECT_SIZE)}
           </span>
           <DocumentUploadModal
@@ -243,7 +243,7 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
             workspaceId={workspaceId}
             currentTotalSize={stats?.totalSize || 0}
             trigger={
-              <Button className="h-9 px-4 text-xs font-medium bg-[#1269d6] hover:bg-[#0f5bbf] text-white rounded-lg">
+              <Button className="h-9 px-4 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
                 Upload
               </Button>
             }
@@ -320,7 +320,7 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
               workspaceId={workspaceId}
               currentTotalSize={stats?.totalSize || 0}
               trigger={
-                <Button className="h-8 px-4 text-xs font-medium bg-[#1269d6] hover:bg-[#0f5bbf] text-white rounded-lg">
+                <Button className="h-8 px-4 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
                   <Upload className="h-3.5 w-3.5 mr-1.5" />
                   Upload Document
                 </Button>

@@ -272,7 +272,7 @@ export const CreateWorkItemBar = ({
                   type="submit"
                   disabled={isPending}
                   size="sm"
-                  className="h-8 px-4 text-xs bg-primary hover:bg-primary/90"
+                  className="h-8 px-4 text-xs bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   {isPending ? "Creating..." : "Create"}
                 </Button>

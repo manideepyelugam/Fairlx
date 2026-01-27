@@ -150,9 +150,9 @@ export const ProjectMembersClient = () => {
 
             <Tabs defaultValue="members" className="w-full">
                 <TabsList>
-                    <TabsTrigger value="members">Members</TabsTrigger>
-                    <TabsTrigger value="teams">Teams</TabsTrigger>
-                    <TabsTrigger value="permissions">Permissions & Roles</TabsTrigger>
+                    <TabsTrigger value="members" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Members</TabsTrigger>
+                    <TabsTrigger value="teams" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Teams</TabsTrigger>
+                    <TabsTrigger value="permissions" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Permissions & Roles</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="members" className="mt-6 space-y-6">

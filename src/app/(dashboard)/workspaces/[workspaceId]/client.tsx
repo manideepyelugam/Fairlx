@@ -613,7 +613,7 @@ export const WorkspaceIdClient = () => {
                     <Link
                       key={alert.id}
                       href={`/workspaces/${workspaceId}/tasks/${alert.id}`}
-                      className="block p-4 bg-primary rounded-xl text-primary-foreground hover:bg-primary/90 transition-all"
+                      className="block p-4 bg-blue-600 rounded-xl text-white hover:bg-blue-700 transition-all"
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
@@ -622,13 +622,13 @@ export const WorkspaceIdClient = () => {
                             Due: {format(alert.dueDate, 'MMM d, h:mm a')}
                           </p>
                         </div>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-foreground/70 hover:text-foreground hover:bg-accent">
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-white/70 hover:text-white hover:bg-blue-500">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </div>
                       <Button
                         size="sm"
-                        className="w-full mt-3 bg-background text-foreground hover:bg-accent"
+                        className="w-full mt-3 bg-white text-blue-600 hover:bg-blue-50 border-0"
                       >
                         <Clock className="mr-2 h-3 w-3" />
                         View Details
@@ -685,12 +685,12 @@ export const WorkspaceIdClient = () => {
                       href={`/workspaces/${workspaceId}/projects/${project.$id}`}
                       className={cn(
                         "flex items-center gap-3 p-3 rounded-xl transition-all",
-                        idx === 0 ? "bg-primary text-primary-foreground hover:bg-primary/90" : "hover:bg-accent"
+                        idx === 0 ? "bg-blue-600 text-white hover:bg-blue-700" : "hover:bg-accent"
                       )}
                     >
                       <div className={cn(
                         "flex items-center justify-center w-8 h-8 rounded-lg text-sm font-bold",
-                        idx === 0 ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-foreground"
+                        idx === 0 ? "bg-white/20 text-white" : "bg-muted text-foreground"
                       )}>
                         {idx + 1}
                       </div>
@@ -698,11 +698,11 @@ export const WorkspaceIdClient = () => {
                       <div className="flex-1 min-w-0">
                         <p className={cn(
                           "text-sm font-medium truncate",
-                          idx === 0 ? "text-primary-foreground" : "text-foreground"
+                          idx === 0 ? "text-white" : "text-foreground"
                         )}>{project.name}</p>
                         <p className={cn(
                           "text-xs",
-                          idx === 0 ? "text-primary-foreground/80" : "text-muted-foreground"
+                          idx === 0 ? "text-blue-100" : "text-muted-foreground"
                         )}>
                           {dueSoon > 0 ? `${dueSoon} tasks due soon` : `${projectItems.length} total tasks`}
                         </p>

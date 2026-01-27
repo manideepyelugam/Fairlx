@@ -551,8 +551,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                 )}
                 {can(PERMISSIONS.WORKITEM_CREATE) && (
                   <Button
-                    variant="outline"
                     size="xs"
+                    // Default/Primary variant
                     onClick={() => setIsCreatingInBacklog(true)}
                   >
                     <Plus className="w-3 h-3 mr-0.5" />
@@ -561,8 +561,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                 )}
                 {can(PERMISSIONS.WORKITEM_CREATE) && (
                   <Button
-                    variant="outline"
                     size="xs"
+                    // Default/Primary variant
                     onClick={openCreateTaskModal}
                   >
                     <Plus className="w-3 h-3 mr-0.5" />
@@ -749,7 +749,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                           {sprint.status === SprintStatus.ACTIVE && can(PERMISSIONS.SPRINT_COMPLETE) && (
                             <Button
                               size="xs"
-                              variant="outline"
+                              // Default/Primary variant
                               onClick={() => handleCompleteSprint(sprint.$id)}
                             >
                               <CheckCircle2 className="size-2" />
@@ -1173,7 +1173,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                     </div>
 
                     {can(PERMISSIONS.SPRINT_CREATE) && (
-                      <Button size="sm" variant="outline" onClick={handleCreateSprint}>
+                      <Button size="sm" onClick={handleCreateSprint}>
                         Create sprint
                       </Button>
                     )}
@@ -1246,7 +1246,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                     />
                                   ) : (
                                     <span
-                                      className="flex-1 text-sm text-gray-900 truncate hover:text-blue-600 cursor-text"
+                                      className="flex-1 text-sm text-foreground truncate hover:text-blue-600 cursor-text"
                                       onClick={(e) => handleStartEditWorkItem(item, e)}
                                     >
                                       {item.title}
@@ -1370,8 +1370,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                     >
                                       <SelectValue placeholder="Assignee">
                                         {item.assignees?.[0] ? (
-                                          <div className="flex items-center gap-1">
-                                            <Avatar className="size-4">
+                                          <div className="flex items-center w-[80px] overflow-hidden gap-1">
+                                            <Avatar className="size-4 shrink-0">
                                               <AvatarFallback className="text-[10px]">
                                                 {item.assignees[0].name?.charAt(0).toUpperCase()}
                                               </AvatarFallback>

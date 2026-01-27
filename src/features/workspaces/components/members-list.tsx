@@ -365,7 +365,7 @@ export const MembersList = () => {
               <>
                 <Button
                   size="xs"
-                  variant="outline"
+                  // Default variant is now primary (blue)
                   className="gap-1.5"
                   onClick={() => setAddFromOrgDialogOpen(true)}
                 >
