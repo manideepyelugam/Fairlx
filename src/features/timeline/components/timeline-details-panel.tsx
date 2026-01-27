@@ -44,7 +44,7 @@ export function TimelineDetailsPanel({
   };
 
   return (
-    <div className="w-[400px] border-l bg-white flex flex-col h-full">
+    <div className="w-[400px] border-l bg-card flex flex-col h-full">
       {/* Header */}
       <div className="p-4 border-b space-y-3">
         <div className="flex items-start justify-between">

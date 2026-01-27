@@ -55,45 +55,45 @@ const avoidCases = [
 export const SpacesGuide = () => {
   return (
     <div className="space-y-4">
-      <Card className="border-slate-800 bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 text-slate-50">
+      <Card className="border-border bg-gradient-to-br from-card via-card/80 to-card text-foreground">
         <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
           <div>
             <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-              <Sparkle className="h-4 w-4 text-amber-300" />
+              <Sparkle className="h-4 w-4 text-amber-500" />
               What is a Space?
             </CardTitle>
-            <p className="mt-1 text-sm text-slate-200/80">
+            <p className="mt-1 text-sm text-muted-foreground">
               A high-level container for a department, product line, or client. Spaces keep projects, teams, and workflows neatly separated.
             </p>
           </div>
-          <Badge className="bg-white/10 text-amber-200 border-amber-200/30">Prefixes items (ENG-123)</Badge>
+          <Badge className="bg-primary/10 text-primary border-primary/20">Prefixes items (ENG-123)</Badge>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm">
-            <p className="font-semibold text-white">Great for</p>
+          <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm">
+            <p className="font-semibold text-foreground">Great for</p>
             <div className="mt-2 flex flex-wrap gap-2 text-xs">
               {[
                 "Departments",
                 "Product lines",
                 "Client pods",
               ].map((item) => (
-                <Badge key={item} variant="outline" className="border-white/30 text-white/90">
+                <Badge key={item} variant="outline" className="border-border text-foreground/90">
                   {item}
                 </Badge>
               ))}
             </div>
           </div>
-          <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm">
-            <p className="font-semibold text-white">What it does</p>
-            <ul className="mt-2 space-y-1 text-slate-100/80">
+          <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm">
+            <p className="font-semibold text-foreground">What it does</p>
+            <ul className="mt-2 space-y-1 text-muted-foreground">
               <li>• Prefixes all work (ENG-123)</li>
               <li>• Groups related projects</li>
               <li>• Scopes permissions & visibility</li>
             </ul>
           </div>
-          <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm">
-            <p className="font-semibold text-white">When to pick</p>
-            <ul className="mt-2 space-y-1 text-slate-100/80">
+          <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm">
+            <p className="font-semibold text-foreground">When to pick</p>
+            <ul className="mt-2 space-y-1 text-muted-foreground">
               <li>• Different teams/processes</li>
               <li>• Separate reporting</li>
               <li>• Clear ownership lines</li>
@@ -164,7 +164,7 @@ export const SpacesGuide = () => {
               <div className="text-xs font-semibold text-muted-foreground">Workspace (Your Company)</div>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 {["ENG", "MKT"].map((spaceKey) => (
-                  <div key={spaceKey} className="rounded-lg border bg-white p-3 shadow-sm">
+                  <div key={spaceKey} className="rounded-lg border border-border bg-card p-3 shadow-sm">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-semibold">Space {spaceKey}</p>
@@ -199,28 +199,28 @@ export const SpacesGuide = () => {
               </div>
             </div>
             <div className="flex flex-col gap-3 rounded-xl border bg-muted/40 p-4">
-              <div className="flex items-center gap-2 rounded-lg border bg-white p-3 shadow-sm">
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-card p-3 shadow-sm">
                 <Rocket className="h-5 w-5 text-indigo-600" />
                 <div>
                   <p className="text-sm font-semibold">Spaces speed up onboarding</p>
                   <p className="text-xs text-muted-foreground">New teammates instantly see which work belongs where.</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 rounded-lg border bg-white p-3 shadow-sm">
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-card p-3 shadow-sm">
                 <Workflow className="h-5 w-5 text-emerald-600" />
                 <div>
                   <p className="text-sm font-semibold">Workflows stay scoped</p>
                   <p className="text-xs text-muted-foreground">Each space can have its own workflow rules and reporting.</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 rounded-lg border bg-white p-3 shadow-sm">
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-card p-3 shadow-sm">
                 <ShieldCheck className="h-5 w-5 text-sky-600" />
                 <div>
                   <p className="text-sm font-semibold">Permissioned visibility</p>
                   <p className="text-xs text-muted-foreground">Limit access to sensitive areas without blocking collaboration.</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 rounded-lg border bg-white p-3 shadow-sm">
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-card p-3 shadow-sm">
                 <Users className="h-5 w-5 text-amber-600" />
                 <div>
                   <p className="text-sm font-semibold">Cross-team alignment</p>

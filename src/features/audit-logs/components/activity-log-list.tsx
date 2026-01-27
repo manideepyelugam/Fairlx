@@ -1,9 +1,9 @@
 import { formatDistanceToNow } from "date-fns";
-import { 
+import {
   Activity,
-  FileText, 
-  FolderKanban, 
-  Users, 
+  FileText,
+  FolderKanban,
+  Users,
   Clock,
   Paperclip,
   LayoutGrid,
@@ -11,6 +11,7 @@ import {
   Briefcase,
   Zap
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -55,13 +56,13 @@ const getActivityIcon = (type: ActivityType): IconComponent => {
 const getActivityColor = (action: string) => {
   switch (action) {
     case "created":
-      return "bg-green-100 text-green-700 border-green-300";
+      return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
     case "updated":
-      return "bg-blue-100 text-blue-700 border-blue-300";
+      return "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20";
     case "deleted":
-      return "bg-red-100 text-red-700 border-red-300";
+      return "bg-destructive/10 text-destructive border-destructive/20";
     default:
-      return "bg-gray-100 text-gray-700 border-gray-300";
+      return "bg-muted text-muted-foreground border-border";
   }
 };
 
@@ -78,11 +79,11 @@ export const ActivityLogItem = ({
   const colorClass = getActivityColor(action);
   const initials = userName
     ? userName
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .substring(0, 2)
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .substring(0, 2)
     : "??";
 
   return (
@@ -92,7 +93,7 @@ export const ActivityLogItem = ({
           {initials}
         </AvatarFallback>
       </Avatar>
-      
+
       <div className="flex-1 min-w-0 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-4 flex-wrap">
@@ -105,23 +106,23 @@ export const ActivityLogItem = ({
             >
               {action}
             </Badge>
-           
+
             <span className="text-xs text-muted-foreground flex gap-1 capitalize">
-               <Icon className="h-4 w-4 text-muted-foreground" />
+              <Icon className="h-4 w-4 text-muted-foreground" />
               {type}
             </span>
           </div>
-          
+
           <span className="text-xs text-muted-foreground whitespace-nowrap">
             {formatDistanceToNow(new Date(timestamp), { addSuffix: true })}
           </span>
         </div>
-        
+
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm text-foreground font-medium">
             &quot;{entityName}&quot;
           </span>
-          
+
           {(metadata?.status && typeof metadata.status === 'string') ? (
             <>
               <span className="text-xs text-muted-foreground">•</span>
@@ -131,27 +132,28 @@ export const ActivityLogItem = ({
               </Badge>
             </>
           ) : null}
-          
+
           {(metadata?.priority && typeof metadata.priority === 'string') ? (
             <>
               <span className="text-xs text-muted-foreground">•</span>
               <span className="text-xs text-muted-foreground">Priority:</span>
-              <Badge 
-                variant="secondary" 
-                className={`text-xs font-medium ${
-                  metadata.priority === 'HIGH' || metadata.priority === 'URGENT' 
-                    ? 'bg-red-100 text-red-700' 
+              <Badge
+                variant="secondary"
+                className={cn(
+                  "text-xs font-medium",
+                  metadata.priority === 'HIGH' || metadata.priority === 'URGENT'
+                    ? 'bg-destructive/10 text-destructive border-destructive/20'
                     : metadata.priority === 'MEDIUM'
-                    ? 'bg-yellow-100 text-yellow-700'
-                    : 'bg-gray-100 text-gray-700'
-                }`}
+                      ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                      : 'bg-muted text-muted-foreground border-border'
+                )}
               >
                 {String(metadata.priority)}
               </Badge>
             </>
           ) : null}
         </div>
-        
+
         {userEmail && (
           <div className="text-xs text-muted-foreground">
             {userEmail}

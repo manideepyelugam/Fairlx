@@ -26,30 +26,30 @@ const statusConfig = {
   [SprintStatus.PLANNED]: {
     label: "Planned",
     icon: Clock,
-    bgColor: "bg-slate-50 dark:bg-slate-800/50",
-    badgeClass: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600",
+    bgColor: "bg-muted/30",
+    badgeClass: "bg-muted text-muted-foreground border-border",
     accentColor: "bg-slate-400",
   },
   [SprintStatus.ACTIVE]: {
     label: "Active",
     icon: Zap,
-    bgColor: "bg-blue-50/50 dark:bg-blue-950/20",
-    badgeClass: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border-blue-200 dark:border-blue-700",
+    bgColor: "bg-blue-500/5 dark:bg-blue-500/10",
+    badgeClass: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
     accentColor: "bg-blue-500",
   },
   [SprintStatus.COMPLETED]: {
     label: "Completed",
     icon: CheckCircle2,
-    bgColor: "bg-green-50/50 dark:bg-green-950/20",
-    badgeClass: "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-green-200 dark:border-green-700",
-    accentColor: "bg-green-500",
+    bgColor: "bg-emerald-500/5 dark:bg-emerald-500/10",
+    badgeClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+    accentColor: "bg-emerald-500",
   },
   [SprintStatus.CANCELLED]: {
     label: "Cancelled",
     icon: XCircle,
-    bgColor: "bg-red-50/50 dark:bg-red-950/20",
-    badgeClass: "bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-300 border-red-200 dark:border-red-700",
-    accentColor: "bg-red-500",
+    bgColor: "bg-destructive/5",
+    badgeClass: "bg-destructive/10 text-destructive border-destructive/20",
+    accentColor: "bg-destructive",
   },
 };
 
@@ -89,11 +89,11 @@ export const SprintCard = ({
 
   return (
     <Card className={cn(
-      "border border-slate-200 dark:border-slate-700 overflow-hidden transition-all duration-200",
-      "hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm",
+      "border border-border overflow-hidden transition-all duration-200",
+      "hover:border-border/80 hover:shadow-sm",
       config.bgColor
     )}>
-      
+
       <CardHeader className={`${isExpanded ? "pb-1" : "pb-4"} pt-3 px-4`}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
@@ -112,10 +112,10 @@ export const SprintCard = ({
                   )}
                 />
               </Button>
-              <CardTitle className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+              <CardTitle className="text-sm font-semibold text-foreground truncate">
                 {sprint.name}
               </CardTitle>
-              <Badge 
+              <Badge
                 variant="outline"
                 className={cn(
                   "h-5 px-2 text-[10px] font-medium border flex items-center gap-1",
@@ -138,16 +138,16 @@ export const SprintCard = ({
                   </span>
                 </div>
               )}
-              
+
               {/* Remaining time badge - only for active sprints */}
               {sprint.status === SprintStatus.ACTIVE && remaining && (
-                <Badge 
-                  variant="outline" 
+                <Badge
+                  variant="outline"
                   className={cn(
                     "h-5 px-2 text-[10px] font-medium flex items-center gap-1",
-                    remaining.overdue 
-                      ? "bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-700" 
-                      : remaining.days <= 3 
+                    remaining.overdue
+                      ? "bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-700"
+                      : remaining.days <= 3
                         ? "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-700"
                         : "bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-700"
                   )}
@@ -165,8 +165,8 @@ export const SprintCard = ({
 
               {/* Points */}
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <TrendingUp className="size-3 text-slate-400" />
-                <span className="font-medium text-slate-600 dark:text-slate-300">{sprint.completedPoints || 0}</span>
+                <TrendingUp className="size-3 text-muted-foreground/60" />
+                <span className="font-medium text-foreground">{sprint.completedPoints || 0}</span>
                 <span>/</span>
                 <span>{sprint.totalPoints || 0} pts</span>
               </div>
@@ -175,7 +175,7 @@ export const SprintCard = ({
               {(sprint.totalPoints ?? 0) > 0 && (
                 <div className="flex items-center gap-2 ml-auto">
                   <div className="w-20 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className={cn(
                         "h-full rounded-full transition-all duration-300",
                         completionPercentage === 100 ? "bg-green-500" : "bg-blue-500"
@@ -195,7 +195,7 @@ export const SprintCard = ({
 
             {/* Sprint goal - optional, show when expanded */}
             {isExpanded && sprint.goal && (
-              <p className="mt-2 ml-8 text-xs text-muted-foreground italic line-clamp-2 bg-white/50 dark:bg-slate-800/50 rounded px-2 py-1.5 border border-slate-100 dark:border-slate-700">
+              <p className="mt-2 ml-8 text-xs text-muted-foreground italic line-clamp-2 bg-muted/30 rounded px-2 py-1.5 border border-border">
                 &ldquo;{sprint.goal}&rdquo;
               </p>
             )}
@@ -210,7 +210,7 @@ export const SprintCard = ({
         <CardContent className="space-y-3 pt-3 pb-4 px-4">
           {/* Divider */}
           <div className="h-px bg-slate-200 dark:bg-slate-700 -mx-4" />
-          
+
           {/* Create Work Item Bar */}
           <CreateWorkItemBar
             workspaceId={workspaceId}

@@ -132,7 +132,7 @@ export const GitHubIntegrationClient = () => {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-green-500/10 mb-4">
             <Github className="h-8 w-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-gray-900 to-gray-600 dark:from-gray-100 dark:to-gray-400 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
             GitHub Integration
           </h1>
           <p className="text-base text-muted-foreground max-w-2xl mx-auto">
@@ -157,11 +157,11 @@ export const GitHubIntegrationClient = () => {
             <div className="relative flex justify-center lg:justify-end">
               <div className="group relative w-full max-w-sm">
                 <div className="absolute -inset-1  rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-300" />
-                <Card className="relative border-2 border-slate-400/20 hover:border-slate-500/40 transition-all duration-300 shadow-lg hover:shadow-xl">
+                <Card className="relative border-2 border-border hover:border-border/80 transition-all duration-300 shadow-lg hover:shadow-xl">
                   <CardHeader className="pb-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-slate-900/10 dark:bg-slate-100/10 rounded-xl flex items-center justify-center">
-                        <Github className="h-6 w-6 text-slate-900 dark:text-slate-100" />
+                      <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center">
+                        <Github className="h-6 w-6 text-foreground" />
                       </div>
                       <div>
                         <CardTitle className="text-lg">GitHub</CardTitle>

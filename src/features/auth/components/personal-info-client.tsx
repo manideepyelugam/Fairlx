@@ -93,7 +93,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
   return (
     <div className="h-full w-full p-6">
       <div className="max-w-4xl mx-auto space-y-6">
-       
+
 
 
         {/* Profile Picture Section */}
@@ -106,11 +106,11 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
           </CardHeader>
           <CardContent className="flex items-center gap-6">
             <div className="relative">
-              <Avatar className="size-24 border-2 border-neutral-300">
+              <Avatar className="size-24 border-2 border-border">
                 {profileImageUrl && (
                   <AvatarImage src={profileImageUrl} alt={initialData.name} />
                 )}
-                <AvatarFallback className="bg-neutral-200 text-3xl font-medium text-neutral-500">
+                <AvatarFallback className="bg-muted text-3xl font-medium text-muted-foreground">
                   {avatarFallback}
                 </AvatarFallback>
               </Avatar>
@@ -176,7 +176,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
                 id="email"
                 value={initialData.email}
                 disabled
-                className="bg-neutral-50"
+                className="bg-muted"
               />
               <p className="text-xs text-muted-foreground">
                 Email address cannot be changed
@@ -283,7 +283,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
                   type="password"
                   value="••••••••"
                   disabled
-                  className="bg-neutral-50"
+                  className="bg-muted"
                 />
                 <Button 
                   variant="outline"
@@ -325,7 +325,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
               <Input
                 value={initialData.registration || "Email"}
                 disabled
-                className="bg-neutral-50 capitalize"
+                className="bg-muted capitalize"
               />
             </div>
           </CardContent>

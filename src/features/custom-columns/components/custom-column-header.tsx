@@ -90,16 +90,16 @@ export const CustomColumnHeader = ({
               style={{ color: customColumn.color }}
             />
           )}
-          <h2 className="text-sm font-semibold text-gray-700">{customColumn.name}</h2>
+          <h2 className="text-sm font-semibold text-foreground">{customColumn.name}</h2>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => open()} variant="ghost" size="icon" className="h-6 w-6 hover:bg-gray-100">
-            <PlusIcon className="h-4 w-4 text-gray-500" />
+          <Button onClick={() => open()} variant="ghost" size="icon" className="h-6 w-6 hover:bg-accent">
+            <PlusIcon className="h-4 w-4 text-muted-foreground" />
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-gray-100">
-                <MoreHorizontalIcon className="h-4 w-4 text-gray-500" />
+              <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-accent">
+                <MoreHorizontalIcon className="h-4 w-4 text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">

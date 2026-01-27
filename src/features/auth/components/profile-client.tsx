@@ -208,11 +208,11 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
                 disabled={isUploading}
               />
               <label htmlFor="profile-image-upload" className="cursor-pointer">
-                <Avatar className="size-24 border-2 border-neutral-300 transition-all group-hover:border-primary">
+                <Avatar className="size-24 border-2 border-border transition-all group-hover:border-primary">
                   {profileImageUrl && (
                     <AvatarImage src={profileImageUrl} alt={initialData.name} />
                   )}
-                  <AvatarFallback className="bg-neutral-200 text-3xl font-medium text-neutral-500">
+                  <AvatarFallback className="bg-muted text-3xl font-medium text-muted-foreground">
                     {avatarFallback}
                   </AvatarFallback>
                 </Avatar>
@@ -229,8 +229,8 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
 
             <div className="flex flex-col ">
               <h1 className="text-[22px] font-semibold">{initialData.name}</h1>
-              <p className="text-[13px]">{designation || role || "Team Member"}</p>
-              <p className="text-[13px]">{initialData.email}</p>
+              <p className="text-[13px] text-muted-foreground">{designation || role || "Team Member"}</p>
+              <p className="text-[13px] text-muted-foreground">{initialData.email}</p>
             </div>
           </div>
         </div>
@@ -267,7 +267,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
                 id="email"
                 value={initialData.email}
                 disabled
-                className="bg-neutral-50"
+                className="bg-muted"
               />
               <p className="text-xs text-muted-foreground">
                 Email address cannot be changed
@@ -327,7 +327,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   disabled={!isProfessionalEditing || isUpdating}
                   placeholder="+91 1234567890"
-                  className={!isProfessionalEditing ? "bg-neutral-50" : ""}
+                  className={!isProfessionalEditing ? "bg-muted" : ""}
                 />
               </div>
 
@@ -343,7 +343,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
                   onChange={(e) => setLinkedinUrl(e.target.value)}
                   disabled={!isProfessionalEditing || isUpdating}
                   placeholder="https://linkedin.com/in/username"
-                  className={!isProfessionalEditing ? "bg-neutral-50" : ""}
+                  className={!isProfessionalEditing ? "bg-muted" : ""}
                 />
               </div>
 
@@ -359,7 +359,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
                   onChange={(e) => setPortfolioUrl(e.target.value)}
                   disabled={!isProfessionalEditing || isUpdating}
                   placeholder="https://yourportfolio.com"
-                  className={!isProfessionalEditing ? "bg-neutral-50" : ""}
+                  className={!isProfessionalEditing ? "bg-muted" : ""}
                 />
               </div>
 
@@ -374,7 +374,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
                   onValueChange={(v) => setWorkingDomain(v as WorkingDomain)}
                   disabled={!isProfessionalEditing || isUpdating}
                 >
-                  <SelectTrigger className={!isProfessionalEditing ? "bg-neutral-50" : ""}>
+                  <SelectTrigger className={!isProfessionalEditing ? "bg-muted" : ""}>
                     <SelectValue placeholder="Select your domain" />
                   </SelectTrigger>
                   <SelectContent>
@@ -398,7 +398,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
                   onValueChange={(v) => setRole(v as RoleOption)}
                   disabled={!isProfessionalEditing || isUpdating}
                 >
-                  <SelectTrigger className={!isProfessionalEditing ? "bg-neutral-50" : ""}>
+                  <SelectTrigger className={!isProfessionalEditing ? "bg-muted" : ""}>
                     <SelectValue placeholder="Select your role" />
                   </SelectTrigger>
                   <SelectContent>
@@ -422,7 +422,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
                   onValueChange={(v) => setDesignation(v as DesignationOption)}
                   disabled={!isProfessionalEditing || isUpdating}
                 >
-                  <SelectTrigger className={!isProfessionalEditing ? "bg-neutral-50" : ""}>
+                  <SelectTrigger className={!isProfessionalEditing ? "bg-muted" : ""}>
                     <SelectValue placeholder="Select your designation" />
                   </SelectTrigger>
                   <SelectContent>
@@ -519,11 +519,11 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Delete Account Section */}
-            <div className="p-4 border border-red-200 rounded-lg bg-red-50">
+            <div className="p-4 border border-destructive/20 rounded-lg bg-destructive/10">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-red-900">Delete Account</p>
-                  <p className="text-xs text-red-700">
+                  <p className="text-sm font-medium text-destructive">Delete Account</p>
+                  <p className="text-xs text-muted-foreground">
                     Permanently delete your account and all associated data
                   </p>
                 </div>

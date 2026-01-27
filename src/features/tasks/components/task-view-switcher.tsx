@@ -261,11 +261,11 @@ export const TaskViewSwitcher = ({
     <Tabs
       defaultValue={view}
       onValueChange={setView}
-      className="flex-1 w-full border rounded-lg"
+      className="flex-1 w-full border-border rounded-lg bg-card"
     >
       <div className="h-full flex flex-col overflow-auto ">
         <div className="flex flex-col gap-y-2  px-4 py-6 lg:flex-row justify-between items-center">
-          <TabsList className="w-full lg:w-auto">
+          <TabsList className="w-full lg:w-auto bg-muted/50 border border-border">
             <TabsTrigger className="h-8 w-full text-xs lg:w-auto" value="dashboard">
               {showMyTasksOnly ? "My Space" : "Dashboard"}
             </TabsTrigger>
@@ -298,7 +298,7 @@ export const TaskViewSwitcher = ({
               onClick={() => setCompleteSprintOpen(true)}
               size="xs"
               variant="outline"
-              className="w-full font-medium px-3 py-2 border-green-200 bg-green-50 text-green-700 hover:bg-green-100 hover:border-green-300 lg:w-auto"
+              className="w-full font-medium px-3 py-2 border-emerald-500/30 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 hover:border-emerald-500/40 lg:w-auto dark:text-emerald-400"
             >
               Complete Sprint {setupState.activeSprint.name}
             </Button>

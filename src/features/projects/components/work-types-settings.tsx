@@ -149,9 +149,9 @@ export const WorkTypesSettings = ({ types = [], onChange }: WorkTypesSettingsPro
                                             <div
                                                 ref={provided.innerRef}
                                                 {...provided.draggableProps}
-                                                className="flex items-center gap-3 p-3 bg-white border rounded-lg group"
+                                                className="flex items-center gap-3 p-3 bg-card border border-border rounded-lg group"
                                             >
-                                                <div {...provided.dragHandleProps} className="text-gray-400 hover:text-gray-600 cursor-move">
+                                                <div {...provided.dragHandleProps} className="text-muted-foreground hover:text-foreground cursor-move">
                                                     <GripVertical className="size-4" />
                                                 </div>
                                                 <div

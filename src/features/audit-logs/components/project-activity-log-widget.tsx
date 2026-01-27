@@ -63,9 +63,9 @@ export const ProjectActivityLogWidget = ({
 
   if (isLoading) {
     return (
-      <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+      <Card className="p-5 bg-card border border-border shadow-sm">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+          <h3 className="text-sm font-medium tracking-tight text-foreground flex items-center gap-2">
             <Clock className="h-4 w-4" />
             Recent Activity
           </h3>
@@ -81,14 +81,14 @@ export const ProjectActivityLogWidget = ({
 
   if (error || !data) {
     return (
-      <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+      <Card className="p-5 bg-card border border-border shadow-sm">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+          <h3 className="text-sm font-medium tracking-tight text-foreground flex items-center gap-2">
             <Clock className="h-4 w-4" />
             Recent Activity
           </h3>
         </div>
-        <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-8">
+        <p className="text-sm text-muted-foreground text-center py-8">
           Failed to load activity logs
         </p>
       </Card>
@@ -98,22 +98,22 @@ export const ProjectActivityLogWidget = ({
   const activities = data.data || [];
 
   return (
-    <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+    <Card className="p-5 bg-card border border-border shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+        <h3 className="text-sm font-medium tracking-tight text-foreground flex items-center gap-2">
           <Clock className="h-4 w-4" />
           Recent Activity
         </h3>
         <Link
           href={`/workspaces/${workspaceId}/projects/${projectId}/audit-logs`}
         >
-          <Button variant="ghost" size="sm" className="h-7 w-7 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-0">
-            <ExternalLink className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
+          <Button variant="ghost" size="sm" className="h-7 w-7 hover:bg-accent p-0">
+            <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
           </Button>
         </Link>
       </div>
       {activities.length === 0 ? (
-        <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-8">
+        <p className="text-sm text-muted-foreground text-center py-8">
           No activity yet
         </p>
       ) : (
@@ -121,9 +121,9 @@ export const ProjectActivityLogWidget = ({
           {activities.map((activity) => (
             <div
               key={activity.id}
-              className="flex items-start gap-3 p-2 rounded-lg bg-slate-50 dark:bg-slate-700/50 hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors"
+              className="flex items-start gap-3 p-2 rounded-lg bg-muted hover:bg-accent transition-colors"
             >
-              <div className="flex-shrink-0 mt-0.5 text-blue-600 dark:text-blue-400">
+              <div className="flex-shrink-0 mt-0.5 text-primary">
                 {getActivityIcon(activity.type)}
               </div>
               <div className="flex-1 min-w-0">
@@ -137,17 +137,17 @@ export const ProjectActivityLogWidget = ({
                         tooltipText={activity.userName}
                       />
                     )}
-                    <p className="text-sm font-medium truncate text-slate-900 dark:text-white">
+                    <p className="text-sm font-medium truncate text-foreground">
                       {activity.userName || "Someone"}
                     </p>
                   </div>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">
                     {formatDistanceToNow(new Date(activity.timestamp), {
                       addSuffix: true,
                     })}
                   </span>
                 </div>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   <span className={getActionColor(activity.action)}>
                     {activity.action}
                   </span>{" "}

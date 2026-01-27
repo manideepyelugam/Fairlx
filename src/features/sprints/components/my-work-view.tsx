@@ -181,7 +181,7 @@ export const MyWorkView = () => {
   // Compute visible board columns
   const visibleColumns = useMemo((): ColumnInfo[] => {
     const columns: ColumnInfo[] = [];
-    const addedStatuses = new Set<string>();
+    const addedStatuses = new Set<string>(defaultBoardOrder);
 
     // Get all statuses that have items
     const statusesWithItems = Object.keys(itemsByStatus).filter(
@@ -318,7 +318,7 @@ export const MyWorkView = () => {
 
         {/* Stats Cards - Beautiful card design */}
         <div className="grid grid-cols-5 gap-3 mb-8">
-          <div className="relative overflow-hidden rounded-lg border bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-3">
+          <div className="relative overflow-hidden rounded-lg border bg-muted/30 dark:bg-muted/10 p-3 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Total Items</p>
@@ -328,59 +328,54 @@ export const MyWorkView = () => {
                 <Layers className="size-5 text-primary" />
               </div>
             </div>
-            <div className="absolute -bottom-2 -right-2 size-16 rounded-full bg-primary/5" />
           </div>
 
-          <div className="relative overflow-hidden rounded-lg border bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-950/30 dark:to-amber-950/30 p-3">
+          <div className="relative overflow-hidden rounded-lg border bg-yellow-500/10 dark:bg-yellow-500/5 p-3 shadow-sm border-yellow-500/20">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">In Progress</p>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium text-yellow-600 dark:text-yellow-400">In Progress</p>
                 <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mt-0.5">{stats.inProgress}</p>
               </div>
               <div className="flex items-center justify-center size-10 rounded-full bg-yellow-500/10">
                 <CircleDotDashedIcon className="size-5 text-yellow-500" />
               </div>
             </div>
-            <div className="absolute -bottom-2 -right-2 size-16 rounded-full bg-yellow-500/5" />
           </div>
 
-          <div className="relative overflow-hidden rounded-lg border bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-950/30 dark:to-green-950/30 p-3">
+          <div className="relative overflow-hidden rounded-lg border bg-emerald-500/10 dark:bg-emerald-500/5 p-3 shadow-sm border-emerald-500/20">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Completed</p>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium text-emerald-600 dark:text-emerald-400">Completed</p>
                 <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{stats.done}</p>
               </div>
               <div className="flex items-center justify-center size-10 rounded-full bg-emerald-500/10">
                 <CheckCircle2 className="size-5 text-emerald-500" />
               </div>
             </div>
-            <div className="absolute -bottom-2 -right-2 size-16 rounded-full bg-emerald-500/5" />
           </div>
 
-          <div className="relative overflow-hidden rounded-lg border bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 p-3">
+          <div className="relative overflow-hidden rounded-lg border bg-orange-500/10 dark:bg-orange-500/5 p-3 shadow-sm border-orange-500/20">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Flagged</p>
+                <p className="text-[10px] uppercase tracking-wide font-medium text-orange-600 dark:text-orange-400">Flagged</p>
                 <p className="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-0.5">{stats.flagged}</p>
               </div>
               <div className="flex items-center justify-center size-10 rounded-full bg-orange-500/10">
                 <Flag className="size-5 text-orange-500" />
               </div>
             </div>
-            <div className="absolute -bottom-2 -right-2 size-16 rounded-full bg-orange-500/5" />
           </div>
 
-          <div className="relative overflow-hidden rounded-lg border bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/30 dark:to-rose-950/30 p-3">
+          <div className="relative overflow-hidden rounded-lg border bg-destructive/10 dark:bg-destructive/5 p-3 shadow-sm border-destructive/20">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Overdue</p>
-                <p className="text-2xl font-bold text-red-600 dark:text-red-400 mt-0.5">{stats.overdue}</p>
+                <p className="text-[10px] uppercase tracking-wide font-medium text-destructive">Overdue</p>
+                <p className="text-2xl font-bold text-destructive mt-0.5">{stats.overdue}</p>
               </div>
-              <div className="flex items-center justify-center size-10 rounded-full bg-red-500/10">
-                <AlertCircle className="size-5 text-red-500" />
+              <div className="flex items-center justify-center size-10 rounded-full bg-destructive/10">
+                <AlertCircle className="size-5 text-destructive" />
               </div>
             </div>
-            <div className="absolute -bottom-2 -right-2 size-16 rounded-full bg-red-500/5" />
           </div>
         </div>
 
@@ -474,7 +469,7 @@ export const MyWorkView = () => {
                 return (
                   <div
                     key={column.id}
-                    className="flex-shrink-0 w-[280px] bg-gray-50 dark:bg-muted/30 rounded-xl flex flex-col h-[500px]"
+                    className="flex-shrink-0 w-[280px] bg-muted/30 rounded-xl flex flex-col h-[500px]"
                   >
                     {/* Column Header */}
                     <div className="px-3 py-2.5 flex items-center justify-between rounded-t-xl">
@@ -586,16 +581,16 @@ const typeColors: Record<string, string> = {
 };
 
 const priorityColors: Record<string, string> = {
-  LOW: "text-gray-500 bg-gray-100",
-  MEDIUM: "text-yellow-600 bg-yellow-50",
-  HIGH: "text-orange-600 bg-orange-50",
-  URGENT: "text-red-600 bg-red-50",
+  LOW: "text-muted-foreground bg-muted",
+  MEDIUM: "text-yellow-600 bg-yellow-500/10 dark:text-yellow-400",
+  HIGH: "text-orange-600 bg-orange-500/10 dark:text-orange-400",
+  URGENT: "text-destructive bg-destructive/10",
 };
 
 const MyWorkKanbanCard = ({ workItem, isDragging }: MyWorkKanbanCardProps) => {
   return (
     <div className={cn(
-      "bg-white dark:bg-card rounded-xl border shadow-sm hover:shadow-md transition-shadow cursor-grab",
+      "bg-card rounded-xl border shadow-sm hover:shadow-md transition-shadow cursor-grab",
       isDragging && "shadow-lg ring-2 ring-primary/20 rotate-2"
     )}>
       <div className="p-3">

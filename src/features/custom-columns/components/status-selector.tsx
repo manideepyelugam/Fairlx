@@ -47,7 +47,7 @@ export const allIcons = {
 };
 
 export const statusIconMap: Record<TaskStatus, React.ReactNode> = {
-  [TaskStatus.TODO]: <CircleIcon className="size-[18px] text-gray-400" />,
+  [TaskStatus.TODO]: <CircleIcon className="size-[18px] text-muted-foreground" />,
   [TaskStatus.ASSIGNED]: (
     <CircleIcon className="size-[18px] text-red-400" />
   ),

@@ -24,7 +24,7 @@ import { MemberAvatar } from "@/features/members/components/member-avatar";
 const MiniBarChart = ({ value, max, variant = "default" }: { value: number; max: number; variant?: "default" | "dotted" | "blocks" }) => {
   const bars = 12
   const filledBars = Math.round((value / Math.max(max, 1)) * bars)
-  
+
   // dotted variant - used for pending/warning states (amber)
   if (variant === "dotted") {
     return (
@@ -39,7 +39,7 @@ const MiniBarChart = ({ value, max, variant = "default" }: { value: number; max:
       </div>
     )
   }
-  
+
   // blocks variant - used for completed/success states (emerald)
   if (variant === "blocks") {
     return (
@@ -53,7 +53,7 @@ const MiniBarChart = ({ value, max, variant = "default" }: { value: number; max:
       </div>
     )
   }
-  
+
   // default variant - neutral/black for totals
   return (
     <div className="flex items-end gap-0.5 h-6">
@@ -77,7 +77,7 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
   const workspaceId = useWorkspaceId();
   const projectId = useProjectId();
   const { data: membersData } = useGetMembers({ workspaceId });
-  
+
   const members = useMemo(() => membersData?.documents ?? [], [membersData?.documents]);
 
   // Calculate analytics from real tasks data
@@ -112,7 +112,7 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
     const now = new Date();
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May'];
     const currentMonth = now.getMonth();
-    
+
     return months.map((month, idx) => {
       const monthIndex = (currentMonth - 4 + idx + 12) % 12;
       const monthItems = tasks.filter(t => {
@@ -120,7 +120,7 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
         return createdDate.getMonth() === monthIndex;
       });
       const completedMonthItems = monthItems.filter(t => t.status === TaskStatus.DONE);
-      
+
       return {
         name: month,
         total: monthItems.length,
@@ -133,10 +133,10 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _workloadDistribution = useMemo(() => {
     const memberWorkload = members.map(member => {
-      const memberTasks = tasks.filter(t => 
+      const memberTasks = tasks.filter(t =>
         t.assigneeId === member.$id || t.assigneeIds?.includes(member.$id)
       );
-      const completedTasks = memberTasks.filter(t => 
+      const completedTasks = memberTasks.filter(t =>
         t.status === TaskStatus.DONE
       ).length;
 
@@ -184,7 +184,7 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
           id: task.$id,
           title: task.name || task.title,
           status: task.status === TaskStatus.DONE ? "Completed" :
-                  task.status === TaskStatus.IN_PROGRESS || task.status === TaskStatus.IN_REVIEW ? "In Progress" : "To Do",
+            task.status === TaskStatus.IN_PROGRESS || task.status === TaskStatus.IN_REVIEW ? "In Progress" : "To Do",
           assignee: member?.name || "Unassigned",
           assigneeImage: member?.profileImageUrl,
           priority: task.priority || "MEDIUM",
@@ -197,10 +197,10 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _contributionData = useMemo(() => {
     return members.map(member => {
-      const memberTasks = tasks.filter(t => 
+      const memberTasks = tasks.filter(t =>
         t.assigneeId === member.$id || t.assigneeIds?.includes(member.$id)
       );
-      const completedTasks = memberTasks.filter(t => 
+      const completedTasks = memberTasks.filter(t =>
         t.status === TaskStatus.DONE
       ).length;
 
@@ -236,7 +236,7 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
       { id: "inProgress", name: "In Progress", value: inProgress, color: "#eab308" },
       { id: "inReview", name: "In Review", value: inReview, color: "#3b82f6" },
       { id: "todo", name: "To Do", value: todo, color: "#2762f3" },
-       { id: "assigned", name: "Assigned", value: assigned, color: "#f87171" },
+      { id: "assigned", name: "Assigned", value: assigned, color: "#f87171" },
     ].filter(s => s.value > 0);
   }, [tasks]);
 
@@ -245,240 +245,237 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
       <div className="max-w-[1600px] mx-auto">
         {/* Main Content - Full Width */}
         <div className="space-y-4">
-            {/* Top Stats Row */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* Total Task Card */}
-              <Card className="relative overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-slate-400 dark:bg-slate-500" />
-                <div className="p-4 pl-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Tasks</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
-                      <ArrowUpRight className="h-3.5 w-3.5 text-slate-400" />
-                    </Button>
-                  </div>
-                  <div className="flex items-end justify-between">
-                    <span className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">{analytics.totalTasks}</span>
-                    <MiniBarChart value={analytics.totalTasks} max={analytics.totalTasks + 50} variant="default" />
-                  </div>
+          {/* Top Stats Row */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Total Task Card */}
+            <Card className="relative overflow-hidden bg-card border border-border shadow-sm hover:shadow-md transition-shadow">
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-slate-400 dark:bg-slate-500" />
+              <div className="p-4 pl-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-medium text-muted-foreground">Total Tasks</span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg hover:bg-muted">
+                    <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/70" />
+                  </Button>
                 </div>
-              </Card>
-
-              {/* Pending Task Card */}
-              <Card className="relative overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500" />
-                <div className="p-4 pl-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Pending Tasks</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
-                      <ArrowUpRight className="h-3.5 w-3.5 text-slate-400" />
-                    </Button>
-                  </div>
-                  <div className="flex items-end justify-between">
-                    <span className="text-3xl font-semibold tracking-tight text-amber-600 dark:text-amber-400">{analytics.pendingTasks}</span>
-                    <MiniBarChart value={analytics.pendingTasks} max={analytics.totalTasks} variant="dotted" />
-                  </div>
+                <div className="flex items-end justify-between">
+                  <span className="text-3xl font-semibold tracking-tight text-foreground">{analytics.totalTasks}</span>
+                  <MiniBarChart value={analytics.totalTasks} max={analytics.totalTasks + 50} variant="default" />
                 </div>
-              </Card>
-
-              {/* Completed Task Card */}
-              <Card className="relative overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500" />
-                <div className="p-4 pl-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Completed Tasks</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
-                      <ArrowUpRight className="h-3.5 w-3.5 text-slate-400" />
-                    </Button>
-                  </div>
-                  <div className="flex items-end justify-between">
-                    <span className="text-3xl font-semibold tracking-tight text-emerald-600 dark:text-emerald-400">{analytics.completedTasks}</span>
-                    <MiniBarChart value={analytics.completedTasks} max={analytics.totalTasks} variant="blocks" />
-                  </div>
-                </div>
-              </Card>
-
-              {/* Flagged Task Card */}
-              <Card className="relative overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-rose-500" />
-                <div className="p-4 pl-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Flagged</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
-                      <Flag className="h-3.5 w-3.5 text-slate-400" />
-                    </Button>
-                  </div>
-                  <div className="flex items-end justify-between">
-                    <span className="text-3xl font-semibold tracking-tight text-rose-600 dark:text-rose-400">{analytics.flaggedTasks}</span>
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                      <Clock className="h-3 w-3 text-slate-400" />
-                      <span>{analytics.overdueTasks} overdue</span>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            </div>
-
-            {/* Charts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Status Overview Pie Chart */}
-              <Card className="p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Status Overview</h3>
-                </div>
-                {statusOverview.length > 0 ? (
-                  <>
-                    <div className="h-[230px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <RechartsPieChart>
-                          <Pie
-                            data={statusOverview}
-                            dataKey="value"
-                            nameKey="name"
-                            cx="50%"
-                            cy="50%"
-                            outerRadius={80}
-                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                          >
-                            {statusOverview.map((entry) => (
-                              <Cell key={entry.id} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip 
-                            contentStyle={{ 
-                              backgroundColor: 'white', 
-                              border: '1px solid #e5e7eb',
-                              borderRadius: '8px',
-                              fontSize: '12px'
-                            }}
-                          />
-                        </RechartsPieChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="mt-4 flex gap-8">
-                      {statusOverview.map((status) => (
-                        <div key={status.id} className="flex items-center gap-1.5">
-                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: status.color }} />
-                          <span className="text-[11px] text-slate-600 dark:text-slate-400 truncate">{status.name}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <div className="h-[200px] flex items-center justify-center text-sm text-slate-500 dark:text-slate-400">
-                    No task data available yet
-                  </div>
-                )}
-              </Card>
-
-             
-
-                <ProjectActivityLogWidget 
-              workspaceId={workspaceId} 
-              projectId={projectId}
-              limit={6}
-            />
-            </div>
-
-            {/* Task List Table */}
-            <Card className="p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Recent Tasks</h3>
-                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-slate-100 dark:hover:bg-slate-800">
-                  <MoreHorizontal className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                </Button>
-              </div>
-              
-              {/* Table Header */}
-              <div className="grid grid-cols-12 gap-4 pb-3 border-b border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-400">
-                <div className="col-span-5">Name</div>
-                <div className="col-span-3">Time</div>
-                <div className="col-span-2">Status</div>
-                <div className="col-span-2">Priority</div>
-              </div>
-
-              {/* Table Body */}
-              <div className="divide-y divide-slate-100 dark:divide-slate-700">
-                {recentTasks.length > 0 ? (
-                  recentTasks.map((task) => (
-                    <div
-                      key={task.id}
-                      className="grid grid-cols-12 gap-4 py-3 items-center hover:bg-slate-50 dark:hover:bg-slate-700/50 -mx-5 px-5 transition-colors"
-                    >
-                      <div className="col-span-5 flex items-center gap-3">
-                        <MemberAvatar 
-                          name={task.assignee} 
-                          imageUrl={task.assigneeImage}
-                          className="h-8 w-8" 
-                        />
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate text-slate-900 dark:text-white">{task.assignee}</p>
-                          <p className="text-xs text-slate-600 dark:text-slate-400 truncate">{task.title}</p>
-                        </div>
-                      </div>
-                      <div className="col-span-3">
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                          {task.dueDate ? format(task.dueDate, 'MMM d') : '—'}
-                        </p>
-                      </div>
-                      <div className="col-span-2">
-                        <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
-                          task.status === "Completed" 
-                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400" 
-                            : task.status === "In Progress"
-                            ? "bg-yellow-100 text-amber-600 dark:bg-yellow-900/30 dark:text-amber-200"
-                            : "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${
-                            task.status === "Completed" ? "bg-emerald-600" : 
-                            task.status === "In Progress" ? "bg-amber-600" : "bg-slate-400"
-                          }`} />
-                          {task.status}
-                        </span>
-                      </div>
-                      <div className="col-span-2">
-                        <span className={`text-xs font-medium px-2 py-1 rounded ${
-                          task.priority === "URGENT" || task.priority === "HIGH" 
-                            ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200" 
-                            : task.priority === "MEDIUM"
-                            ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-700 dark:text-yellow-100"
-                            : "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200"
-                        }`}>
-                          {task.priority}
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
-                    No tasks yet. Create your first task to get started.
-                  </div>
-                )}
               </div>
             </Card>
 
-         
+            {/* Pending Task Card */}
+            <Card className="relative overflow-hidden bg-card border border-border shadow-sm hover:shadow-md transition-shadow">
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500" />
+              <div className="p-4 pl-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-medium text-muted-foreground">Pending Tasks</span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg hover:bg-muted">
+                    <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/70" />
+                  </Button>
+                </div>
+                <div className="flex items-end justify-between">
+                  <span className="text-3xl font-semibold tracking-tight text-amber-500">{analytics.pendingTasks}</span>
+                  <MiniBarChart value={analytics.pendingTasks} max={analytics.totalTasks} variant="dotted" />
+                </div>
+              </div>
+            </Card>
+
+            {/* Completed Task Card */}
+            <Card className="relative overflow-hidden bg-card border border-border shadow-sm hover:shadow-md transition-shadow">
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500" />
+              <div className="p-4 pl-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-medium text-muted-foreground">Completed Tasks</span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg hover:bg-muted">
+                    <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/70" />
+                  </Button>
+                </div>
+                <div className="flex items-end justify-between">
+                  <span className="text-3xl font-semibold tracking-tight text-emerald-500">{analytics.completedTasks}</span>
+                  <MiniBarChart value={analytics.completedTasks} max={analytics.totalTasks} variant="blocks" />
+                </div>
+              </div>
+            </Card>
+
+            {/* Flagged Task Card */}
+            <Card className="relative overflow-hidden bg-card border border-border shadow-sm hover:shadow-md transition-shadow">
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-rose-500" />
+              <div className="p-4 pl-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-medium text-muted-foreground">Flagged</span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg hover:bg-muted">
+                    <Flag className="h-3.5 w-3.5 text-muted-foreground/70" />
+                  </Button>
+                </div>
+                <div className="flex items-end justify-between">
+                  <span className="text-3xl font-semibold tracking-tight text-rose-500">{analytics.flaggedTasks}</span>
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3 text-muted-foreground/70" />
+                    <span>{analytics.overdueTasks} overdue</span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Status Overview Pie Chart */}
+            <Card className="p-5 bg-card border border-border shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-sm font-medium tracking-tight text-foreground">Status Overview</h3>
+              </div>
+              {statusOverview.length > 0 ? (
+                <>
+                  <div className="h-[230px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsPieChart>
+                        <Pie
+                          data={statusOverview}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {statusOverview.map((entry) => (
+                            <Cell key={entry.id} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'white',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '8px',
+                            fontSize: '12px'
+                          }}
+                        />
+                      </RechartsPieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="mt-4 flex gap-8">
+                    {statusOverview.map((status) => (
+                      <div key={status.id} className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: status.color }} />
+                        <span className="text-[11px] text-muted-foreground truncate">{status.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="h-[200px] flex items-center justify-center text-sm text-slate-500 dark:text-slate-400">
+                  No task data available yet
+                </div>
+              )}
+            </Card>
+
+
+
+            <ProjectActivityLogWidget
+              workspaceId={workspaceId}
+              projectId={projectId}
+              limit={6}
+            />
+          </div>
+
+          {/* Task List Table */}
+          <Card className="p-5 bg-card border border-border shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium tracking-tight text-foreground">Recent Tasks</h3>
+              <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-accent">
+                <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </div>
+
+            {/* Table Header */}
+            <div className="grid grid-cols-12 gap-4 pb-3 border-b border-border text-xs font-medium text-muted-foreground">
+              <div className="col-span-5">Name</div>
+              <div className="col-span-3">Time</div>
+              <div className="col-span-2">Status</div>
+              <div className="col-span-2">Priority</div>
+            </div>
+
+            {/* Table Body */}
+            <div className="divide-y divide-border">
+              {recentTasks.length > 0 ? (
+                recentTasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className="grid grid-cols-12 gap-4 py-3 items-center hover:bg-accent -mx-5 px-5 transition-colors"
+                  >
+                    <div className="col-span-5 flex items-center gap-3">
+                      <MemberAvatar
+                        name={task.assignee}
+                        imageUrl={task.assigneeImage}
+                        className="h-8 w-8"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate text-foreground">{task.assignee}</p>
+                        <p className="text-xs text-muted-foreground truncate">{task.title}</p>
+                      </div>
+                    </div>
+                    <div className="col-span-3">
+                      <p className="text-sm text-muted-foreground">
+                        {task.dueDate ? format(task.dueDate, 'MMM d') : '—'}
+                      </p>
+                    </div>
+                    <div className="col-span-2">
+                      <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full ${task.status === "Completed"
+                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400"
+                          : task.status === "In Progress"
+                            ? "bg-yellow-100 text-amber-600 dark:bg-yellow-900/30 dark:text-amber-200"
+                            : "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
+                        }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${task.status === "Completed" ? "bg-emerald-600" :
+                            task.status === "In Progress" ? "bg-amber-600" : "bg-slate-400"
+                          }`} />
+                        {task.status}
+                      </span>
+                    </div>
+                    <div className="col-span-2">
+                      <span className={`text-xs font-medium px-2 py-1 rounded ${task.priority === "URGENT" || task.priority === "HIGH"
+                          ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200"
+                          : task.priority === "MEDIUM"
+                            ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-700 dark:text-yellow-100"
+                            : "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200"
+                        }`}>
+                        {task.priority}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                  No tasks yet. Create your first task to get started.
+                </div>
+              )}
+            </div>
+          </Card>
+
+
 
           {/* Bottom Section - Due Alerts & Team Members */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Due Alerts Card */}
-            <Card className="p-5 bg-white dark:bg-slate-800 border border-red-200 dark:border-slate-700 shadow-sm">
+            <Card className="p-5 bg-card border border-border shadow-sm">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Due Alerts</h3>
-                <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-amber-50 dark:hover:bg-amber-900/20">
-                  <PlusIcon className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <h3 className="text-sm font-medium tracking-tight text-foreground">Due Alerts</h3>
+                <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-amber-500/10">
+                  <PlusIcon className="h-4 w-4 text-amber-500" />
                 </Button>
               </div>
-              
+
               {dueAlerts.length > 0 ? (
                 <div className="space-y-2">
                   {dueAlerts.map((alert) => (
-                    <div key={alert.id} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg hover:bg-amber-50 dark:hover:bg-slate-700 transition-colors">
+                    <div key={alert.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg hover:bg-amber-500/10 transition-colors">
                       <div className="flex items-center gap-2 min-w-0">
-                        <Clock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                        <span className="text-xs text-slate-700 dark:text-slate-300 truncate">{alert.title}</span>
+                        <Clock className="h-3.5 w-3.5 text-amber-500" />
+                        <span className="text-xs text-foreground truncate">{alert.title}</span>
                       </div>
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap ml-2">
+                      <span className="text-[10px] text-muted-foreground whitespace-nowrap ml-2">
                         Due {formatDistanceToNow(alert.dueDate, { addSuffix: true })}
                       </span>
                     </div>
@@ -494,8 +491,8 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
             </Card>
 
             {/* Team Members */}
-            <ProjectMembersWidget 
-              workspaceId={workspaceId} 
+            <ProjectMembersWidget
+              workspaceId={workspaceId}
               projectId={projectId}
               limit={12}
             />

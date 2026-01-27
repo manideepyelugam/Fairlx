@@ -47,11 +47,11 @@ import { Badge } from "@/components/ui/badge";
 
 // Default work item type labels
 const typeLabels: Record<string, string> = {
-    TASK: "Task",
-    BUG: "Bug",
-    EPIC: "Epic",
-    STORY: "Story",
-    SUBTASK: "Subtask",
+  TASK: "Task",
+  BUG: "Bug",
+  EPIC: "Epic",
+  STORY: "Story",
+  SUBTASK: "Subtask",
 };
 
 type UpdateTaskPayload = InferRequestType<typeof client.api.tasks[":taskId"]["$patch"]>["json"];
@@ -144,7 +144,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
   return (
     <div className="flex w-full  flex-col h-full max-h-[90vh]">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b bg-white sticky top-0 z-10">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-card sticky top-0 z-10">
         <div className="flex items-center gap-3">
           {/* Work Item Type Badge */}
           {task.type && (
@@ -163,44 +163,42 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
             projectId={task.projectId}
             placeholder="Status"
           />
-          {task.key && (
-            <span className="text-xs text-gray-500 font-mono">{task.key}</span>
-          )}
+          <span className="text-xs text-muted-foreground font-mono">{task.key}</span>
         </div>
 
         <div className="flex items-center gap-1">
           <IconHelp content="Copy task URL" side="bottom">
             <button
-              className="hover:bg-gray-100 p-1.5 rounded-md transition-colors"
+              className="hover:bg-accent p-1.5 rounded-md transition-colors"
               onClick={handleCopyUrl}
             >
-              <Link size={16} strokeWidth={1.5} className="text-gray-500" />
+              <Link size={16} strokeWidth={1.5} className="text-muted-foreground" />
             </button>
           </IconHelp>
 
           <IconHelp content="Copy task ID" side="bottom">
             <button
-              className="hover:bg-gray-100 p-1.5 rounded-md transition-colors"
+              className="hover:bg-accent p-1.5 rounded-md transition-colors"
               onClick={handleCopyId}
             >
-              <Copy size={16} strokeWidth={1.5} className="text-gray-500" />
+              <Copy size={16} strokeWidth={1.5} className="text-muted-foreground" />
             </button>
           </IconHelp>
 
           <IconHelp content="Edit task" side="bottom">
             <button
-              className="hover:bg-gray-100 p-1.5 rounded-md transition-colors"
+              className="hover:bg-accent p-1.5 rounded-md transition-colors"
               onClick={onEdit}
             >
-              <ExternalLink size={16} strokeWidth={1.5} className="text-gray-500" />
+              <ExternalLink size={16} strokeWidth={1.5} className="text-muted-foreground" />
             </button>
           </IconHelp>
 
           <button
-            className="hover:bg-gray-100 p-1.5 rounded-md transition-colors ml-1"
+            className="hover:bg-accent p-1.5 rounded-md transition-colors ml-1"
             onClick={onClose}
           >
-            <X size={18} strokeWidth={1.5} className="text-gray-500" />
+            <X size={18} strokeWidth={1.5} className="text-muted-foreground" />
           </button>
         </div>
       </div>
@@ -225,7 +223,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 />
               ) : (
                 <h1
-                  className="text-xl font-semibold text-gray-900 border border-transparent hover:border-gray-200 rounded p-2 -ml-2 cursor-text transition-colors"
+                  className="text-xl font-semibold text-foreground border border-transparent hover:border-border rounded p-2 -ml-2 cursor-text transition-colors"
                   onClick={() => setIsEditingTitle(true)}
                 >
                   {task.title}
@@ -235,7 +233,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
 
             {/* Description */}
             <div className="mb-6">
-              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
                 Description
               </h3>
               <div className="min-h-[100px]">
@@ -251,14 +249,14 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 ) : (
                   <div
                     onClick={() => setIsEditingDescription(true)}
-                    className="p-2 -ml-2 rounded border border-transparent hover:border-gray-200 cursor-text transition-colors min-h-[60px]"
+                    className="p-2 -ml-2 rounded border border-transparent hover:border-border cursor-text transition-colors min-h-[60px]"
                   >
                     {task.description ? (
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                      <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
                         {task.description}
                       </p>
                     ) : (
-                      <p className="text-sm text-gray-400 italic">Click to add description</p>
+                      <p className="text-sm text-muted-foreground italic">Click to add description</p>
                     )}
                   </div>
                 )}
@@ -267,7 +265,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
 
             {/* Comments Section */}
             <div className="border-t pt-5">
-              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">
+              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-4">
                 Activity & Comments
               </h3>
 
@@ -289,16 +287,16 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
         </div>
 
         {/* Right Panel - Properties */}
-        <div className="w-[320px] border-l bg-gray-50 overflow-y-auto">
+        <div className="w-[320px] border-l border-border bg-background overflow-y-auto">
           <div className="p-4">
-            <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">
+            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-4">
               Properties
             </h3>
 
             <div className="space-y-4">
               {/* Status */}
               <div>
-                <label className="text-xs text-gray-500 mb-1.5 block">Status</label>
+                <label className="text-xs text-muted-foreground mb-1.5 block">Status</label>
                 <StatusSelector
                   value={task.status}
                   onChange={(value) => handleUpdate({ status: value })}
@@ -308,19 +306,19 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
 
               {/* Work Item Type */}
               <div>
-                <label className="text-xs text-gray-500 mb-1.5 block">Type</label>
+                <label className="text-xs text-muted-foreground mb-1.5 block">Type</label>
                 <TypeSelector
                   value={task.type || "TASK"}
                   onValueChange={(value) => handleUpdate({ type: value })}
                   project={project}
                   customTypes={project?.customWorkItemTypes}
-                  className="w-full bg-white border-gray-200"
+                  className="w-full bg-card border-border"
                 />
               </div>
 
               {/* Priority */}
               <div>
-                <label className="text-xs text-gray-500 mb-1.5 block">Priority</label>
+                <label className="text-xs text-muted-foreground mb-1.5 block">Priority</label>
                 <PrioritySelector
                   value={task.priority}
                   onValueChange={(value) => handleUpdate({ priority: value })}
@@ -330,7 +328,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
 
               {/* Assignee */}
               <div>
-                <label className="text-xs text-gray-500 mb-1.5 block">Assignees</label>
+                <label className="text-xs text-muted-foreground mb-1.5 block">Assignees</label>
                 <AssigneeMultiSelect
                   memberOptions={memberOptions}
                   selectedAssigneeIds={task.assigneeIds || []}
@@ -341,12 +339,12 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
 
               {/* Dates */}
               <div>
-                <label className="text-xs text-gray-500 mb-1.5 block">Start Date</label>
+                <label className="text-xs text-muted-foreground mb-1.5 block">Start Date</label>
                 <DatePicker
                   value={task.dueDate ? new Date(task.dueDate) : undefined}
                   onChange={(date) => handleUpdate({ dueDate: date })}
                   placeholder="Set start date"
-                  className="w-full bg-white border-gray-200"
+                  className="w-full bg-card border-border"
                 />
               </div>
 
@@ -355,18 +353,18 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                   Original view showed 'Due' mapping to task.dueDate?
                   Wait, 'Start' mapped to task.startDate, 'Due' to task.dueDate in original view.
                   Schema: dueDate: z.coerce.date().optional(), endDate: z.coerce.date().optional()
-                  Wait, CreateTask uses 'dueDate' as Start Date label? 
+                  Wait, CreateTask uses 'dueDate' as Start Date label?
                   Step 538: <FormLabel>Start Date</FormLabel> <DatePicker {...field} name="dueDate" />
-                  So dueDate = Start Date. 
+                  So dueDate = Start Date.
                   And endDate = End Date.
               */}
               <div>
-                <label className="text-xs text-gray-500 mb-1.5 block">End Date</label>
+                <label className="text-xs text-muted-foreground mb-1.5 block">End Date</label>
                 <DatePicker
                   value={task.endDate ? new Date(task.endDate) : undefined}
                   onChange={(date) => handleUpdate({ endDate: date })}
                   placeholder="Set end date"
-                  className="w-full bg-white border-gray-200"
+                  className="w-full bg-card border-border"
                 />
               </div>
 
@@ -375,7 +373,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
 
               {/* Time Estimate */}
               <div>
-                <label className="text-xs text-gray-500 mb-1.5 block">Time Estimate (hours)</label>
+                <label className="text-xs text-muted-foreground mb-1.5 block">Time Estimate (hours)</label>
                 <Input
                   type="number"
                   step="0.5"
@@ -388,13 +386,13 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                       handleUpdate({ estimatedHours: val || undefined });
                     }
                   }}
-                  className="h-9 bg-white border-gray-200"
+                  className="h-9 bg-card border-border"
                 />
               </div>
 
               {/* Story Points */}
               <div>
-                <label className="text-xs text-gray-500 mb-1.5 block">Story Points</label>
+                <label className="text-xs text-muted-foreground mb-1.5 block">Story Points</label>
                 <Input
                   type="number"
                   min="0"
@@ -406,7 +404,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                       handleUpdate({ storyPoints: val || undefined });
                     }
                   }}
-                  className="h-9 bg-white border-gray-200"
+                  className="h-9 bg-card border-border"
                 />
               </div>
 
@@ -417,7 +415,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                   onCheckedChange={(checked) => handleUpdate({ flagged: checked as boolean })}
                   id="flagged"
                 />
-                <label htmlFor="flagged" className="text-sm font-medium text-gray-700 cursor-pointer">Flagged</label>
+                <label htmlFor="flagged" className="text-sm font-medium text-muted-foreground cursor-pointer">Flagged</label>
               </div>
             </div>
           </div>
@@ -427,7 +425,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
           </div>
 
           {/* Edit Button */}
-          <div className="px-4 py-4 bg-slate-100 border-t sticky bottom-0">
+          <div className="px-4 py-4 bg-muted/50 border-t border-border sticky bottom-0">
             <Button
               onClick={onEdit}
               className="w-full"
@@ -515,7 +513,7 @@ export const TaskPreviewModalWrapper = () => {
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex  items-center justify-center p-4 pointer-events-none">
         <div
-          className="relative bg-white rounded-lg shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden pointer-events-auto animate-in zoom-in-95 fade-in duration-200"
+          className="relative bg-card border border-border rounded-lg shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden pointer-events-auto animate-in zoom-in-95 fade-in duration-200"
           onClick={(e) => e.stopPropagation()}
         >
           {isLoading ? (
@@ -538,7 +536,7 @@ export const TaskPreviewModalWrapper = () => {
                   <Skeleton className="h-4 w-20 mb-2" />
                   <Skeleton className="h-20 w-full" />
                 </div>
-                <div className="w-[260px] border-l bg-gray-50 p-4">
+                <div className="w-[260px] border-l bg-background p-4">
                   <Skeleton className="h-4 w-20 mb-4" />
                   <div className="space-y-4">
                     <Skeleton className="h-8 w-full" />
@@ -550,7 +548,7 @@ export const TaskPreviewModalWrapper = () => {
             </div>
           ) : !data ? (
             <div className="flex items-center justify-center h-[300px]">
-              <p className="text-gray-500">Task not found</p>
+              <p className="text-muted-foreground">Task not found</p>
             </div>
           ) : (
             <>
@@ -564,14 +562,14 @@ export const TaskPreviewModalWrapper = () => {
 
               {/* Attachment preview overlay */}
               {previewAttachment && (
-                <div className="fixed inset-0 z-60 flex flex-col bg-white">
-                  <div className="flex items-center justify-between px-4 py-2 border-b">
+                <div className="fixed inset-0 z-60 flex flex-col bg-background">
+                  <div className="flex items-center justify-between px-4 py-2 border-b border-border">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">{previewAttachment.name}</span>
-                      <span className="text-xs text-gray-400">{previewAttachment.mimeType}</span>
+                      <span className="text-xs text-muted-foreground">{previewAttachment.mimeType}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button className="p-1.5 rounded hover:bg-gray-100" onClick={closeAttachmentPreview}>
+                      <button className="p-1.5 rounded hover:bg-accent" onClick={closeAttachmentPreview}>
                         <X className="size-4" />
                       </button>
                     </div>

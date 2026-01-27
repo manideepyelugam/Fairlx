@@ -53,10 +53,10 @@ export function BillingExplainer({
     };
 
     return (
-        <Card className="border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/30">
+        <Card className="border-border bg-card">
             <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                    <Info className="h-4 w-4 text-blue-600" />
+                    <Info className="h-4 w-4 text-primary" />
                     How This Bill Was Calculated
                 </CardTitle>
             </CardHeader>

@@ -182,7 +182,7 @@ export function TimelineClient({
     <div className="h-screen flex flex-col">
       {/* Page Title Header */}
       {showHeader && (
-        <div className="border-b bg-white px-6 py-4">
+        <div className="border-b bg-background px-6 py-4">
           <h1 className="text-2xl font-semibold tracking-tight">Timeline</h1>
           <p className="text-muted-foreground text-sm mt-1">
             Visualize your project timeline and track progress

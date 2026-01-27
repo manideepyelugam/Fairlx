@@ -20,18 +20,18 @@ interface EpicCardProps {
 }
 
 const priorityColors = {
-  LOW: "text-gray-500 border-gray-300",
-  MEDIUM: "text-yellow-600 border-yellow-300",
-  HIGH: "text-orange-600 border-orange-300",
-  URGENT: "text-red-600 border-red-300",
+  LOW: "text-muted-foreground border-border",
+  MEDIUM: "text-amber-500 border-amber-500/30",
+  HIGH: "text-orange-500 border-orange-500/30",
+  URGENT: "text-red-500 border-red-500/30",
 };
 
 const statusColors = {
-  TODO: "bg-gray-100 text-gray-700",
-  IN_PROGRESS: "bg-blue-100 text-blue-700",
-  IN_REVIEW: "bg-purple-100 text-purple-700",
-  DONE: "bg-green-100 text-green-700",
-  ASSIGNED: "bg-red-100 text-red-700",
+  TODO: "bg-muted text-muted-foreground",
+  IN_PROGRESS: "bg-blue-500/10 text-blue-500",
+  IN_REVIEW: "bg-purple-500/10 text-purple-500",
+  DONE: "bg-emerald-500/10 text-emerald-500",
+  ASSIGNED: "bg-red-500/10 text-red-500",
 };
 
 export const EpicCard = ({
@@ -47,13 +47,13 @@ export const EpicCard = ({
   const progressPercentage = totalChildren > 0 ? (completedChildren / totalChildren) * 100 : 0;
 
   return (
-    <div className="border rounded-lg bg-gradient-to-br from-purple-50 to-white shadow-sm hover:shadow-md transition-shadow">
+    <div className="border border-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow">
       {/* Epic Header */}
       <div className="p-4">
         <div className="flex items-start gap-3">
           {/* Epic Icon */}
           <div className="p-2 rounded-lg bg-purple-500/10 shrink-0">
-            <Layers className="size-5 text-purple-600" />
+            <Layers className="size-5 text-purple-500" />
           </div>
 
           {/* Main Content */}
@@ -63,7 +63,7 @@ export const EpicCard = ({
               <div className="flex items-start gap-2 flex-1 min-w-0">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <Badge variant="outline" className="bg-purple-500/20 text-purple-700 border-purple-300 shrink-0">
+                    <Badge variant="outline" className="bg-purple-500/10 text-purple-500 border-purple-500/20 shrink-0">
                       {epic.key}
                     </Badge>
                     {epic.flagged && (
@@ -84,10 +84,10 @@ export const EpicCard = ({
               {/* Actions */}
               <WorkItemOptionsMenu
                 workItem={epic}
-                onSplit={() => {}}
-                onAssignEpic={() => {}}
-                onAssignAssignee={() => {}}
-                onEditStoryPoints={() => {}}
+                onSplit={() => { }}
+                onAssignEpic={() => { }}
+                onAssignAssignee={() => { }}
+                onEditStoryPoints={() => { }}
               />
             </div>
 
@@ -146,7 +146,7 @@ export const EpicCard = ({
 
       {/* Child Work Items */}
       {isExpanded && totalChildren > 0 && (
-        <div className="border-t bg-white/50 p-4 space-y-2">
+        <div className="border-t border-border bg-muted/30 p-4 space-y-2">
           {childWorkItems.map((workItem) => (
             <WorkItemCard
               key={workItem.$id}

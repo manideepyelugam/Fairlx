@@ -31,9 +31,9 @@ export const BulkActionsToolbar = ({
 
   return (
     <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
-      <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-4 flex items-center gap-4 min-w-[400px]">
+      <div className="bg-card border border-border rounded-lg shadow-lg p-4 flex items-center gap-4 min-w-[400px]">
         <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+          <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20">
             {selectedCount} selected
           </Badge>
         </div>

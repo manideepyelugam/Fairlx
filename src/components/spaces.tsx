@@ -54,7 +54,7 @@ export const Spaces = () => {
   }, {} as Record<string, typeof spaces>);
 
   return (
-    <div className="flex flex-col px-3 py-4  border-neutral-200">
+    <div className="flex flex-col px-3 py-4 border-border">
       <div className="flex items-center justify-between ">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
@@ -73,7 +73,7 @@ export const Spaces = () => {
               <TooltipTrigger asChild>
                 <button
                   onClick={() => router.push(`/workspaces/${workspaceId}/spaces?guide=true`)}
-                  className="p-1 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 rounded transition"
+                  className="p-1 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition"
                 >
                   <Info className="size-4" />
                 </button>
@@ -86,7 +86,7 @@ export const Spaces = () => {
           {isAdmin && (
             <RiAddCircleFill
               onClick={open}
-              className="size-5 text-neutral-500 cursor-pointer hover:opacity-75 transition"
+              className="size-5 text-muted-foreground cursor-pointer hover:opacity-75 transition"
             />
           )}
         </div>

@@ -2,7 +2,8 @@
 
 import { z } from "zod";
 import Image from "next/image";
-import { ImageIcon } from "lucide-react";
+import { ImageIcon, ArrowLeftIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useRef } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -36,6 +37,7 @@ export const EditWorkspaceForm = ({
   onCancel,
   initialValues,
 }: EditWorkspaceFormProps) => {
+  const router = useRouter();
   const { mutate, isPending } = useUpdateWorkspace();
   const { mutate: deleteWorkspace, isPending: isDeletingWorkspace } =
     useDeleteWorkspace();
@@ -99,8 +101,8 @@ export const EditWorkspaceForm = ({
         <DeleteDialog />
 
         {/* Header Section */}
-        <div className="mb-12 flex flex-col items-center text-center">
-          {/* <Button
+        <div className="mb-8 flex flex-col items-start">
+          <Button
             size="sm"
             variant="secondary"
             onClick={
@@ -108,16 +110,15 @@ export const EditWorkspaceForm = ({
                 ? onCancel
                 : () => router.push(`/workspaces/${initialValues.$id}`)
             }
-            className="mb-8 self-start ml-0"
+            className="gap-2"
           >
             <ArrowLeftIcon className="size-4" />
             Back
-          </Button> */}
-
+          </Button>
         </div>
 
         {/* Main Settings Card */}
-        <Card className="w-full border-none shadow-sm rounded-2xl mb-8">
+        <Card className="w-full border border-border shadow-none rounded-2xl mb-8">
           <CardContent className="p-8 md:p-10">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -269,7 +270,7 @@ export const EditWorkspaceForm = ({
         </Card>
 
         {/* Danger Zone Card */}
-        <Card className="w-full border-2 border-destructive/20 bg-destructive/5 rounded-2xl">
+        <Card className="w-full border-2 border-destructive/20 bg-destructive/10 rounded-2xl">
           <CardContent className="p-3 md:p-4">
             <div className="flex flex-col text-center">
               <h3 className="text-xl font-bold text-destructive mb-3">

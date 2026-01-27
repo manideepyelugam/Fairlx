@@ -183,7 +183,7 @@ export function TimelineGrid({
   return (
     <div
       ref={gridRef}
-      className="relative bg-white"
+      className="relative bg-background"
       style={{
         width: totalWidth,
         height: totalHeight + gridConfig.headerHeight,
@@ -278,7 +278,7 @@ function TimeScaleHeader({ gridConfig, zoomLevel }: TimeScaleHeaderProps) {
 
   return (
     <div
-      className="sticky top-0 bg-white border-b z-10 flex"
+      className="sticky top-0 bg-card border-b z-10 flex"
       style={{ height: gridConfig.headerHeight }}
     >
       {headers.map((header, index) => (
@@ -463,14 +463,14 @@ function TaskBar({
 
           {/* Resize handles - subtle and professional */}
           <div
-            className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize opacity-0 group-hover:opacity-100 hover:bg-gray-900/20 transition-opacity rounded-l"
+            className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize opacity-0 group-hover:opacity-100 hover:bg-foreground/20 transition-opacity rounded-l"
             onMouseDown={(e) => {
               e.stopPropagation();
               onMouseDown(e, item, "resize-start");
             }}
           />
           <div
-            className="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize opacity-0 group-hover:opacity-100 hover:bg-gray-900/20 transition-opacity rounded-r"
+            className="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize opacity-0 group-hover:opacity-100 hover:bg-foreground/20 transition-opacity rounded-r"
             onMouseDown={(e) => {
               e.stopPropagation();
               onMouseDown(e, item, "resize-end");
@@ -517,7 +517,7 @@ function TaskBar({
                 <span>Progress</span>
                 <span className="font-medium">{item.progress}%</span>
               </div>
-              <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                 <div
                   className={cn("h-full transition-all", typeStyle.accent)}
                   style={{ width: `${item.progress}%` }}

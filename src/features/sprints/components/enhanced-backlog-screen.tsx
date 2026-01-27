@@ -501,9 +501,9 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="bg-white">
+      <div className="bg-background">
         {/* Header */}
-        <div className="border-b bg-white ">
+        <div className="border-b bg-background ">
           <div className="px-4 py-4">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-4 flex-1">
@@ -512,7 +512,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                 {/* Search */}
                 <div className="flex-1 max-w-md">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
                     <Input
                       type="text"
                       placeholder="Search backlog..."
@@ -586,17 +586,17 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
 
         {/* Bulk Actions Toolbar */}
         {selectedItemIds.size > 0 && (
-          <div className="sticky top-[73px] z-20 bg-blue-50 border-b border-blue-100 px-4 py-2 flex items-center justify-between animate-in slide-in-from-top-2">
+          <div className="sticky top-[73px] z-20 bg-primary/10 border-b border-primary/20 px-4 py-2 flex items-center justify-between animate-in slide-in-from-top-2">
             <div className="flex items-center gap-4">
-              <span className="text-sm font-medium text-blue-900">
+              <span className="text-sm font-medium text-primary">
                 {selectedItemIds.size} selected
               </span>
-              <div className="h-4 w-px bg-blue-200" />
+              <div className="h-4 w-px bg-primary/20" />
               <Button
                 variant="ghost"
                 size="xs"
                 onClick={clearSelection}
-                className="text-blue-700 hover:text-blue-900 hover:bg-blue-100"
+                className="text-primary hover:text-primary/80 hover:bg-primary/20"
               >
                 Cancel
               </Button>
@@ -605,7 +605,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
               {can(PERMISSIONS.WORKITEM_UPDATE) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="bg-white border-blue-200 text-blue-700 hover:bg-blue-50">
+                    <Button variant="outline" size="sm" className="bg-background border-border text-primary hover:bg-accent">
                       Move to...
                       <ChevronDown className="w-3.5 h-3.5 ml-1.5" />
                     </Button>
@@ -626,7 +626,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                 variant="destructive"
                 size="sm"
                 onClick={handleBulkDelete}
-                className="bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 hover:border-red-300 shadow-none"
+                className="bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/30 hover:border-destructive/40 shadow-none"
               >
                 Delete
               </Button>
@@ -644,9 +644,9 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
               const isExpanded = expandedSprints.includes(sprint.$id);
 
               return (
-                <div key={sprint.$id} className="border border-gray-200 rounded-lg bg-white overflow-hidden">
+                <div key={sprint.$id} className="border border-border rounded-lg bg-card overflow-hidden">
                   {/* Sprint Header */}
-                  <div className="bg-white px-4 py-3 border-b border-gray-100">
+                  <div className="bg-card px-4 py-3 border-b border-border">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3 flex-1">
                         <button
@@ -657,12 +657,12 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                 : [...prev, sprint.$id]
                             );
                           }}
-                          className="p-0 hover:bg-gray-100 rounded transition-colors"
+                          className="p-0 hover:bg-accent rounded transition-colors"
                         >
                           {isExpanded ? (
-                            <ChevronDown className="size-5 text-gray-600" />
+                            <ChevronDown className="size-5 text-muted-foreground" />
                           ) : (
-                            <ChevronRight className="size-5 text-gray-600" />
+                            <ChevronRight className="size-5 text-muted-foreground" />
                           )}
                         </button>
 
@@ -693,7 +693,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                               <h3 className="font-semibold text-sm">{sprint.name}</h3>
                             )}
                             {sprint.startDate && sprint.endDate ? (
-                              <span className="text-xs text-gray-500">
+                              <span className="text-xs text-muted-foreground">
                                 {format(new Date(sprint.startDate), "d MMM")} – {format(new Date(sprint.endDate), "d MMM")}
                               </span>
                             ) : (
@@ -701,7 +701,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-6 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2"
+                                  className="h-6 text-xs text-primary hover:text-primary/80 hover:bg-accent px-2"
                                   onClick={() => setDateDialogSprintId(sprint.$id)}
                                 >
                                   <Calendar className="w-3 h-3 mr-1.5" />
@@ -709,7 +709,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                 </Button>
                               )
                             )}
-                            <span className="text-xs text-gray-400">({sprintItems.length} work {sprintItems.length === 1 ? "item" : "items"})</span>
+                            <span className="text-xs text-muted-foreground/70">({sprintItems.length} work {sprintItems.length === 1 ? "item" : "items"})</span>
                           </div>
                         </div>
                       </div>
@@ -718,16 +718,16 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                         {/* Counters */}
                         <div className="flex items-center gap-3 text-xs">
                           <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 rounded-full bg-gray-400"></div>
-                            <span className="text-gray-600">{counts.todo}</span>
+                            <div className="w-2 h-2 rounded-full bg-muted-foreground/50"></div>
+                            <span className="text-muted-foreground text-[10px]">{counts.todo}</span>
                           </div>
                           <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                            <span className="text-gray-600">{counts.inProgress}</span>
+                            <div className="w-2 h-2 rounded-full bg-primary"></div>
+                            <span className="text-muted-foreground text-[10px]">{counts.inProgress}</span>
                           </div>
                           <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                            <span className="text-gray-600">{counts.done}</span>
+                            <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                            <span className="text-muted-foreground text-[10px]">{counts.done} items</span>
                           </div>
                         </div>
 
@@ -812,25 +812,25 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                         <div
                           ref={provided.innerRef}
                           {...provided.droppableProps}
-                          className={`bg-white ${snapshot.isDraggingOver ? "bg-blue-50" : ""}`}
+                          className={`bg-card ${snapshot.isDraggingOver ? "bg-primary/10" : ""}`}
                         >
                           {sprintItems.length === 0 ? (
                             <div className="m-4">
                               <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm text-muted-foreground">
                                   Plan a sprint by dragging work items into it.
                                 </p>
                               </div>
                             </div>
                           ) : (
-                            <div className="divide-y divide-gray-100">
+                            <div className="divide-y divide-border">
                               {sprintItems.map((item, index) => (
                                 <Draggable key={item.$id} draggableId={item.$id} index={index}>
                                   {(provided, snapshot) => (
                                     <div
                                       ref={provided.innerRef}
                                       {...provided.draggableProps}
-                                      className={`px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors group ${snapshot.isDragging ? "shadow-lg rounded-lg border border-gray-200 bg-white" : ""
+                                      className={`px-4 py-3 hover:bg-muted/50 cursor-pointer transition-colors group ${snapshot.isDragging ? "shadow-lg rounded-lg border border-border bg-card" : ""
                                         } ${selectedItemIds.has(item.$id) ? "bg-blue-50 hover:bg-blue-50" : ""}`}
                                       onClick={() => handleWorkItemClick(item)}
                                     >
@@ -844,7 +844,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                             <Checkbox
                                               checked={selectedItemIds.has(item.$id)}
                                               onCheckedChange={() => toggleSelection(item.$id)}
-                                              className="data-[state=unchecked]:border-gray-300"
+                                              className="data-[state=unchecked]:border-border"
                                             />
                                           </div>
                                           {/* Drag Handle - separate from checkbox */}
@@ -853,12 +853,12 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                             className="flex items-center justify-center cursor-grab active:cursor-grabbing"
                                             onClick={(e) => e.stopPropagation()}
                                           >
-                                            <GripVertical className="size-4 text-gray-400 hover:text-gray-600" />
+                                            <GripVertical className="size-4 text-muted-foreground/50 hover:text-muted-foreground" />
                                           </div>
 
                                           <WorkItemIcon type={item.type} project={project ?? undefined} className="size-4 flex-shrink-0" />
 
-                                          <span className="font-mono text-xs text-gray-500 w-20 flex-shrink-0">{item.key}</span>
+                                          <span className="font-mono text-xs text-muted-foreground w-20 flex-shrink-0">{item.key}</span>
                                         </div>
 
                                         {editingWorkItemId === item.$id ? (
@@ -876,7 +876,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                           />
                                         ) : (
                                           <span
-                                            className="flex-1 text-sm text-gray-900 truncate hover:text-blue-600 cursor-text"
+                                            className="flex-1 text-sm text-foreground truncate hover:text-primary cursor-text"
                                             onClick={(e) => handleStartEditWorkItem(item, e)}
                                           >
                                             {item.title}
@@ -1039,7 +1039,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
 
                           {/* Create Work Item Row */}
                           {isCreatingInSprint === sprint.$id ? (
-                            <div className="px-4 py-3 border-t border-gray-100">
+                            <div className="px-4 py-3 border-t border-border">
                               <div className="flex items-center gap-4">
                                 {/* Work Item Type Selector */}
                                 <DropdownMenu>
@@ -1054,7 +1054,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                       <span className="text-xs capitalize">
                                         {newItemType.toLowerCase()}
                                       </span>
-                                      <ChevronDown className="size-3 text-gray-400" />
+                                      <ChevronDown className="size-3 text-muted-foreground" />
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="start">
@@ -1125,7 +1125,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                             can(PERMISSIONS.WORKITEM_CREATE) && (
                               <button
                                 onClick={() => setIsCreatingInSprint(sprint.$id)}
-                                className="w-full px-4 py-3 text-left text-sm text-gray-500 hover:bg-gray-50 transition-colors flex items-center gap-2 border-t border-gray-100"
+                                className="w-full px-4 py-3 text-left text-sm text-muted-foreground hover:bg-accent transition-colors flex items-center gap-2 border-t border-border"
                               >
                                 <Plus className="size-4" />
                                 Create work item
@@ -1143,8 +1143,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
             })}
 
             {/* Backlog Section */}
-            <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
-              <div className="bg-white px-4 py-3 border-b border-gray-100">
+            <div className="border border-border rounded-lg bg-card overflow-hidden">
+              <div className="bg-card px-4 py-3 border-b border-border">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold text-sm">
                     Backlog ({backlogItems.length} work {backlogItems.length === 1 ? "item" : "items"})
@@ -1186,7 +1186,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    className={`bg-white min-h-[200px] ${snapshot.isDraggingOver ? "bg-blue-50" : ""}`}
+                    className={`bg-card min-h-[200px] ${snapshot.isDraggingOver ? "bg-primary/10" : ""}`}
                   >
                     {backlogItems.length === 0 ? (
                       <div className="p-8 text-center">
@@ -1200,8 +1200,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                               <div
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
-                                className={`px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors group ${snapshot.isDragging ? "shadow-lg rounded-lg border border-gray-200 bg-white" : ""
-                                  } ${selectedItemIds.has(item.$id) ? "bg-blue-50 hover:bg-blue-50" : ""}`}
+                                className={`px-4 py-3 hover:bg-accent cursor-pointer transition-colors group ${snapshot.isDragging ? "shadow-lg rounded-lg border border-border bg-card" : ""
+                                  } ${selectedItemIds.has(item.$id) ? "bg-primary/10 hover:bg-primary/15" : ""}`}
                                 onClick={() => handleWorkItemClick(item)}
                               >
                                 <div className="flex items-center gap-4">

@@ -40,17 +40,17 @@ import { cn } from "@/lib/utils";
 const getStatusColor = (status: ProgramStatus) => {
   switch (status) {
     case ProgramStatus.ACTIVE:
-      return "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20";
     case ProgramStatus.PLANNING:
-      return "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20";
+      return "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20";
     case ProgramStatus.ON_HOLD:
-      return "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+      return "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20";
     case ProgramStatus.COMPLETED:
-      return "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20";
+      return "bg-muted text-muted-foreground border-border";
     case ProgramStatus.CANCELLED:
-      return "bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20";
+      return "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20";
     default:
-      return "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20";
+      return "bg-muted text-muted-foreground border-border";
   }
 };
 
@@ -76,10 +76,10 @@ const getStatusLabel = (status: ProgramStatus) => {
 };
 
 const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('en-US', { 
-    month: 'short', 
-    day: 'numeric', 
-    year: 'numeric' 
+  return new Date(dateString).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
   });
 };
 
@@ -104,12 +104,12 @@ export const ProgramsClient = () => {
   // Filter and search programs
   const filteredPrograms = useMemo(() => {
     if (!programs?.documents) return [];
-    
+
     return programs.documents.filter((program) => {
       const matchesSearch = program.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           program.description?.toLowerCase().includes(searchQuery.toLowerCase());
+        program.description?.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === "all" || program.status === statusFilter;
-      
+
       return matchesSearch && matchesStatus;
     });
   }, [programs, searchQuery, statusFilter]);
@@ -117,7 +117,7 @@ export const ProgramsClient = () => {
   // Program statistics
   const stats = useMemo(() => {
     if (!programs?.documents) return { total: 0, active: 0, planning: 0, completed: 0 };
-    
+
     return {
       total: programs.documents.length,
       active: programs.documents.filter(p => p.status === ProgramStatus.ACTIVE).length,
@@ -143,7 +143,7 @@ export const ProgramsClient = () => {
       <DeleteDialog />
       <CreateProgramModal />
       <EditProgramModal />
-      
+
       {/* Header with Stats */}
       <div className="space-y-6 mb-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -164,56 +164,56 @@ export const ProgramsClient = () => {
         {/* Statistics Cards */}
         {!isLoading && programs && programs.documents.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="border-l-4 border-l-purple-500 bg-gradient-to-br from-purple-50/50 to-transparent dark:from-purple-950/20">
+            <Card className="border-l-4 border-l-purple-500 bg-purple-500/5">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Total Programs</p>
                     <p className="text-2xl font-bold mt-1">{stats.total}</p>
                   </div>
-                  <div className="size-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                  <div className="size-10 rounded-full bg-purple-500/10 flex items-center justify-center">
                     <FolderKanban className="size-5 text-purple-600 dark:text-purple-400" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-emerald-500 bg-gradient-to-br from-emerald-50/50 to-transparent dark:from-emerald-950/20">
+            <Card className="border-l-4 border-l-emerald-500 bg-emerald-500/5">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Active</p>
                     <p className="text-2xl font-bold mt-1">{stats.active}</p>
                   </div>
-                  <div className="size-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                  <div className="size-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
                     <TrendingUp className="size-5 text-emerald-600 dark:text-emerald-400" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-950/20">
+            <Card className="border-l-4 border-l-blue-500 bg-blue-500/5">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Planning</p>
                     <p className="text-2xl font-bold mt-1">{stats.planning}</p>
                   </div>
-                  <div className="size-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                  <div className="size-10 rounded-full bg-blue-500/10 flex items-center justify-center">
                     <Target className="size-5 text-blue-600 dark:text-blue-400" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-slate-500 bg-gradient-to-br from-slate-50/50 to-transparent dark:from-slate-950/20">
+            <Card className="border-l-4 border-l-slate-500 bg-muted/30">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Completed</p>
                     <p className="text-2xl font-bold mt-1">{stats.completed}</p>
                   </div>
-                  <div className="size-10 rounded-full bg-slate-100 dark:bg-slate-900/30 flex items-center justify-center">
+                  <div className="size-10 rounded-full bg-muted flex items-center justify-center">
                     <Target className="size-5 text-slate-600 dark:text-slate-400" />
                   </div>
                 </div>
@@ -324,10 +324,10 @@ export const ProgramsClient = () => {
         )}>
           {filteredPrograms.map((program) => {
             const StatusIcon = getStatusIcon(program.status);
-            
+
             return viewMode === "grid" ? (
-              <Card 
-                key={program.$id} 
+              <Card
+                key={program.$id}
                 className="group hover:shadow-lg transition-all duration-300 overflow-hidden border-border/40 hover:border-border hover:scale-[1.02]"
               >
                 <CardHeader className="pb-4">
@@ -359,8 +359,8 @@ export const ProgramsClient = () => {
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="icon"
                           className="size-8 opacity-0 group-hover:opacity-100 transition-opacity -mt-1 -mr-2 hover:bg-muted"
                         >
@@ -386,12 +386,12 @@ export const ProgramsClient = () => {
                     </DropdownMenu>
                   </div>
                 </CardHeader>
-                
+
                 <CardContent className="pb-4 space-y-4">
                   <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">
                     {program.description || "No description provided"}
                   </p>
-                  
+
                   {(program.startDate || program.endDate) && (
                     <div className="pt-3 border-t space-y-2">
                       {program.startDate && (
@@ -413,7 +413,7 @@ export const ProgramsClient = () => {
                 </CardContent>
 
                 <CardFooter className="pt-4 border-t bg-gradient-to-br from-muted/30 to-transparent">
-                  <Link 
+                  <Link
                     href={`/workspaces/${workspaceId}/programs/${program.$id}`}
                     className="flex items-center justify-between w-full group/link"
                   >
@@ -426,8 +426,8 @@ export const ProgramsClient = () => {
               </Card>
             ) : (
               // List View
-              <Card 
-                key={program.$id} 
+              <Card
+                key={program.$id}
                 className="group hover:shadow-md transition-all duration-200 overflow-hidden"
               >
                 <CardContent className="p-6">
@@ -443,7 +443,7 @@ export const ProgramsClient = () => {
                         )}
                       </Avatar>
                     </div>
-                    
+
                     <div className="flex-1 min-w-0 space-y-2">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
@@ -457,7 +457,7 @@ export const ProgramsClient = () => {
                           {getStatusLabel(program.status)}
                         </Badge>
                       </div>
-                      
+
                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
                         {program.startDate && (
                           <div className="flex items-center gap-1.5">
@@ -476,7 +476,7 @@ export const ProgramsClient = () => {
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       <Link href={`/workspaces/${workspaceId}/programs/${program.$id}`}>
                         <Button variant="outline" size="sm" className="gap-2">

@@ -149,7 +149,7 @@ export default function WorkspaceSetupPage() {
             {/* Setup Card */}
             <Card className="w-full max-w-lg">
                 <CardHeader className="text-center">
-                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
+                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                         <Folder className="h-7 w-7 text-green-600" />
                     </div>
                     <CardTitle className="text-2xl">

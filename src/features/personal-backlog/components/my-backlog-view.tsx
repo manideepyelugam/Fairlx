@@ -351,13 +351,13 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
                 return (
                   <div
                     key={status}
-                    className="flex-1 bg-gray-50 rounded-xl min-w-[280px] border max-w-[320px]"
+                    className="flex-1 bg-muted/30 rounded-xl min-w-[280px] border border-border max-w-[320px]"
                   >
                     {/* Column Header */}
                     <div className="px-3 py-2 flex items-center  justify-between mb-2">
                       <div className="flex items-center gap-x-2">
                         {statusIcon}
-                        <h2 className="text-sm font-semibold text-gray-700">{statusTitle}</h2>
+                        <h2 className="text-sm font-semibold text-foreground">{statusTitle}</h2>
                       </div>
                       <div className="flex items-center gap-2">
                         {isAdmin && (
@@ -368,9 +368,9 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
                             }}
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6 hover:bg-gray-100"
+                            className="h-6 w-6 hover:bg-accent"
                           >
-                            <PlusIcon className="h-4 w-4 text-gray-500" />
+                            <PlusIcon className="h-4 w-4 text-muted-foreground" />
                           </Button>
                         )}
                       </div>
@@ -393,7 +393,7 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
                                 >
                                   <div
                                     onClick={() => setEditingItem(item)}
-                                    className={`bg-white mb-2.5 rounded-xl border shadow-sm cursor-pointer hover:shadow-md transition-shadow ${snapshot.isDragging ? "shadow-lg rotate-2 opacity-90" : ""
+                                    className={`bg-card mb-2.5 rounded-xl border border-border shadow-sm cursor-pointer hover:shadow-md transition-shadow ${snapshot.isDragging ? "shadow-lg rotate-2 opacity-90" : ""
                                       }`}
                                   >
                                     <div className="flex p-4 flex-col items-start justify-between gap-x-2">
@@ -420,7 +420,7 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
                                               setEditingItem(item);
                                             }}
                                           >
-                                            <Edit2Icon className="size-[18px] stroke-1 text-neutral-700 hover:opacity-75 transition" />
+                                            <Edit2Icon className="size-[18px] stroke-1 text-muted-foreground hover:opacity-75 transition" />
                                           </Button>
                                           <Button
                                             variant="ghost"
@@ -431,7 +431,7 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
                                               handleDeleteItem(item.$id);
                                             }}
                                           >
-                                            <Trash2Icon className="size-[18px] stroke-1 text-neutral-700 hover:text-destructive hover:opacity-75 transition" />
+                                            <Trash2Icon className="size-[18px] stroke-1 text-muted-foreground hover:text-destructive hover:opacity-75 transition" />
                                           </Button>
                                         </div>
                                       </div>
@@ -463,9 +463,9 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
                                     </div>
 
                                     {/* Bottom Section - Date and Time Info */}
-                                    <div className="flex items-center border-t py-3 px-4 border-gray-200 gap-x-1.5 justify-between">
+                                    <div className="flex items-center border-t py-3 px-4 border-border gap-x-1.5 justify-between">
                                       <p className="text-xs flex gap-0.5 items-center text-muted-foreground">
-                                        <CalendarIcon className="size-[14px] inline-block mr-1 text-gray-500" />
+                                        <CalendarIcon className="size-[14px] inline-block mr-1 text-muted-foreground" />
                                         {item.dueDate
                                           ? new Date(item.dueDate)
                                             .toLocaleDateString("en-GB", {
@@ -504,7 +504,7 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
                                 setCreateDialogOpen(true);
                               }}
                               variant="ghost"
-                              className="w-full text-xs bg-white border border-gray-200 shadow-sm justify-start text-gray-500  mt-2" >
+                              className="w-full text-xs bg-muted/50 border border-border shadow-sm justify-start text-muted-foreground  mt-2" >
                               <PlusIcon className="h-4 w-4 " />
                               Add Work Item
                             </Button>

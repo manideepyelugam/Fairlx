@@ -33,21 +33,21 @@ export const AccountTypeSelector = ({
                     "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
                     value === "PERSONAL"
                         ? "border-primary bg-primary/10"
-                        : "border-gray-200 bg-white",
+                        : "border-border bg-card",
                     disabled && "opacity-50 cursor-not-allowed"
                 )}
             >
                 <User className={cn(
                     "h-8 w-8 mb-2",
-                    value === "PERSONAL" ? "text-primary" : "text-gray-400"
+                    value === "PERSONAL" ? "text-primary" : "text-muted-foreground"
                 )} />
                 <span className={cn(
                     "font-medium text-sm",
-                    value === "PERSONAL" ? "text-primary" : "text-gray-700"
+                    value === "PERSONAL" ? "text-primary" : "text-foreground"
                 )}>
                     Personal
                 </span>
-                <span className="text-xs text-gray-500 mt-1 text-center">
+                <span className="text-xs text-muted-foreground mt-1 text-center">
                     Single workspace
                 </span>
             </button>
@@ -62,21 +62,21 @@ export const AccountTypeSelector = ({
                     "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
                     value === "ORG"
                         ? "border-primary bg-primary/10"
-                        : "border-gray-200 bg-white",
+                        : "border-border bg-card",
                     disabled && "opacity-50 cursor-not-allowed"
                 )}
             >
                 <Building2 className={cn(
                     "h-8 w-8 mb-2",
-                    value === "ORG" ? "text-primary" : "text-gray-400"
+                    value === "ORG" ? "text-primary" : "text-muted-foreground"
                 )} />
                 <span className={cn(
                     "font-medium text-sm",
-                    value === "ORG" ? "text-primary" : "text-gray-700"
+                    value === "ORG" ? "text-primary" : "text-foreground"
                 )}>
                     Organization
                 </span>
-                <span className="text-xs text-gray-500 mt-1 text-center">
+                <span className="text-xs text-muted-foreground mt-1 text-center">
                     Multiple workspaces
                 </span>
             </button>

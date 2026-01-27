@@ -35,7 +35,7 @@ const getNotificationStyle = (type: NotificationType) => {
       return {
         icon: User,
         color: "text-blue-600 dark:text-blue-400",
-        bgColor: "bg-blue-100 dark:bg-blue-950",
+        bgColor: "bg-blue-500/10 dark:bg-blue-500/20",
         badge: "Assigned",
         badgeVariant: "default" as const,
       };

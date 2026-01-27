@@ -195,7 +195,7 @@ export const Navigation = ({
   });
 
   return (
-    <div className="p-3 border-neutral-200 flex-shrink-0">
+    <div className="p-3 border-border flex-shrink-0">
       <ul className="flex flex-col ">
         {visibleRoutes.map((item) => {
           // Determine the correct href based on route type
@@ -227,8 +227,8 @@ export const Navigation = ({
               <Link href={fullHref}>
                 <div
                   className={cn(
-                    "flex items-center gap-2.5 p-2.5 rounded-md font-medium hover:bg-blue-100 hover:text-black transition text-neutral-500",
-                    isActive && "bg-neutral-200 shadow-sm hover:opacity-100 text-primary"
+                    "flex items-center gap-2.5 p-2.5 rounded-md font-medium hover:bg-accent hover:text-accent-foreground transition text-muted-foreground",
+                    isActive && "bg-accent shadow-sm hover:opacity-100 text-primary"
                   )}
                 >
                   <Icon className={cn("size-5 ", isActive && "text-primary")} />

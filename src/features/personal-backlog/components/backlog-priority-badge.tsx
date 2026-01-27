@@ -8,10 +8,10 @@ interface BacklogPriorityBadgeProps {
 }
 
 const priorityStyles: Record<BacklogItemPriority, string> = {
-  LOW: "bg-blue-100 text-blue-700 border-blue-200",
-  MEDIUM: "bg-yellow-100 text-yellow-700 border-yellow-200",
-  HIGH: "bg-orange-100 text-orange-700 border-orange-200",
-  URGENT: "bg-red-100 text-red-700 border-red-200",
+  LOW: "bg-muted text-muted-foreground border-border",
+  MEDIUM: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+  HIGH: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
+  URGENT: "bg-destructive/10 text-destructive border-destructive/20",
 };
 
 const priorityLabels: Record<BacklogItemPriority, string> = {

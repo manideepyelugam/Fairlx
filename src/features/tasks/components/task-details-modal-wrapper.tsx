@@ -199,7 +199,7 @@ export const TaskDetailsModalWrapper = () => {
             </div>
 
             {/* Right Section - Details Panel */}
-            <div className="w-80 border-l bg-gray-50 flex flex-col overflow-y-auto">
+            <div className="w-80 border-l bg-background flex flex-col overflow-y-auto">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6 pr-5">
                   <h2 className="font-semibold text-lg">Details</h2>

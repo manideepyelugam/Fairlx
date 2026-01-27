@@ -44,18 +44,18 @@ export const FiltersPanel = ({
   onEpicChange,
   onClearAll,
 }: FiltersPanelProps) => {
-  const hasActiveFilters = 
-    typeFilter !== "ALL" || 
-    priorityFilter !== "ALL" || 
-    statusFilter !== "ALL" || 
+  const hasActiveFilters =
+    typeFilter !== "ALL" ||
+    priorityFilter !== "ALL" ||
+    statusFilter !== "ALL" ||
     selectedEpicId !== null;
 
-    
+
 
   return (
-    <div className="w-64 border rounded-md flex flex-col">
+    <div className="w-64 border border-border rounded-md flex flex-col bg-card">
       {/* Header */}
-      <div className="p-3 border-b">
+      <div className="p-3 border-b border-border">
         <div className="flex items-center justify-between mb-1.5">
           <h3 className="font-medium text-sm flex items-center gap-2">
             <SlidersHorizontal className="size-4 text-primary" />
@@ -168,14 +168,14 @@ export const FiltersPanel = ({
             </Select>
           </div>
 
-           <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-6 px-2 ml-auto text-xs"
-                                onClick={onClearAll}
-                              >
-                                Clear all
-                              </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 ml-auto text-xs"
+            onClick={onClearAll}
+          >
+            Clear all
+          </Button>
         </div>
       </ScrollArea>
     </div>

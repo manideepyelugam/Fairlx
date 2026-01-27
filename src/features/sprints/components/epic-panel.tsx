@@ -40,13 +40,13 @@ export const EpicPanel = ({
   };
 
   const getWorkItemCountForEpic = (epicId: string) => {
-    return workItems.filter((item) => 
+    return workItems.filter((item) =>
       item.type !== WorkItemType.EPIC && item.epicId === epicId
     ).length;
   };
 
   const getWorkItemsWithoutEpic = () => {
-    return workItems.filter((item) => 
+    return workItems.filter((item) =>
       item.type !== WorkItemType.EPIC && !item.epicId
     );
   };
@@ -54,12 +54,12 @@ export const EpicPanel = ({
   const workItemsWithoutEpic = getWorkItemsWithoutEpic();
 
   return (
-    <div className="w-64 border rounded-md flex flex-col ">
+    <div className="w-64 border border-border rounded-md flex flex-col bg-card">
       {/* Header */}
-      <div className="p-3 border-b">
+      <div className="p-3 border-b border-border">
         <div className="flex items-center justify-between mb-1.5">
           <h3 className="font-medium text-sm flex items-center gap-2">
-            <Layers className="size-4 text-purple-600" />
+            <Layers className="size-4 text-purple-500" />
             Epic
           </h3>
           {selectedEpicId && (
@@ -87,7 +87,7 @@ export const EpicPanel = ({
             )}
           >
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div className="w-4 h-4 rounded bg-gray-400 shrink-0" />
+              <div className="w-4 h-4 rounded bg-muted-foreground/30 shrink-0" />
               <span className="!text-xs font-normal truncate">
                 Issues without epic
               </span>
@@ -171,22 +171,22 @@ export const EpicPanel = ({
             })}
           </div>
 
-         
-          
+
+
         </div>
-         {/* Create Epic Button */}
-              <div className=" border-t px-2 ">
-    <Button
+        {/* Create Epic Button */}
+        <div className=" border-t px-2 ">
+          <Button
             variant="ghost"
-                                className="w-full text-xs bg-white border border-gray-200 shadow-sm justify-start text-gray-500  mt-2" 
+            className="w-full text-xs bg-card border border-border shadow-sm justify-start text-muted-foreground mt-2"
             onClick={onCreateEpic}
           >
             <Plus className="size-4 mr-2" />
             Create epic
           </Button>
-          </div>
+        </div>
       </ScrollArea>
-      
+
     </div>
   );
 };

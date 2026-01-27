@@ -90,8 +90,8 @@ export const CodebaseQA = ({ projectId, commitsCount = 0 }: CodebaseQAProps) => 
               <span className="text-blue-600">AI-Powered</span>
               <span className="text-xs">•</span>
               <p className="text-xs text-muted-foreground">
-              {commitsCount > 0 ? `${commitsCount} commits analyzed` : 'Analyzing codebase...'}
-            </p>
+                {commitsCount > 0 ? `${commitsCount} commits analyzed` : 'Analyzing codebase...'}
+              </p>
             </div>
           </div>
         </div>
@@ -105,10 +105,10 @@ export const CodebaseQA = ({ projectId, commitsCount = 0 }: CodebaseQAProps) => 
             disabled={isAsking}
           />
           <Button className="absolute top-11 right-2" size={"sm"} onClick={handleAsk} disabled={isAsking || !question.trim()}>
-              {isAsking && <Loader2 className=" h-2 w-2 animate-spin" />}
-              {!isAsking && <Send className=" h-2 w-2" />}
-              
-            </Button>
+            {isAsking && <Loader2 className=" h-2 w-2 animate-spin" />}
+            {!isAsking && <Send className=" h-2 w-2" />}
+
+          </Button>
         </div>
       </div>
 
@@ -171,7 +171,7 @@ export const CodebaseQA = ({ projectId, commitsCount = 0 }: CodebaseQAProps) => 
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-6 px-2 bg-white text-black transition-opacity"
+                            className="h-6 px-2 bg-primary text-primary-foreground transition-opacity font-medium"
                             onClick={() => handleCopyCode(codeString, codeId)}
                           >
                             {copiedCode === codeId ? (

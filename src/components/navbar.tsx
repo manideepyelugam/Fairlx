@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 
 import { MobileSidebar } from "./mobile-sidebar";
 import { Breadcrumb } from "./breadcrumb";
+import { ModeToggle } from "./mode-toggle";
 
 const pathnameMap = {
   tasks: {
@@ -36,7 +37,7 @@ export const Navbar = () => {
   const { title } = pathnameMap[pathnameKey] || defaultMap;
 
   return (
-    <nav className="py-[15px] px-6 flex items-center border-b border-neutral-200 sticky top-0 left-0 right-0 z-10 justify-between bg-white">
+    <nav className="py-[15px] px-6 flex items-center border-b border-border sticky top-0 left-0 right-0 z-10 justify-between bg-background">
       <div className="flex flex-col ">
         <div className="hidden lg:flex">
           <Breadcrumb />
@@ -47,6 +48,7 @@ export const Navbar = () => {
       </div>
       <div className="flex items-center gap-2">
         <MobileSidebar />
+        <ModeToggle />
         <NotificationBell />
         <UserButton />
       </div>

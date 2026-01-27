@@ -217,7 +217,7 @@ export function UsageDashboardClient() {
                         {isOrg ? "Back to Organization" : "Back to Workspace"}
                     </Button>
                     <div className="flex items-center justify-between mb-2">
-                        <p className="text-sm text-blue-600 dark:text-blue-400">
+                        <p className="text-sm text-muted-foreground">
                             {isOrg
                                 ? "Organization-wide usage monitoring and billing insights"
                                 : "Monitor and optimize your resource usage"}
@@ -226,7 +226,7 @@ export function UsageDashboardClient() {
                     </div>
                     <div className="flex items-center gap-3 mb-1">
                         {isOrg && <Building2 className="h-8 w-8 text-primary" />}
-                        <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+                        <h1 className="text-3xl font-bold tracking-tight text-foreground">
                             {isOrg
                                 ? `${(currentOrg as { name?: string })?.name || "Organization"} Usage Dashboard`
                                 : `Welcome to Admin Dashboard${user?.name ? `, ${user.name.split(' ')[0]}` : ""}.`}
@@ -242,7 +242,7 @@ export function UsageDashboardClient() {
                 {/* Toolbar - Matching workspace dashboard style */}
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                        <div className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-muted text-muted-foreground border border-border">
                             <Shield className="h-3.5 w-3.5" />
                             <span className="font-medium">Admin Only</span>
                         </div>
@@ -262,7 +262,7 @@ export function UsageDashboardClient() {
                                     variant="outline"
                                     size="sm"
                                     className={cn(
-                                        "justify-start text-left font-normal text-xs bg-blue-50 dark:bg-slate-700 text-blue-900 dark:text-blue-100 px-3 py-1.5 border border-blue-200 dark:border-slate-600 hover:bg-blue-100 dark:hover:bg-slate-600",
+                                        "justify-start text-left font-normal text-xs bg-muted text-foreground px-3 py-1.5 border border-border hover:bg-muted/80",
                                         !dateRange.from && "text-muted-foreground"
                                     )}
                                 >
@@ -325,9 +325,9 @@ export function UsageDashboardClient() {
                             variant="ghost"
                             size="icon"
                             onClick={() => refetchEvents()}
-                            className="h-7 w-7 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                            className="h-7 w-7 hover:bg-muted"
                         >
-                            <RefreshCw className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            <RefreshCw className="h-4 w-4 text-muted-foreground" />
                         </Button>
                     </div>
                 </div>

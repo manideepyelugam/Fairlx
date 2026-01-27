@@ -77,7 +77,7 @@ export const LabelSettings = ({ labels = [], onChange }: LabelSettingsProps) => 
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {labels.map((label, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 pl-3 bg-white border rounded-md group">
+                    <div key={index} className="flex items-center justify-between p-2 pl-3 bg-card border border-border rounded-md group">
                         <div className="flex items-center gap-2">
                             <div
                                 className="size-3 rounded-full"

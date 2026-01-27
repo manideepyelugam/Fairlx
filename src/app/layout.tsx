@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 import { QueryProvider } from "@/components/query-provider";
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { AccountLifecycleProvider } from "@/components/account-lifecycle-provider";
+import { ThemeProvider } from "@/components/theme-provider";
 
 import "./globals.css";
 
@@ -31,14 +32,21 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={cn(inter.className, "antialiased min-h-screen")}>
-        <NuqsAdapter>
-          <QueryProvider>
-            <Toaster />
-            <AccountLifecycleProvider>
-              {children}
-            </AccountLifecycleProvider>
-          </QueryProvider>
-        </NuqsAdapter>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <NuqsAdapter>
+            <QueryProvider>
+              <Toaster />
+              <AccountLifecycleProvider>
+                {children}
+              </AccountLifecycleProvider>
+            </QueryProvider>
+          </NuqsAdapter>
+        </ThemeProvider>
       </body>
     </html>
   );

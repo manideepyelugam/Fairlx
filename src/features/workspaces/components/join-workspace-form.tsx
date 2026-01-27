@@ -57,7 +57,7 @@ export const JoinWorkspaceForm = ({
   // If already a member, show different UI
   if (initialValues.isMember) {
     return (
-      <Card className="size-full border-none shadow-none">
+      <Card className="size-full border border-border shadow-none">
         <CardHeader className="p-7 text-center">
           <div className="flex justify-center mb-4">
             <Avatar className="size-20 border-2 border-primary">
@@ -116,7 +116,7 @@ export const JoinWorkspaceForm = ({
   }
 
   return (
-    <Card className="size-full border-none shadow-none">
+    <Card className="size-full border border-border shadow-none">
       <CardHeader className="p-7 text-center">
         <div className="flex justify-center mb-4">
           <Avatar className="size-20 border-2 border-primary">

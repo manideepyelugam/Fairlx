@@ -95,7 +95,7 @@ export function TimelineHeader({
   };
 
   return (
-    <div className="border-b bg-white p-4 space-y-4">
+    <div className="border-b bg-background p-4 space-y-4">
       {/* Top Row: Search and Actions */}
       <div className="flex items-center gap-4">
         {/* Search Input */}

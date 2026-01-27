@@ -98,7 +98,7 @@ export const WorkspaceSwitcher = () => {
 
   return (
     <TooltipProvider>
-      <div className="flex flex-col px-3 pt-3 pb-4 border-t-[1.5px] border-neutral-200">
+      <div className="flex flex-col px-3 pt-3 pb-4 border-t-[1.5px] border-border">
         <ConfirmDialog />
 
         {/* Organization indicator for ORG accounts with refresh */}
@@ -133,7 +133,7 @@ export const WorkspaceSwitcher = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="size-5 p-0 hover:bg-transparent">
-                  <RiAddCircleFill className="size-5 text-neutral-500 cursor-pointer hover:opacity-75 transition" />
+                  <RiAddCircleFill className="size-5 text-muted-foreground cursor-pointer hover:opacity-75 transition" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
