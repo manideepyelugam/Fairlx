@@ -219,7 +219,7 @@ export const EditProjectForm = ({
                             ) : (
                               <Avatar className="size-[72px]">
                                 <AvatarFallback>
-                                  <ImageIcon className="size-[36px] text-neutral-400" />
+                                  <ImageIcon className="size-[36px] text-muted-foreground" />
                                 </AvatarFallback>
                               </Avatar>
                             )}
@@ -335,7 +335,7 @@ export const EditProjectForm = ({
 
       {/* Moved Danger Zone to its own card outside the main form card, always visible at bottom */}
       {isAdmin && (
-        <Card className="w-full h-full border-none shadow-none bg-red-50/50">
+        <Card className="w-full h-full border-none shadow-none bg-destructive/5">
           <CardContent className="p-7">
             <div className="flex flex-col">
               <h3 className="font-bold text-red-600">Danger Zone</h3>

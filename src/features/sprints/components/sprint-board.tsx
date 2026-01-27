@@ -53,9 +53,9 @@ export const SprintBoard = ({ workspaceId, projectId }: SprintBoardProps) => {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-        
+
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Sprint Board</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Sprint Board</h1>
             <p className="text-sm mt-1 text-muted-foreground">
               Plan, track, and manage your agile sprints
             </p>
@@ -65,7 +65,7 @@ export const SprintBoard = ({ workspaceId, projectId }: SprintBoardProps) => {
           <Button
             size="sm"
             onClick={() => setCreateSprintOpen(true)}
-            className="h-8 px-3 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 shadow-sm"
+            className="h-8 px-3 text-xs font-medium"
           >
             <Plus className="size-3.5 mr-1.5" />
             New Sprint
@@ -77,53 +77,53 @@ export const SprintBoard = ({ workspaceId, projectId }: SprintBoardProps) => {
       <Tabs defaultValue="active" className="space-y-4">
         <div className="flex items-center justify-between border-b border-slate-200 ">
           <TabsList className="bg-transparent p-0 h-auto gap-0">
-            <TabsTrigger 
-              value="active" 
+            <TabsTrigger
+              value="active"
               className={cn(
                 "relative px-4 py-2.5 text-xs font-medium rounded-none bg-transparent",
-                "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white",
-                "data-[state=active]:text-blue-600 data-[state=active]:bg-transparent",
-                "data-[state=active]:after:absolute data-[state=active]:after:bottom-0 data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:h-0.5 data-[state=active]:after:bg-blue-600"
+                "text-muted-foreground hover:text-foreground",
+                "data-[state=active]:text-primary data-[state=active]:bg-transparent",
+                "data-[state=active]:after:absolute data-[state=active]:after:bottom-0 data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:h-0.5 data-[state=active]:after:bg-primary"
               )}
             >
               <Zap className="size-3.5 mr-1.5" />
               Active
               {activeSprints.length > 0 && (
-                <Badge className="ml-1.5 h-4 px-1.5 text-[10px] font-medium bg-blue-100 text-blue-700 border-0">
+                <Badge className="ml-1.5 h-4 px-1.5 text-[10px] font-medium bg-primary/10 text-primary border-0">
                   {activeSprints.length}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger 
-              value="planned" 
+            <TabsTrigger
+              value="planned"
               className={cn(
                 "relative px-4 py-2.5 text-xs font-medium rounded-none bg-transparent",
-                "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white",
-                "data-[state=active]:text-blue-600 data-[state=active]:bg-transparent",
-                "data-[state=active]:after:absolute data-[state=active]:after:bottom-0 data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:h-0.5 data-[state=active]:after:bg-blue-600"
+                "text-muted-foreground hover:text-foreground",
+                "data-[state=active]:text-primary data-[state=active]:bg-transparent",
+                "data-[state=active]:after:absolute data-[state=active]:after:bottom-0 data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:h-0.5 data-[state=active]:after:bg-primary"
               )}
             >
               <Clock className="size-3.5 mr-1.5" />
               Planned
               {plannedSprints.length > 0 && (
-                <Badge className="ml-1.5 h-4 px-1.5 text-[10px] font-medium bg-slate-100 text-slate-600 border-0">
+                <Badge className="ml-1.5 h-4 px-1.5 text-[10px] font-medium bg-muted text-muted-foreground border-0">
                   {plannedSprints.length}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger 
-              value="completed" 
+            <TabsTrigger
+              value="completed"
               className={cn(
                 "relative px-4 py-2.5 text-xs font-medium rounded-none bg-transparent",
-                "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white",
-                "data-[state=active]:text-blue-600 data-[state=active]:bg-transparent",
-                "data-[state=active]:after:absolute data-[state=active]:after:bottom-0 data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:h-0.5 data-[state=active]:after:bg-blue-600"
+                "text-muted-foreground hover:text-foreground",
+                "data-[state=active]:text-primary data-[state=active]:bg-transparent",
+                "data-[state=active]:after:absolute data-[state=active]:after:bottom-0 data-[state=active]:after:left-0 data-[state=active]:after:right-0 data-[state=active]:after:h-0.5 data-[state=active]:after:bg-primary"
               )}
             >
               <CheckCircle2 className="size-3.5 mr-1.5" />
               Completed
               {completedSprints.length > 0 && (
-                <Badge className="ml-1.5 h-4 px-1.5 text-[10px] font-medium bg-green-100 text-green-700 border-0">
+                <Badge className="ml-1.5 h-4 px-1.5 text-[10px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-0">
                   {completedSprints.length}
                 </Badge>
               )}
@@ -150,7 +150,7 @@ export const SprintBoard = ({ workspaceId, projectId }: SprintBoardProps) => {
               <div className="p-3 rounded-full bg-blue-50 dark:bg-blue-950/30 mb-3">
                 <Zap className="size-6 text-blue-500" />
               </div>
-              <h3 className="text-sm font-medium text-slate-900 dark:text-white mb-1">No Active Sprints</h3>
+              <h3 className="text-sm font-medium text-foreground mb-1">No Active Sprints</h3>
               <p className="text-xs text-muted-foreground mb-4 text-center max-w-xs">
                 Start a sprint to begin tracking work items and team velocity
               </p>
@@ -188,7 +188,7 @@ export const SprintBoard = ({ workspaceId, projectId }: SprintBoardProps) => {
               <div className="p-3 rounded-full bg-slate-100 dark:bg-slate-800 mb-3">
                 <Clock className="size-6 text-slate-400" />
               </div>
-              <h3 className="text-sm font-medium text-slate-900 dark:text-white mb-1">No Planned Sprints</h3>
+              <h3 className="text-sm font-medium text-foreground mb-1">No Planned Sprints</h3>
               <p className="text-xs text-muted-foreground mb-4 text-center max-w-xs">
                 Plan your upcoming sprints to keep your team aligned
               </p>
@@ -226,7 +226,7 @@ export const SprintBoard = ({ workspaceId, projectId }: SprintBoardProps) => {
               <div className="p-3 rounded-full bg-green-50 dark:bg-green-950/30 mb-3">
                 <CheckCircle2 className="size-6 text-green-500" />
               </div>
-              <h3 className="text-sm font-medium text-slate-900 dark:text-white mb-1">No Completed Sprints</h3>
+              <h3 className="text-sm font-medium text-foreground mb-1">No Completed Sprints</h3>
               <p className="text-xs text-muted-foreground text-center max-w-xs">
                 Completed sprints will appear here for review and retrospectives
               </p>

@@ -97,11 +97,36 @@ interface CustomTooltipProps {
 function CustomTooltip({ active, payload, label, unit }: CustomTooltipProps) {
     if (!active || !payload || payload.length === 0) return null;
 
+    // For PieChart, label is often absent, so we use the first entry's name
+    const title = label || payload[0]?.name;
     const total = payload.reduce((sum, entry) => sum + (entry.value || 0), 0);
 
     return (
-        <div className="bg-background border border-border rounded-lg p-3 shadow-lg min-w-[200px] z-50">
-            <p className="font-semibold text-sm mb-3 border-b pb-2">{label}</p>
+        <div
+            style={{
+                backgroundColor: 'rgba(0, 0, 0, 0.95)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)',
+                borderRadius: '8px',
+                padding: '12px',
+                minWidth: '200px',
+                zIndex: 9999
+            }}
+        >
+            {title && (
+                <p
+                    style={{
+                        color: '#ffffff',
+                        fontWeight: 600,
+                        fontSize: '14px',
+                        marginBottom: '12px',
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                        paddingBottom: '8px'
+                    }}
+                >
+                    {title}
+                </p>
+            )}
             <div className="space-y-2">
                 {payload.map((entry, index) => (
                     <div key={index} className="flex items-center justify-between gap-4 text-xs">
@@ -110,29 +135,44 @@ function CustomTooltip({ active, payload, label, unit }: CustomTooltipProps) {
                                 className="w-2.5 h-2.5 rounded-sm"
                                 style={{ backgroundColor: entry.color }}
                             />
-                            <span className="text-muted-foreground whitespace-nowrap">{MODULE_LABELS[entry.dataKey] || entry.name}</span>
+                            <span style={{ color: '#d1d5db' }} className="whitespace-nowrap">
+                                {MODULE_LABELS[entry.name?.toLowerCase() || ''] || entry.name}
+                            </span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="font-medium">
+                            <span style={{ color: '#ffffff', fontWeight: 500 }}>
                                 {unit && unit !== "units"
                                     ? formatValue(entry.value * (unit === "GB" ? 1024 * 1024 * 1024 : unit === "MB" ? 1024 * 1024 : unit === "KB" ? 1024 : 1), "B")
                                     : entry.value.toLocaleString()}
                             </span>
-                            <span className="text-[10px] text-muted-foreground opacity-70">
+                            <span style={{ color: '#9ca3af', fontSize: '10px' }}>
                                 ({total > 0 ? ((entry.value / total) * 100).toFixed(0) : 0}%)
                             </span>
                         </div>
                     </div>
                 ))}
             </div>
-            <div className="border-t border-border mt-3 pt-2 flex justify-between text-xs font-semibold">
-                <span>Total</span>
-                <span>
-                    {unit && unit !== "units"
-                        ? formatValue(total * (unit === "GB" ? 1024 * 1024 * 1024 : unit === "MB" ? 1024 * 1024 : unit === "KB" ? 1024 : 1), "B")
-                        : total.toLocaleString()}
-                </span>
-            </div>
+            {payload.length > 1 && (
+                <div
+                    style={{
+                        borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                        marginTop: '12px',
+                        paddingTop: '8px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        color: '#ffffff'
+                    }}
+                >
+                    <span>Total</span>
+                    <span>
+                        {unit && unit !== "units"
+                            ? formatValue(total * (unit === "GB" ? 1024 * 1024 * 1024 : unit === "MB" ? 1024 * 1024 : unit === "KB" ? 1024 : 1), "B")
+                            : total.toLocaleString()}
+                    </span>
+                </div>
+            )}
         </div>
     );
 }
@@ -277,7 +317,7 @@ export function UsageCharts({ events, summary, isLoading }: UsageChartsProps) {
             </CardHeader>
             <CardContent>
                 <Tabs defaultValue="timeline" className="space-y-4">
-                    <TabsList>
+                    <TabsList className="bg-muted border border-border">
                         <TabsTrigger value="timeline">Usage Over Time</TabsTrigger>
                         <TabsTrigger value="modules">By Module</TabsTrigger>
                         <TabsTrigger value="sources">By Source</TabsTrigger>
@@ -370,14 +410,7 @@ export function UsageCharts({ events, summary, isLoading }: UsageChartsProps) {
                                                 />
                                             ))}
                                         </Pie>
-                                        <Tooltip
-                                            formatter={(value: number) => value.toLocaleString()}
-                                            contentStyle={{
-                                                backgroundColor: "hsl(var(--background))",
-                                                border: "1px solid hsl(var(--border))",
-                                                borderRadius: "8px",
-                                            }}
-                                        />
+                                        <Tooltip content={<CustomTooltip />} />
                                     </PieChart>
                                 </ResponsiveContainer>
                                 <div className="w-[40%] flex flex-col justify-center space-y-3">

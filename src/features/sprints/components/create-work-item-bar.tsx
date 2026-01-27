@@ -104,7 +104,7 @@ export const CreateWorkItemBar = ({
       <Button
         size="sm"
         onClick={() => setIsOpen(true)}
-        className="h-7 px-3 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-dashed border-slate-300 dark:border-slate-600 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-blue-400 hover:text-blue-600 transition-colors"
+        className="h-7 px-3 bg-card text-muted-foreground border border-dashed border-border text-xs font-medium hover:bg-accent hover:border-primary hover:text-primary transition-colors"
       >
         <Plus className="size-3 mr-1.5" />
         Add work item
@@ -112,7 +112,7 @@ export const CreateWorkItemBar = ({
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="sm:max-w-[560px]">
-          <DialogHeader className="pb-3 border-b border-slate-100 dark:border-slate-700">
+          <DialogHeader className="pb-3 border-b border-border">
             <DialogTitle className="text-base font-semibold">Create Work Item</DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
               Add a new work item to your {sprintId ? "sprint" : "backlog"}
@@ -257,7 +257,7 @@ export const CreateWorkItemBar = ({
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
                 <Button
                   type="button"
                   variant="outline"
@@ -268,11 +268,11 @@ export const CreateWorkItemBar = ({
                 >
                   Cancel
                 </Button>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={isPending}
                   size="sm"
-                  className="h-8 px-4 text-xs bg-blue-600 hover:bg-blue-700"
+                  className="h-8 px-4 text-xs bg-primary hover:bg-primary/90"
                 >
                   {isPending ? "Creating..." : "Create"}
                 </Button>

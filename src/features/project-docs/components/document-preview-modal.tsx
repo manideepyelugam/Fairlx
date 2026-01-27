@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { 
-  X, 
-  Download, 
-  ExternalLink, 
-  FileText, 
-  Maximize2, 
-  ZoomIn, 
+import {
+  X,
+  Download,
+  ExternalLink,
+  FileText,
+  Maximize2,
+  ZoomIn,
   ZoomOut,
   RotateCw,
 } from "lucide-react";
@@ -111,7 +111,7 @@ export const DocumentPreviewModal = ({
       return (
         <iframe
           src={document.url}
-          className="w-full h-full border-0 bg-white"
+          className="w-full h-full border-0 bg-background"
           title={document.name}
         />
       );
@@ -122,7 +122,7 @@ export const DocumentPreviewModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent 
+      <DialogContent
         className={`
           ${isFullscreen ? "max-w-full w-full h-full m-0 rounded-none" : "max-w-4xl h-[85vh]"}
           flex flex-col p-0
@@ -147,7 +147,7 @@ export const DocumentPreviewModal = ({
                 </div>
               </div>
             </div>
-            
+
             {/* Action Buttons */}
             <div className="flex items-center gap-1">
               {isImage && (
@@ -165,7 +165,7 @@ export const DocumentPreviewModal = ({
                   <div className="w-px h-6 bg-border mx-1" />
                 </>
               )}
-              
+
               <Button
                 variant="ghost"
                 size="icon"
@@ -174,7 +174,7 @@ export const DocumentPreviewModal = ({
               >
                 <Maximize2 className="h-4 w-4" />
               </Button>
-              
+
               {document.url && (
                 <Button variant="ghost" size="icon" asChild title="Open in New Tab">
                   <a href={document.url} target="_blank" rel="noopener noreferrer">
@@ -182,7 +182,7 @@ export const DocumentPreviewModal = ({
                   </a>
                 </Button>
               )}
-              
+
               <Button
                 variant="ghost"
                 size="icon"
@@ -192,7 +192,7 @@ export const DocumentPreviewModal = ({
               >
                 <Download className="h-4 w-4" />
               </Button>
-              
+
               <Button
                 variant="ghost"
                 size="icon"

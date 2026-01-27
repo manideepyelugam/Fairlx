@@ -280,7 +280,7 @@ export const LabelFilter = ({
         <PopoverContent className="w-80 !text-xs p-2">
           <div className="space-y-2">
             <input
-              className="w-full px-2 py-2 border rounded text-xs"
+              className="w-full px-2 py-2 border border-border bg-background rounded text-xs focus:ring-1 focus:ring-primary outline-none"
               type="text"
               placeholder="Search labels..."
               value={searchTerm}

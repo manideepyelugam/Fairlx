@@ -47,20 +47,20 @@ export const EventCard = ({
     | Member
     | { $id: string; name: string; email?: string; profileImageUrl?: string | null }
   )[] = assignees && assignees.length > 0
-    ? assignees
-    : assignee
-    ? [assignee]
-    : [];
+      ? assignees
+      : assignee
+        ? [assignee]
+        : [];
 
   const normalizedAssignees: AssigneeLike[] = combinedAssignees.map((member) => ({
-      $id: member.$id,
-      name: "name" in member ? member.name : undefined,
-      email: "email" in member ? member.email : undefined,
-      profileImageUrl:
-        "profileImageUrl" in member
-          ? (member.profileImageUrl as string | null | undefined)
-          : undefined,
-    }));
+    $id: member.$id,
+    name: "name" in member ? member.name : undefined,
+    email: "email" in member ? member.email : undefined,
+    profileImageUrl:
+      "profileImageUrl" in member
+        ? (member.profileImageUrl as string | null | undefined)
+        : undefined,
+  }));
 
   const onClick = (e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation();
@@ -72,7 +72,7 @@ export const EventCard = ({
       <div
         onClick={onClick}
         className={cn(
-          "p-1.5 text-xs bg-white text-primary border rounded-md border-l-4 flex flex-col gap-y-1.5 cursor-pointer hover:opacity-75 transition",
+          "p-1.5 text-xs bg-card text-primary border border-border rounded-md border-l-4 flex flex-col gap-y-1.5 cursor-pointer hover:opacity-75 transition",
           statusColorMap[status]
         )}
       >
@@ -85,9 +85,9 @@ export const EventCard = ({
             <AssigneeAvatarGroup
               assignees={normalizedAssignees}
               visibleCount={3}
-              avatarClassName="size-4 border border-white"
+              avatarClassName="size-4 border border-card"
               fallbackClassName="text-[10px]"
-              extraCountClassName="size-4 rounded-full bg-muted text-[10px] font-medium flex items-center justify-center border border-white"
+              extraCountClassName="size-4 rounded-full bg-muted text-[10px] font-medium flex items-center justify-center border border-card"
               triggerClassName="flex items-center -space-x-1"
               popoverAlign="end"
               ariaLabel={`View ${normalizedAssignees.length} assignees`}
@@ -95,7 +95,7 @@ export const EventCard = ({
           ) : (
             <span className="text-[10px] text-muted-foreground">Unassigned</span>
           )}
-          <div className="size-1 rounded-full bg-neutral-300" />
+          <div className="size-1 rounded-full bg-muted" />
           <ProjectAvatar
             name={project?.name || ""}
             image={project && "imageUrl" in project ? project.imageUrl : ""}

@@ -20,9 +20,9 @@ export function TimelineWorkTree({
   onToggleExpanded,
 }: TimelineWorkTreeProps) {
   return (
-    <div className="w-[400px] border-r bg-white overflow-y-auto flex-shrink-0">
+    <div className="w-[400px] border-r bg-card overflow-y-auto flex-shrink-0">
       {/* Header */}
-      <div className="sticky top-0 bg-white border-b px-4 py-3 font-semibold text-sm z-10">
+      <div className="sticky top-0 bg-card border-b px-4 py-3 font-semibold text-sm z-10">
         <div className="flex items-center gap-2">
           <span className="flex-1">Sprints</span>
         </div>
@@ -87,7 +87,7 @@ function SprintGroupRow({
 
       {/* Epic Groups - Jira style */}
       {isExpanded && (
-        <div className="bg-white">
+        <div className="bg-card">
           {epics.map((epicGroup) => (
             <EpicGroupRow
               key={epicGroup.epic.id}
@@ -130,9 +130,9 @@ function EpicGroupRow({
       {/* Epic Row - Jira style with expand icon on left */}
       <div
         className={cn(
-          "flex items-center gap-2 px-3 py-2 hover:bg-blue-50/50 cursor-pointer transition-colors border-b border-gray-100",
+          "flex items-center gap-2 px-3 py-2 hover:bg-accent/50 cursor-pointer transition-colors border-b border-border",
           selectedItemId === epic.id && "bg-blue-100/50",
-          isNoEpicGroup && "bg-gray-50/50 italic text-gray-600"
+          isNoEpicGroup && "bg-muted/50 italic text-muted-foreground"
         )}
         onClick={() => !isNoEpicGroup && onItemClick(epic.id)}
       >
@@ -145,9 +145,9 @@ function EpicGroupRow({
         >
           {tasks.length > 0 ? (
             isExpanded ? (
-              <ChevronDown className="h-4 w-4 text-gray-600" />
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
             ) : (
-              <ChevronRight className="h-4 w-4 text-gray-600" />
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
             )
           ) : (
             <div className="w-4" />
@@ -169,7 +169,7 @@ function EpicGroupRow({
             )}
             <span className={cn(
               "text-sm font-medium truncate",
-              isNoEpicGroup && "text-gray-500"
+              isNoEpicGroup && "text-muted-foreground"
             )}>
               {epic.title}
             </span>
@@ -179,7 +179,7 @@ function EpicGroupRow({
 
       {/* Task Rows - shown when epic is expanded */}
       {isExpanded && tasks.length > 0 && (
-        <div className="bg-gray-50/30">
+        <div className="bg-muted/30">
           {tasks.map((task) => (
             <div key={task.id}>
               <WorkItemRow
@@ -194,7 +194,7 @@ function EpicGroupRow({
 
               {/* Subtask Rows */}
               {task.isExpanded && task.children && (
-                <div className="bg-gray-50/50">
+                <div className="bg-muted/50">
                   {task.children.map((subtask) => (
                     <WorkItemRow
                       key={subtask.id}
@@ -245,7 +245,7 @@ function WorkItemRow({
   return (
     <div
       className={cn(
-        "flex items-center gap-2 py-2 hover:bg-blue-50/30 cursor-pointer transition-colors border-b border-gray-100",
+        "flex items-center gap-2 py-2 hover:bg-accent/30 cursor-pointer transition-colors border-b border-border",
         paddingLeft,
         isSelected && "bg-blue-100/50 ring-1 ring-blue-300 ring-inset"
       )}
@@ -261,9 +261,9 @@ function WorkItemRow({
           className="p-0 hover:bg-transparent flex-shrink-0"
         >
           {isExpanded ? (
-            <ChevronDown className="h-3.5 w-3.5 text-gray-600" />
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
           ) : (
-            <ChevronRight className="h-3.5 w-3.5 text-gray-600" />
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
           )}
         </button>
       ) : (
@@ -319,7 +319,7 @@ function WorkItemRow({
               </Avatar>
             ))}
             {validAssignees.length > 2 && (
-              <div className="h-5 w-5 rounded-full bg-gray-200 border border-white flex items-center justify-center text-[10px]">
+              <div className="h-5 w-5 rounded-full bg-muted border border-background flex items-center justify-center text-[10px]">
                 +{validAssignees.length - 2}
               </div>
             )}

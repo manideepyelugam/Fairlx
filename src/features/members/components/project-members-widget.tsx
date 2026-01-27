@@ -24,9 +24,9 @@ export const ProjectMembersWidget = ({
 
   if (isLoading) {
     return (
-      <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+      <Card className="p-5 bg-card border border-border shadow-sm">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+          <h3 className="text-sm font-medium tracking-tight text-foreground flex items-center gap-2">
             <Users className="h-4 w-4" />
             Team Members
           </h3>
@@ -42,14 +42,14 @@ export const ProjectMembersWidget = ({
 
   if (error || !membersData) {
     return (
-      <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+      <Card className="p-5 bg-card border border-border shadow-sm">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+          <h3 className="text-sm font-medium tracking-tight text-foreground flex items-center gap-2">
             <Users className="h-4 w-4" />
             Team Members
           </h3>
         </div>
-        <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">
+        <p className="text-sm text-muted-foreground text-center py-4">
           Failed to load team members
         </p>
       </Card>
@@ -61,23 +61,23 @@ export const ProjectMembersWidget = ({
   const remainingCount = Math.max(0, members.length - limit);
 
   return (
-    <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+    <Card className="p-5 bg-card border border-border shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+        <h3 className="text-sm font-medium tracking-tight text-foreground flex items-center gap-2">
           <Users className="h-4 w-4" />
           Team Members
-          <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
+          <span className="text-xs font-normal text-muted-foreground">
             ({members.length})
           </span>
         </h3>
         <Link href={`/workspaces/${workspaceId}/members`}>
-          <Button variant="ghost" size="sm" className="h-7 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-xs text-slate-600 dark:text-slate-400">
+          <Button variant="ghost" size="sm" className="h-7 hover:bg-accent text-xs text-muted-foreground">
             Manage
           </Button>
         </Link>
       </div>
       {members.length === 0 ? (
-        <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">
+        <p className="text-sm text-muted-foreground text-center py-4">
           No team members yet
         </p>
       ) : (
@@ -93,7 +93,7 @@ export const ProjectMembersWidget = ({
                 key={member.$id}
                 name={displayName}
                 imageUrl={member.profileImageUrl}
-                className="size-10 hover:scale-110 transition-transform cursor-pointer border-2 border-blue-100 dark:border-blue-900"
+                className="size-10 hover:scale-110 transition-transform cursor-pointer border-2 border-border"
                 fallbackClassName="text-sm"
                 withTooltip={true}
                 tooltipText={displayInfo}
@@ -101,7 +101,7 @@ export const ProjectMembersWidget = ({
             );
           })}
           {remainingCount > 0 && (
-            <div className="size-10 rounded-full bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-100 dark:border-blue-900 flex items-center justify-center text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors cursor-pointer">
+            <div className="size-10 rounded-full bg-muted border-2 border-border flex items-center justify-center text-xs font-medium text-muted-foreground hover:bg-accent transition-colors cursor-pointer">
               +{remainingCount}
             </div>
           )}

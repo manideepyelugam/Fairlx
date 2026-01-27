@@ -140,7 +140,7 @@ const defaultWorkItemTypes = [
 const getStatusIcon = (iconName: string, color: string): React.ReactNode => {
   const iconStyle = { color };
   const className = "size-4";
-  
+
   switch (iconName) {
     case "CircleCheck":
     case "CheckCircle":
@@ -171,10 +171,10 @@ export const TaskDetailsSidebar = ({
   const workflowId = projectData?.workflowId;
 
   // Get workflow statuses to find the current status ID
-  const { data: workflowStatusesData } = useGetWorkflowStatuses({ 
-    workflowId: workflowId || "" 
+  const { data: workflowStatusesData } = useGetWorkflowStatuses({
+    workflowId: workflowId || ""
   });
-  
+
   // Find the current status document by matching the key to task.status
   const currentStatusDoc = useMemo(() => {
     if (!workflowStatusesData?.documents) return null;
@@ -199,7 +199,7 @@ export const TaskDetailsSidebar = ({
 
     // Get allowed target status keys
     const allowedStatusKeys = new Set<string>();
-    
+
     // Always include current status
     allowedStatusKeys.add(task.status);
 
@@ -212,11 +212,11 @@ export const TaskDetailsSidebar = ({
 
     // If we have workflow statuses, use those instead of default statuses
     if (workflowStatusesData?.documents && workflowStatusesData.documents.length > 0) {
-      return workflowStatusesData.documents.map((status: { 
-        key: string; 
-        name: string; 
-        icon: string; 
-        color: string 
+      return workflowStatusesData.documents.map((status: {
+        key: string;
+        name: string;
+        icon: string;
+        color: string
       }) => ({
         value: status.key,
         label: status.name,
@@ -374,387 +374,387 @@ export const TaskDetailsSidebar = ({
   return (
     <div className="flex flex-col gap-1  py-2">
       <div className="mt-2 mb-1 px-2">
-         <div onClick={() => setProjectOpen(!projectOpen)} className="flex gap-1 cursor-pointer items-center flex-row">
-              {projectOpen ? (
-                         <ChevronDown className="size-3 text-gray-500" />
-                       ) : (
-                         <ChevronRight className="size-3 text-gray-500" />
-                       )}
+        <div onClick={() => setProjectOpen(!projectOpen)} className="flex gap-1 cursor-pointer items-center flex-row">
+          {projectOpen ? (
+            <ChevronDown className="size-3 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="size-3 text-muted-foreground" />
+          )}
 
-               <span className="text-xs text-gray-500 ">Status</span>
+          <span className="text-xs text-muted-foreground ">Status</span>
 
-         </div>
+        </div>
 
-      {projectOpen ? (
-        <>
-         <Popover open={statusOpen} onOpenChange={setStatusOpen}>
-        <PopoverTrigger asChild disabled={!canEdit || isUpdating}>
-          <button className="flex items-center gap-3 mt-2 px-2 py-2 hover:bg-gray-100 rounded-md w-full text-left">
-            <span className={cn("flex items-center", currentStatus.color)}>
-              {currentStatus.icon}
-            </span>
-            <span className="text-[13px] font-normal ">{currentStatus.label}</span>
-            {isLoadingTransitions && workflowId && (
-              <span className="text-xs text-gray-400 ml-auto">Loading...</span>
-            )}
-          </button>
-        </PopoverTrigger>
-        <PopoverContent className="w-64 p-0 bg-white border border-gray-200 text-gray-900 shadow-lg" align="start" side="left" sideOffset={8}>
-          <div className="p-2">
-            <div className="flex items-center gap-2 px-2 border-b border-gray-200 mb-1">
-              <Input
-                placeholder="Change status..."
-                value={statusSearch}
-                onChange={(e) => setStatusSearch(e.target.value)}
-                className="h-7 border-0 focus-visible:ring-0 p-0 text-xs bg-transparent text-gray-900 placeholder:text-gray-400"
-              />
-              
-            </div>
-            {workflowId && (
-              <div className="px-2 py-1 mb-1 text-xs text-gray-500 flex items-center gap-1">
-                <Lock className="size-3" />
-                <span>Workflow enforced</span>
-              </div>
-            )}
-            <div className="space-y-0.5">
-              {filteredStatuses.map((status) => {
-                const isAllowed = 'isAllowed' in status ? status.isAllowed !== false : true;
-                const isCurrent = task.status === status.value;
-                
-                return (
-                  <button
-                    key={status.value}
-                    onClick={() => handleStatusChange(status.value, isAllowed)}
-                    disabled={!isAllowed && !isCurrent}
-                    className={cn(
-                      "flex items-center justify-between w-full px-2 py-1.5 rounded text-sm",
-                      isAllowed || isCurrent
-                        ? "hover:bg-gray-100 cursor-pointer"
-                        : "opacity-50 cursor-not-allowed"
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      {status.icon}
-                      <span className="text-xs tracking-normal">{status.label}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {isCurrent && <Check className="size-4 text-gray-600" />}
-                      {!isAllowed && !isCurrent && workflowId && (
-                        <Lock className="size-3 text-gray-400" />
-                      )}
-                      <span className="text-xs text-gray-400">{status.key}</span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
-    
-      <Popover open={priorityOpen} onOpenChange={setPriorityOpen}>
-        <PopoverTrigger asChild disabled={!canEdit}>
-          <button className="flex items-center gap-3 px-2 py-2 hover:bg-gray-100 rounded-md w-full text-left">
-            {currentPriority ? (
-              <>
-                <span className={cn("flex items-center", currentPriority.color)}>
-                  {currentPriority.icon}
-                </span>
-                <span className="text-[13px] font-normal ">{currentPriority.label}</span>
-              </>
-            ) : (
-              <>
-                <Minus className="size-4 text-gray-400" />
-                <span className="text-sm text-gray-500">Set priority</span>
-              </>
-            )}
-          </button>
-        </PopoverTrigger>
-        <PopoverContent className="w-64 p-0 bg-white border border-gray-200 text-gray-900 shadow-lg" align="start" side="left" sideOffset={8}>
-          <div className="p-2">
-            <div className="flex items-center gap-2 px-2 py-1.5 border-b border-gray-200 mb-1">
-              <span className="text-xs text-gray-500">Set priority to...</span>
-            </div>
-            <div className="space-y-0.5">
-              {allPriorities.map((priority) => (
-                <button
-                  key={priority.value || "none"}
-                  onClick={() => handlePriorityChange(priority.value)}
-                  className="flex items-center justify-between w-full px-2 py-1.5 hover:bg-gray-100 rounded text-sm"
-                >
-                  <div className="flex items-center gap-2">
-                    {priority.icon}
-                    <span className="text-xs tracking-normal">{priority.label}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {task.priority === priority.value && <Check className="size-4 text-gray-600" />}
-                    <span className="text-xs text-gray-400">{priority.key}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
-
-      <Popover open={assigneeOpen} onOpenChange={setAssigneeOpen}>
-        <PopoverTrigger asChild disabled={!canEdit}>
-          <button className="flex items-center gap-3 px-2 py-2 hover:bg-gray-100 rounded-md w-full text-left">
-            {currentAssignee ? (
-              <>
-                <MemberAvatar
-                  name={currentAssignee.name || ""}
-                  imageUrl={currentAssignee.profileImageUrl}
-                  className="size-5"
-                />
-                <span className="text-[13px] font-normal ">{currentAssignee.name}</span>
-              </>
-            ) : (
-              <>
-                <Users className="size-4 text-gray-400" />
-                <span className="text-[13px] font-normal text-gray-500">Assign to...</span>
-              </>
-            )}
-          </button>
-        </PopoverTrigger>
-        <PopoverContent className="w-64 p-0 bg-white border-gray-200 text-gray-900 shadow-lg" align="start" side="left" sideOffset={8}>
-          <div className="p-2">
-            <div className="flex items-center gap-2 px-2  border-gray-200 mb-4">
-              <Input
-                placeholder="Assign to..."
-                value={assigneeSearch}
-                onChange={(e) => setAssigneeSearch(e.target.value)}
-                className="h-7 border-0 focus-visible:ring-0 p-0 text-xs bg-transparent text-gray-900 placeholder:text-gray-400"
-              />
-            </div>
-            <div className="space-y-0.5 max-h-48 overflow-y-auto">
-              {/* No assignee option */}
-              <button
-                onClick={() => handleAssigneeChange("__none")}
-                className="flex items-center justify-between w-full px-2 py-1.5 hover:bg-gray-100 rounded text-sm"
-              >
-                <div className="flex items-center gap-2">
-                  <Users className="size-5 text-gray-400" />
-                  <span className="text-xs tracking-normal">No assignee</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {!currentAssignee && <Check className="size-4 text-gray-600" />}
-                  <span className="text-xs text-gray-400">0</span>
-                </div>
-              </button>
-
-              {/* Members list */}
-              {filteredMembers?.map((member: Member, index: number) => (
-                <button
-                  key={member.$id}
-                  onClick={() => handleAssigneeChange(member.$id)}
-                  className="flex items-center justify-between w-full px-2 py-1.5 hover:bg-gray-100 rounded text-sm"
-                >
-                  <div className="flex items-center gap-2">
-                    <MemberAvatar
-                      name={member.name || "Unknown"}
-                      imageUrl={member.profileImageUrl}
-                      className="size-5"
-                    />
-                    <span className="text-xs tracking-normal">{member.name || "Unknown"}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {currentAssignee?.$id === member.$id && <Check className="size-4 text-gray-600" />}
-                    <span className="text-xs text-gray-400">{index + 1}</span>
-                  </div>
-                </button>
-              ))}
-
-              {/* Team members section header */}
-              {members && members.documents && members.documents.length > 0 && (
-                <div className="px-2 py-1 text-xs text-gray-500 font-medium mt-2">
-                  Team members
-                </div>
-              )}
-
-              {/* Invite option */}
-              <button className="flex items-center gap-2 w-full px-2 py-1.5 hover:bg-gray-100 rounded text-sm text-gray-500">
-                <Send className="size-4" />
-                <span className="text-xs">Invite and assign...</span>
-              </button>
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
-
-      {/* Work Item Type */}
-      <Popover open={typeOpen} onOpenChange={setTypeOpen}>
-        <PopoverTrigger asChild disabled={!canEdit}>
-          <button className="flex items-center gap-3 px-2 py-2 hover:bg-gray-100 rounded-md w-full text-left">
-            <WorkItemIcon
-              type={currentType.key}
-              className="size-4"
-              project={projectData}
-            />
-            <span className="text-[13px] font-normal">{currentType.label}</span>
-          </button>
-        </PopoverTrigger>
-        <PopoverContent className="w-64 p-0 bg-white border border-gray-200 text-gray-900 shadow-lg" align="start" side="left" sideOffset={8}>
-          <div className="p-2">
-            <div className="flex items-center gap-2 px-2 border-b border-gray-200 mb-1">
-              <Input
-                placeholder="Change type..."
-                value={typeSearch}
-                onChange={(e) => setTypeSearch(e.target.value)}
-                className="h-7 border-0 focus-visible:ring-0 p-0 text-xs bg-transparent text-gray-900 placeholder:text-gray-400"
-              />
-            </div>
-            <div className="space-y-0.5">
-              {filteredTypes.map((type) => (
-                <button
-                  key={type.key}
-                  onClick={() => handleTypeChange(type.key)}
-                  className="flex items-center justify-between w-full px-2 py-1.5 hover:bg-gray-100 rounded text-sm"
-                >
-                  <div className="flex items-center gap-2">
-                    <WorkItemIcon
-                      type={type.key}
-                      className="size-4"
-                      project={projectData}
-                    />
-                    <span className="text-xs tracking-normal">{type.label}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {task.type === type.key && <Check className="size-4 text-gray-600" />}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
-</>
-      ) : ("")}
-     
-       </div>
-
-
-      {/* Labels Section */}
-     
-        <>
-        <div className=" px-2 mb-2 mt-2 border-t pt-4">
-          <div onClick={() => setLabelOpen(!labelOpen)} className="flex gap-1 cursor-pointer items-center flex-row">
-
-            {labelOpen  ? (
-                         <ChevronDown className="size-3 text-gray-500" />
-                       ) : (
-                         <ChevronRight className="size-3 text-gray-500" />
-                       )}
-
-                  <span className="text-xs text-gray-500 ">Labels</span>
-
-          </div>
-
-         {labelOpen ? (
+        {projectOpen ? (
           <>
-        <Popover open={labelsOpen} onOpenChange={setLabelsOpen}>
-          <PopoverTrigger asChild disabled={!canEdit}>
-            {task.labels && task.labels.length > 0 ? (<button className="flex  gap-3 px-2 py-2 hover:bg-gray-100 rounded-md w-full text-left">
-              <Plus className="size-4 text-gray-400" />
-              
-            </button>) : 
-            (
-               <button className="flex items-center gap-3 px-2 py-2 hover:bg-gray-100 rounded-md w-full text-left">
-              <Tag className="size-4 text-gray-400" />
-              <span className="text-[13px] font-normal text-gray-500">Add label</span>
-            </button>)
-          }
-           
-          </PopoverTrigger>
-          <PopoverContent className="w-64 p-0 bg-white border border-gray-200 text-gray-900 shadow-lg" align="start" side="left" sideOffset={8}>
-            <div className="p-2">
-              <div className="flex items-center gap-2 px-2 py-1.5 border-b border-gray-200 mb-1">
-                <Input
-                  placeholder="Add labels..."
-                  value={labelSearch}
-                  onChange={(e) => setLabelSearch(e.target.value)}
-                  className="h-7 border-0 focus-visible:ring-0 p-0 text-xs bg-transparent text-gray-900 placeholder:text-gray-400"
-                />
-                <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">L</span>
-              </div>
+            <Popover open={statusOpen} onOpenChange={setStatusOpen}>
+              <PopoverTrigger asChild disabled={!canEdit || isUpdating}>
+                <button className="flex items-center gap-3 mt-2 px-2 py-2 hover:bg-accent rounded-md w-full text-left">
+                  <span className={cn("flex items-center", currentStatus.color)}>
+                    {currentStatus.icon}
+                  </span>
+                  <span className="text-[13px] font-normal ">{currentStatus.label}</span>
+                  {isLoadingTransitions && workflowId && (
+                    <span className="text-xs text-gray-400 ml-auto">Loading...</span>
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-0 bg-card border border-border text-foreground shadow-lg" align="start" side="left" sideOffset={8}>
+                <div className="p-2">
+                  <div className="flex items-center gap-2 px-2 border-b border-gray-200 mb-1">
+                    <Input
+                      placeholder="Change status..."
+                      value={statusSearch}
+                      onChange={(e) => setStatusSearch(e.target.value)}
+                      className="h-7 border-0 focus-visible:ring-0 p-0 text-xs bg-transparent text-foreground placeholder:text-muted-foreground"
+                    />
 
-              {/* Suggestions */}
-              <div className="mb-2">
-                <span className="text-xs text-gray-500 px-2">Suggestions</span>
-                <div className="space-y-0.5 mt-1">
-                  {suggestedLabels
-                    .filter((l) => !(task.labels || []).includes(l))
-                    .map((label) => (
-                      <button
-                        key={label}
-                        onClick={() => handleAddLabel(label)}
-                        className="flex items-center gap-2 w-full px-2 py-1.5 hover:bg-gray-100 rounded text-sm"
-                      >
-                        <span
+                  </div>
+                  {workflowId && (
+                    <div className="px-2 py-1 mb-1 text-xs text-gray-500 flex items-center gap-1">
+                      <Lock className="size-3" />
+                      <span>Workflow enforced</span>
+                    </div>
+                  )}
+                  <div className="space-y-0.5">
+                    {filteredStatuses.map((status) => {
+                      const isAllowed = 'isAllowed' in status ? status.isAllowed !== false : true;
+                      const isCurrent = task.status === status.value;
+
+                      return (
+                        <button
+                          key={status.value}
+                          onClick={() => handleStatusChange(status.value, isAllowed)}
+                          disabled={!isAllowed && !isCurrent}
                           className={cn(
-                            "size-3 rounded-full",
-                            labelColors[label] || "bg-gray-400"
+                            "flex items-center justify-between w-full px-2 py-1.5 rounded text-sm",
+                            isAllowed || isCurrent
+                              ? "hover:bg-accent cursor-pointer"
+                              : "opacity-50 cursor-not-allowed"
                           )}
-                        />
-                        <span className="text-xs tracking-normal">{label}</span>
+                        >
+                          <div className="flex items-center gap-2">
+                            {status.icon}
+                            <span className="text-xs tracking-normal">{status.label}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {isCurrent && <Check className="size-4 text-muted-foreground" />}
+                            {!isAllowed && !isCurrent && workflowId && (
+                              <Lock className="size-3 text-muted-foreground/50" />
+                            )}
+                            <span className="text-xs text-muted-foreground/60">{status.key}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <Popover open={priorityOpen} onOpenChange={setPriorityOpen}>
+              <PopoverTrigger asChild disabled={!canEdit}>
+                <button className="flex items-center gap-3 px-2 py-2 hover:bg-accent rounded-md w-full text-left">
+                  {currentPriority ? (
+                    <>
+                      <span className={cn("flex items-center", currentPriority.color)}>
+                        {currentPriority.icon}
+                      </span>
+                      <span className="text-[13px] font-normal ">{currentPriority.label}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Minus className="size-4 text-gray-400" />
+                      <span className="text-sm text-gray-500">Set priority</span>
+                    </>
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-0 bg-card border border-border text-foreground shadow-lg" align="start" side="left" sideOffset={8}>
+                <div className="p-2">
+                  <div className="flex items-center gap-2 px-2 py-1.5 border-b border-gray-200 mb-1">
+                    <span className="text-xs text-gray-500">Set priority to...</span>
+                  </div>
+                  <div className="space-y-0.5">
+                    {allPriorities.map((priority) => (
+                      <button
+                        key={priority.value || "none"}
+                        onClick={() => handlePriorityChange(priority.value)}
+                        className="flex items-center justify-between w-full px-2 py-1.5 hover:bg-accent rounded text-sm"
+                      >
+                        <div className="flex items-center gap-2">
+                          {priority.icon}
+                          <span className="text-xs tracking-normal">{priority.label}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {task.priority === priority.value && <Check className="size-4 text-gray-600" />}
+                          <span className="text-xs text-gray-400">{priority.key}</span>
+                        </div>
                       </button>
                     ))}
+                  </div>
                 </div>
-              </div>
+              </PopoverContent>
+            </Popover>
 
-              {/* All Labels */}
-              <div>
-                <span className="text-xs text-gray-500 px-2">Labels</span>
-                <div className="space-y-0.5 mt-1">
-                  {filteredLabels.map((label) => (
-                    <button
-                      key={label}
-                      onClick={() => handleAddLabel(label)}
-                      className="flex items-center gap-2 w-full px-2 py-1.5 hover:bg-gray-100 rounded text-sm"
-                    >
-                      <span
-                        className={cn(
-                          "size-3 rounded-full",
-                          labelColors[label] || "bg-gray-400"
-                        )}
+            <Popover open={assigneeOpen} onOpenChange={setAssigneeOpen}>
+              <PopoverTrigger asChild disabled={!canEdit}>
+                <button className="flex items-center gap-3 px-2 py-2 hover:bg-accent rounded-md w-full text-left">
+                  {currentAssignee ? (
+                    <>
+                      <MemberAvatar
+                        name={currentAssignee.name || ""}
+                        imageUrl={currentAssignee.profileImageUrl}
+                        className="size-5"
                       />
-                      <span className="text-xs tracking-normal">{label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
-
-        {task.labels && task.labels.length > 0 && (
-          <div className="flex flex-wrap gap-1 px-2 mt-1">
-            {task.labels.map((label) => (
-              <span
-                key={label}
-                className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full bg-gray-100"
-              >
-                <span
-                  className={cn(
-                    "size-2 rounded-full",
-                    labelColors[label] || "bg-gray-400"
+                      <span className="text-[13px] font-normal ">{currentAssignee.name}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Users className="size-4 text-gray-400" />
+                      <span className="text-[13px] font-normal text-gray-500">Assign to...</span>
+                    </>
                   )}
-                />
-                {label}
-              </span>
-            ))}
-          </div>
-        )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-0 bg-card border border-border text-foreground shadow-lg" align="start" side="left" sideOffset={8}>
+                <div className="p-2">
+                  <div className="flex items-center gap-2 px-2  border-gray-200 mb-4">
+                    <Input
+                      placeholder="Assign to..."
+                      value={assigneeSearch}
+                      onChange={(e) => setAssigneeSearch(e.target.value)}
+                      className="h-7 border-0 focus-visible:ring-0 p-0 text-xs bg-transparent text-gray-900 placeholder:text-gray-400"
+                    />
+                  </div>
+                  <div className="space-y-0.5 max-h-48 overflow-y-auto">
+                    {/* No assignee option */}
+                    <button
+                      onClick={() => handleAssigneeChange("__none")}
+                      className="flex items-center justify-between w-full px-2 py-1.5 hover:bg-accent rounded text-sm"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Users className="size-5 text-gray-400" />
+                        <span className="text-xs tracking-normal">No assignee</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {!currentAssignee && <Check className="size-4 text-gray-600" />}
+                        <span className="text-xs text-gray-400">0</span>
+                      </div>
+                    </button>
 
-        </>
+                    {/* Members list */}
+                    {filteredMembers?.map((member: Member, index: number) => (
+                      <button
+                        key={member.$id}
+                        onClick={() => handleAssigneeChange(member.$id)}
+                        className="flex items-center justify-between w-full px-2 py-1.5 hover:bg-accent rounded text-sm"
+                      >
+                        <div className="flex items-center gap-2">
+                          <MemberAvatar
+                            name={member.name || "Unknown"}
+                            imageUrl={member.profileImageUrl}
+                            className="size-5"
+                          />
+                          <span className="text-xs tracking-normal">{member.name || "Unknown"}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {currentAssignee?.$id === member.$id && <Check className="size-4 text-gray-600" />}
+                          <span className="text-xs text-gray-400">{index + 1}</span>
+                        </div>
+                      </button>
+                    ))}
 
+                    {/* Team members section header */}
+                    {members && members.documents && members.documents.length > 0 && (
+                      <div className="px-2 py-1 text-xs text-gray-500 font-medium mt-2">
+                        Team members
+                      </div>
+                    )}
+
+                    {/* Invite option */}
+                    <button className="flex items-center gap-2 w-full px-2 py-1.5 hover:bg-gray-100 rounded text-sm text-gray-500">
+                      <Send className="size-4" />
+                      <span className="text-xs">Invite and assign...</span>
+                    </button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* Work Item Type */}
+            <Popover open={typeOpen} onOpenChange={setTypeOpen}>
+              <PopoverTrigger asChild disabled={!canEdit}>
+                <button className="flex items-center gap-3 px-2 py-2 hover:bg-accent rounded-md w-full text-left">
+                  <WorkItemIcon
+                    type={currentType.key}
+                    className="size-4"
+                    project={projectData}
+                  />
+                  <span className="text-[13px] font-normal">{currentType.label}</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-0 bg-card border border-border text-foreground shadow-lg" align="start" side="left" sideOffset={8}>
+                <div className="p-2">
+                  <div className="flex items-center gap-2 px-2 border-b border-gray-200 mb-1">
+                    <Input
+                      placeholder="Change type..."
+                      value={typeSearch}
+                      onChange={(e) => setTypeSearch(e.target.value)}
+                      className="h-7 border-0 focus-visible:ring-0 p-0 text-xs bg-transparent text-gray-900 placeholder:text-gray-400"
+                    />
+                  </div>
+                  <div className="space-y-0.5">
+                    {filteredTypes.map((type) => (
+                      <button
+                        key={type.key}
+                        onClick={() => handleTypeChange(type.key)}
+                        className="flex items-center justify-between w-full px-2 py-1.5 hover:bg-accent rounded text-sm"
+                      >
+                        <div className="flex items-center gap-2">
+                          <WorkItemIcon
+                            type={type.key}
+                            className="size-4"
+                            project={projectData}
+                          />
+                          <span className="text-xs tracking-normal">{type.label}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {task.type === type.key && <Check className="size-4 text-gray-600" />}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </>
         ) : ("")}
 
       </div>
-      </>
-      
 
-    
+
+      {/* Labels Section */}
+
+      <>
+        <div className=" px-2 mb-2 mt-2 border-t pt-4">
+          <div onClick={() => setLabelOpen(!labelOpen)} className="flex gap-1 cursor-pointer items-center flex-row">
+
+            {labelOpen ? (
+              <ChevronDown className="size-3 text-gray-500" />
+            ) : (
+              <ChevronRight className="size-3 text-gray-500" />
+            )}
+
+            <span className="text-xs text-muted-foreground ">Labels</span>
+
+          </div>
+
+          {labelOpen ? (
+            <>
+              <Popover open={labelsOpen} onOpenChange={setLabelsOpen}>
+                <PopoverTrigger asChild disabled={!canEdit}>
+                  {task.labels && task.labels.length > 0 ? (<button className="flex  gap-3 px-2 py-2 hover:bg-accent rounded-md w-full text-left">
+                    <Plus className="size-4 text-gray-400" />
+
+                  </button>) :
+                    (
+                      <button className="flex items-center gap-3 px-2 py-2 hover:bg-accent rounded-md w-full text-left">
+                        <Tag className="size-4 text-muted-foreground" />
+                        <span className="text-[13px] font-normal text-muted-foreground">Add label</span>
+                      </button>)
+                  }
+
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-0 bg-card border border-border text-foreground shadow-lg" align="start" side="left" sideOffset={8}>
+                  <div className="p-2">
+                    <div className="flex items-center gap-2 px-2 py-1.5 border-b border-gray-200 mb-1">
+                      <Input
+                        placeholder="Add labels..."
+                        value={labelSearch}
+                        onChange={(e) => setLabelSearch(e.target.value)}
+                        className="h-7 border-0 focus-visible:ring-0 p-0 text-xs bg-transparent text-gray-900 placeholder:text-gray-400"
+                      />
+                      <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">L</span>
+                    </div>
+
+                    {/* Suggestions */}
+                    <div className="mb-2">
+                      <span className="text-xs text-gray-500 px-2">Suggestions</span>
+                      <div className="space-y-0.5 mt-1">
+                        {suggestedLabels
+                          .filter((l) => !(task.labels || []).includes(l))
+                          .map((label) => (
+                            <button
+                              key={label}
+                              onClick={() => handleAddLabel(label)}
+                              className="flex items-center gap-2 w-full px-2 py-1.5 hover:bg-accent rounded text-sm"
+                            >
+                              <span
+                                className={cn(
+                                  "size-3 rounded-full",
+                                  labelColors[label] || "bg-gray-400"
+                                )}
+                              />
+                              <span className="text-xs tracking-normal">{label}</span>
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+
+                    {/* All Labels */}
+                    <div>
+                      <span className="text-xs text-gray-500 px-2">Labels</span>
+                      <div className="space-y-0.5 mt-1">
+                        {filteredLabels.map((label) => (
+                          <button
+                            key={label}
+                            onClick={() => handleAddLabel(label)}
+                            className="flex items-center gap-2 w-full px-2 py-1.5 hover:bg-accent rounded text-sm"
+                          >
+                            <span
+                              className={cn(
+                                "size-3 rounded-full",
+                                labelColors[label] || "bg-gray-400"
+                              )}
+                            />
+                            <span className="text-xs tracking-normal">{label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              {task.labels && task.labels.length > 0 && (
+                <div className="flex flex-wrap gap-1 px-2 mt-1">
+                  {task.labels.map((label) => (
+                    <span
+                      key={label}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full bg-muted border border-border text-muted-foreground"
+                    >
+                      <span
+                        className={cn(
+                          "size-2 rounded-full",
+                          labelColors[label] || "bg-gray-400"
+                        )}
+                      />
+                      {label}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+            </>
+
+          ) : ("")}
+
+        </div>
+      </>
+
+
+
     </div>
   );
 };

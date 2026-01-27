@@ -18,11 +18,11 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
 
 
-  
+
   return (
     <div className="h-full w-full p-6">
       <div className="max-w-4xl mx-auto space-y-6">
-       
+
 
         <Card>
           <CardHeader>
@@ -39,9 +39,9 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
                   type="password"
                   value="••••••••"
                   disabled
-                  className="bg-neutral-50"
+                  className="bg-muted"
                 />
-                <Button 
+                <Button
                   variant="outline"
                   onClick={() => setIsChangePasswordModalOpen(true)}
                 >
@@ -65,7 +65,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
               </Button>
             </div>
           </CardContent>
-        </Card> 
+        </Card>
 
         {/* Preferences Section */}
         <Card>
@@ -81,7 +81,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
               <Input
                 value={initialData.registration || "Email"}
                 disabled
-                className="bg-neutral-50 capitalize"
+                className="bg-muted capitalize"
               />
             </div>
           </CardContent>

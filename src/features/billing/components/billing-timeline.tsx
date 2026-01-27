@@ -59,14 +59,14 @@ export function BillingTimeline({ currentPhase, gracePeriodDays = 14 }: BillingT
                                 {/* Icon */}
                                 <div
                                     className={`relative z-10 mx-auto rounded-full p-2 transition-all ${isPast
-                                            ? "bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-400"
-                                            : isCurrent
-                                                ? phase.id === "suspended"
-                                                    ? "bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400 ring-2 ring-red-400"
-                                                    : phase.id === "grace"
-                                                        ? "bg-yellow-100 text-yellow-600 dark:bg-yellow-900/50 dark:text-yellow-400 ring-2 ring-yellow-400"
-                                                        : "bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400 ring-2 ring-blue-400"
-                                                : "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500"
+                                        ? "bg-green-500/10 text-green-500"
+                                        : isCurrent
+                                            ? phase.id === "suspended"
+                                                ? "bg-destructive/10 text-destructive ring-2 ring-destructive/30"
+                                                : phase.id === "grace"
+                                                    ? "bg-amber-500/10 text-amber-500 ring-2 ring-amber-500/30"
+                                                    : "bg-primary/10 text-primary ring-2 ring-primary/30"
+                                            : "bg-muted text-muted-foreground"
                                         }`}
                                 >
                                     <Icon className="h-4 w-4" />
@@ -100,20 +100,20 @@ export function BillingTimeline({ currentPhase, gracePeriodDays = 14 }: BillingT
                             <div className="relative flex flex-col items-center">
                                 <div
                                     className={`rounded-full p-2 ${isPast
-                                            ? "bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-400"
-                                            : isCurrent
-                                                ? phase.id === "suspended"
-                                                    ? "bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400 ring-2 ring-red-400"
-                                                    : phase.id === "grace"
-                                                        ? "bg-yellow-100 text-yellow-600 dark:bg-yellow-900/50 dark:text-yellow-400 ring-2 ring-yellow-400"
-                                                        : "bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400 ring-2 ring-blue-400"
-                                                : "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500"
+                                        ? "bg-green-500/10 text-green-500"
+                                        : isCurrent
+                                            ? phase.id === "suspended"
+                                                ? "bg-destructive/10 text-destructive ring-2 ring-destructive/30"
+                                                : phase.id === "grace"
+                                                    ? "bg-amber-500/10 text-amber-500 ring-2 ring-amber-500/30"
+                                                    : "bg-primary/10 text-primary ring-2 ring-primary/30"
+                                            : "bg-muted text-muted-foreground"
                                         }`}
                                 >
                                     <Icon className="h-4 w-4" />
                                 </div>
                                 {index < phases.length - 1 && (
-                                    <div className={`w-0.5 h-8 ${isPast ? "bg-green-500" : "bg-gray-200 dark:bg-gray-700"
+                                    <div className={`w-0.5 h-8 ${isPast ? "bg-green-500" : "bg-border"
                                         }`} />
                                 )}
                             </div>

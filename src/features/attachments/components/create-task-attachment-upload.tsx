@@ -13,17 +13,17 @@ interface CreateTaskAttachmentUploadProps {
   className?: string;
 }
 
-export const CreateTaskAttachmentUpload = ({ 
-  files, 
-  onFilesChange, 
-  className 
+export const CreateTaskAttachmentUpload = ({
+  files,
+  onFilesChange,
+  className
 }: CreateTaskAttachmentUploadProps) => {
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFiles = (newFiles: FileList) => {
     const validFiles: File[] = [];
-    
+
     Array.from(newFiles).forEach((file) => {
       // Validate file size
       if (file.size > MAX_FILE_SIZE) {
@@ -85,8 +85,8 @@ export const CreateTaskAttachmentUpload = ({
   return (
     <div className={cn("space-y-4", className)}>
       <Card className={cn("border-2 border-dashed transition-colors", {
-        "border-blue-500 bg-blue-50": dragActive,
-        "border-gray-300": !dragActive,
+        "border-primary bg-primary/5": dragActive,
+        "border-border": !dragActive,
       })}>
         <CardContent
           className="p-6 text-center cursor-pointer"
@@ -97,13 +97,13 @@ export const CreateTaskAttachmentUpload = ({
           onClick={() => fileInputRef.current?.click()}
         >
           <div className="flex flex-col items-center space-y-3">
-            <Upload className="h-10 w-10 text-gray-400" />
+            <Upload className="h-10 w-10 text-muted-foreground/50" />
             <div>
               <p className="text-base font-medium">Drop files here or click to upload</p>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Maximum file size: {formatFileSize(MAX_FILE_SIZE)}
               </p>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-muted-foreground/70 mt-1">
                 Supported: Images, Documents, Archives, Text files
               </p>
             </div>
@@ -121,22 +121,22 @@ export const CreateTaskAttachmentUpload = ({
 
       {files.length > 0 && (
         <div className="space-y-2">
-          <p className="text-sm font-medium text-gray-700">
+          <p className="text-sm font-medium text-foreground">
             {files.length} file{files.length !== 1 ? "s" : ""} selected
           </p>
           <div className="space-y-2">
             {files.map((file, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between p-3 bg-white border rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex items-center justify-between p-3 bg-card border border-border rounded-lg hover:bg-accent transition-colors"
               >
                 <div className="flex items-center space-x-3 flex-1 min-w-0">
-                  <Paperclip className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                    <p className="text-sm font-medium text-foreground truncate">
                       {file.name}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       {formatFileSize(file.size)}
                     </p>
                   </div>

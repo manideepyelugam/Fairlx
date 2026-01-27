@@ -71,65 +71,67 @@ export const TaskIdClient = () => {
       <ConfirmDialog />
 
       {/* Modal-like Content */}
-      <div className="flex flex-1 overflow-hidden bg-white">
+      <div className="flex flex-1 overflow-hidden bg-background">
         {/* Left Section - Main Content - Scrollable */}
         <div className="flex-1 overflow-y-auto">
           {/* Task Title */}
           <div className="px-6 pt-6 pb-4">
-            <h1 className="text-xl font-semibold text-gray-900">{data.name}</h1>
+            <h1 className="text-xl font-semibold text-foreground">{data.name}</h1>
           </div>
 
           {/* Description Section */}
           <div className="px-6 pb-4">
-            <span className="text-xs text-gray-500 mb-3 mt-4 block">Description</span>
+            <span className="text-xs text-muted-foreground mb-3 mt-4 block">Description</span>
             <TaskDescription task={data} canEdit={canEditTasks} />
           </div>
 
           {/* Add Sub-issues */}
           <div className="px-6 pb-6">
-            <button className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors">
+            <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
               <Plus size={14} />
               <span>Add sub-issues</span>
             </button>
           </div>
 
+
+
           {/* Connected Work Items Section */}
-          <div className="px-6 pb-4 pt-5 border-t border-gray-200">
+          <div className="px-6 pb-4 pt-5 border-t border-border">
             <WorkItemLinksSection workItemId={data.$id} />
           </div>
 
           {/* Separator */}
-          <div className="border-t border-gray-200" />
+          <div className="border-t border-border" />
 
           {/* Activity Section */}
           <div className="px-6 py-4">
-            <div className="flex gap-2 mb-4 border-b">
+            <div className="flex gap-2 mb-4 border-b border-border">
               <button
                 className={cn(
                   "px-4 py-2 text-sm font-medium transition-colors relative",
                   activeTab === "activity"
-                    ? "text-blue-600"
-                    : "text-gray-600 hover:text-gray-900"
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
                 onClick={() => setActiveTab("activity")}
               >
                 Activity
                 {activeTab === "activity" && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
                 )}
               </button>
               <button
                 className={cn(
                   "px-4 py-2 text-sm font-medium transition-colors relative",
                   activeTab === "timelogs"
-                    ? "text-blue-600"
-                    : "text-gray-600 hover:text-gray-900"
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
                 onClick={() => setActiveTab("timelogs")}
               >
                 Time Logs
                 {activeTab === "timelogs" && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
                 )}
               </button>
             </div>
@@ -149,7 +151,7 @@ export const TaskIdClient = () => {
 
                 {/* Comment Input at bottom */}
                 {currentUser && (
-                  <div className="pt-4 border-t border-gray-100">
+                  <div className="pt-4 border-t border-border">
                     <TaskComments
                       taskId={data.$id}
                       workspaceId={workspaceId}
@@ -175,11 +177,11 @@ export const TaskIdClient = () => {
         </div>
 
         {/* Right Section - Details Panel */}
-        <div className="w-[280px] border-l bg-[#fafafa] flex flex-col overflow-y-auto">
+        <div className="w-[280px] border-l border-border bg-muted/30 flex flex-col overflow-y-auto">
           <div className="">
             <div className="flex items-center justify-between  pt-2">
-              <div className="flex items-center justify-between px-3 pt-2 pb-4 w-full  border-b">
-                <h2 className="font-medium text-sm text-[#2b2b2b]">Properties</h2>
+              <div className="flex items-center justify-between px-3 pt-2 pb-4 w-full  border-b border-border">
+                <h2 className="font-medium text-sm text-foreground">Properties</h2>
 
                 <div className="flex items-center ">
                   <IconHelp content="Copy task URL" side="bottom">

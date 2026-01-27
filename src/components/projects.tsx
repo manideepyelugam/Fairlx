@@ -48,7 +48,7 @@ export const Projects = () => {
   };
 
   return (
-    <div className="flex flex-col px-3 py-2  border-neutral-200">
+    <div className="flex flex-col px-3 py-2 border-border">
       <div className="flex items-center justify-between ">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
@@ -64,7 +64,7 @@ export const Projects = () => {
         {isAdmin && (
           <RiAddCircleFill
             onClick={() => open()}
-            className="size-5 text-neutral-500 cursor-pointer hover:opacity-75 transition"
+            className="size-5 text-muted-foreground cursor-pointer hover:opacity-75 transition"
           />
         )}
       </div>
@@ -78,7 +78,7 @@ export const Projects = () => {
           <SelectContent>
             {data?.documents.map((project) => (
               <SelectItem
-            
+
                 key={project.$id}
                 value={project.$id}
                 onPointerDown={(e: React.PointerEvent) => {

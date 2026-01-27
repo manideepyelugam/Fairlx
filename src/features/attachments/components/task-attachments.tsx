@@ -120,15 +120,15 @@ const AttachmentItem = ({ attachment, workspaceId, onPreview }: AttachmentItemPr
   return (
     <>
       <ConfirmDialog />
-      <div className="group flex items-center gap-2 px-2 py-1.5 hover:bg-gray-100 rounded-md transition-colors">
+      <div className="group flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded-md transition-colors">
         <div className="flex-shrink-0">
           {getFileIcon(attachment.mimeType)}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-normal text-gray-700 truncate leading-tight">
+          <p className="text-[13px] font-normal text-foreground truncate leading-tight">
             {attachment.name}
           </p>
-          <p className="text-[11px] text-gray-400 leading-tight">
+          <p className="text-[11px] text-muted-foreground leading-tight">
             {formatFileSize(attachment.size)} · {getFileExtension(attachment.name)}
           </p>
         </div>
@@ -136,10 +136,10 @@ const AttachmentItem = ({ attachment, workspaceId, onPreview }: AttachmentItemPr
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="p-1 hover:bg-gray-200 rounded transition-colors"
+                className="p-1 hover:bg-accent rounded transition-colors"
                 disabled={isPending}
               >
-                <MoreHorizontal className="size-3.5 text-gray-500" />
+                <MoreHorizontal className="size-3.5 text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-36">
@@ -236,7 +236,7 @@ export const TaskAttachments = ({ taskId, workspaceId, onPreview }: TaskAttachme
       <div className="flex items-center justify-between mb-1">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           {isExpanded ? (
             <ChevronDown className="size-3" />
@@ -245,7 +245,7 @@ export const TaskAttachments = ({ taskId, workspaceId, onPreview }: TaskAttachme
           )}
           <span>Attachments</span>
           {attachmentCount > 0 && (
-            <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">
+            <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full">
               {attachmentCount}
             </span>
           )}
@@ -253,12 +253,12 @@ export const TaskAttachments = ({ taskId, workspaceId, onPreview }: TaskAttachme
 
         <Popover open={uploadOpen} onOpenChange={setUploadOpen}>
           <PopoverTrigger asChild>
-            <button className="p-1 hover:bg-gray-100 rounded transition-colors">
-              <Plus className="size-3.5 text-gray-400 hover:text-gray-600" />
+            <button className="p-1 hover:bg-accent rounded transition-colors">
+              <Plus className="size-3.5 text-muted-foreground hover:text-foreground" />
             </button>
           </PopoverTrigger>
           <PopoverContent
-            className="w-64 p-0 bg-white border border-gray-200 shadow-lg"
+            className="w-64 p-0 bg-card border border-border shadow-lg"
             align="end"
             side="left"
             sideOffset={8}
@@ -266,7 +266,7 @@ export const TaskAttachments = ({ taskId, workspaceId, onPreview }: TaskAttachme
             <div
               className={cn(
                 "p-4 transition-colors cursor-pointer",
-                dragActive && "bg-blue-50"
+                dragActive && "bg-primary/5"
               )}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
@@ -278,28 +278,28 @@ export const TaskAttachments = ({ taskId, workspaceId, onPreview }: TaskAttachme
                 <div
                   className={cn(
                     "p-3 rounded-full transition-colors",
-                    dragActive ? "bg-blue-100" : "bg-gray-100"
+                    dragActive ? "bg-primary/10" : "bg-muted"
                   )}
                 >
                   <Upload
                     className={cn(
                       "size-5",
-                      dragActive ? "text-blue-500" : "text-gray-400"
+                      dragActive ? "text-primary" : "text-muted-foreground"
                     )}
                   />
                 </div>
                 <div className="text-center">
-                  <p className="text-xs font-medium text-gray-700">
+                  <p className="text-xs font-medium text-foreground">
                     {dragActive ? "Drop to upload" : "Drop files or click"}
                   </p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
                     Max 50MB · Images, docs, archives
                   </p>
                 </div>
                 {isUploading && (
                   <div className="w-full max-w-[180px] space-y-1.5">
                     <Progress value={50} className="h-1.5" />
-                    <p className="text-[10px] text-gray-500 text-center">Uploading...</p>
+                    <p className="text-[10px] text-muted-foreground text-center">Uploading...</p>
                   </div>
                 )}
               </div>
@@ -321,12 +321,12 @@ export const TaskAttachments = ({ taskId, workspaceId, onPreview }: TaskAttachme
         <div className="space-y-0.5">
           {isLoading ? (
             <div className="flex items-center gap-2 px-2 py-2">
-              <Loader2 className="size-4 animate-spin text-gray-400" />
-              <span className="text-xs text-gray-400">Loading...</span>
+              <Loader2 className="size-4 animate-spin text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Loading...</span>
             </div>
           ) : attachmentCount === 0 ? (
             <div className="flex items-center justify-center py-4 text-center">
-              <span className="text-[12px] text-gray-400">
+              <span className="text-[12px] text-muted-foreground">
                 No attachments yet
               </span>
             </div>

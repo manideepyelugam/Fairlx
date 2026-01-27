@@ -51,7 +51,7 @@ function KPICard({ title, value, subtitle, icon, trend, trendValue, className }:
                             <p className="text-xs text-muted-foreground">{subtitle}</p>
                         )}
                     </div>
-                    <div className="rounded-lg bg-primary/10 p-3 text-primary">
+                    <div className="rounded-lg bg-primary/5 p-3 text-primary border border-primary/10">
                         {icon}
                     </div>
                 </div>

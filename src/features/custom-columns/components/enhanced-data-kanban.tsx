@@ -493,7 +493,7 @@ export const EnhancedDataKanban = ({
                         <div
                           ref={provided.innerRef}
                           {...provided.draggableProps}
-                          className={`flex-1 bg-gray-50 rounded-xl min-w-[280px] border shadow-sm max-w-[360px] ${snapshot.isDragging ? 'shadow-lg' : ''
+                          className={`flex-1 bg-muted/20 dark:bg-muted/10 rounded-xl min-w-[280px] border shadow-sm max-w-[360px] ${snapshot.isDragging ? 'shadow-lg border-primary/50' : ''
                             }`}
                         >
                           <div

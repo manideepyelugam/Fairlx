@@ -274,8 +274,8 @@ export const DataKanban = ({
   }, [selectedTasks, bulkUpdateTasks]);
 
   // Get workflow statuses to find status IDs
-  const { data: workflowStatusesData } = useGetWorkflowStatuses({ 
-    workflowId: project?.workflowId || "" 
+  const { data: workflowStatusesData } = useGetWorkflowStatuses({
+    workflowId: project?.workflowId || ""
   });
 
   // Create a map of status keys to status IDs for workflow validation
@@ -437,7 +437,7 @@ export const DataKanban = ({
             </Button>
           )}
           {selectionMode && selectedTasks.size > 0 && (
-            <span className="text-xs text-gray-600">
+            <span className="text-xs text-muted-foreground">
               {selectedTasks.size} task{selectedTasks.size !== 1 ? 's' : ''} selected
             </span>
           )}
@@ -454,7 +454,7 @@ export const DataKanban = ({
             return (
               <div
                 key={board}
-                className="flex-1 bg-gray-50 rounded-xl min-w-[280px] max-w-[320px]"
+                className="flex-1 bg-muted/30 dark:bg-muted/10 rounded-xl min-w-[280px] max-w-[320px] ring-1 ring-border"
               >
                 <KanbanColumnHeader
                   board={board}
@@ -507,7 +507,7 @@ export const DataKanban = ({
                         <Button
                           onClick={openCreateTask}
                           variant="ghost"
-                          className="w-full justify-start text-gray-500 hover:text-gray-700 hover:bg-gray-100 mt-2"
+                          className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-accent mt-2"
                         >
                           <PlusIcon className="h-4 w-4 mr-2" />
                           Add Work Item

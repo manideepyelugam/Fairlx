@@ -15,7 +15,7 @@ import { usePathname } from "next/navigation";
 
 
 const routes = [
-   {
+  {
     label: "Home",
     href: "/",
     icon: GoHome,
@@ -39,18 +39,18 @@ const routes = [
     icon: Layers,
     activeIcon: Layers,
   },
-  
+
 ];
 
 export const Navigation = () => {
   const pathname = usePathname();
 
   return (
-    <div className="p-3 border-b-[1.5px] border-neutral-200 flex-shrink-0">
+    <div className="p-3 border-b-[1.5px] border-border flex-shrink-0">
       <ul className="flex flex-col ">
         {routes.map((item) => {
 
-         const fullHref = `${item.href}`;
+          const fullHref = `${item.href}`;
           const isActive = pathname === fullHref;
           const Icon = isActive ? item.activeIcon : item.icon;
 
@@ -60,11 +60,11 @@ export const Navigation = () => {
               <Link href={fullHref}>
                 <div
                   className={cn(
-                    "flex items-center gap-2.5 p-2.5 rounded-md font-medium  transition text-neutral-500",
-                    isActive && "bg-neutral-200 shadow-sm hover:opacity-100 text-primary"
+                    "flex items-center gap-2.5 p-2.5 rounded-md font-medium transition text-muted-foreground",
+                    isActive && "bg-accent shadow-sm hover:opacity-100 text-primary"
                   )}
                 >
-                  <Icon className={cn("size-5 text-neutral-500", isActive && "text-primary")} />
+                  <Icon className={cn("size-5 text-muted-foreground", isActive && "text-primary")} />
                   <p className="text-[13px] tracking-tight font-medium">
                     {item.label}
                   </p>

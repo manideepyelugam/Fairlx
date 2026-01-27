@@ -34,7 +34,7 @@ export default function ForbiddenPage() {
                 </div>
 
                 {/* Error code */}
-                <div className="py-4 px-6 bg-neutral-100 rounded-lg inline-block">
+                <div className="py-4 px-6 bg-muted rounded-lg inline-block">
                     <span className="font-mono text-neutral-500 text-sm">
                         Error Code: 403 Forbidden
                     </span>

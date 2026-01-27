@@ -60,9 +60,9 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly, disableManageC
   const [{ status, assigneeId, projectId, dueDate, priority, labels }, setFilters] =
     useTaskFilters();
 
-  const { data: customColumnsData } = useGetCustomColumns({ 
-    workspaceId, 
-    projectId: currentProjectId 
+  const { data: customColumnsData } = useGetCustomColumns({
+    workspaceId,
+    projectId: currentProjectId
   });
 
   const customColumnOptions: { value: string; label: string }[] | undefined =
@@ -105,23 +105,23 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly, disableManageC
 
   // Mock available labels - in a real app, this would come from an API
   const availableLabels = [
-    "frontend", "backend", "bug", "feature", "urgent", "documentation", 
+    "frontend", "backend", "bug", "feature", "urgent", "documentation",
     "testing", "design", "security", "performance", "api", "ui/ux"
   ];
 
   if (isLoading) return null;
 
   return (
-    <div className="flex flex-col px-4 py-6 border border-b-gray-200 border-t-none border-r-none  border-l-none lg:flex-row gap-2">
+    <div className="flex flex-col px-4 py-6 border-b border-border lg:flex-row gap-2">
       <TaskSearch className="w-full text-xs lg:w-64" />
-      
+
       <Select
         value={status ?? "all"}
         onValueChange={(value) => {
           onStatusChange(value);
         }}
       >
-        
+
         <SelectTrigger className="w-full lg:w-auto h-8">
           <div className="flex text-xs items-center pr-2">
             <ListChecksIcon className="size-4 mr-2" />
@@ -230,7 +230,7 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly, disableManageC
           setFilters({ dueDate: date ? date.toISOString() : null });
         }}
       />
-      
+
       <Select
         value={priority ?? "all"}
         onValueChange={(value) => {
@@ -274,7 +274,7 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly, disableManageC
           onLabelsChange={onLabelsChange}
           availableLabels={availableLabels}
           placeholder="Filter by labels"
-          
+
         />
       </div>
 
@@ -284,7 +284,7 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly, disableManageC
         onClick={openManageModal}
         disabled={disableManageColumns}
         title={disableManageColumns ? "Complete project setup in Backlog first" : undefined}
-        className="h-8 text-xs lg:ml-auto bg-black text-white hover:bg-gray-800 hover:text-white disabled:opacity-50"
+        className="h-8 text-xs lg:ml-auto bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
       >
         <Settings2Icon className="size-4 mr-2" />
         Manage Columns

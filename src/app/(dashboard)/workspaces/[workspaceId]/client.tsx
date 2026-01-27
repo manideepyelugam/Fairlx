@@ -1,4 +1,5 @@
 "use client"
+import { cn } from "@/lib/utils"
 import { PageError } from "@/components/page-error"
 import { PageLoader } from "@/components/page-loader"
 import { Button } from "@/components/ui/button"
@@ -58,7 +59,7 @@ const MiniBarChart = ({ value, max, variant = "default" }: { value: number; max:
         {Array.from({ length: bars }).map((_, i) => (
           <div
             key={i}
-            className={`w-1.5 rounded-sm ${i < filledBars ? 'bg-amber-500 dark:bg-amber-400' : 'bg-amber-100 dark:bg-slate-700'}`}
+            className={`w-1.5 rounded-sm ${i < filledBars ? 'bg-amber-500' : 'bg-amber-500/20'}`}
             style={{ height: `${20 + (i * 5) % 30 + 20}%` }}
           />
         ))}
@@ -73,7 +74,7 @@ const MiniBarChart = ({ value, max, variant = "default" }: { value: number; max:
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
-            className={`w-3 h-6 rounded-sm ${i < Math.ceil(filledBars / 2) ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-emerald-100 dark:bg-slate-700'}`}
+            className={`w-3 h-6 rounded-sm ${i < Math.ceil(filledBars / 2) ? 'bg-emerald-500' : 'bg-emerald-500/20'}`}
           />
         ))}
       </div>
@@ -86,7 +87,7 @@ const MiniBarChart = ({ value, max, variant = "default" }: { value: number; max:
       {Array.from({ length: bars }).map((_, i) => (
         <div
           key={i}
-          className={`w-1 rounded-sm ${i < filledBars ? 'bg-slate-900 dark:bg-slate-300' : 'bg-slate-300 dark:bg-slate-700'}`}
+          className={`w-1 rounded-sm ${i < filledBars ? 'bg-foreground' : 'bg-muted'}`}
           style={{ height: `${30 + (i * 7) % 40 + 30}%` }}
         />
       ))}
@@ -293,8 +294,8 @@ export const WorkspaceIdClient = () => {
       <div className=" max-w-[1600px] mx-auto">
         {/* Header Section */}
         <div className="mb-8">
-          <p className="text-sm text-blue-600 dark:text-blue-400 mb-1">Ready to conquer your projects?</p>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+          <p className="text-sm text-muted-foreground mb-1">Ready to conquer your projects?</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
             Welcome Back, {user?.name?.split(' ')[0] || "User"}.
           </h1>
         </div>
@@ -306,51 +307,51 @@ export const WorkspaceIdClient = () => {
             {/* Top Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Total Task Card */}
-              <Card className="relative overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-slate-400 dark:bg-slate-500" />
+              <Card className="relative overflow-hidden bg-card border border-border shadow-sm hover:shadow-md transition-shadow">
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-muted-foreground" />
                 <div className="p-4 pl-5">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Tasks</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
-                      <ArrowUpRight className="h-3.5 w-3.5 text-slate-400" />
+                    <span className="text-sm font-medium text-muted-foreground">Total Tasks</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg hover:bg-accent">
+                      <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/70" />
                     </Button>
                   </div>
                   <div className="flex items-end justify-between">
-                    <span className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">{totalTasks}</span>
+                    <span className="text-3xl font-semibold tracking-tight text-foreground">{totalTasks}</span>
                     <MiniBarChart value={totalTasks} max={totalTasks + 50} variant="default" />
                   </div>
                 </div>
               </Card>
 
               {/* Pending Task Card */}
-              <Card className="relative overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
+              <Card className="relative overflow-hidden bg-card border border-border shadow-sm hover:shadow-md transition-shadow">
                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500" />
                 <div className="p-4 pl-5">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Pending Tasks</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
-                      <ArrowUpRight className="h-3.5 w-3.5 text-slate-400" />
+                    <span className="text-sm font-medium text-muted-foreground">Pending Tasks</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg hover:bg-accent">
+                      <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/70" />
                     </Button>
                   </div>
                   <div className="flex items-end justify-between">
-                    <span className="text-3xl font-semibold tracking-tight text-amber-600 dark:text-amber-400">{pendingTasks}</span>
+                    <span className="text-3xl font-semibold tracking-tight text-amber-500">{pendingTasks}</span>
                     <MiniBarChart value={pendingTasks} max={totalTasks} variant="dotted" />
                   </div>
                 </div>
               </Card>
 
               {/* Completed Task Card */}
-              <Card className="relative overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
+              <Card className="relative overflow-hidden bg-card border border-border shadow-sm hover:shadow-md transition-shadow">
                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500" />
                 <div className="p-4 pl-5">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Completed Tasks</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
-                      <ArrowUpRight className="h-3.5 w-3.5 text-slate-400" />
+                    <span className="text-sm font-medium text-muted-foreground">Completed Tasks</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg hover:bg-accent">
+                      <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/70" />
                     </Button>
                   </div>
                   <div className="flex items-end justify-between">
-                    <span className="text-3xl font-semibold tracking-tight text-emerald-600 dark:text-emerald-400">{completedTasks}</span>
+                    <span className="text-3xl font-semibold tracking-tight text-emerald-500">{completedTasks}</span>
                     <MiniBarChart value={completedTasks} max={totalTasks} variant="blocks" />
                   </div>
                 </div>
@@ -360,10 +361,10 @@ export const WorkspaceIdClient = () => {
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Project Overview Chart */}
-              <Card className="p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+              <Card className="p-5 bg-card border border-border shadow-sm">
                 <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Project Overview</h3>
-                  <select className="text-xs bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-slate-100 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-primary cursor-pointer">
+                  <h3 className="text-sm font-medium tracking-tight text-foreground">Project Overview</h3>
+                  <select className="text-xs bg-muted text-foreground px-2 py-1 rounded-md border border-border focus:ring-2 focus:ring-primary cursor-pointer">
                     <option>This Week</option>
                     <option>This Month</option>
                     <option>This Year</option>
@@ -379,25 +380,25 @@ export const WorkspaceIdClient = () => {
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" className="dark:stroke-slate-700" />
                         <XAxis
                           dataKey="name"
-                          tick={{ fontSize: 12, fill: '#64748b' }}
+                          tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
                           axisLine={false}
                           tickLine={false}
                         />
                         <YAxis
-                          tick={{ fontSize: 12, fill: '#64748b' }}
+                          tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
                           axisLine={false}
                           tickLine={false}
                           allowDecimals={false}
                         />
                         <Tooltip
                           contentStyle={{
-                            backgroundColor: 'white',
-                            border: '1px solid #e5e7eb',
+                            backgroundColor: 'hsl(var(--card))',
+                            border: '1px solid hsl(var(--border))',
                             borderRadius: '8px',
                             fontSize: '12px',
                             boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
                           }}
-                          labelStyle={{ color: '#1e293b' }}
+                          labelStyle={{ color: 'hsl(var(--foreground))' }}
                         />
                         <Bar
                           dataKey="total"
@@ -424,10 +425,10 @@ export const WorkspaceIdClient = () => {
               </Card>
 
               {/* Task Statistics Card */}
-              <Card className="p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+              <Card className="p-5 bg-card border border-border shadow-sm">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Task Statistics</h3>
-                  <select className="text-xs bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-slate-100 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-600 focus:ring-2 focus:ring-primary cursor-pointer">
+                  <h3 className="text-sm font-medium tracking-tight text-foreground">Task Statistics</h3>
+                  <select className="text-xs bg-muted text-foreground px-2 py-1 rounded-md border border-border focus:ring-2 focus:ring-primary cursor-pointer">
                     <option>Monthly</option>
                     <option>Weekly</option>
                     <option>Daily</option>
@@ -437,23 +438,23 @@ export const WorkspaceIdClient = () => {
                 {/* Total Project Count with Trend */}
                 <div className="mb-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-3xl font-bold text-slate-900 dark:text-white">{totalTasks}</span>
-                    <span className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950 px-1.5 py-0.5 rounded">
+                    <span className="text-3xl font-bold text-foreground">{totalTasks}</span>
+                    <span className="text-xs text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded">
                       ↑ {dynamicData.completionRate}%
                     </span>
                   </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">Total Tasks</p>
+                  <p className="text-xs text-muted-foreground">Total Tasks</p>
                 </div>
 
                 {/* Status Legend */}
                 <div className="flex items-center gap-4 mb-4">
                   <div className="flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full bg-emerald-600" />
-                    <span className="text-xs text-slate-600 dark:text-slate-400">Completed</span>
+                    <span className="text-xs text-muted-foreground">Completed</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full bg-amber-600" />
-                    <span className="text-xs text-slate-600 dark:text-slate-400">Pending</span>
+                    <span className="text-xs text-muted-foreground">Pending</span>
                   </div>
                 </div>
 
@@ -472,48 +473,48 @@ export const WorkspaceIdClient = () => {
                 {/* In Progress / Completed Files */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <p className="text-xs font-medium text-slate-900 dark:text-white">In Progress</p>
-                    <div className="flex items-center gap-2 p-2 bg-amber-50 dark:bg-slate-700/50 rounded-lg">
-                      <div className="p-1.5 bg-amber-100 dark:bg-amber-900/30 rounded">
+                    <p className="text-xs font-medium text-foreground">In Progress</p>
+                    <div className="flex items-center gap-2 p-2 bg-amber-500/10 rounded-lg">
+                      <div className="p-1.5 bg-amber-500/20 rounded">
                         <FileText className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate text-slate-900 dark:text-white">Active Items</p>
-                        <p className="text-[10px] text-slate-600 dark:text-slate-400">{pendingTasks} tasks</p>
+                        <p className="text-xs font-medium truncate text-foreground">Active Items</p>
+                        <p className="text-[10px] text-muted-foreground">{pendingTasks} tasks</p>
                       </div>
                     </div>
-                    <Progress value={pendingTasks > 0 ? Math.min((pendingTasks / totalTasks) * 100, 100) : 0} className="h-1 bg-amber-100 dark:bg-slate-700 [&>div]:bg-amber-500" />
-                    <p className="text-[10px] text-slate-600 dark:text-slate-400">Progress... {pendingTasks > 0 ? Math.round((pendingTasks / totalTasks) * 100) : 0}%</p>
+                    <Progress value={pendingTasks > 0 ? Math.min((pendingTasks / totalTasks) * 100, 100) : 0} className="h-1 bg-amber-500/20 [&>div]:bg-amber-500" />
+                    <p className="text-[10px] text-muted-foreground">Progress... {pendingTasks > 0 ? Math.round((pendingTasks / totalTasks) * 100) : 0}%</p>
                   </div>
                   <div className="space-y-2">
-                    <p className="text-xs font-medium text-slate-900 dark:text-white">Completed</p>
-                    <div className="flex items-center gap-2 p-2 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg">
-                      <div className="p-1.5 bg-emerald-100 dark:bg-emerald-950 rounded">
+                    <p className="text-xs font-medium text-foreground">Completed</p>
+                    <div className="flex items-center gap-2 p-2 bg-emerald-500/10 rounded-lg">
+                      <div className="p-1.5 bg-emerald-500/20 rounded">
                         <FileText className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate text-slate-900 dark:text-white">Done Items</p>
-                        <p className="text-[10px] text-slate-600 dark:text-slate-400">{completedTasks} tasks</p>
+                        <p className="text-xs font-medium truncate text-foreground">Done Items</p>
+                        <p className="text-[10px] text-muted-foreground">{completedTasks} tasks</p>
                       </div>
                     </div>
-                    <Progress value={completedTasks > 0 ? Math.min((completedTasks / totalTasks) * 100, 100) : 0} className="h-1 bg-emerald-100 dark:bg-emerald-950 [&>div]:bg-emerald-600" />
-                    <p className="text-[10px] text-slate-600 dark:text-slate-400">Completed {completedTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0}%</p>
+                    <Progress value={completedTasks > 0 ? Math.min((completedTasks / totalTasks) * 100, 100) : 0} className="h-1 bg-emerald-500/20 [&>div]:bg-emerald-500" />
+                    <p className="text-[10px] text-muted-foreground">Completed {completedTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0}%</p>
                   </div>
                 </div>
               </Card>
             </div>
 
             {/* Task List Table */}
-            <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm">
+            <Card className="p-5 bg-card border border-border shadow-sm">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Task List</h3>
-                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-blue-50 dark:hover:bg-blue-900/20">
-                  <MoreHorizontal className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                <h3 className="text-sm font-medium tracking-tight text-foreground">Task List</h3>
+                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-accent">
+                  <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </div>
 
               {/* Table Header */}
-              <div className="grid grid-cols-12 gap-4 pb-3 border-b border-blue-100 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-400">
+              <div className="grid grid-cols-12 gap-4 pb-3 border-b border-border text-xs font-medium text-muted-foreground">
                 <div className="col-span-4">Name</div>
                 <div className="col-span-2">Project</div>
                 <div className="col-span-2">Time</div>
@@ -522,13 +523,13 @@ export const WorkspaceIdClient = () => {
               </div>
 
               {/* Table Body */}
-              <div className="divide-y divide-blue-50 dark:divide-slate-700">
+              <div className="divide-y divide-border">
                 {dynamicData.recentWorkItems.length > 0 ? (
                   dynamicData.recentWorkItems.map((task) => (
                     <Link
                       key={task.id}
                       href={`/workspaces/${workspaceId}/tasks/${task.id}`}
-                      className="grid grid-cols-12 gap-4 py-3 items-center hover:bg-blue-50 dark:hover:bg-slate-700/50 -mx-5 px-5 transition-colors"
+                      className="grid grid-cols-12 gap-4 py-3 items-center hover:bg-accent -mx-5 px-5 transition-colors"
                     >
                       <div className="col-span-4 flex items-center gap-3">
                         <MemberAvatar
@@ -537,15 +538,15 @@ export const WorkspaceIdClient = () => {
                           className="h-8 w-8"
                         />
                         <div className="min-w-0">
-                          <p className="text-sm font-medium truncate text-slate-900 dark:text-white">{task.assignee}</p>
-                          <p className="text-xs text-slate-600 dark:text-slate-400 truncate">{task.title}</p>
+                          <p className="text-sm font-medium truncate text-foreground">{task.assignee}</p>
+                          <p className="text-xs text-muted-foreground truncate">{task.title}</p>
                         </div>
                       </div>
                       <div className="col-span-2">
-                        <p className="text-sm truncate text-slate-700 dark:text-slate-300">{task.project}</p>
+                        <p className="text-sm truncate text-foreground">{task.project}</p>
                       </div>
                       <div className="col-span-2">
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                        <p className="text-sm text-muted-foreground">
                           {task.dueDate ? format(task.dueDate, 'MMM d') : '—'}
                         </p>
                       </div>
@@ -554,10 +555,10 @@ export const WorkspaceIdClient = () => {
                           ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400"
                           : task.status === "In Progress"
                             ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                            : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                            : "bg-muted text-muted-foreground"
                           }`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${task.status === "Completed" ? "bg-emerald-600" :
-                            task.status === "In Progress" ? "bg-amber-600" : "bg-blue-600"
+                            task.status === "In Progress" ? "bg-amber-600" : "bg-muted-foreground"
                             }`} />
                           {task.status}
                         </span>
@@ -585,7 +586,7 @@ export const WorkspaceIdClient = () => {
 
               {workItems.total > 5 && (
                 <Link href={`/workspaces/${workspaceId}/tasks`}>
-                  <Button variant="ghost" size="sm" className="w-full mt-4 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20">
+                  <Button variant="ghost" size="sm" className="w-full mt-4 text-xs text-muted-foreground hover:text-foreground hover:bg-accent">
                     View All Tasks <ExternalLink className="ml-1 h-3 w-3" />
                   </Button>
                 </Link>
@@ -598,11 +599,11 @@ export const WorkspaceIdClient = () => {
           {/* Right Sidebar (3 columns) */}
           <div className="col-span-12  xl:col-span-3 flex flex-col space-y-4 h-full">
             {/* Due Alerts Card */}
-            <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm flex-1">
+            <Card className="p-5 bg-card border border-border shadow-sm flex-1">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Due Alerts</h3>
-                <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-blue-50 dark:hover:bg-blue-900/20">
-                  <PlusIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <h3 className="text-sm font-medium tracking-tight text-foreground">Due Alerts</h3>
+                <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-accent">
+                  <PlusIcon className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </div>
 
@@ -612,7 +613,7 @@ export const WorkspaceIdClient = () => {
                     <Link
                       key={alert.id}
                       href={`/workspaces/${workspaceId}/tasks/${alert.id}`}
-                      className="block p-4 bg-gradient-to-br from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 rounded-xl text-white hover:from-blue-700 hover:to-blue-800 dark:hover:from-blue-800 dark:hover:to-blue-900 transition-all"
+                      className="block p-4 bg-primary rounded-xl text-primary-foreground hover:bg-primary/90 transition-all"
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
@@ -621,13 +622,13 @@ export const WorkspaceIdClient = () => {
                             Due: {format(alert.dueDate, 'MMM d, h:mm a')}
                           </p>
                         </div>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-white/70 hover:text-white hover:bg-white/10">
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-foreground/70 hover:text-foreground hover:bg-accent">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </div>
                       <Button
                         size="sm"
-                        className="w-full mt-3 bg-white text-blue-700 hover:bg-blue-50 dark:bg-blue-950 dark:text-blue-100 dark:hover:bg-blue-900"
+                        className="w-full mt-3 bg-background text-foreground hover:bg-accent"
                       >
                         <Clock className="mr-2 h-3 w-3" />
                         View Details
@@ -639,14 +640,14 @@ export const WorkspaceIdClient = () => {
                     <Link
                       key={alert.id}
                       href={`/workspaces/${workspaceId}/tasks/${alert.id}`}
-                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-blue-50 dark:hover:bg-slate-700/50 transition-colors"
+                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent transition-colors"
                     >
-                      <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                        <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <div className="p-2 bg-muted rounded-lg">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate text-slate-900 dark:text-white">{alert.title}</p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                        <p className="text-sm font-medium truncate text-foreground">{alert.title}</p>
+                        <p className="text-xs text-muted-foreground">
                           {formatDistanceToNow(alert.dueDate, { addSuffix: true })}
                         </p>
                       </div>
@@ -655,16 +656,16 @@ export const WorkspaceIdClient = () => {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <Clock className="h-8 w-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                  <Clock className="h-8 w-8 text-muted/50 dark:text-muted-foreground/30 mx-auto mb-2" />
                   <p className="text-sm text-slate-500 dark:text-slate-400">No upcoming deadlines</p>
                 </div>
               )}
             </Card>
 
             {/* Task Statistics by Project */}
-            <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm flex-1">
+            <Card className="p-5 bg-card border border-border shadow-sm flex-1">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium tracking-tight  text-slate-900 dark:text-white">Project Statistics</h3>
+                <h3 className="text-sm font-medium tracking-tight text-foreground">Project Statistics</h3>
               </div>
 
               <div className="space-y-2 max-h-[280px] overflow-y-auto">
@@ -682,17 +683,27 @@ export const WorkspaceIdClient = () => {
                     <Link
                       key={project.$id}
                       href={`/workspaces/${workspaceId}/projects/${project.$id}`}
-                      className={`flex items-center gap-3 p-3 rounded-xl transition-all ${idx === 0 ? 'bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 text-white hover:from-blue-700 hover:to-blue-800' : 'hover:bg-blue-50 dark:hover:bg-slate-700/50'
-                        }`}
+                      className={cn(
+                        "flex items-center gap-3 p-3 rounded-xl transition-all",
+                        idx === 0 ? "bg-primary text-primary-foreground hover:bg-primary/90" : "hover:bg-accent"
+                      )}
                     >
-                      <div className={`flex items-center justify-center w-8 h-8 rounded-lg text-sm font-bold ${idx === 0 ? 'bg-white/20' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                        }`}>
+                      <div className={cn(
+                        "flex items-center justify-center w-8 h-8 rounded-lg text-sm font-bold",
+                        idx === 0 ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-foreground"
+                      )}>
                         {idx + 1}
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium truncate ${idx === 0 ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{project.name}</p>
-                        <p className={`text-xs ${idx === 0 ? 'text-white/80' : 'text-slate-600 dark:text-slate-400'}`}>
+                        <p className={cn(
+                          "text-sm font-medium truncate",
+                          idx === 0 ? "text-primary-foreground" : "text-foreground"
+                        )}>{project.name}</p>
+                        <p className={cn(
+                          "text-xs",
+                          idx === 0 ? "text-primary-foreground/80" : "text-muted-foreground"
+                        )}>
                           {dueSoon > 0 ? `${dueSoon} tasks due soon` : `${projectItems.length} total tasks`}
                         </p>
                       </div>
@@ -703,7 +714,7 @@ export const WorkspaceIdClient = () => {
 
                 {projects.total === 0 && (
                   <div className="text-center py-8">
-                    <FolderKanban className="h-8 w-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                    <FolderKanban className="h-8 w-8 text-muted/50 dark:text-muted-foreground/30 mx-auto mb-2" />
                     <p className="text-sm text-slate-500 dark:text-slate-400">No projects yet</p>
                   </div>
                 )}
@@ -711,7 +722,7 @@ export const WorkspaceIdClient = () => {
 
               {projects.total > 5 && (
                 <Link href={`/workspaces/${workspaceId}/projects`}>
-                  <Button variant="ghost" size="sm" className="w-full mt-3 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20">
+                  <Button variant="ghost" size="sm" className="w-full mt-3 text-xs text-muted-foreground hover:text-foreground hover:bg-accent">
                     View All Projects <ExternalLink className="ml-1 h-3 w-3" />
                   </Button>
                 </Link>
@@ -719,12 +730,12 @@ export const WorkspaceIdClient = () => {
             </Card>
 
             {/* Team Members Quick View */}
-            <Card className="p-5 bg-white dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm flex-1">
+            <Card className="p-5 bg-card border border-border shadow-sm flex-1">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Team Members</h3>
+                <h3 className="text-sm font-medium tracking-tight text-foreground">Team Members</h3>
                 <Link href={`/workspaces/${workspaceId}/members`}>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-blue-50 dark:hover:bg-blue-900/20">
-                    <SettingsIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-accent">
+                    <SettingsIcon className="h-4 w-4 text-muted-foreground" />
                   </Button>
                 </Link>
               </div>
@@ -735,20 +746,20 @@ export const WorkspaceIdClient = () => {
                     key={member.$id}
                     name={member.name || member.email || "U"}
                     imageUrl={member.profileImageUrl}
-                    className="h-10 w-10 border-2 border-blue-100 dark:border-blue-900"
+                    className="h-10 w-10 border-2 border-border"
                   />
                 ))}
                 {members.total > 8 && (
-                  <div className="flex items-center justify-center h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 text-xs font-medium text-blue-700 dark:text-blue-300">
+                  <div className="flex items-center justify-center h-10 w-10 rounded-full bg-muted text-xs font-medium text-muted-foreground">
                     +{members.total - 8}
                   </div>
                 )}
               </div>
 
-              <div className="mt-4 pt-4 border-t border-blue-100 dark:border-slate-700">
+              <div className="mt-4 pt-4 border-t border-border">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600 text-xs dark:text-slate-400">Total Members</span>
-                  <span className="font-semibold text-slate-900 dark:text-white">{members.total}</span>
+                  <span className="text-muted-foreground text-xs">Total Members</span>
+                  <span className="font-semibold text-foreground">{members.total}</span>
                 </div>
                 {/* Active Teams Stat Removed */}
               </div>
@@ -759,10 +770,10 @@ export const WorkspaceIdClient = () => {
         {/* Bottom Row - Workload, Priority & Top Contributors */}
         <div className="grid grid-cols-1 w-full mt-4  lg:grid-cols-3 gap-4">
           {/* Workload Distribution */}
-          <Card className="p-5 bg-white  border border-slate-200 dark:border-slate-700 shadow-sm">
+          <Card className="p-5 bg-card border border-border shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Workload Distribution</h3>
-              <Users className="h-4 w-4 text-slate-600" />
+              <h3 className="text-sm font-medium tracking-tight text-foreground">Workload Distribution</h3>
+              <Users className="h-4 w-4 text-muted-foreground" />
             </div>
             <div className="space-y-4">
               {dynamicData.memberWorkload.length > 0 ? (
@@ -778,12 +789,12 @@ export const WorkspaceIdClient = () => {
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
-                            <p className="text-sm font-medium truncate text-slate-900 dark:text-white">{member.name}</p>
-                            <span className="text-xs text-slate-600 dark:text-slate-400">{member.tasks} tasks</span>
+                            <p className="text-sm font-medium truncate text-foreground">{member.name}</p>
+                            <span className="text-xs text-muted-foreground">{member.tasks} tasks</span>
                           </div>
                           <Progress
                             value={workloadPercentage}
-                            className="h-2 text-slate-600"
+                            className="h-2"
                           />
                         </div>
                       </div>
@@ -799,10 +810,10 @@ export const WorkspaceIdClient = () => {
           </Card>
 
           {/* Priority Distribution */}
-          <Card className="p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+          <Card className="p-5 bg-card border border-border shadow-sm">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Priority Distribution</h3>
-              <Layers className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+              <h3 className="text-sm font-medium tracking-tight text-foreground">Priority Distribution</h3>
+              <Layers className="h-4 w-4 text-muted-foreground" />
             </div>
             <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -842,10 +853,10 @@ export const WorkspaceIdClient = () => {
           </Card>
 
           {/* Top Contributors */}
-          <Card className="p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+          <Card className="p-5 bg-card border border-border shadow-sm">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-sm font-medium tracking-tight text-slate-900 dark:text-white">Top Contributors</h3>
-              <TrendingUp className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+              <h3 className="text-sm font-medium tracking-tight text-foreground">Top Contributors</h3>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </div>
             {dynamicData.contributionData.length > 0 ? (
               <div className="space-y-3">
@@ -858,8 +869,8 @@ export const WorkspaceIdClient = () => {
                       className="h-8 w-8"
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate text-slate-900 dark:text-white">{contributor.name}</p>
-                      <p className="text-xs text-slate-600 dark:text-slate-400">{contributor.completed} completed</p>
+                      <p className="text-sm font-medium truncate text-foreground">{contributor.name}</p>
+                      <p className="text-xs text-muted-foreground">{contributor.completed} completed</p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">{contributor.completed}</p>
@@ -870,7 +881,7 @@ export const WorkspaceIdClient = () => {
               </div>
             ) : (
               <div className="h-[200px] flex flex-col items-center justify-center text-center">
-                <TrendingUp className="h-8 w-8 text-slate-300 dark:text-slate-600 mb-2" />
+                <TrendingUp className="h-8 w-8 text-muted/50 dark:text-muted-foreground/30 mb-2" />
                 <p className="text-sm text-slate-500 dark:text-slate-400">No completed tasks yet</p>
               </div>
             )}

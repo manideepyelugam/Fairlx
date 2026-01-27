@@ -105,7 +105,7 @@ export const KanbanColumnHeader = ({
           />
         )}
         {icon}
-        <h2 className="text-sm font-semibold text-gray-700">{snakeCaseToTitleCase(board)}</h2>
+        <h2 className="text-sm font-semibold text-foreground">{snakeCaseToTitleCase(board)}</h2>
 
         {/* Task count with WIP limit indicator */}
         <TooltipProvider>
@@ -168,11 +168,11 @@ export const KanbanColumnHeader = ({
       )}
 
       <div className="flex items-center gap-2">
-      
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-gray-100">
-              <MoreHorizontalIcon className="h-4 w-4 text-gray-500" />
+            <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-accent">
+              <MoreHorizontalIcon className="h-4 w-4 text-muted-foreground" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

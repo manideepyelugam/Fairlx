@@ -44,7 +44,7 @@ export const ProjectIdClient = () => {
 
     if (daysRemaining <= 7) {
       return (
-        <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 hover:bg-amber-100">
+        <Badge variant="secondary" className="text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 border-amber-500/20">
           <Calendar className="size-3 mr-1" />
           Due in {daysRemaining} day{daysRemaining !== 1 ? 's' : ''}
         </Badge>
@@ -69,7 +69,7 @@ export const ProjectIdClient = () => {
             <p className="text-2xl tracking-tight font-semibold">{project.name}</p>
             {getDeadlineBadge()}
           </div>
-          <p className="text-sm tracking-normal font-medium text-neutral-500">
+          <p className="text-sm tracking-normal font-medium text-muted-foreground">
             {project.description || "Track your project and goals with full AI Assistance"}
           </p>
         </div>
@@ -78,7 +78,7 @@ export const ProjectIdClient = () => {
           <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/sprints`} className="!text-sm">
             <button
               type="button"
-              className="inline-flex items-center rounded-md border border-input px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="inline-flex items-center rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors"
             >
               <Layers className="size-4 mr-3" />
               Sprint Board
@@ -88,7 +88,7 @@ export const ProjectIdClient = () => {
           <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/docs`} className="!text-sm">
             <button
               type="button"
-              className="inline-flex items-center rounded-md border border-input px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="inline-flex items-center rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors"
             >
               <FileText className="size-4 mr-3" />
               Docs
@@ -98,7 +98,7 @@ export const ProjectIdClient = () => {
           <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/github`} className="!text-sm">
             <button
               type="button"
-              className="inline-flex items-center rounded-md border border-input px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="inline-flex items-center rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors"
             >
               <Github className="size-4 mr-3" />
               AI Github
@@ -108,7 +108,7 @@ export const ProjectIdClient = () => {
           <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/teams`} className="!text-sm">
             <button
               type="button"
-              className="inline-flex items-center rounded-md border border-input px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="inline-flex items-center rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors"
             >
               <Users2 className="size-4 mr-3" />
               Teams
@@ -118,7 +118,7 @@ export const ProjectIdClient = () => {
           <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/members`} className="!text-sm">
             <button
               type="button"
-              className="inline-flex items-center rounded-md border border-input px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="inline-flex items-center rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors"
             >
               <UserPlus className="size-4 mr-3" />
               Members
@@ -128,7 +128,7 @@ export const ProjectIdClient = () => {
           <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/settings`} className="!text-sm">
             <button
               type="button"
-              className="inline-flex items-center rounded-md border border-input px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="inline-flex items-center rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors"
             >
               <Settings className="size-4 mr-3" />
               Settings

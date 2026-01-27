@@ -176,8 +176,8 @@ export const ProjectIdSettingsClient = () => {
   return (
     <div className="min-h-screen flex">
       {/* Settings Sidebar */}
-      <aside className="h-screen bg-neutral-50 w-[264px] overflow-hidden border-r-[1.5px] border-neutral-200 flex flex-col fixed left-0 top-0">
-        <div className="flex items-center w-full py-5 px-4 border-b-[1.5px] border-neutral-200 flex-shrink-0">
+      <aside className="h-screen bg-background w-[264px] overflow-hidden border-r border-border flex flex-col fixed left-0 top-0">
+        <div className="flex items-center w-full py-5 px-4 border-b border-border flex-shrink-0">
           <Link href="/">
             <Image src="/Logo.png" className="object-contain" alt="logo" width={80} height={90} />
           </Link>
@@ -185,17 +185,17 @@ export const ProjectIdSettingsClient = () => {
 
         <div className="flex flex-col flex-1 overflow-hidden">
           {/* Navigation */}
-          <div className="p-3 border-b-[1.5px] border-neutral-200 flex-shrink-0">
+          <div className="p-3 border-b border-border flex-shrink-0">
             <ul className="flex flex-col">
               <Link href={`/workspaces/${project.workspaceId}`}>
-                <div className="flex items-center gap-2.5 p-2.5 rounded-md font-medium transition text-neutral-500 hover:bg-neutral-200">
-                  <GoHome className="size-5 text-neutral-500" />
+                <div className="flex items-center gap-2.5 p-2.5 rounded-md font-medium transition text-muted-foreground hover:bg-accent">
+                  <GoHome className="size-5 text-muted-foreground" />
                   <p className="text-[13px] tracking-tight font-medium">Home</p>
                 </div>
               </Link>
               <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}`}>
-                <div className="flex items-center gap-2.5 p-2.5 rounded-md font-medium transition text-neutral-500 hover:bg-neutral-200">
-                  <FolderKanban className="size-5 text-neutral-500" />
+                <div className="flex items-center gap-2.5 p-2.5 rounded-md font-medium transition text-muted-foreground hover:bg-accent border border-transparent">
+                  <FolderKanban className="size-5 text-muted-foreground" />
                   <p className="text-[13px] tracking-tight font-medium">Back to Project</p>
                 </div>
               </Link>
@@ -204,7 +204,7 @@ export const ProjectIdSettingsClient = () => {
 
           {/* Settings Navigation */}
           <div className="p-3 flex-1 overflow-y-auto">
-            <p className="text-xs font-medium text-neutral-400 uppercase tracking-wider px-2.5 mb-2">
+            <p className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wider px-2.5 mb-2">
               Project Settings
             </p>
             <ul className="flex flex-col">
@@ -218,15 +218,15 @@ export const ProjectIdSettingsClient = () => {
                       className={cn(
                         "flex items-center gap-2.5 p-2.5 rounded-md font-medium transition w-full text-left",
                         isActive
-                          ? "bg-neutral-200 shadow-sm text-primary"
-                          : "text-neutral-500 hover:bg-neutral-100",
-                        item.danger && "text-red-600 hover:bg-red-50"
+                          ? "bg-accent shadow-sm text-primary"
+                          : "text-muted-foreground hover:bg-muted/50",
+                        item.danger && "text-destructive hover:bg-destructive/10"
                       )}
                     >
                       <Icon className={cn(
                         "size-5",
-                        isActive ? "text-primary" : "text-neutral-500",
-                        item.danger && "text-red-600"
+                        isActive ? "text-primary" : "text-muted-foreground",
+                        item.danger && "text-destructive"
                       )} />
                       <p className="text-[13px] tracking-tight font-medium">{item.label}</p>
                     </button>
@@ -239,7 +239,7 @@ export const ProjectIdSettingsClient = () => {
       </aside>
 
       {/* Main Content */}
-      <div className="pl-[264px] w-full min-h-screen bg-white flex flex-col">
+      <div className="pl-[264px] w-full min-h-screen bg-background flex flex-col">
         {/* Navbar */}
         <Navbar />
 
@@ -247,9 +247,9 @@ export const ProjectIdSettingsClient = () => {
         <div className="p-6">
           <div className="max-w-4xl mx-auto space-y-6">
             {/* Project Header Card */}
-            <div className="w-full p-5 rounded-xl border flex items-center justify-between">
+            <div className="w-full p-5 rounded-xl border border-border flex items-center justify-between">
               <div className="flex items-start gap-5">
-                <Avatar className="size-24 border-2 border-neutral-300">
+                <Avatar className="size-24 border-2 border-border">
                   {project.imageUrl ? (
                     <AvatarImage src={project.imageUrl} alt={project.name} />
                   ) : (
@@ -259,9 +259,9 @@ export const ProjectIdSettingsClient = () => {
                   )}
                 </Avatar>
                 <div className="flex flex-col">
-                  <h1 className="text-[22px] font-semibold">{project.name}</h1>
-                  <p className="text-[13px] text-neutral-500">Project Settings</p>
-                  <p className="text-[13px] text-neutral-500">
+                  <h1 className="text-[22px] font-semibold text-foreground">{project.name}</h1>
+                  <p className="text-[13px] text-muted-foreground">Project Settings</p>
+                  <p className="text-[13px] text-muted-foreground">
                     Created {format(new Date(project.$createdAt), "MMM d, yyyy")}
                   </p>
                 </div>
@@ -363,7 +363,7 @@ export const ProjectIdSettingsClient = () => {
                             <FormLabel>Project Icon</FormLabel>
                             <div className="flex items-center gap-6">
                               {field.value ? (
-                                <div className="size-24 relative rounded-lg overflow-hidden border-2 border-neutral-200">
+                                <div className="size-24 relative rounded-lg overflow-hidden border-2 border-border">
                                   <Image
                                     src={
                                       field.value instanceof File
@@ -376,8 +376,8 @@ export const ProjectIdSettingsClient = () => {
                                   />
                                 </div>
                               ) : (
-                                <div className="size-24 rounded-lg border-2 border-dashed border-neutral-300 flex items-center justify-center bg-neutral-50">
-                                  <ImageIcon className="size-8 text-neutral-400" />
+                                <div className="size-24 rounded-lg border-2 border-dashed border-border flex items-center justify-center bg-muted/50">
+                                  <ImageIcon className="size-8 text-muted-foreground" />
                                 </div>
                               )}
                               <div className="flex flex-col gap-2">
@@ -403,7 +403,7 @@ export const ProjectIdSettingsClient = () => {
                                     variant="ghost"
                                     type="button"
                                     size="sm"
-                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                     onClick={() => {
                                       field.onChange(null);
                                       if (inputRef.current) inputRef.current.value = "";
@@ -447,7 +447,7 @@ export const ProjectIdSettingsClient = () => {
                   <Card>
                     <CardContent className="pt-6">
                       <div className="flex items-center gap-4">
-                        <div className="size-12 rounded-lg bg-blue-100 flex items-center justify-center">
+                        <div className="size-12 rounded-lg bg-blue-500/10 dark:bg-blue-500/20 flex items-center justify-center">
                           <ListTodo className="size-6 text-blue-600" />
                         </div>
                         <div>
@@ -463,7 +463,7 @@ export const ProjectIdSettingsClient = () => {
                   <Card>
                     <CardContent className="pt-6">
                       <div className="flex items-center gap-4">
-                        <div className="size-12 rounded-lg bg-green-100 flex items-center justify-center">
+                        <div className="size-12 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center">
                           <CheckCircle2 className="size-6 text-green-600" />
                         </div>
                         <div>
@@ -495,7 +495,7 @@ export const ProjectIdSettingsClient = () => {
                   <Card>
                     <CardContent className="pt-6">
                       <div className="flex items-center gap-4">
-                        <div className="size-12 rounded-lg bg-red-100 flex items-center justify-center">
+                        <div className="size-12 rounded-lg bg-destructive/10 flex items-center justify-center">
                           <AlertCircle className="size-6 text-red-600" />
                         </div>
                         <div>
@@ -515,17 +515,17 @@ export const ProjectIdSettingsClient = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="flex items-center gap-3 p-4 bg-neutral-50 rounded-lg">
-                        <Calendar className="size-5 text-neutral-500" />
+                      <div className="flex items-center gap-3 p-4 bg-muted rounded-lg">
+                        <Calendar className="size-5 text-muted-foreground" />
                         <div>
-                          <p className="text-sm text-neutral-500">Created</p>
+                          <p className="text-sm text-muted-foreground">Created</p>
                           <p className="font-medium text-sm">
                             {format(new Date(project.$createdAt), "MMMM d, yyyy")}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 p-4 bg-neutral-50 rounded-lg">
-                        <Clock className="size-5 text-neutral-500" />
+                      <div className="flex items-center gap-3 p-4 bg-muted rounded-lg">
+                        <Clock className="size-5 text-muted-foreground" />
                         <div>
                           <p className="text-sm text-neutral-500">Last Updated</p>
                           <p className="font-medium text-sm">
@@ -666,10 +666,10 @@ export const ProjectIdSettingsClient = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center justify-between p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-center justify-between p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
                     <div>
-                      <p className="font-medium text-red-900 text-sm">Delete this project</p>
-                      <p className="text-xs text-red-700">
+                      <p className="font-medium text-destructive text-sm">Delete this project</p>
+                      <p className="text-xs text-muted-foreground">
                         Once deleted, the project and all its data cannot be recovered.
                         This includes all tasks, sprints, comments, and attachments.
                       </p>

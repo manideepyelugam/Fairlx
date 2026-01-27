@@ -48,13 +48,13 @@ export function BillingWarningBanner({
     return (
         <Alert
             variant="destructive"
-            className={`border-orange-500 bg-orange-50 dark:bg-orange-950/30 ${className}`}
+            className={`border-amber-500/50 bg-amber-500/10 dark:bg-amber-950/30 ${className}`}
         >
-            <AlertTriangle className="h-4 w-4 text-orange-600" />
-            <AlertTitle className="text-orange-800 dark:text-orange-300">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <AlertTitle className="text-amber-600 dark:text-amber-400 font-semibold">
                 Payment Required
             </AlertTitle>
-            <AlertDescription className="text-orange-700 dark:text-orange-400">
+            <AlertDescription className="text-amber-600/90 dark:text-amber-400/90">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <p>
                         Your last payment failed.
@@ -69,7 +69,7 @@ export function BillingWarningBanner({
                         )}
                     </p>
                     <div className="flex items-center gap-2">
-                        <Button asChild size="sm" variant="outline" className="border-orange-500 text-orange-700 hover:bg-orange-100">
+                        <Button asChild size="sm" variant="outline" className="border-amber-500/50 text-amber-600 hover:bg-amber-500/10">
                             <Link href={billingUrl}>
                                 Update Payment Method
                             </Link>
@@ -77,7 +77,7 @@ export function BillingWarningBanner({
                         <Button
                             size="sm"
                             variant="ghost"
-                            className="h-8 w-8 p-0 text-orange-600"
+                            className="h-8 w-8 p-0 text-amber-600"
                             onClick={() => setIsDismissed(true)}
                         >
                             <X className="h-4 w-4" />

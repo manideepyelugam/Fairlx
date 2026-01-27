@@ -155,7 +155,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
                   <User className="size-4" />
                   User ID
                 </Label>
-                <p className="text-sm font-mono bg-neutral-50 p-2 rounded border">
+                <p className="text-sm font-mono bg-muted p-2 rounded border">
                   {initialData.$id}
                 </p>
               </div>
@@ -165,7 +165,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
                   <Calendar className="size-4" />
                   Account Created
                 </Label>
-                <p className="text-sm bg-neutral-50 p-2 rounded border">
+                <p className="text-sm bg-muted p-2 rounded border">
                   {formatDate(initialData.$createdAt)}
                 </p>
               </div>
@@ -175,7 +175,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
                   <Calendar className="size-4" />
                   Last Updated
                 </Label>
-                <p className="text-sm bg-neutral-50 p-2 rounded border">
+                <p className="text-sm bg-muted p-2 rounded border">
                   {formatDate(initialData.$updatedAt)}
                 </p>
               </div>
@@ -184,7 +184,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
                 <Label className="flex items-center gap-2 text-muted-foreground">
                   Email Verification
                 </Label>
-                <p className="text-sm bg-neutral-50 p-2 rounded border">
+                <p className="text-sm bg-muted p-2 rounded border">
                   {initialData.emailVerification ? (
                     <span className="text-green-600 font-medium">✓ Verified</span>
                   ) : (

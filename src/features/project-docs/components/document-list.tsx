@@ -194,12 +194,12 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
             placeholder="Search documents"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-9 text-xs font-light bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 rounded-lg"
+            className="pl-9 h-9 text-xs font-light bg-background border-border rounded-lg"
           />
         </div>
 
         <Select value={selectedCategory} onValueChange={(v) => setSelectedCategory(v as DocumentCategory | "all")}>
-          <SelectTrigger className="w-[180px] h-9 text-xs font-light bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 rounded-lg">
+          <SelectTrigger className="w-[180px] h-9 text-xs font-light bg-background border-border rounded-lg">
             <SelectValue placeholder="All categories" className="truncate" />
           </SelectTrigger>
           <SelectContent>
@@ -211,7 +211,7 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
         </Select>
 
         <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-          <SelectTrigger className="w-[130px] h-9 text-xs font-light bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 rounded-lg">
+          <SelectTrigger className="w-[130px] h-9 text-xs font-light bg-background border-border rounded-lg">
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
           <SelectContent>
@@ -256,12 +256,12 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
         <div className="flex items-center gap-3">
           <button
             onClick={handleSelectAll}
-            className="flex items-center justify-center text-gray-400 hover:text-[#1269d6] transition-colors"
+            className="flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
           >
             {isAllSelected ? (
-              <CheckSquare className="h-4 w-4 text-[#1269d6]" />
+              <CheckSquare className="h-4 w-4 text-primary" />
             ) : isSomeSelected ? (
-              <CheckSquare className="h-4 w-4 text-[#1269d6]/50" />
+              <CheckSquare className="h-4 w-4 text-primary/50" />
             ) : (
               <Square className="h-4 w-4" />
             )}
@@ -329,7 +329,7 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
           )}
         </div>
       ) : (
-        <div className="rounded-lg border border-gray-100 dark:border-gray-800 overflow-hidden bg-white dark:bg-gray-900">
+        <div className="rounded-lg border border-border overflow-hidden bg-card">
           {filteredDocuments.map((doc, index) => (
             <DocumentCard
               key={doc.$id}

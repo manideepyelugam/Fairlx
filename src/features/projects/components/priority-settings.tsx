@@ -127,9 +127,9 @@ export const PrioritySettings = ({ priorities = [], onChange }: PrioritySettings
                                             <div
                                                 ref={provided.innerRef}
                                                 {...provided.draggableProps}
-                                                className="flex items-center gap-3 p-3 bg-white border rounded-lg group"
+                                                className="flex items-center gap-3 p-3 bg-card border border-border rounded-lg group"
                                             >
-                                                <div {...provided.dragHandleProps} className="text-gray-400 hover:text-gray-600 cursor-move">
+                                                <div {...provided.dragHandleProps} className="text-muted-foreground hover:text-foreground cursor-move">
                                                     <GripVertical className="size-4" />
                                                 </div>
                                                 <div
@@ -138,7 +138,7 @@ export const PrioritySettings = ({ priorities = [], onChange }: PrioritySettings
                                                 />
                                                 <div className="flex-1">
                                                     <span className="font-medium text-sm mr-2">{item.label}</span>
-                                                    <span className="text-xs text-muted-foreground bg-gray-100 px-1.5 py-0.5 rounded">Level {item.level}</span>
+                                                    <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Level {item.level}</span>
                                                 </div>
                                                 <Button
                                                     variant="ghost"

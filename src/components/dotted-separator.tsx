@@ -11,7 +11,7 @@ interface DottedSeparatorProps {
 
 export const DottedSeparator = ({
   className,
-  color = "#D4D4D8",
+  color = "currentColor", // Use currentColor to allow theme-aware coloring
   height = "2px",
   dotSize = "2px",
   gapSize = "6px",
@@ -22,8 +22,8 @@ export const DottedSeparator = ({
     <div
       className={cn(
         isHorizontal
-          ? "w-full flex items-center"
-          : "h-full flex flex-col items-center",
+          ? "w-full flex items-center text-border"
+          : "h-full flex flex-col items-center text-border",
         className
       )}
     >

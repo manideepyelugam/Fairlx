@@ -76,18 +76,18 @@ const typeConfig = {
   [WorkItemType.BUG]: { icon: Bug, color: "text-red-600", bg: "bg-red-500", light: "bg-red-50 dark:bg-red-900/20" },
   [WorkItemType.TASK]: { icon: CheckSquare, color: "text-green-600", bg: "bg-green-500", light: "bg-green-50 dark:bg-green-900/20" },
   [WorkItemType.EPIC]: { icon: Layers, color: "text-purple-600", bg: "bg-purple-500", light: "bg-purple-50 dark:bg-purple-900/20" },
-  [WorkItemType.SUBTASK]: { icon: ListTodo, color: "text-slate-600", bg: "bg-slate-500", light: "bg-slate-50 dark:bg-slate-800" },
+  [WorkItemType.SUBTASK]: { icon: ListTodo, color: "text-muted-foreground", bg: "bg-muted-foreground", light: "bg-muted" },
 };
 
 const priorityConfig = {
-  [WorkItemPriority.LOW]: { label: "Low", color: "text-slate-600", bg: "bg-slate-100 dark:bg-slate-700", border: "border-slate-200 dark:border-slate-600" },
+  [WorkItemPriority.LOW]: { label: "Low", color: "text-muted-foreground", bg: "bg-muted", border: "border-border" },
   [WorkItemPriority.MEDIUM]: { label: "Medium", color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-900/20", border: "border-amber-200 dark:border-amber-700" },
   [WorkItemPriority.HIGH]: { label: "High", color: "text-orange-600", bg: "bg-orange-50 dark:bg-orange-900/20", border: "border-orange-200 dark:border-orange-700" },
   [WorkItemPriority.URGENT]: { label: "Urgent", color: "text-red-600", bg: "bg-red-50 dark:bg-red-900/20", border: "border-red-200 dark:border-red-700" },
 };
 
 const statusConfig = {
-  [WorkItemStatus.TODO]: { label: "To Do", dot: "bg-slate-400", bg: "bg-slate-100 dark:bg-slate-700", text: "text-slate-600" },
+  [WorkItemStatus.TODO]: { label: "To Do", dot: "bg-muted-foreground/50", bg: "bg-muted", text: "text-muted-foreground" },
   [WorkItemStatus.ASSIGNED]: { label: "Assigned", dot: "bg-blue-500", bg: "bg-blue-50 dark:bg-blue-900/30", text: "text-blue-600" },
   [WorkItemStatus.IN_PROGRESS]: { label: "In Progress", dot: "bg-amber-500", bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-600" },
   [WorkItemStatus.IN_REVIEW]: { label: "In Review", dot: "bg-purple-500", bg: "bg-purple-50 dark:bg-purple-900/30", text: "text-purple-600" },
@@ -119,7 +119,7 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails }
     { key: WorkItemType.BUG, label: "Bug", icon: Bug, color: "text-red-600", bg: "bg-red-500", light: "bg-red-50 dark:bg-red-900/20" },
     { key: WorkItemType.STORY, label: "Story", icon: Bookmark, color: "text-blue-600", bg: "bg-blue-500", light: "bg-blue-50 dark:bg-blue-900/20" },
     { key: WorkItemType.EPIC, label: "Epic", icon: Layers, color: "text-purple-600", bg: "bg-purple-500", light: "bg-purple-50 dark:bg-purple-900/20" },
-    { key: WorkItemType.SUBTASK, label: "Subtask", icon: ListTodo, color: "text-slate-600", bg: "bg-slate-500", light: "bg-slate-50 dark:bg-slate-800" },
+    { key: WorkItemType.SUBTASK, label: "Subtask", icon: ListTodo, color: "text-muted-foreground", bg: "bg-muted-foreground", light: "bg-muted" },
   ];
 
   const TypeIcon = typeConfig[workItem.type]?.icon || CheckSquare;
@@ -157,7 +157,7 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails }
   };
 
   return (
-    <div className="border rounded-lg bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+    <div className="border rounded-lg bg-card border-border">
       <div className="flex">
         <div className={cn("w-1 rounded-l-lg", typeConfig[workItem.type].bg)} />
         <div className="flex-1 p-3 space-y-2">

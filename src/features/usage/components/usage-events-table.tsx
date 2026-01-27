@@ -266,7 +266,7 @@ export function UsageEventsTable({
                         {onDateRangeChange && (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" size="sm" className={dateRange ? "bg-blue-50 text-blue-700 border-blue-200" : ""}>
+                                    <Button variant="outline" size="sm" className={dateRange ? "bg-muted text-foreground border-border" : ""}>
                                         <CalendarClock className="h-4 w-4 mr-2" />
                                         Time Range
                                     </Button>

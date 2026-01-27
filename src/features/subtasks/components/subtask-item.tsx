@@ -35,9 +35,9 @@ interface SubtaskItemProps {
 }
 
 const statusConfig: Record<SubtaskStatus, { label: string; color: string }> = {
-  [SubtaskStatus.TODO]: { label: "To Do", color: "bg-gray-100 text-gray-700" },
-  [SubtaskStatus.IN_PROGRESS]: { label: "In Progress", color: "bg-blue-100 text-blue-700" },
-  [SubtaskStatus.DONE]: { label: "Done", color: "bg-green-100 text-green-700" },
+  [SubtaskStatus.TODO]: { label: "To Do", color: "bg-muted text-muted-foreground border-border" },
+  [SubtaskStatus.IN_PROGRESS]: { label: "In Progress", color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20" },
+  [SubtaskStatus.DONE]: { label: "Done", color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" },
 };
 
 const priorityConfig: Record<SubtaskPriority, { label: string; color: string; icon?: boolean }> = {
@@ -47,12 +47,12 @@ const priorityConfig: Record<SubtaskPriority, { label: string; color: string; ic
   [SubtaskPriority.URGENT]: { label: "Urgent", color: "text-red-500", icon: true },
 };
 
-export const SubtaskItem = ({ 
-  subtask, 
-  workspaceId, 
-  workItemId, 
+export const SubtaskItem = ({
+  subtask,
+  workspaceId,
+  workItemId,
   members = [],
-  showDetails = true 
+  showDetails = true
 }: SubtaskItemProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(subtask.title);
@@ -65,7 +65,7 @@ export const SubtaskItem = ({
     const newCompleted = !subtask.completed;
     updateSubtask({
       param: { subtaskId: subtask.$id },
-      json: { 
+      json: {
         completed: newCompleted,
         status: newCompleted ? "DONE" : (subtask.status === "DONE" ? "TODO" : subtask.status)
       },
@@ -85,7 +85,7 @@ export const SubtaskItem = ({
   const handleUpdateStatus = (status: SubtaskStatus) => {
     updateSubtask({
       param: { subtaskId: subtask.$id },
-      json: { 
+      json: {
         status,
         completed: status === SubtaskStatus.DONE
       },
@@ -143,7 +143,7 @@ export const SubtaskItem = ({
           disabled={isUpdating || isDeleting}
           className="size-4"
         />
-        
+
         {isEditing ? (
           <input
             type="text"
@@ -218,8 +218,8 @@ export const SubtaskItem = ({
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               {Object.entries(statusConfig).map(([key, config]) => (
-                <DropdownMenuItem 
-                  key={key} 
+                <DropdownMenuItem
+                  key={key}
                   onClick={() => handleUpdateStatus(key as SubtaskStatus)}
                 >
                   {config.label}
@@ -238,8 +238,8 @@ export const SubtaskItem = ({
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               {Object.entries(priorityConfig).map(([key, config]) => (
-                <DropdownMenuItem 
-                  key={key} 
+                <DropdownMenuItem
+                  key={key}
                   onClick={() => handleUpdatePriority(key as SubtaskPriority)}
                   className={config.color}
                 >
@@ -263,8 +263,8 @@ export const SubtaskItem = ({
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               {members.map((member) => (
-                <DropdownMenuItem 
-                  key={member.$id} 
+                <DropdownMenuItem
+                  key={member.$id}
                   onClick={() => handleUpdateAssignee(member.$id)}
                 >
                   {member.name}

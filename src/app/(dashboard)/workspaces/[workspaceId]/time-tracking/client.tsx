@@ -35,7 +35,7 @@ export const TimeTrackingClient = () => {
       </div>
 
       <Tabs defaultValue="timesheet" className="w-full">
-        <TabsList>
+        <TabsList className="bg-muted border border-border">
           <TabsTrigger value="timesheet">Timesheet</TabsTrigger>
           <TabsTrigger value="estimates">Estimates vs Actuals</TabsTrigger>
         </TabsList>
@@ -45,8 +45,8 @@ export const TimeTrackingClient = () => {
         </TabsContent>
 
         <TabsContent value="estimates" className="space-y-4">
-          <EstimatesVsActuals 
-            workspaceId={workspaceId} 
+          <EstimatesVsActuals
+            workspaceId={workspaceId}
             projects={projects?.documents}
           />
         </TabsContent>

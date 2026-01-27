@@ -127,7 +127,7 @@ export const Tools = () => {
   };
 
   return (
-    <div className="flex flex-col px-3 py-4 border-neutral-200">
+    <div className="flex flex-col px-3 py-4 border-border">
       <div className="flex items-center justify-between">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
@@ -154,7 +154,7 @@ export const Tools = () => {
                   "flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer text-sm transition-colors w-full",
                   isActive
                     ? "bg-accent text-accent-foreground"
-                    : "hover:bg-accent/100 text-neutral-600"
+                    : "hover:bg-accent text-muted-foreground"
                 )}
               >
                 {tool.icon}

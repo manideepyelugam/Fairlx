@@ -74,7 +74,7 @@ export const DeleteAccountDialog = ({
             <Label htmlFor="userId" className="text-sm font-medium">
               To confirm, please type your User ID below:
             </Label>
-            <div className="p-3 bg-neutral-100 rounded border font-mono text-sm mb-2">
+            <div className="p-3 bg-muted rounded border font-mono text-sm mb-2">
               {userId}
             </div>
             <Input
