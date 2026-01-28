@@ -144,13 +144,13 @@ const ReplyItem = ({
         </Avatar>
 
         <div className="flex-1 min-w-0">
-          <div className="bg-gray-50 border rounded-lg px-3 py-2">
+          <div className="bg-muted/50 border border-border rounded-lg px-3 py-2">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-gray-900">
+                <span className="text-xs font-medium text-foreground">
                   {reply.author?.name || "Unknown User"}
                 </span>
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-muted-foreground">
                   {formatDistanceToNow(new Date(reply.$createdAt), { addSuffix: true })}
                 </span>
               </div>
@@ -159,7 +159,7 @@ const ReplyItem = ({
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600">
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground">
                         <MoreHorizontal className="h-3 w-3" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -202,7 +202,7 @@ const ReplyItem = ({
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">{reply.content}</p>
+              <p className="text-sm text-foreground whitespace-pre-wrap">{reply.content}</p>
             )}
           </div>
         </div>
@@ -288,7 +288,7 @@ const CommentHistoryItem = ({
       <DeleteDialog />
       <div className="flex gap-3 py-3 group">
         <div className="flex-1 min-w-0">
-          <div className="bg-[#f6f6f6] border rounded-lg px-4 py-3">
+          <div className="bg-muted/50 border border-border rounded-lg px-4 py-3">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Avatar className="h-5 w-5 shrink-0">
@@ -297,13 +297,13 @@ const CommentHistoryItem = ({
                     {initials}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-sm font-medium text-gray-900">
+                <span className="text-sm font-medium text-foreground">
                   {item.userName || "Unknown User"}
                 </span>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-muted-foreground">
                   {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true })}
                 </span>
 
@@ -312,7 +312,7 @@ const CommentHistoryItem = ({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 text-gray-400 hover:text-gray-600"
+                      className="h-7 w-7 text-muted-foreground hover:text-foreground"
                       onClick={() => setIsReplying(!isReplying)}
                     >
                       <Reply className="h-3.5 w-3.5" />
@@ -320,7 +320,7 @@ const CommentHistoryItem = ({
                     {(canEdit || canDelete) && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600">
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
                             <MoreHorizontal className="h-3.5 w-3.5" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -365,7 +365,7 @@ const CommentHistoryItem = ({
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-gray-800 whitespace-pre-wrap">{comment?.content || item.metadata?.content as string}</p>
+              <p className="text-sm text-foreground whitespace-pre-wrap">{comment?.content || item.metadata?.content as string}</p>
             )}
           </div>
 
@@ -441,17 +441,17 @@ const HistoryItemComponent = ({
       />
     );
   }
- 
+
 
   return (
     <div className="flex items-center gap-3 py-2">
       <div className={`w-2 h-2 rounded-full ${colorClass}`} />
-      <span className="text-xs text-gray-600">
-        <span className="font-medium text-gray-900">{item.userName || "Unknown"}</span>
+      <span className="text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">{item.userName || "Unknown"}</span>
         {" "}
         {item.description}
         {" · "}
-        <span className="text-gray-500">
+        <span className="text-muted-foreground">
           {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true })}
         </span>
       </span>
@@ -544,10 +544,10 @@ export const TaskHistory = ({ task, workspaceId, currentUserId, isAdmin = false 
         const totalMinutes = Math.round(logHours * 60);
         const hours = Math.floor(totalMinutes / 60);
         const minutes = totalMinutes % 60;
-        const durationText = hours > 0 
-          ? `${hours}h ${minutes}m` 
+        const durationText = hours > 0
+          ? `${hours}h ${minutes}m`
           : `${minutes}m`;
-        
+
         items.push({
           id: `timelog-${log.$id}`,
           type: "timelog",
@@ -597,8 +597,8 @@ export const TaskHistory = ({ task, workspaceId, currentUserId, isAdmin = false 
   if (historyItems.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
-        <HistoryIcon className="h-10 w-10 text-gray-300 mb-2" />
-        <p className="text-sm text-gray-500">No activity yet</p>
+        <HistoryIcon className="h-10 w-10 text-muted-foreground/50 mb-2" />
+        <p className="text-sm text-muted-foreground">No activity yet</p>
       </div>
     );
   }

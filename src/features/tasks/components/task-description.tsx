@@ -87,7 +87,7 @@ export const TaskDescription = ({ task, canEdit = true }: TaskDescriptionProps) 
         placeholder="Add description..."
         disabled={!canEdit}
         className={cn(
-          "w-full resize-none border-0 bg-transparent text-sm text-gray-700 placeholder:text-gray-400",
+          "w-full resize-none border-0 bg-transparent text-sm text-foreground placeholder:text-muted-foreground",
           "focus:outline-none focus:ring-0 min-h-[60px] p-0",
           !canEdit && "cursor-default"
         )}

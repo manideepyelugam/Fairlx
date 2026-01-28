@@ -158,7 +158,6 @@ export function TimelineHeader({
           </DropdownMenu>
 
           <Button
-            variant="outline"
             size="sm"
             onClick={onCreateEpic}
           >

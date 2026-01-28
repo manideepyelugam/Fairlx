@@ -266,7 +266,7 @@ export const ProjectIdSettingsClient = () => {
                   </p>
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={() => setIsCopySettingsOpen(true)}>
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white border-0" size="sm" onClick={() => setIsCopySettingsOpen(true)}>
                 <Copy className="size-3.5 mr-2" />
                 Copy Settings
               </Button>

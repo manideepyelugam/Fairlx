@@ -230,24 +230,25 @@ export default function AuditLogsPage() {
         <div className="flex items-center gap-3">
           <div className="flex items-center rounded-lg border bg-muted/30 p-0.5">
             <Button
-              variant={viewMode === "table" ? "secondary" : "ghost"}
+              variant={viewMode === "table" ? "ghost" : "ghost"}
               size="xs"
               onClick={() => setViewMode("table")}
-              className={`gap-1.5 h-8 ${viewMode === "table" ? "bg-background shadow-sm" : "hover:bg-transparent"}`}
+              className={`gap-1.5 h-8 ${viewMode === "table" ? "bg-blue-600 text-white shadow-sm hover:bg-blue-600 hover:text-white" : "hover:bg-transparent text-muted-foreground hover:text-foreground"}`}
             >
               <TableIcon className="size-3.5" />
               Table
             </Button>
             <Button
-              variant={viewMode === "list" ? "secondary" : "ghost"}
+              variant={viewMode === "list" ? "ghost" : "ghost"}
               size="xs"
               onClick={() => setViewMode("list")}
-              className={`gap-1.5 h-8 ${viewMode === "list" ? "bg-background shadow-sm" : "hover:bg-transparent"}`}
+              className={`gap-1.5 h-8 ${viewMode === "list" ? "bg-blue-600 text-white shadow-sm hover:bg-blue-600 hover:text-white" : "hover:bg-transparent text-muted-foreground hover:text-foreground"}`}
             >
               <List className="size-3.5" />
               List
             </Button>
           </div>
+
         </div>
       </div>
 

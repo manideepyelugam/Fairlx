@@ -279,12 +279,11 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly, disableManageC
       </div>
 
       <Button
-        variant="outline"
         size="sm"
         onClick={openManageModal}
         disabled={disableManageColumns}
         title={disableManageColumns ? "Complete project setup in Backlog first" : undefined}
-        className="h-8 text-xs lg:ml-auto bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+        className="h-8 text-xs lg:ml-auto gap-2"
       >
         <Settings2Icon className="size-4 mr-2" />
         Manage Columns

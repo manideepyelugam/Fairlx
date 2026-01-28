@@ -81,9 +81,9 @@ const CommitCard = ({ commit }: { commit: CommitData }) => {
         <div className="flex-1  min-w-0">
           <div className="flex items-start  justify-between gap-2">
             <div className="flex-1 min-w-0">
-<p className="font-medium text-sm break-words max-w-full block">
-  {commit.message}
-</p>
+              <p className="font-medium text-sm break-words max-w-full block">
+                {commit.message}
+              </p>
               <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                 <span>{commit.author}</span>
                 <span>•</span>
@@ -281,7 +281,7 @@ export const CommitHistory = ({ projectId }: CommitHistoryProps) => {
           if (response.data?.summaries) {
             const newCommits = sortCommitsByDate(response.data.summaries);
             setCommits(newCommits);
-            
+
             // Optimize storage: only save essential fields to avoid quota exceeded error
             try {
               const optimizedCommits = newCommits.map(commit => ({
@@ -346,7 +346,7 @@ export const CommitHistory = ({ projectId }: CommitHistoryProps) => {
           <div>
             <CardTitle>Commit History</CardTitle>
             <CardDescription>
-              {commits.length > 0 
+              {commits.length > 0
                 ? `${commits.length} commits loaded • ${new Set(commits.map((c: CommitData) => c.author)).size} contributors`
                 : "No commits cached. Click Refetch to load."}
             </CardDescription>
@@ -356,7 +356,7 @@ export const CommitHistory = ({ projectId }: CommitHistoryProps) => {
             disabled={isFetching}
             variant="outline"
             size="xs"
-            className="font-medium"
+            className="font-medium text-foreground"
           >
             {isFetching && <Loader2 className=" h-4 w-4 animate-spin" />}
             {!isFetching && <RefreshCw className=" h-4 w-4" />}

@@ -6,7 +6,7 @@
   @apply border-b-0;
 }
 
-.rbc-header + .rbc-header {
+.rbc-header+.rbc-header {
   @apply border-l-0;
 }
 
@@ -40,9 +40,9 @@
 }
 
 .rbc-today {
-  @apply bg-blue-50;
+  @apply bg-blue-500/10;
 }
 
 .rbc-off-range-bg {
-  @apply bg-neutral-100;
+  @apply bg-muted/50;
 }

@@ -810,9 +810,9 @@ export const OrganizationSettingsClient = () => {
 
                     {/* Danger Zone - OWNER ONLY */}
                     {isOwner && (
-                        <Card className="border border-destructive/30 shadow-sm">
+                        <Card className="border border-red-600 shadow-sm bg-red-500/5">
                             <CardHeader className="pb-4">
-                                <CardTitle className="text-base font-semibold text-destructive flex items-center gap-2">
+                                <CardTitle className="text-base font-semibold text-red-500 flex items-center gap-2">
                                     <AlertTriangle className="size-4" />
                                     Danger Zone
                                 </CardTitle>
@@ -821,9 +821,9 @@ export const OrganizationSettingsClient = () => {
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <div className="flex items-center justify-between p-4 rounded-lg border border-destructive/20 bg-destructive/5">
+                                <div className="flex items-center justify-between p-4 rounded-lg border border-red-600 bg-red-500/10">
                                     <div className="flex-1">
-                                        <div className="text-sm font-medium text-destructive">Delete Organization</div>
+                                        <div className="text-sm font-medium text-red-500">Delete Organization</div>
                                         <div className="text-xs text-muted-foreground mt-0.5">
                                             Data will be retained for 30 days before permanent deletion.
                                             Billing will be frozen immediately.
@@ -831,7 +831,7 @@ export const OrganizationSettingsClient = () => {
                                     </div>
                                     <Dialog>
                                         <DialogTrigger asChild>
-                                            <Button variant="destructive" size="sm" className="shrink-0 ml-4">
+                                            <Button size="sm" className="shrink-0 ml-4 bg-red-600 hover:bg-red-700 text-white border-0">
                                                 <Trash2 className="size-3.5 mr-1.5" />
                                                 Delete
                                             </Button>

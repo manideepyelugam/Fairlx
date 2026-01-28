@@ -192,8 +192,8 @@ export const ProjectPermissionsEditor = () => {
                     setSelectedEntityId("");
                 }}>
                     <TabsList>
-                        <TabsTrigger value="roles">Run by Role</TabsTrigger>
-                        <TabsTrigger value="teams">Run by Team</TabsTrigger>
+                        <TabsTrigger value="roles" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Run by Role</TabsTrigger>
+                        <TabsTrigger value="teams" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Run by Team</TabsTrigger>
                     </TabsList>
 
                     <div className="mt-6">
@@ -208,15 +208,20 @@ export const ProjectPermissionsEditor = () => {
                                         roles.map(role => (
                                             <button
                                                 key={role.$id}
-                                                onClick={() => setSelectedEntityId(role.$id)}
-                                                disabled={false}
-                                                className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between ${selectedEntityId === role.$id
-                                                    ? "bg-primary text-primary-foreground"
-                                                    : "hover:bg-muted"
+                                                className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-between group ${selectedEntityId === role.$id
+                                                    ? "bg-blue-600 text-white shadow-md shadow-blue-900/20"
+                                                    : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
                                                     }`}
                                             >
                                                 <span>{role.name}</span>
-                                                {role.isDefault && <span className="text-[10px] opacity-70 border px-1 rounded">Default</span>}
+                                                {role.isDefault && (
+                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium transition-colors ${selectedEntityId === role.$id
+                                                        ? "bg-white/20 text-white"
+                                                        : "bg-muted text-muted-foreground group-hover:bg-muted-foreground/10"
+                                                        }`}>
+                                                        Default
+                                                    </span>
+                                                )}
                                             </button>
                                         ))
                                     ) : (
@@ -228,8 +233,8 @@ export const ProjectPermissionsEditor = () => {
                                                     key={team.$id}
                                                     onClick={() => setSelectedEntityId(team.$id)}
                                                     className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${selectedEntityId === team.$id
-                                                        ? "bg-primary text-primary-foreground"
-                                                        : "hover:bg-muted"
+                                                        ? "bg-blue-600 text-white"
+                                                        : "hover:bg-muted text-foreground"
                                                         }`}
                                                 >
                                                     {team.name}

@@ -444,7 +444,7 @@ export const GitHubIntegrationClient = () => {
             </SheetContent>
           </Sheet>
 
-          <Button className="!font-medium" variant="outline" size="xs" asChild>
+          <Button className="!font-medium bg-blue-600 hover:bg-blue-700 text-white border-0" size="xs" asChild>
             <Link href={documentationPath} className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
               Documentation
