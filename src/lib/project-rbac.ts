@@ -84,7 +84,6 @@ export async function getProjectPermissions(
         }
 
         if (memberships.total === 0) {
-            console.log(`[Project-RBAC] No memberships found for user ${userId} in project ${projectId}`);
             return [];
         }
 
@@ -106,11 +105,8 @@ export async function getProjectPermissions(
             }
         }
 
-        console.log(`[Project-RBAC] User ${userId} in project ${projectId} has ${allPermissions.size} permissions from ${roleIds.length} role(s)`);
-
         return Array.from(allPermissions);
-    } catch (error) {
-        console.error("[Project-RBAC] Error getting project permissions:", error);
+    } catch {
         return [];
     }
 }
@@ -222,8 +218,7 @@ export async function getProjectPermissionResult(
             roles: roleInfos,
             isProjectAdmin,
         };
-    } catch (error) {
-        console.error("[Project-RBAC] Error getting permission result:", error);
+    } catch {
         return {
             projectId,
             userId,

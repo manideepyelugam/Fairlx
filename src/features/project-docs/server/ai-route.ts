@@ -168,8 +168,7 @@ async function extractDocumentText(
     }
 
     return "[Document content not extractable]";
-  } catch (error) {
-    console.error("Error extracting document text:", error);
+  } catch {
     return "[Failed to extract document content]";
   }
 }
@@ -338,8 +337,7 @@ const app = new Hono()
         };
 
         return c.json({ data: context });
-      } catch (error) {
-        console.error("Error fetching AI context:", error);
+      } catch {
         return c.json({ error: "Failed to fetch AI context" }, 500);
       }
     }
@@ -459,7 +457,15 @@ ${extractedText.slice(0, 5000)}
             ? new Date(workItem.dueDate).toLocaleDateString()
             : "No due date";
 
-          return `- **${workItem.title}** [${workItem.status}] ${workItem.priority ? `(${workItem.priority})` : ""} | Assigned to: ${assigneeDisplay} | Due: ${dueDateDisplay} | Labels: ${workItem.labels?.join(", ") || "None"} | Est. Hours: ${workItem.estimatedHours || "Not set"} - ${workItem.description?.slice(0, 200) || "No description"}`;
+          // Strip HTML tags for plain text in AI context
+          const plainDesc = workItem.description
+            ?.replace(/<[^>]*>/g, " ")
+            .replace(/&nbsp;/g, " ")
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 200) || "No description";
+
+          return `- **${workItem.title}** [${workItem.status}] ${workItem.priority ? `(${workItem.priority})` : ""} | Assigned to: ${assigneeDisplay} | Due: ${dueDateDisplay} | Labels: ${workItem.labels?.join(", ") || "None"} | Est. Hours: ${workItem.estimatedHours || "Not set"} - ${plainDesc}`;
         }).join("\n");
 
         // Format members context
@@ -544,7 +550,6 @@ Provide a comprehensive, helpful answer:`;
 
         return c.json({ data: response });
       } catch (error) {
-        console.error("Error answering question:", error);
         return c.json({
           error: error instanceof Error ? error.message : "Failed to process question"
         }, 500);
@@ -731,8 +736,7 @@ IMPORTANT:
           // Set defaults
           taskData.status = taskData.status || WorkItemStatus.TODO;
           taskData.priority = taskData.priority || WorkItemPriority.MEDIUM;
-        } catch (parseError) {
-          console.error("Failed to parse AI response:", parseError, aiResponse);
+        } catch {
           return c.json({
             success: false,
             action: {
@@ -807,8 +811,7 @@ IMPORTANT:
                 status: workItem.status as string,
               },
             } satisfies AITaskResponse);
-          } catch (createError) {
-            console.error("Failed to create task:", createError);
+          } catch {
             return c.json({
               success: false,
               action: {
@@ -869,7 +872,6 @@ IMPORTANT:
           suggestedLabels,
         } satisfies AITaskResponse);
       } catch (error) {
-        console.error("Error creating task via AI:", error);
         return c.json({
           error: error instanceof Error ? error.message : "Failed to process task creation"
         }, 500);
@@ -1036,8 +1038,7 @@ IMPORTANT:
               message: "I couldn't determine what changes you want to make. Please be more specific about what you'd like to update.",
             } satisfies AITaskResponse);
           }
-        } catch (parseError) {
-          console.error("Failed to parse AI response:", parseError, aiResponse);
+        } catch {
           return c.json({
             success: false,
             action: {
@@ -1096,8 +1097,7 @@ IMPORTANT:
                 status: updatedWorkItem.status as string,
               },
             } satisfies AITaskResponse);
-          } catch (updateError) {
-            console.error("Failed to update work item:", updateError);
+          } catch {
             return c.json({
               success: false,
               action: {
@@ -1198,7 +1198,6 @@ IMPORTANT:
           suggestedLabels,
         } satisfies AITaskResponse);
       } catch (error) {
-        console.error("Error updating work item via AI:", error);
         return c.json({
           error: error instanceof Error ? error.message : "Failed to process work item update"
         }, 500);
@@ -1349,7 +1348,6 @@ IMPORTANT:
           },
         } satisfies AITaskResponse);
       } catch (error) {
-        console.error("Error executing work item operation:", error);
         return c.json({
           error: error instanceof Error ? error.message : "Failed to execute work item operation"
         }, 500);

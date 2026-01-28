@@ -41,7 +41,6 @@ export function pushNotificationToSocket(notification: Models.Document): void {
 
             const userId = notification.userId as string;
             if (!userId) {
-                console.warn("[SocketPush] No userId in notification, skipping");
                 return;
             }
 
@@ -59,11 +58,8 @@ export function pushNotificationToSocket(notification: Models.Document): void {
 
             // Fire and forget - emitToUser handles its own errors
             emitToUser(userId, payload);
-
-            console.log(`[SocketPush] Pushed notification ${notification.$id} to user ${userId}`);
-        } catch (error) {
-            // CRITICAL: Never throw - just log
-            console.error("[SocketPush] Push failed (non-blocking):", error);
+        } catch {
+            // CRITICAL: Never throw - silently fail in production
         }
     });
 }

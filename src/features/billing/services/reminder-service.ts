@@ -324,7 +324,6 @@ async function sendEmail(
     const emailFrom = process.env.EMAIL_FROM || "billing@fairlx.com";
 
     if (!emailApiKey) {
-        console.warn("[Email] EMAIL_API_KEY not configured - email not sent");
         return { success: false, error: "Email service not configured" };
     }
 
@@ -348,14 +347,11 @@ async function sendEmail(
 
         if (!response.ok) {
             const error = await response.text();
-            console.error("[Email] Failed to send:", error);
             return { success: false, error };
         }
 
-        console.log(`[Email] Sent to ${to}: ${subject}`);
         return { success: true };
     } catch (error) {
-        console.error("[Email] Error sending:", error);
         return {
             success: false,
             error: error instanceof Error ? error.message : "Unknown error"
@@ -399,7 +395,6 @@ export async function sendGracePeriodReminders(): Promise<{
         // Get email address
         const email = account.billingEmail;
         if (!email) {
-            console.warn(`[Reminders] No email for account ${account.$id}`);
             continue;
         }
 
@@ -447,7 +442,6 @@ export async function sendGracePeriodReminders(): Promise<{
     }
 
     const sent = results.filter(r => r.success).length;
-    console.log(`[Reminders] Processed ${accounts.total} accounts, sent ${sent} reminders`);
 
     return {
         processed: accounts.total,

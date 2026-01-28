@@ -63,14 +63,12 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
 
     // Validate file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
-      console.error("[Profile Client] File too large:", file.size);
       toast.error("File size should be less than 2MB");
       return;
     }
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
-      console.error("[Profile Client] Invalid file type:", file.type);
       toast.error("Please upload an image file");
       return;
     }
@@ -82,8 +80,7 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
           toast.success("Profile picture updated successfully");
           setProfileImageUrl(data.data.url);
         },
-        onError: (error) => {
-          console.error("[Profile Client] Upload failed:", error);
+        onError: () => {
           toast.error("Failed to upload profile picture");
         },
       }

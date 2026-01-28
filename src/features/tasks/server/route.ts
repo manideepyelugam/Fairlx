@@ -137,8 +137,7 @@ async function validateStatusTransition(
     }
 
     return { allowed: true };
-  } catch (error) {
-    console.error("Error validating status transition:", error);
+  } catch {
     // On error, allow the transition to prevent blocking users due to validation errors
     return { allowed: true };
   }
@@ -422,9 +421,8 @@ const app = new Hono()
         if (activeSprints.documents.length > 0) {
           targetSprintId = activeSprints.documents[0].$id;
         }
-      } catch (error) {
+      } catch {
         // If sprint collection doesn't exist or error occurs, continue without sprint assignment
-        console.log("Could not check for active sprints:", error);
       }
 
       const highestPositionTask = await databases.listDocuments(
@@ -481,9 +479,8 @@ const app = new Hono()
               allowedStatuses: validInitialStatusKeys,
             }, 400);
           }
-        } catch (workflowError) {
+        } catch {
           // If workflow check fails, continue without validation
-          console.warn("Failed to validate initial status:", workflowError);
         }
       }
       // ======= END INITIAL STATUS VALIDATION =======
@@ -520,8 +517,8 @@ const app = new Hono()
       if (assigneeIds && assigneeIds.length > 0) {
         const userName = user.name || user.email || "Someone";
         const event = createAssignedEvent(task, user.$id, userName, assigneeIds);
-        dispatchWorkitemEvent(event).catch((err) => {
-          console.error("[TaskRoute] Failed to dispatch assignment event:", err);
+        dispatchWorkitemEvent(event).catch(() => {
+          // Silent failure for non-critical event dispatch
         });
       }
 
@@ -594,9 +591,8 @@ const app = new Hono()
               }, 403);
             }
           }
-        } catch (projectError) {
-          // If project fetch fails, log but continue (project might have been deleted)
-          console.warn("Failed to fetch project for workflow validation:", projectError);
+        } catch {
+          // If project fetch fails, continue (project might have been deleted)
         }
       }
       // ======= END WORKFLOW VALIDATION =======
@@ -660,8 +656,8 @@ const app = new Hono()
       if (statusChanged) {
         if (status === "DONE" || status === "CLOSED") {
           const event = createCompletedEvent(task, user.$id, userName);
-          dispatchWorkitemEvent(event).catch((err) => {
-            console.error("[TaskRoute] Failed to dispatch completed event:", err);
+          dispatchWorkitemEvent(event).catch(() => {
+            // Silent failure for non-critical event dispatch
           });
         } else {
           const event = createStatusChangedEvent(
@@ -671,8 +667,8 @@ const app = new Hono()
             existingTask.status,
             status
           );
-          dispatchWorkitemEvent(event).catch((err) => {
-            console.error("[TaskRoute] Failed to dispatch status change event:", err);
+          dispatchWorkitemEvent(event).catch(() => {
+            // Silent failure for non-critical event dispatch
           });
         }
       }
@@ -686,8 +682,8 @@ const app = new Hono()
           existingTask.priority || "MEDIUM",
           priority
         );
-        dispatchWorkitemEvent(event).catch((err) => {
-          console.error("[TaskRoute] Failed to dispatch priority change event:", err);
+        dispatchWorkitemEvent(event).catch(() => {
+          // Silent failure for non-critical event dispatch
         });
       }
 
@@ -702,8 +698,8 @@ const app = new Hono()
           oldDueDateStr,
           newDueDateStr
         );
-        dispatchWorkitemEvent(event).catch((err) => {
-          console.error("[TaskRoute] Failed to dispatch due date change event:", err);
+        dispatchWorkitemEvent(event).catch(() => {
+          // Silent failure for non-critical event dispatch
         });
       }
 
@@ -714,8 +710,8 @@ const app = new Hono()
         );
         if (addedAssignees.length > 0) {
           const event = createAssignedEvent(task, user.$id, userName, addedAssignees);
-          dispatchWorkitemEvent(event).catch((err) => {
-            console.error("[TaskRoute] Failed to dispatch assignment event:", err);
+          dispatchWorkitemEvent(event).catch(() => {
+            // Silent failure for non-critical event dispatch
           });
         }
       }
@@ -755,8 +751,7 @@ const app = new Hono()
           PROJECTS_ID,
           task.projectId
         );
-      } catch (error) {
-        console.warn(`[TaskDetail] Failed to fetch project for task ${taskId}:`, error);
+      } catch {
         // Continue without project data
         project = undefined;
       }
@@ -776,8 +771,8 @@ const app = new Hono()
             MEMBERS_ID,
             [Query.equal("$id", Array.from(allAssigneeIds))]
           ) as unknown as Models.DocumentList<Models.Document>;
-        } catch (error) {
-          console.warn(`[TaskDetail] Failed to fetch members for task ${taskId}:`, error);
+        } catch {
+          // Silent failure for non-critical member fetch
         }
       }
 
@@ -793,8 +788,7 @@ const app = new Hono()
               email: user.email,
               profileImageUrl: prefs?.profileImageUrl ?? null,
             };
-          } catch (error) {
-            console.warn(`[TaskDetail] Failed to fetch user for member ${member.$id}:`, error);
+          } catch {
             return null;
           }
         })
@@ -824,8 +818,7 @@ const app = new Hono()
           assignees: taskAssignees, // New field for multiple assignees
         },
       });
-    } catch (error) {
-      console.error(`[TaskDetail] Error fetching task ${taskId}:`, error);
+    } catch {
       return c.json({ error: "Task not found" }, 404);
     }
   })

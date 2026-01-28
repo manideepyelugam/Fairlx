@@ -131,7 +131,6 @@ export async function logOrgAudit({
         // Skip if audit log collection is not configured
         if (!ORGANIZATION_AUDIT_LOGS_ID) {
             if (!hasWarnedConfig) {
-                console.warn("[OrgAudit] Audit log collection not configured (NEXT_PUBLIC_APPWRITE_ORGANIZATION_AUDIT_LOGS_ID)");
                 hasWarnedConfig = true;
             }
             return null;
@@ -153,15 +152,8 @@ export async function logOrgAudit({
             }
         );
         return log as OrgAuditLog;
-    } catch (error) {
+    } catch {
         // CRITICAL: Never throw from audit logging
-        // Log to console for monitoring/alerting
-        console.error("[OrgAudit] Failed to create audit log:", {
-            organizationId,
-            actorUserId,
-            actionType,
-            error,
-        });
         return null;
     }
 }
@@ -194,7 +186,6 @@ export async function getOrgAuditLogs({
     // Safety check: if audit log collection is not configured, return empty
     if (!ORGANIZATION_AUDIT_LOGS_ID) {
         if (!hasWarnedConfig) {
-            console.warn("[OrgAudit] Audit log collection not configured (NEXT_PUBLIC_APPWRITE_ORGANIZATION_AUDIT_LOGS_ID)");
             hasWarnedConfig = true;
         }
         return { logs: [], total: 0 };

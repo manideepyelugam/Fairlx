@@ -59,8 +59,8 @@ export const useDeleteCustomColumn = (props?: UseDeleteCustomColumnProps) => {
                 }
               );
             });
-          } catch (error) {
-            console.warn("Failed to move tasks:", error);
+          } catch {
+            // Silent fail for task move
           }
         }
       }

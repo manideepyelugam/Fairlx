@@ -85,8 +85,8 @@ export const CompleteSprintModal = ({
                 }
             });
             onOpenChange(false);
-        } catch (error) {
-            console.error("Failed to complete sprint", error);
+        } catch {
+            // Error handled by mutation
         } finally {
             setIsSubmitting(false);
         }

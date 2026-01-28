@@ -299,7 +299,6 @@ export function getLifecycleRouting(state: LifecycleState): {
             };
 
         default:
-            console.error(`[IdentityLifecycle] Unknown state: ${state}`);
             return {
                 redirectTo: "/sign-in",
                 allowedPaths: [...PUBLIC_ROUTES],
@@ -786,7 +785,6 @@ async function resolveUserLifecycleStateInternal(
     }
 
     // Fallback - should never reach here
-    console.error(`[IdentityLifecycle] Unexpected account type: ${accountType}`);
     const routing = getLifecycleRouting(LifecycleState.UNAUTHENTICATED);
     return {
         state: LifecycleState.UNAUTHENTICATED,

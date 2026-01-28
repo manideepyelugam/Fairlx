@@ -44,8 +44,7 @@ const app = new Hono()
                     supportedCurrencies: SUPPORTED_CURRENCIES,
                 },
             });
-        } catch (error) {
-            console.error("[Currency] Failed to get rates:", error);
+        } catch {
             return c.json({ error: "Failed to fetch exchange rates" }, 500);
         }
     })
@@ -75,8 +74,7 @@ const app = new Hono()
                         usdToInrRate, // Always include for reference
                     },
                 });
-            } catch (error) {
-                console.error("[Currency] Conversion failed:", error);
+            } catch {
                 return c.json({ error: "Currency conversion failed" }, 500);
             }
         }
@@ -104,8 +102,7 @@ const app = new Hono()
                     },
                 },
             });
-        } catch (error) {
-            console.error("[Currency] Failed to get USD-INR rate:", error);
+        } catch {
             return c.json({ error: "Failed to fetch exchange rate" }, 500);
         }
     });

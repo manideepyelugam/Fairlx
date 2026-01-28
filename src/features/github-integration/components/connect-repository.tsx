@@ -125,8 +125,7 @@ export const ConnectRepository = ({
           needsToken: result.needsToken,
           error: result.error,
         });
-      } catch (error) {
-        console.error("Error checking repository:", error);
+      } catch {
         setRepoValidation(null);
       } finally {
         setIsCheckingRepo(false);

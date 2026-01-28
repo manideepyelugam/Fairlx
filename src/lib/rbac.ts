@@ -29,8 +29,6 @@ export async function getPermissions(
             return [];
         }
 
-        console.log(`[RBAC] Member found: ${member.$id}, Role: ${member.role}`);
-
         // 1. Owner always has access (return all unique permissions)
         if (member.role === "OWNER") {
             return Object.values(PERMISSIONS);
@@ -38,7 +36,6 @@ export async function getPermissions(
 
         // 2. Check for Custom Roles in Database
         try {
-            console.log(`[RBAC] Checking custom role: ${member.role} in workspace: ${workspaceId}`);
             const roleDocs = await databases.listDocuments(
                 DATABASE_ID,
                 CUSTOM_ROLES_ID,
@@ -47,7 +44,6 @@ export async function getPermissions(
                     Query.equal("name", member.role),
                 ]
             );
-            console.log(`[RBAC] Found ${roleDocs.total} custom role docs`);
 
             if (roleDocs.total > 0) {
                 const customRole = roleDocs.documents[0];
@@ -59,8 +55,7 @@ export async function getPermissions(
 
         // 3. Fallback to Default Registry
         return ROLE_PERMISSIONS[member.role as Role] || [];
-    } catch (error) {
-        console.error("Get permissions failed:", error);
+    } catch {
         return [];
     }
 }

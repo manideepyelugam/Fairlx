@@ -109,8 +109,7 @@ export async function findByIdempotencyKey(
         }
 
         return null;
-    } catch (error) {
-        console.error("[UsageLedger] findByIdempotencyKey failed:", error);
+    } catch {
         return null;
     }
 }
@@ -133,7 +132,6 @@ export async function writeUsageEvent(
 ): Promise<WriteUsageResult> {
     // Validate idempotency key is provided
     if (!params.idempotencyKey || params.idempotencyKey.trim() === "") {
-        console.error("[UsageLedger] idempotencyKey is required");
         return {
             written: false,
             reason: "ERROR",
@@ -144,7 +142,6 @@ export async function writeUsageEvent(
     // 1. Check idempotency key FIRST (prevent duplicates)
     const existing = await findByIdempotencyKey(databases, params.idempotencyKey);
     if (existing) {
-        console.log(`[UsageLedger] Duplicate event detected: ${params.idempotencyKey}`);
         return {
             written: false,
             eventId: existing.$id,
@@ -158,15 +155,13 @@ export async function writeUsageEvent(
         await assertBillingNotSuspended(databases, { workspaceId: params.workspaceId });
     } catch (error) {
         if (error instanceof Error && error.message.includes("suspended")) {
-            console.warn(`[UsageLedger] Usage blocked - account suspended: ${params.workspaceId}`);
             return {
                 written: false,
                 reason: "SUSPENDED",
                 message: "Cannot record usage - account is suspended",
             };
         }
-        // Other errors - log but don't block (fail open for non-suspension errors)
-        console.error("[UsageLedger] Billing check error:", error);
+        // Other errors - don't block (fail open for non-suspension errors)
     }
 
     // 3. Check billing cycle lock and adjust timestamp if needed
@@ -174,10 +169,6 @@ export async function writeUsageEvent(
     const eventTimestamp = params.timestamp || new Date().toISOString();
     const { timestamp: adjustedTimestamp, wasAdjusted, adjustReason } =
         adjustEventForLockedCycle(eventTimestamp, account);
-
-    if (wasAdjusted) {
-        console.log(`[UsageLedger] ${adjustReason}`);
-    }
 
     // 4. Build event data
     const fullMetadata = {
@@ -221,7 +212,6 @@ export async function writeUsageEvent(
         // Handle duplicate key error (race condition protection)
         const errorMessage = error instanceof Error ? error.message : String(error);
         if (errorMessage.includes("duplicate") || errorMessage.includes("unique")) {
-            console.log(`[UsageLedger] Race duplicate detected: ${params.idempotencyKey}`);
             return {
                 written: false,
                 reason: "RACE_DUPLICATE",
@@ -229,7 +219,6 @@ export async function writeUsageEvent(
             };
         }
 
-        console.error("[UsageLedger] Write failed:", error);
         return {
             written: false,
             reason: "ERROR",

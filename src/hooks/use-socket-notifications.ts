@@ -110,7 +110,6 @@ export function useSocketNotifications({
     const startPolling = useCallback(() => {
         if (pollingRef.current) return;
 
-        console.log("[SocketClient] Starting polling fallback");
         pollingRef.current = setInterval(() => {
             queryClient.invalidateQueries({ queryKey: ["notifications"] });
             queryClient.invalidateQueries({ queryKey: ["unread-count"] });
@@ -122,7 +121,6 @@ export function useSocketNotifications({
         if (pollingRef.current) {
             clearInterval(pollingRef.current);
             pollingRef.current = null;
-            console.log("[SocketClient] Stopped polling");
         }
     }, []);
 
@@ -151,7 +149,6 @@ export function useSocketNotifications({
 
         // Connection handlers
         const handleConnect = () => {
-            console.log("[SocketClient] Connected");
             setIsConnected(true);
             setConnectionError(null);
             stopPolling();
@@ -160,8 +157,7 @@ export function useSocketNotifications({
             socket.emit("auth:connect", { userId });
         };
 
-        const handleDisconnect = (reason: string) => {
-            console.log(`[SocketClient] Disconnected: ${reason}`);
+        const handleDisconnect = (_reason: string) => {
             setIsConnected(false);
             setIsAuthenticated(false);
 
@@ -170,27 +166,22 @@ export function useSocketNotifications({
         };
 
         const handleConnectError = (error: Error) => {
-            console.error("[SocketClient] Connection error:", error);
             setConnectionError(error);
             setIsConnected(false);
             startPolling();
         };
 
         // Auth handlers
-        const handleAuthSuccess = (data: SocketEventMap["auth:success"]) => {
-            console.log("[SocketClient] Authenticated:", data);
+        const handleAuthSuccess = (_data: SocketEventMap["auth:success"]) => {
             setIsAuthenticated(true);
         };
 
         const handleAuthError = (data: SocketEventMap["auth:error"]) => {
-            console.error("[SocketClient] Auth error:", data.message);
             setConnectionError(new Error(data.message));
         };
 
         // Notification handler
         const handleNotification = (payload: SocketNotificationPayload) => {
-            console.log("[SocketClient] New notification:", payload);
-
             // Optional: Filter by workspace
             if (workspaceId && payload.workspaceId !== workspaceId) {
                 return;

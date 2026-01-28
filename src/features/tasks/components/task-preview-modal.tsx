@@ -10,22 +10,22 @@ import {
   ExternalLink,
   Link,
   Copy,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import IconHelp from "@/components/icon-help";
-// import { cn } from "@/lib/utils"; // Removed unused
 import { Attachment } from "@/features/attachments/types";
 import { TaskAttachments } from "@/features/attachments/components/task-attachments";
+import { useLocalDraft } from "@/hooks/use-local-draft";
 
 
 import { useGetTask } from "../api/use-get-task";
 import { useTaskPreviewModal } from "../hooks/use-task-preview-modal";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { PopulatedTask } from "../types";
-// import { MemberAvatar } from "@/features/members/components/member-avatar"; // Removed unused
 
 import { useUpdateTask } from "../api/use-update-task";
 import { useGetMembers } from "@/features/members/api/use-get-members";
@@ -40,10 +40,10 @@ import { TypeSelector } from "./type-selector";
 import { AssigneeMultiSelect } from "./assignee-multi-select";
 import { DatePicker } from "@/components/date-picker";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { WorkItemIcon } from "@/features/timeline/components/work-item-icon";
 import { Badge } from "@/components/ui/badge";
+import { RichTextEditor, setMentionMembers } from "@/components/editor";
 
 // Default work item type labels
 const typeLabels: Record<string, string> = {
@@ -71,15 +71,49 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
   const { data: user } = useCurrent();
 
   const [title, setTitle] = useState(task.title);
-  const [description, setDescription] = useState(task.description || "");
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [isEditingDescription, setIsEditingDescription] = useState(false);
 
-  // Sync state with task updates
+  // Use localStorage-based draft for description
+  const {
+    content: description,
+    setContent: setDescription,
+    isSyncing: isSavingDescription,
+    syncNow: syncDescriptionNow,
+  } = useLocalDraft({
+    taskId: task.$id,
+    initialContent: task.description || "",
+    onSync: async (content) => {
+      updateTask({
+        param: { taskId: task.$id },
+        json: { description: content },
+      });
+    },
+  });
+
+  // Handle close with sync - await the sync to ensure data is saved
+  const handleCloseWithSync = async () => {
+    await syncDescriptionNow();
+    onClose();
+  };
+
+  // Sync title when task changes
   useEffect(() => {
     setTitle(task.title);
-    setDescription(task.description || "");
-  }, [task]);
+  }, [task.title]);
+
+  // Update mention members when they load
+  useEffect(() => {
+    if (members?.documents) {
+      setMentionMembers(
+        members.documents.map((member) => ({
+          id: member.$id,
+          name: member.name || "",
+          email: member.email,
+          imageUrl: member.profileImageUrl,
+        }))
+      );
+    }
+  }, [members]);
 
   const memberOptions = members?.documents.map((member) => ({
     id: member.$id,
@@ -101,11 +135,9 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
     }
   };
 
+  // Sync description on blur
   const handleDescriptionBlur = () => {
-    setIsEditingDescription(false);
-    if (description !== (task.description || "")) {
-      handleUpdate({ description });
-    }
+    syncDescriptionNow();
   };
 
   const handleCopyUrl = async () => {
@@ -115,8 +147,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
         : `/workspaces/${workspaceId}/tasks/${task.$id}`;
       await navigator.clipboard.writeText(url);
       toast.success("Task URL copied to clipboard.");
-    } catch (err) {
-      console.error(err);
+    } catch {
       toast.error("Failed to copy task URL.");
     }
   };
@@ -125,8 +156,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
     try {
       await navigator.clipboard.writeText(task.$id);
       toast.success("Task ID copied to clipboard.");
-    } catch (err) {
-      console.error(err);
+    } catch {
       toast.error("Failed to copy task ID.");
     }
   };
@@ -196,7 +226,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
 
           <button
             className="hover:bg-accent p-1.5 rounded-md transition-colors ml-1"
-            onClick={onClose}
+            onClick={handleCloseWithSync}
           >
             <X size={18} strokeWidth={1.5} className="text-muted-foreground" />
           </button>
@@ -233,33 +263,29 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
 
             {/* Description */}
             <div className="mb-6">
-              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
-                Description
-              </h3>
-              <div className="min-h-[100px]">
-                {isEditingDescription ? (
-                  <Textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    onBlur={handleDescriptionBlur}
-                    autoFocus
-                    className="min-h-[150px] resize-none"
-                    placeholder="Add a description..."
-                  />
-                ) : (
-                  <div
-                    onClick={() => setIsEditingDescription(true)}
-                    className="p-2 -ml-2 rounded border border-transparent hover:border-border cursor-text transition-colors min-h-[60px]"
-                  >
-                    {task.description ? (
-                      <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
-                        {task.description}
-                      </p>
-                    ) : (
-                      <p className="text-sm text-muted-foreground italic">Click to add description</p>
-                    )}
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Description
+                </h3>
+                {isSavingDescription && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span>Saving...</span>
                   </div>
                 )}
+              </div>
+              <div className="min-h-[100px]">
+                <RichTextEditor
+                  content={description}
+                  onChange={setDescription}
+                  onBlur={handleDescriptionBlur}
+                  placeholder="Add a description... Use @ to mention team members, / for commands"
+                  editable={true}
+                  workspaceId={workspaceId}
+                  projectId={task.projectId}
+                  minHeight="100px"
+                  showToolbar={true}
+                />
               </div>
             </div>
 
@@ -458,11 +484,9 @@ export const TaskPreviewModalWrapper = () => {
 
 
     try {
-
       router.push(target);
-      console.log("Navigating to:", target);
-    } catch (error) {
-      console.error("Failed to navigate to task edit page:", error);
+    } catch {
+      // Navigation error handled silently
     }
   };
 

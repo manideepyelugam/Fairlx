@@ -187,3 +187,154 @@ body {
 .animate-shimmer {
   animation: shimmer 2s infinite;
 }
+
+/* Rich Text Editor Styles */
+.rich-text-editor {
+  @apply relative;
+}
+
+.rich-text-editor .ProseMirror {
+  @apply outline-none;
+}
+
+.rich-text-editor .ProseMirror p.is-editor-empty:first-child::before {
+  @apply text-muted-foreground float-left pointer-events-none h-0;
+  content: attr(data-placeholder);
+}
+
+/* Task list / Checklist styles */
+.rich-text-editor .ProseMirror ul[data-type="taskList"] {
+  @apply list-none p-0;
+}
+
+.rich-text-editor .ProseMirror ul[data-type="taskList"] li {
+  @apply flex items-start gap-2 mb-1;
+}
+
+.rich-text-editor .ProseMirror ul[data-type="taskList"] li > label {
+  @apply flex items-center justify-center mt-1;
+}
+
+.rich-text-editor .ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"] {
+  @apply size-4 rounded border-border cursor-pointer accent-primary;
+}
+
+.rich-text-editor .ProseMirror ul[data-type="taskList"] li > div {
+  @apply flex-1;
+}
+
+.rich-text-editor .ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div {
+  @apply line-through text-muted-foreground;
+}
+
+/* Table styles */
+.rich-text-editor .ProseMirror table {
+  @apply border-collapse table-auto w-full my-4;
+}
+
+.rich-text-editor .ProseMirror table td,
+.rich-text-editor .ProseMirror table th {
+  @apply border border-border p-2 relative min-w-[100px];
+}
+
+.rich-text-editor .ProseMirror table th {
+  @apply bg-muted font-semibold text-left;
+}
+
+.rich-text-editor .ProseMirror table .selectedCell {
+  @apply bg-primary/10;
+}
+
+.rich-text-editor .ProseMirror table .column-resize-handle {
+  @apply absolute right-[-2px] top-0 bottom-0 w-1 bg-primary cursor-col-resize;
+}
+
+/* Heading styles */
+.rich-text-editor .ProseMirror h1 {
+  @apply text-2xl font-bold mt-6 mb-4;
+}
+
+.rich-text-editor .ProseMirror h2 {
+  @apply text-xl font-bold mt-5 mb-3;
+}
+
+.rich-text-editor .ProseMirror h3 {
+  @apply text-lg font-semibold mt-4 mb-2;
+}
+
+.rich-text-editor .ProseMirror h4 {
+  @apply text-base font-semibold mt-3 mb-2;
+}
+
+.rich-text-editor .ProseMirror h5 {
+  @apply text-sm font-semibold mt-2 mb-1;
+}
+
+.rich-text-editor .ProseMirror h6 {
+  @apply text-xs font-semibold mt-2 mb-1;
+}
+
+/* List styles */
+.rich-text-editor .ProseMirror ul:not([data-type="taskList"]) {
+  @apply list-disc pl-6 my-2;
+}
+
+.rich-text-editor .ProseMirror ol {
+  @apply list-decimal pl-6 my-2;
+}
+
+.rich-text-editor .ProseMirror li {
+  @apply my-1;
+}
+
+/* Code block styles */
+.rich-text-editor .ProseMirror pre {
+  @apply bg-muted rounded-lg p-4 overflow-x-auto my-4 font-mono text-sm;
+}
+
+.rich-text-editor .ProseMirror code {
+  @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono;
+}
+
+.rich-text-editor .ProseMirror pre code {
+  @apply bg-transparent p-0;
+}
+
+/* Blockquote styles */
+.rich-text-editor .ProseMirror blockquote {
+  @apply border-l-4 border-primary/30 pl-4 my-4 italic text-muted-foreground;
+}
+
+/* Horizontal rule */
+.rich-text-editor .ProseMirror hr {
+  @apply border-t border-border my-6;
+}
+
+/* Mention styles */
+.rich-text-editor .ProseMirror .mention {
+  @apply bg-primary/10 text-primary rounded px-1 py-0.5 font-medium;
+}
+
+/* Link styles */
+.rich-text-editor .ProseMirror a {
+  @apply text-primary underline cursor-pointer hover:text-primary/80;
+}
+
+/* Highlight styles */
+.rich-text-editor .ProseMirror mark {
+  @apply rounded px-0.5;
+}
+
+/* Focus ring for the editor */
+.rich-text-editor:focus-within {
+  @apply ring-2 ring-ring ring-offset-2 ring-offset-background;
+}
+
+/* Tippy.js tooltip styles for mentions/commands */
+.tippy-box {
+  @apply bg-transparent;
+}
+
+.tippy-content {
+  @apply p-0;
+}

@@ -195,8 +195,6 @@ export async function generateInvoice(
 
     // Check if invoice already generated for this cycle
     if (await isEventProcessed(databases, invoiceIdempotencyKey, "invoice")) {
-        console.log(`[Billing] Invoice already exists for cycle ${billingAccount.billingCycleStart} to ${billingAccount.billingCycleEnd}`);
-
         // Return existing invoice
         const existingInvoices = await databases.listDocuments<BillingInvoice>(
             DATABASE_ID,
@@ -276,7 +274,6 @@ export async function generateInvoice(
         }
     );
 
-    console.log(`[Billing] Generated invoice ${invoiceId} for ${totalCost} ${BILLING_CURRENCY}`);
 
     return invoice;
 }
@@ -388,22 +385,17 @@ export async function processBillingCycle(): Promise<{
                             fairlx_invoice_id: invoice.invoiceId,
                         },
                     });
-
-                    console.log(`[Billing] Auto-debit initiated for invoice ${invoice.invoiceId}`);
-                } catch (paymentError) {
+                } catch {
                     results.paymentsFailed++;
-                    console.error(`[Billing] Auto-debit failed for account ${account.$id}:`, paymentError);
 
                     // Start grace period on payment failure
                     await startGracePeriod(databases, account.$id);
                 }
             } else if (account.mandateStatus === MandateStatus.SUSPENDED) {
-                // Mandate is suspended - log and start grace period
-                console.log(`[Billing] Mandate SUSPENDED for account ${account.$id} (${account.mandateSuspendedReason || "no reason"}), skipping auto-debit`);
+                // Mandate is suspended - start grace period
                 await startGracePeriod(databases, account.$id);
             } else if (!ENABLE_EMANDATE && isNetbankingMandate) {
-                // eMandate disabled and this is a netbanking mandate - log and start grace period
-                console.log(`[Billing] eMandate disabled for account ${account.$id} (netbanking mandate), skipping auto-debit`);
+                // eMandate disabled and this is a netbanking mandate - start grace period
 
                 // Log audit event for eMandate suspension
                 await databases.createDocument(
@@ -425,18 +417,14 @@ export async function processBillingCycle(): Promise<{
                 await startGracePeriod(databases, account.$id);
             } else {
                 // No mandate authorized - start grace period immediately
-                console.log(`[Billing] No mandate for account ${account.$id}, starting grace period`);
                 await startGracePeriod(databases, account.$id);
             }
 
             results.processed++;
         } catch (error) {
-            console.error(`[Billing] Failed to process account ${account.$id}:`, error);
             results.errors.push(`${account.$id}: ${error instanceof Error ? error.message : "Unknown error"}`);
         }
     }
-
-    console.log(`[Billing] Processed ${results.processed} accounts, generated ${results.invoices.length} invoices, ${results.paymentsAttempted} payments attempted, ${results.paymentsFailed} failed`);
 
     return results;
 }
@@ -516,12 +504,10 @@ export async function enforceGracePeriods(): Promise<{
         try {
             await suspendAccount(account.$id, "Grace period expired");
             results.suspended.push(account.$id);
-        } catch (error) {
-            console.error(`[Billing] Failed to suspend account ${account.$id}:`, error);
+        } catch {
+            // Continue to next account
         }
     }
-
-    console.log(`[Billing] Grace period check: ${results.checked} accounts, ${results.suspended.length} suspended`);
 
     return results;
 }
@@ -561,8 +547,6 @@ export async function suspendAccount(
             metadata: JSON.stringify({ reason }),
         }
     );
-
-    console.log(`[Billing] Suspended account ${billingAccountId}: ${reason}`);
 }
 
 /**
@@ -612,8 +596,6 @@ export async function restoreAccount(
             }),
         }
     );
-
-    console.log(`[Billing] Restored account ${billingAccountId}: ${reason}`);
 }
 
 // ============================================================================
@@ -687,8 +669,6 @@ export async function setupOrganizationBilling(
         }
     );
 
-    console.log(`[Billing] Created billing account for organization ${organizationId}`);
-
     return billingAccount;
 }
 
@@ -755,8 +735,6 @@ export async function setupPersonalBilling(
             }),
         }
     );
-
-    console.log(`[Billing] Created billing account for user ${userId}`);
 
     return billingAccount;
 }

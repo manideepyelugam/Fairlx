@@ -177,8 +177,8 @@ export function UsageDashboardClient() {
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
             }
-        } catch (error) {
-            console.error("Export failed:", error);
+        } catch {
+            // Export failed silently
         }
     };
 

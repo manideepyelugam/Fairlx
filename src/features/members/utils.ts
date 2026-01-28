@@ -132,9 +132,6 @@ export const validateWorkspaceCreation = async ({
       // If workspace has no organizationId, it's a personal workspace
       // CRITICAL: This means user already has their one allowed personal workspace
       if (!workspace.organizationId) {
-        console.log(
-          `[WorkspaceValidation] BLOCKED: User ${userId} already owns personal workspace ${workspace.$id}`
-        );
         return {
           allowed: false,
           reason: "Personal accounts can only have one workspace. Upgrade to Organization to create more.",
@@ -142,7 +139,6 @@ export const validateWorkspaceCreation = async ({
       }
     } catch {
       // Workspace not found - clean up orphaned membership later
-      console.warn(`[WorkspaceValidation] Orphaned membership for workspace ${membership.workspaceId}`);
     }
   }
 

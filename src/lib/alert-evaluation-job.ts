@@ -105,8 +105,7 @@ async function sendInAppNotification(
             }
         );
         return true;
-    } catch (error) {
-        console.error("[AlertJob] Failed to send in-app notification:", error);
+    } catch {
         return false;
     }
 }
@@ -135,8 +134,7 @@ async function sendWebhookNotification(
             }),
         });
         return response.ok;
-    } catch (error) {
-        console.error("[AlertJob] Failed to send webhook:", error);
+    } catch {
         return false;
     }
 }
@@ -263,8 +261,7 @@ export async function evaluateAllAlerts(
         results.push(result);
     }
 
-    const triggered = results.filter(r => r.triggered);
-    console.log(`[AlertJob] Evaluated ${results.length} alerts, ${triggered.length} triggered`);
+    const _triggered = results.filter(r => r.triggered);
 
     return results;
 }

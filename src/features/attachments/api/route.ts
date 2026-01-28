@@ -135,8 +135,7 @@ const app = new Hono()
             url,
           },
         });
-      } catch (error) {
-        console.error("Upload error:", error);
+      } catch {
         return c.json({ error: "Failed to upload file" }, 500);
       }
     }
@@ -184,8 +183,7 @@ const app = new Hono()
         });
 
         return c.json({ data: { success: true } });
-      } catch (error) {
-        console.error("Delete error:", error);
+      } catch {
         return c.json({ error: "Failed to delete attachment" }, 500);
       }
     }
@@ -245,8 +243,7 @@ const app = new Hono()
             'Content-Type': attachment.mimeType || 'application/octet-stream',
           },
         });
-      } catch (error) {
-        console.error("Download error:", error);
+      } catch {
         return c.json({ error: "Failed to download file" }, 500);
       }
     }
@@ -293,8 +290,7 @@ const app = new Hono()
             'Content-Type': attachment.mimeType || 'application/octet-stream',
           },
         });
-      } catch (error) {
-        console.error("Preview error:", error);
+      } catch {
         return c.json({ error: "Failed to preview file" }, 500);
       }
     }

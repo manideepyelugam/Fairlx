@@ -165,14 +165,6 @@ export const Navigation = ({
   // We do NOT implement client-side overrides for Owners here.
   // The server implementation of resolveUserAccess handles Owner permissions correctly.
 
-  // DEV MODE WARNING: Warn if allowedRouteKeys is not provided
-  if (process.env.NODE_ENV === "development" && !allowedRouteKeys) {
-    console.warn(
-      "[Navigation] STRICT MODE: allowedRouteKeys not provided. " +
-      "Navigation will not render workspace-scoped routes without explicit permissions."
-    );
-  }
-
   // Filter routes based on allowed route keys (STRICT MODE - no fallback)
   const visibleRoutes = routes.filter((route: RouteConfig) => {
     // STRICT: Route must be in allowedRouteKeys to be visible

@@ -93,8 +93,7 @@ const app = new Hono()
             byCategory,
           },
         });
-      } catch (error) {
-        console.error("Error fetching documents:", error);
+      } catch {
         return c.json({ error: "Failed to fetch documents" }, 500);
       }
     }
@@ -207,8 +206,7 @@ const app = new Hono()
             url,
           },
         });
-      } catch (error) {
-        console.error("Upload error:", error);
+      } catch {
         return c.json({ error: "Failed to upload document" }, 500);
       }
     }
@@ -256,8 +254,7 @@ const app = new Hono()
         );
 
         return c.json({ data: updatedDocument });
-      } catch (error) {
-        console.error("Update error:", error);
+      } catch {
         return c.json({ error: "Failed to update document" }, 500);
       }
     }
@@ -339,7 +336,7 @@ const app = new Hono()
         try {
           await storage.deleteFile(PROJECT_DOCS_BUCKET_ID, document.fileId);
         } catch {
-          console.warn("Could not delete old file:", document.fileId);
+          // Ignore deletion errors
         }
 
         // Upload new file
@@ -368,8 +365,7 @@ const app = new Hono()
             url,
           },
         });
-      } catch (error) {
-        console.error("Replace error:", error);
+      } catch {
         return c.json({ error: "Failed to replace document" }, 500);
       }
     }
@@ -413,15 +409,14 @@ const app = new Hono()
         try {
           await storage.deleteFile(PROJECT_DOCS_BUCKET_ID, document.fileId);
         } catch {
-          console.warn("Could not delete file:", document.fileId);
+          // Ignore deletion errors
         }
 
         // Delete document record
         await databases.deleteDocument(DATABASE_ID, PROJECT_DOCS_ID, documentId);
 
         return c.json({ data: { success: true } });
-      } catch (error) {
-        console.error("Delete error:", error);
+      } catch {
         return c.json({ error: "Failed to delete document" }, 500);
       }
     }
@@ -470,8 +465,7 @@ const app = new Hono()
             "Content-Type": document.mimeType || "application/octet-stream",
           },
         });
-      } catch (error) {
-        console.error("Download error:", error);
+      } catch {
         return c.json({ error: "Failed to download document" }, 500);
       }
     }
@@ -525,7 +519,7 @@ const app = new Hono()
             uploader = { $id: members.documents[0].userId, name: members.documents[0].name || "Unknown" };
           }
         } catch {
-          console.warn("Could not fetch uploader info");
+          // Ignore uploader fetch errors
         }
 
         return c.json({
@@ -535,8 +529,7 @@ const app = new Hono()
             uploader,
           },
         });
-      } catch (error) {
-        console.error("Get document error:", error);
+      } catch {
         return c.json({ error: "Failed to get document" }, 500);
       }
     }

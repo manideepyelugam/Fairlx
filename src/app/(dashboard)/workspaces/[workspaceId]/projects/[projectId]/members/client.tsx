@@ -98,8 +98,8 @@ export const ProjectMembersClient = () => {
             setSelectedUserIds([]);
             setSelectedTeamId("");
             setSelectedRoleId("");
-        } catch (error) {
-            console.error("Failed to add members", error);
+        } catch {
+            // Failed to add members
         }
     };
 

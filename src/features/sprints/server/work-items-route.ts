@@ -581,7 +581,6 @@ const app = new Hono()
             continue;
           }
           // If it's a different error or we've exceeded max attempts, throw
-          console.error('Failed to create work item:', error);
           throw error;
         }
       }
@@ -822,8 +821,7 @@ const app = new Hono()
 
           // Delete the item itself
           await databases.deleteDocument(DATABASE_ID, WORK_ITEMS_ID, id);
-        } catch (error) {
-          console.error(`Failed to delete item ${id}`, error);
+        } catch {
           // Continue with other items
         }
       };

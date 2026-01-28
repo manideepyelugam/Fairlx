@@ -154,8 +154,7 @@ async function buildWorkflowContext(
         deadEndStatuses: deadEndCount,
       },
     };
-  } catch (error) {
-    console.error("Failed to build workflow context:", error);
+  } catch {
     return null;
   }
 }
@@ -189,8 +188,7 @@ const app = new Hono()
         }
 
         return c.json({ data: context });
-      } catch (error) {
-        console.error("Error fetching workflow AI context:", error);
+      } catch {
         return c.json({ error: "Failed to fetch workflow context" }, 500);
       }
     }
@@ -248,8 +246,7 @@ const app = new Hono()
         };
 
         return c.json({ data: response });
-      } catch (error) {
-        console.error("Error answering workflow question:", error);
+      } catch {
         return c.json({ error: "Failed to get AI response" }, 500);
       }
     }
@@ -313,8 +310,7 @@ const app = new Hono()
         };
 
         return c.json({ data: response });
-      } catch (error) {
-        console.error("Error suggesting status:", error);
+      } catch {
         return c.json({ error: "Failed to generate status suggestion" }, 500);
       }
     }
@@ -378,8 +374,7 @@ const app = new Hono()
         };
 
         return c.json({ data: response });
-      } catch (error) {
-        console.error("Error suggesting transition:", error);
+      } catch {
         return c.json({ error: "Failed to generate transition suggestion" }, 500);
       }
     }
@@ -437,8 +432,7 @@ const app = new Hono()
         };
 
         return c.json({ data: response });
-      } catch (error) {
-        console.error("Error generating workflow:", error);
+      } catch {
         return c.json({ error: "Failed to generate workflow template" }, 500);
       }
     }
@@ -499,8 +493,7 @@ const app = new Hono()
         };
 
         return c.json({ data: response });
-      } catch (error) {
-        console.error("Error analyzing workflow:", error);
+      } catch {
         return c.json({ error: "Failed to analyze workflow" }, 500);
       }
     }

@@ -71,7 +71,6 @@ export function safeNavigate(
     requiredIds: (string | undefined | null)[]
 ): boolean {
     if (!validateRouteParams(...requiredIds)) {
-        console.error('[Navigation] Blocked navigation due to invalid IDs:', requiredIds);
         return false;
     }
     router.push(url);
