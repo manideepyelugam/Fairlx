@@ -87,8 +87,8 @@ function handleConnection(socket: Socket): void {
     });
 
     // Handle disconnection
-    socket.on("disconnect", (reason) => {
-        handleDisconnect(socket, reason);
+    socket.on("disconnect", () => {
+        handleDisconnect(socket);
     });
 
     // Handle errors
@@ -138,7 +138,7 @@ function handleAuth(socket: Socket, payload: SocketAuthPayload): void {
 /**
  * Handle socket disconnection
  */
-function handleDisconnect(socket: Socket, _reason: string): void {
+function handleDisconnect(socket: Socket): void {
     const userId = (socket as Socket & { userId?: string }).userId;
 
     if (userId) {
