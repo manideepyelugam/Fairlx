@@ -270,8 +270,8 @@ export class GitHubAPI {
                 content: content.slice(0, 10000), // Limit content size
                 type: item.name.split(".").pop() || "unknown",
               });
-            } catch (error) {
-              console.warn(`Failed to fetch file ${item.path}:`, error);
+            } catch {
+              // Silent fail for individual file fetch
             }
           }
         } else if (item.type === "dir") {
@@ -285,8 +285,8 @@ export class GitHubAPI {
           files.push(...subFiles);
         }
       }
-    } catch (error) {
-      console.error(`Error fetching files from ${path}:`, error);
+    } catch {
+      // Silent fail for directory fetch
     }
 
     return files;
@@ -347,8 +347,7 @@ export class GitHubAPI {
                 }
                 
                 return await detailResponse.json();
-              } catch (error) {
-                console.warn(`Failed to fetch details for commit ${commit.sha}:`, error);
+              } catch {
                 return commit;
               }
             })
@@ -377,7 +376,6 @@ export class GitHubAPI {
       
       return allCommits.slice(0, limit);
     } catch (error) {
-      console.error("Error fetching commits with pagination:", error);
       throw error;
     }
   }

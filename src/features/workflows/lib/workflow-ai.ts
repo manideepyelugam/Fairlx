@@ -139,7 +139,6 @@ export class WorkflowAI {
         await new Promise((r) => setTimeout(r, 500));
         return this.callGemini(payload, retries - 1);
       }
-      console.error("Gemini call failed:", err);
       throw err;
     }
   }
@@ -264,8 +263,7 @@ Rules:
       }
       
       return suggestion;
-    } catch (error) {
-      console.error('Failed to parse status suggestion:', error);
+    } catch {
       return null;
     }
   }
@@ -319,8 +317,7 @@ Rules:
       if (existingTransitions.includes(transitionKey)) return null;
       
       return suggestion;
-    } catch (error) {
-      console.error('Failed to parse transition suggestion:', error);
+    } catch {
       return null;
     }
   }
@@ -382,8 +379,7 @@ Requirements:
       if (!suggestion.name || !suggestion.statuses || suggestion.statuses.length === 0) return null;
       
       return suggestion;
-    } catch (error) {
-      console.error('Failed to parse workflow template:', error);
+    } catch {
       return null;
     }
   }

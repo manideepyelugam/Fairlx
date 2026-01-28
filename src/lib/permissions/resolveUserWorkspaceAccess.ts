@@ -223,7 +223,6 @@ export async function resolveUserWorkspaceAccess(
             // Workspace not found - return no access without spamming logs
             return noAccess;
         }
-        console.error("[resolveUserWorkspaceAccess] Error:", error);
         return noAccess;
     }
 }

@@ -82,8 +82,8 @@ export const useLinkRepository = () => {
               await saveCommitsToCache(data.projectId, optimizedCommits);
               clearLegacyCommits(data.projectId);
               notifyCommitsUpdated(data.projectId);
-            } catch (error) {
-              console.error('[Cache] Failed to save commits to IndexedDB:', error);
+            } catch {
+              // Silent fail for cache saving
             }
             
             // Dispatch custom event to notify CommitHistory component
@@ -102,8 +102,7 @@ export const useLinkRepository = () => {
           const errorData = await commitsResponse.json() as { error?: string };
           throw new Error(errorData.error || "Failed to fetch commits");
         }
-      } catch (error) {
-        console.error("Failed to fetch commits:", error);
+      } catch {
         toast.error("Repository connected but failed to fetch commits. You can fetch them manually.", { 
           id: "fetch-commits" 
         });

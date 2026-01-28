@@ -40,7 +40,6 @@ export const useProjectPermissions = ({ projectId, workspaceId }: UseProjectPerm
             });
 
             if (!response.ok) {
-                console.error("Failed to fetch project permissions");
                 return null;
             }
 

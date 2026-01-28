@@ -96,8 +96,7 @@ export async function canDeleteAccount({
         }
 
         return { allowed: true };
-    } catch (error) {
-        console.error("[AccountGuards] canDeleteAccount check failed:", error);
+    } catch {
         // FAIL CLOSED: If we can't verify, don't allow deletion
         return {
             allowed: false,
@@ -169,8 +168,7 @@ export async function canLeaveOrganization({
         }
 
         return { allowed: true };
-    } catch (error) {
-        console.error("[AccountGuards] canLeaveOrganization check failed:", error);
+    } catch {
         // FAIL CLOSED
         return {
             allowed: false,

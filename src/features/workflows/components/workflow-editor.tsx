@@ -94,8 +94,8 @@ export const WorkflowEditor = ({
   const handleStatusDelete = useCallback(async (id: string) => {
     try {
       await onStatusDelete(id);
-    } catch (error) {
-      console.error("Failed to delete status:", error);
+    } catch {
+      // Error handled silently
     }
   }, [onStatusDelete]);
 
@@ -103,8 +103,8 @@ export const WorkflowEditor = ({
   const handleTransitionDelete = useCallback(async (id: string) => {
     try {
       await onTransitionDelete(id);
-    } catch (error) {
-      console.error("Failed to delete transition:", error);
+    } catch {
+      // Error handled silently
     }
   }, [onTransitionDelete]);
 
@@ -139,8 +139,8 @@ export const WorkflowEditor = ({
 
       try {
         await onTransitionCreate(connection.source, connection.target);
-      } catch (error) {
-        console.error("Failed to create transition:", error);
+      } catch {
+        // Error handled silently
       }
     },
     [edges, isReadOnly, onTransitionCreate]
@@ -153,8 +153,8 @@ export const WorkflowEditor = ({
 
       try {
         await onStatusPositionUpdate(node.id, node.position.x, node.position.y);
-      } catch (error) {
-        console.error("Failed to update position:", error);
+      } catch {
+        // Error handled silently
       }
     },
     [isReadOnly, onStatusPositionUpdate]

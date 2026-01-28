@@ -36,8 +36,7 @@ const app = new Hono()
       // INVARIANT: Validate org membership for org workspaces
       try {
         await validateUserOrgMembershipForWorkspace(databases, user.$id, workspaceId);
-      } catch (error) {
-        console.warn("[Members] Org membership validation:", error);
+      } catch {
         // Don't block - just log for observability
       }
 
@@ -59,7 +58,6 @@ const app = new Hono()
             };
           } catch {
             // Skip missing user
-            console.warn(`Skipping member ${member.$id}: User ${member.userId} not found`);
             return null;
           }
         })
@@ -302,8 +300,7 @@ const app = new Hono()
           const orgAccess = await resolveUserOrgAccess(databases, user.$id, workspace.organizationId);
           hasOrgAssignPermission = hasOrgPermissionFromAccess(orgAccess, OrgPermissionKey.WORKSPACE_ASSIGN);
         }
-      } catch (error) {
-        console.warn("[members/from-org] Org permission check failed:", error);
+      } catch {
       }
 
       if (!hasWorkspaceAdminRole && !hasOrgAssignPermission) {

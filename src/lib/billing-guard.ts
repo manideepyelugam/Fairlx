@@ -127,10 +127,9 @@ async function getBillingStatusForUser(
 
         // No billing account - treat as ACTIVE (hasn't set up billing yet)
         return { status: BillingStatus.ACTIVE };
-    } catch (error) {
-        console.error("[BillingGuard] Failed to check billing status:", error);
+    } catch {
         // FAIL OPEN: If we can't check, allow access (billing issues shouldn't block users completely)
-        // This is a tradeoff - we log the error and should monitor for patterns
+        // This is a tradeoff - should monitor for patterns
         return { status: BillingStatus.ACTIVE };
     }
 }
@@ -195,8 +194,7 @@ async function getBillingStatusForWorkspace(
 
         // No billing account - treat as ACTIVE
         return { status: BillingStatus.ACTIVE };
-    } catch (error) {
-        console.error("[BillingGuard] Failed to check workspace billing:", error);
+    } catch {
         return { status: BillingStatus.ACTIVE };
     }
 }
@@ -278,7 +276,6 @@ export const billingGuard = createMiddleware<BillingGuardContext>(async (c, next
 
         default:
             // Unknown status, allow access (fail open)
-            console.warn(`[BillingGuard] Unknown billing status: ${status}`);
             await next();
     }
 });
@@ -344,8 +341,7 @@ export async function checkBillingStatus(
         }
 
         return { status: BillingStatus.ACTIVE };
-    } catch (error) {
-        console.error("[BillingGuard] checkBillingStatus failed:", error);
+    } catch {
         return { status: BillingStatus.ACTIVE };
     }
 }

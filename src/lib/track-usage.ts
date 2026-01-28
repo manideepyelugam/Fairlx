@@ -69,9 +69,8 @@ export interface TrackUsageParams {
  */
 export function trackUsage(params: TrackUsageParams): void {
     // Fire-and-forget - don't await, don't throw
-    trackUsageAsync(params).catch((error) => {
-        // Log error but don't rethrow - usage tracking should never block features
-        console.error("[Usage] Failed to track usage event:", error);
+    trackUsageAsync(params).catch(() => {
+        // Silent failure - usage tracking should never block features
     });
 }
 
@@ -104,7 +103,6 @@ export async function trackUsageAsync(params: TrackUsageParams): Promise<void> {
 
         // REQUIRE idempotency key (Type enforced, but runtime check safety)
         if (!idempotencyKey) {
-            console.error("[Usage] Missing idempotencyKey in trackUsage call");
             return;
         }
 
@@ -134,16 +132,10 @@ export async function trackUsageAsync(params: TrackUsageParams): Promise<void> {
         });
 
         if (!result.written) {
-            // Log but don't throw - duplicates are expected for retries
-            if (result.reason === "DUPLICATE" || result.reason === "RACE_DUPLICATE") {
-                console.log(`[Usage] Duplicate event ignored: ${idempotencyKey}`);
-            } else {
-                console.warn(`[Usage] Event not written: ${result.reason} - ${result.message}`);
-            }
+            // Silent - duplicates are expected for retries
         }
-    } catch (error) {
-        // Never throw from usage tracking - just log
-        console.error("[Usage] Error in trackUsageAsync:", error);
+    } catch {
+        // Never throw from usage tracking
     }
 }
 

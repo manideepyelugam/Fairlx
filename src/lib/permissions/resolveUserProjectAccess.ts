@@ -133,8 +133,8 @@ export async function resolveUserProjectAccess(
         try {
             const workspace = await databases.getDocument(DATABASE_ID, WORKSPACES_ID, workspaceId);
             organizationId = workspace.organizationId || null;
-        } catch (e) {
-            console.warn(`[resolveUserProjectAccess] Failed to fetch workspace ${workspaceId}`, e);
+        } catch {
+            // Workspace fetch failed - continue without org context
         }
 
         // 1. Organization Access Override (Highest Priority)
@@ -171,8 +171,8 @@ export async function resolveUserProjectAccess(
                         };
                     }
                 }
-            } catch (e) {
-                console.warn("[resolveUserProjectAccess] Org check failed", e);
+            } catch {
+                // Org check failed - continue with other access checks
             }
         }
 
@@ -215,8 +215,8 @@ export async function resolveUserProjectAccess(
                     };
                 }
             }
-        } catch (e) {
-            console.warn("[resolveUserProjectAccess] Workspace check failed", e);
+        } catch {
+            // Workspace check failed - continue with other access checks
         }
 
         // 3. Check direct project membership (Existing Logic)
@@ -335,8 +335,7 @@ export async function resolveUserProjectAccess(
             allowedRouteKeys: getRouteKeysForPermissions(allPermissions),
         };
 
-    } catch (error) {
-        console.error("[resolveUserProjectAccess] Error:", error);
+    } catch {
         return noAccess;
     }
 }

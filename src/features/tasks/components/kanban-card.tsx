@@ -123,7 +123,13 @@ export const KanbanCard = ({
                 </div>
                 <p className="text-xs text-muted-foreground mt-1 line-clamp-3">
                     {(() => {
-                        const words = task.description?.split(/\s+/) ?? [];
+                        // Strip HTML tags for plain text preview
+                        const plainText = task.description
+                            ?.replace(/<[^>]*>/g, " ")
+                            .replace(/&nbsp;/g, " ")
+                            .replace(/\s+/g, " ")
+                            .trim() ?? "";
+                        const words = plainText.split(/\s+/).filter(Boolean);
                         const shouldEllipsize = words.length > 5 || words.some((w) => w.length > 20);
                         const preview = words
                             .slice(0, 5)

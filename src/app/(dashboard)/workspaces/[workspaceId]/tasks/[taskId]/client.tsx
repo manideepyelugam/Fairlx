@@ -38,8 +38,6 @@ export const TaskIdClient = () => {
     "destructive"
   );
 
-  console.log("Task Data:", data);
-
   // Permissions handled by backend. UI optimistic for now or TODO: useGetProjectMember
   const canEditTasks = true;
   const canDeleteTasks = true;
@@ -82,7 +80,12 @@ export const TaskIdClient = () => {
           {/* Description Section */}
           <div className="px-6 pb-4">
             <span className="text-xs text-muted-foreground mb-3 mt-4 block">Description</span>
-            <TaskDescription task={data} canEdit={canEditTasks} />
+            <TaskDescription 
+              task={data} 
+              canEdit={canEditTasks} 
+              workspaceId={workspaceId}
+              projectId={data.projectId}
+            />
           </div>
 
           {/* Add Sub-issues */}
@@ -194,8 +197,7 @@ export const TaskIdClient = () => {
                             : `/workspaces/${workspaceId}/tasks/${data.$id}`;
                           await navigator.clipboard.writeText(url);
                           toast.success("Task URL copied to clipboard.");
-                        } catch (err) {
-                          console.error(err);
+                        } catch {
                           toast.error("Failed to copy task URL.");
                         }
                       }}
@@ -211,8 +213,7 @@ export const TaskIdClient = () => {
                         try {
                           await navigator.clipboard.writeText(data.$id);
                           toast.success("Task ID copied to clipboard.");
-                        } catch (err) {
-                          console.error(err);
+                        } catch {
                           toast.error("Failed to copy task ID.");
                         }
                       }}

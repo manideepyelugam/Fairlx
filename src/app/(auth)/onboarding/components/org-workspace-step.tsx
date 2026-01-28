@@ -99,7 +99,6 @@ export function OrgWorkspaceStep({
 
             onWorkspaceCreated(workspaceId);
         } catch (error) {
-            console.error("Workspace creation error:", error);
             toast.error(error instanceof Error ? error.message : "Failed to create workspace");
         } finally {
             setIsSubmitting(false);
@@ -124,8 +123,7 @@ export function OrgWorkspaceStep({
             await queryClient.invalidateQueries({ queryKey: ["current"] });
 
             onSkip();
-        } catch (error) {
-            console.error("Skip error:", error);
+        } catch {
             // Still continue even if prefs update fails
             onSkip();
         } finally {

@@ -159,8 +159,6 @@ const app = new Hono()
 
           return c.json({ data: doc });
         } catch (error: unknown) {
-          console.error("Error generating documentation:", error);
-
           // Update repository status to error
           await databases.updateDocument(
             DATABASE_ID,
@@ -175,7 +173,6 @@ const app = new Hono()
           throw error;
         }
       } catch (error: unknown) {
-        console.error("Error in documentation generation:", error);
         return c.json(
           {
             error: "Failed to generate documentation",
@@ -233,7 +230,6 @@ const app = new Hono()
 
         return c.json({ data: docs.documents[0] });
       } catch (error: unknown) {
-        console.error("Error fetching documentation:", error);
         return c.json(
           {
             error: "Failed to fetch documentation",

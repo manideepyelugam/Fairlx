@@ -1,9 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+"use client";
+
+import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
-import { useDebounce } from "@/hooks/use-debounce";
+import { RichTextEditor, setMentionMembers } from "@/components/editor";
+import { useGetMembers } from "@/features/members/api/use-get-members";
+import { useLocalDraft } from "@/hooks/use-local-draft";
 
 import { useUpdateTask } from "../api/use-update-task";
 import { Task } from "../types";
@@ -11,87 +14,77 @@ import { Task } from "../types";
 interface TaskDescriptionProps {
   task: Task;
   canEdit?: boolean;
+  workspaceId?: string;
+  projectId?: string;
 }
 
-export const TaskDescription = ({ task, canEdit = true }: TaskDescriptionProps) => {
-  const [value, setValue] = useState(task.description || "");
-  const [isSaving, setIsSaving] = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
+export const TaskDescription = ({ 
+  task, 
+  canEdit = true, 
+  workspaceId,
+  projectId 
+}: TaskDescriptionProps) => {
   const { mutate: updateTask } = useUpdateTask();
+  const { data: members } = useGetMembers({ workspaceId: workspaceId || "" });
 
-  const debouncedValue = useDebounce(value, 1000);
+  // Use localStorage-based draft
+  const {
+    content: value,
+    setContent: setValue,
+    isSyncing: isSaving,
+  } = useLocalDraft({
+    taskId: task.$id,
+    initialContent: task.description || "",
+    onSync: async (content) => {
+      updateTask({
+        param: { taskId: task.$id },
+        json: { description: content },
+      });
+    },
+  });
 
-  // Auto-save when debounced value changes
+  // Update mention members when they load
   useEffect(() => {
-    if (hasChanges && debouncedValue !== task.description) {
-      setIsSaving(true);
-      updateTask(
-        { json: { description: debouncedValue }, param: { taskId: task.$id } },
-        {
-          onSuccess: () => {
-            setIsSaving(false);
-            setHasChanges(false);
-          },
-          onError: () => {
-            setIsSaving(false);
-            toast.error("Failed to save description");
-          },
-        }
+    if (members?.documents) {
+      setMentionMembers(
+        members.documents.map((member) => ({
+          id: member.$id,
+          name: member.name || "",
+          email: member.email,
+          imageUrl: member.profileImageUrl,
+        }))
       );
     }
-  }, [debouncedValue, hasChanges, task.$id, task.description, updateTask]);
+  }, [members]);
 
-  // Update value when task.description changes externally
-  useEffect(() => {
-    if (!hasChanges) {
-      setValue(task.description || "");
-    }
-  }, [task.description, hasChanges]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleChange = (content: string) => {
     if (!canEdit) return;
-    setValue(e.target.value);
-    setHasChanges(true);
-    autoResize(e.target);
+    setValue(content);
   };
-
-  // Auto-resize textarea
-  const autoResize = (textarea: HTMLTextAreaElement) => {
-    textarea.style.height = "auto";
-    textarea.style.height = `${textarea.scrollHeight}px`;
-  };
-
-  // Initial auto-resize
-  useEffect(() => {
-    if (textareaRef.current) {
-      autoResize(textareaRef.current);
-    }
-  }, [value]);
 
   return (
-    <div className="relative ">
+    <div className="relative">
       {/* Status indicator */}
       {isSaving && (
-        <div className="absolute -top-6 right-0 flex items-center gap-1 text-xs text-gray-400">
+        <div className="absolute -top-6 right-0 flex items-center gap-1 text-xs text-gray-400 z-10">
           <Loader2 className="h-3 w-3 animate-spin" />
           <span>Saving...</span>
         </div>
       )}
 
-      <textarea
-        ref={textareaRef}
-        value={value}
+      <RichTextEditor
+        content={value}
         onChange={handleChange}
-        placeholder="Add description..."
-        disabled={!canEdit}
+        placeholder="Add a description... Use @ to mention team members, / for commands"
+        editable={canEdit}
+        workspaceId={workspaceId}
+        projectId={projectId}
+        minHeight="100px"
+        showToolbar={canEdit}
         className={cn(
-          "w-full resize-none border-0 bg-transparent text-sm text-foreground placeholder:text-muted-foreground",
-          "focus:outline-none focus:ring-0 min-h-[60px] p-0",
-          !canEdit && "cursor-default"
+          "border-0 bg-transparent",
+          !canEdit && "pointer-events-none"
         )}
-        rows={3}
       />
     </div>
   );

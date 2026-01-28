@@ -121,8 +121,6 @@ const app = new Hono()
                 );
             }
 
-            console.log(`[BillingMode] Set to ${billingMode} for ${organizationId || user.$id}`);
-
             return c.json({
                 data: {
                     billingMode: settings.billingMode,

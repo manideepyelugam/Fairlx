@@ -65,8 +65,7 @@ export const GitHubIntegrationClient = () => {
       const legacyCount = readLegacyCommitsCount(projectId);
       setCommitsCount(legacyCount);
       // console.log(`[CommitsCount] Loaded legacy count ${legacyCount}`);
-    } catch (error) {
-      console.error("Failed to load cached commits count:", error);
+    } catch {
       setCommitsCount(0);
     }
   }, [projectId]);

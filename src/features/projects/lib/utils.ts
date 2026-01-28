@@ -79,9 +79,7 @@ export async function seedProjectRoles(
         });
 
         await Promise.all(promises);
-        console.log(`[seedProjectRoles] Seeded roles for project ${projectId}`);
-    } catch (error) {
-        console.error(`[seedProjectRoles] Failed to seed roles for project ${projectId}:`, error);
+    } catch {
         // Don't throw, failing to seed roles shouldn't crash the request, 
         // but it will result in an empty dropdown (as observed).
     }

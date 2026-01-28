@@ -36,8 +36,7 @@ const getDb = async (): Promise<IDBPDatabase | null> => {
           store.createIndex("projectId", "projectId", { unique: false });
         }
       },
-    }).catch((error) => {
-      console.error("[CommitCache] Failed to open IndexedDB", error);
+    }).catch(() => {
       return null;
     });
   }
@@ -136,8 +135,7 @@ export function readLegacyCommits(projectId: string): CommitSummary[] {
     return parsed.filter(
       (commit) => commit.hash && commit.message && commit.author && commit.date
     );
-  } catch (error) {
-    console.error("[CommitCache] Failed to parse legacy commits", error);
+  } catch {
     return [];
   }
 }

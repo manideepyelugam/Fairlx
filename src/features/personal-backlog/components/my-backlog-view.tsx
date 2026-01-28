@@ -147,7 +147,6 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
 
         // If there's no moved item, return the previous state
         if (!movedItem) {
-          console.warn("No item found at the source index");
           return prevItems;
         }
 
@@ -450,7 +449,13 @@ export const MyBacklogView = ({ workspaceId }: MyBacklogViewProps) => {
                                       {item.description && (
                                         <p className="text-xs text-gray-600 mt-1 line-clamp-3 w-full">
                                           {(() => {
-                                            const words = item.description.split(/\s+/);
+                                            // Strip HTML tags for plain text preview
+                                            const plainText = item.description
+                                              .replace(/<[^>]*>/g, " ")
+                                              .replace(/&nbsp;/g, " ")
+                                              .replace(/\s+/g, " ")
+                                              .trim();
+                                            const words = plainText.split(/\s+/).filter(Boolean);
                                             const shouldEllipsize = words.length > 5 || words.some((w) => w.length > 20);
                                             const preview = words
                                               .slice(0, 5)

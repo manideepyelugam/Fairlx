@@ -134,7 +134,6 @@ export class ProjectDocsAI {
         await new Promise((r) => setTimeout(r, 500));
         return this.callGemini(payload, retries - 1);
       }
-      console.error("Gemini call failed:", err);
       throw err;
     }
   }
@@ -179,7 +178,16 @@ export class ProjectDocsAI {
 
     const taskContext = tasks
       .slice(0, 20)
-      .map((t) => `- ${t.name} [${t.status}]: ${t.description?.slice(0, 100) || "No description"}`)
+      .map((t) => {
+        // Strip HTML tags for plain text in AI context
+        const plainDesc = t.description
+          ?.replace(/<[^>]*>/g, " ")
+          .replace(/&nbsp;/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 100) || "No description";
+        return `- ${t.name} [${t.status}]: ${plainDesc}`;
+      })
       .join("\n");
 
     const prompt = `Generate a comprehensive project summary for "${projectName}".

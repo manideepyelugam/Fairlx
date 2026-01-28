@@ -44,8 +44,7 @@ const app = new Hono()
       try {
         const comments = await getPopulatedComments(taskId, workspaceId);
         return c.json({ data: comments });
-      } catch (error) {
-        console.error("Failed to fetch comments:", error);
+      } catch {
         return c.json({ error: "Failed to fetch comments" }, 500);
       }
     }
@@ -90,8 +89,7 @@ const app = new Hono()
         });
 
         return c.json({ data: comment });
-      } catch (error) {
-        console.error("Failed to create comment:", error);
+      } catch {
         return c.json({ error: "Failed to create comment" }, 500);
       }
     }
@@ -144,7 +142,6 @@ const app = new Hono()
             return c.json({ error: "Unauthorized" }, 401);
           }
         }
-        console.error("Failed to update comment:", error);
         return c.json({ error: "Failed to update comment" }, 500);
       }
     }
@@ -195,7 +192,6 @@ const app = new Hono()
             return c.json({ error: "Unauthorized" }, 401);
           }
         }
-        console.error("Failed to delete comment:", error);
         return c.json({ error: "Failed to delete comment" }, 500);
       }
     }

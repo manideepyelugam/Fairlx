@@ -135,8 +135,7 @@ const app = new Hono()
               date: c.commit.author.date,
               url: c.html_url,
             }));
-          } catch (error) {
-            console.error("Error fetching commits for Q&A:", error);
+          } catch {
             // Continue without commits if fetch fails
           }
         }
@@ -201,7 +200,6 @@ const app = new Hono()
           },
         });
       } catch (error: unknown) {
-        console.error("Error answering question:", error);
         return c.json(
           {
             error: error instanceof Error

@@ -143,7 +143,6 @@ const app = new Hono()
         userId: user.$id
       });
     } catch (error: unknown) {
-      console.error("Registration error:", error);
       const appwriteError = error as { code?: number; message?: string; type?: string };
 
       if (appwriteError.code === 409) {
@@ -222,7 +221,6 @@ const app = new Hono()
 
         if (allOwners.total === 1) {
           // User is the ONLY owner - block deletion
-          console.warn(`[SECURITY] Blocked account deletion: user ${user.$id} is last OWNER of org ${orgId}`);
 
           // Log to audit (non-blocking)
           try {
@@ -271,7 +269,6 @@ const app = new Hono()
         message: "Account deleted successfully"
       });
     } catch (error: unknown) {
-      console.error("Delete account error:", error);
       const appwriteError = error as { message?: string };
       return c.json({
         error: appwriteError.message || "Failed to delete account"
@@ -424,7 +421,6 @@ const app = new Hono()
 
         return c.json({ success: true, message: "Password updated successfully" });
       } catch (error: unknown) {
-        console.error("Change password error:", error);
 
         // Handle Appwrite specific errors
         const appwriteError = error as { type?: string; message?: string };
@@ -475,7 +471,6 @@ const app = new Hono()
           message: "Password set successfully"
         });
       } catch (error: unknown) {
-        console.error("Set password error:", error);
         const appwriteError = error as { type?: string; message?: string };
 
         return c.json({
@@ -549,7 +544,6 @@ const app = new Hono()
         return c.json({ error: "Verification request was rejected by Appwrite. Please request a new link." }, 400);
       }
 
-      console.error("[Auth] Verification error:", error);
       return c.json({
         error: "Failed to verify email: " + (appwriteError.message || "Unknown error")
       }, 500);
@@ -591,7 +585,6 @@ const app = new Hono()
         message: "Verification email sent! Please check your inbox and click the verification link."
       });
     } catch (error: unknown) {
-      console.error("Resend verification error:", error);
       const appwriteError = error as { code?: number; message?: string; type?: string };
 
       if (appwriteError.code === 401) {
@@ -639,7 +632,6 @@ const app = new Hono()
         message: "Password recovery email sent! Please check your inbox."
       });
     } catch (error: unknown) {
-      console.error("Forgot password error:", error);
       const appwriteError = error as { code?: number; message?: string; type?: string };
 
       // Check for SMTP configuration issues
@@ -766,7 +758,6 @@ const app = new Hono()
           message: "Password reset successfully! You can now access your account."
         });
       } catch (error: unknown) {
-        console.error("First login password reset error:", error);
         const appwriteError = error as { message?: string };
         return c.json({
           error: appwriteError.message || "Failed to reset password"
@@ -871,8 +862,7 @@ const app = new Hono()
           // No workspaceId created yet
         });
       }
-    } catch (error) {
-      console.error("[Auth] Complete signup error:", error);
+    } catch {
       return c.json({ error: "Failed to complete signup" }, 500);
     }
   })
@@ -911,8 +901,7 @@ const app = new Hono()
       await account.updatePrefs(newPrefs);
 
       return c.json({ success: true, prefs: newPrefs });
-    } catch (error) {
-      console.error("[Auth] Update prefs error:", error);
+    } catch {
       return c.json({ error: "Failed to update preferences" }, 500);
     }
   })
@@ -963,8 +952,7 @@ const app = new Hono()
           canUnlink: totalMethods > 1,
         }
       });
-    } catch (error) {
-      console.error("[Auth] List identities error:", error);
+    } catch {
       return c.json({ error: "Failed to list identities" }, 500);
     }
   })
@@ -1010,8 +998,7 @@ const app = new Hono()
         success: true,
         message: `${(targetIdentity as { provider: string }).provider} account unlinked successfully`
       });
-    } catch (error) {
-      console.error("[Auth] Delete identity error:", error);
+    } catch {
       return c.json({ error: "Failed to unlink provider" }, 500);
     }
   })
@@ -1080,14 +1067,13 @@ const app = new Hono()
           actionType: OrgAuditAction.FIRST_LOGIN_TOKEN_USED,
           metadata: { tokenId: loginToken.$id, method: "rpc" },
         });
-      } catch (e) {
-        console.error("Audit error:", e);
+      } catch {
+        // Silent failure for non-critical audit logging
       }
 
       return c.json({ success: true, message: "Login successful" });
 
-    } catch (error) {
-      console.error("First-login POST error:", error);
+    } catch {
       return c.json({ error: "Authentication failed" }, 500);
     }
   })
@@ -1111,7 +1097,6 @@ const app = new Hono()
 
       // Collection may not exist yet
       if (!LOGIN_TOKENS_ID) {
-        console.warn("[Auth] LOGIN_TOKENS_ID not configured");
         return c.redirect("/sign-in?error=service_unavailable");
       }
 
@@ -1129,7 +1114,6 @@ const app = new Hono()
       );
 
       if (tokens.total === 0) {
-        console.warn("[Auth] First-login token not found");
         return c.redirect("/sign-in?error=invalid_token");
       }
 
@@ -1137,13 +1121,11 @@ const app = new Hono()
 
       // Validate not expired
       if (new Date(loginToken.expiresAt) < new Date()) {
-        console.warn("[Auth] First-login token expired");
         return c.redirect("/sign-in?error=token_expired");
       }
 
       // Validate not already used (single-use)
       if (loginToken.usedAt) {
-        console.warn("[Auth] First-login token already used");
         return c.redirect("/sign-in?error=token_used");
       }
 
@@ -1180,18 +1162,15 @@ const app = new Hono()
             usedAt: new Date().toISOString(),
           },
         });
-      } catch (auditError) {
-        console.error("[Auth] Failed to log first-login audit:", auditError);
+      } catch {
+        // Silent failure for non-critical audit logging
       }
-
-      console.log(`[Auth] First-login token used for user ${loginToken.userId}`);
 
       // Redirect to app - lifecycle-guard will show ForcePasswordReset
       // because mustResetPassword is still true
       return c.redirect("/");
 
-    } catch (error) {
-      console.error("[Auth] First-login error:", error);
+    } catch {
       return c.redirect("/sign-in?error=login_failed");
     }
   });

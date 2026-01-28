@@ -114,8 +114,7 @@ export async function isEventProcessed(
         }
 
         return false;
-    } catch (error) {
-        console.error("[ProcessedEventsRegistry] isEventProcessed failed:", error);
+    } catch {
         // On error, assume not processed (fail open for idempotency check)
         // This may cause duplicates, but that's safer than blocking operations
         return false;
@@ -196,7 +195,6 @@ export async function acquireProcessingLock(
         // So we strictly depend on PROCESSED_EVENTS_ID being a unique-constrained collection
         // If using fallback, this lock is essentially "best effort" via insert
 
-        console.error("[ProcessedEventsRegistry] Lock acquisition failed:", error);
         throw error;
     }
 }
@@ -247,8 +245,7 @@ export async function releaseProcessingLock(
                 locks.documents[0].$id
             );
         }
-    } catch (error) {
-        console.error("[ProcessedEventsRegistry] Failed to release lock:", error);
+    } catch {
         // Swallow error - rollback failure shouldn't crash the request
     }
 }
@@ -364,8 +361,7 @@ export async function cleanupProcessedEvents(
                 try {
                     await databases.deleteDocument(DATABASE_ID, collectionId, event.$id);
                     deleted++;
-                } catch (deleteError) {
-                    console.error(`[ProcessedEventsRegistry] Failed to delete event ${event.$id}:`, deleteError);
+                } catch {
                     errors++;
                 }
             }
@@ -375,15 +371,8 @@ export async function cleanupProcessedEvents(
                 hasMore = false;
             }
         }
-
-        console.log(`[ProcessedEventsRegistry] Cleanup complete:`, {
-            deleted,
-            errors,
-            retentionDays,
-            cutoffDate: cutoffDate.toISOString(),
-        });
-    } catch (error) {
-        console.error("[ProcessedEventsRegistry] Cleanup failed:", error);
+    } catch {
+        // Cleanup failed - silently continue
     }
 
     return { deleted, errors };

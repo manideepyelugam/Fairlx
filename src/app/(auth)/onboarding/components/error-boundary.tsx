@@ -31,8 +31,8 @@ export class OnboardingErrorBoundary extends Component<Props, State> {
         return { hasError: true, error };
     }
 
-    componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-        console.error("Onboarding error:", error, errorInfo);
+    componentDidCatch(_error: Error, _errorInfo: ErrorInfo) {
+        // Error handled by error boundary
     }
 
     handleRetry = () => {

@@ -293,20 +293,9 @@ export async function sendWelcomeEmail({
       true            // html
     );
 
-    console.log(`[Email Service] Welcome email sent to ${recipientEmail} (${recipientUserId})`);
-
     return { success: true };
 
   } catch (error) {
-    console.error("[Email Service] Failed to send welcome email:", error);
-
-    // Log the content for debugging if sending fails (e.g. no provider)
-    console.log("[Email Service] FALLBACK - Welcome email content:", {
-      to: recipientEmail,
-      passwordIncluded: !!tempPassword,
-      hasMagicLink: !!firstLoginToken,
-    });
-
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return { success: false, error: errorMessage };
   }
@@ -343,8 +332,7 @@ export async function logEmailSent({
         timestamp: new Date().toISOString(),
       },
     });
-  } catch (error) {
-    // Non-blocking - just log if audit fails
-    console.error("[Email Service] Failed to log email event:", error);
+  } catch {
+    // Non-blocking - audit logging failed silently
   }
 }

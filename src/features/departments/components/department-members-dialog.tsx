@@ -113,8 +113,8 @@ export function DepartmentMembersDialog({
             );
             await Promise.all(promises);
             setSelectedIds(new Set());
-        } catch (error) {
-            console.error("Failed to add members", error);
+        } catch {
+            // Error handled silently
         } finally {
             setIsAdding(false);
         }

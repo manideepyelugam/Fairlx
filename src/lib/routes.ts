@@ -89,7 +89,6 @@ export function safeRoute<T extends keyof typeof routes>(
     // Validate all string arguments are not undefined/null/empty
     for (const arg of args) {
         if (typeof arg === "string" && (!arg || arg === "undefined")) {
-            console.error(`[Routes] Invalid route argument: ${arg}`);
             return "/"; // Safe fallback
         }
     }

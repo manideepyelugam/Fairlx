@@ -68,13 +68,11 @@ const app = new Hono()
         const signature = c.req.header("x-razorpay-signature");
 
         if (!signature) {
-            console.warn("[Webhook] Missing signature header");
             return c.json({ error: "Missing signature" }, 400);
         }
 
         // Verify signature
         if (!verifyWebhookSignature(rawBody, signature)) {
-            console.warn("[Webhook] Invalid signature");
             return c.json({ error: "Invalid signature" }, 401);
         }
 
@@ -83,7 +81,6 @@ const app = new Hono()
         try {
             event = JSON.parse(rawBody);
         } catch {
-            console.error("[Webhook] Failed to parse event body");
             return c.json({ error: "Invalid JSON" }, 400);
         }
 
@@ -94,11 +91,8 @@ const app = new Hono()
 
         // Check idempotency (database-backed for production safety)
         if (await isEventProcessed(databases, eventId, "webhook")) {
-            console.log(`[Webhook] Skipping duplicate event: ${eventId}`);
             return c.json({ status: "already_processed" });
         }
-
-        console.log(`[Webhook] Processing event: ${event.event}`);
 
         try {
             // Route to appropriate handler
@@ -146,15 +140,15 @@ const app = new Hono()
                     break;
 
                 default:
-                    console.log(`[Webhook] Unhandled event type: ${event.event}`);
+                    // Unhandled event type
+                    break;
             }
 
             // Mark as processed (persisted to database)
             await markEventProcessed(databases, eventId, "webhook");
 
             return c.json({ status: "processed" });
-        } catch (error) {
-            console.error(`[Webhook] Error processing ${event.event}:`, error);
+        } catch {
             // Return 200 to prevent Razorpay from retrying (we log the error)
             return c.json({ status: "error_logged" });
         }
@@ -172,14 +166,12 @@ async function handlePaymentCaptured(
 ) {
     const payment = event.payload.payment?.entity;
     if (!payment) {
-        console.warn("[Webhook] payment.captured missing payment entity");
         return;
     }
 
     // Get billing account from payment notes
     const billingAccountId = payment.notes?.fairlx_billing_account_id;
     if (!billingAccountId) {
-        console.warn("[Webhook] payment.captured missing billing account ID in notes");
         return;
     }
 
@@ -266,8 +258,6 @@ async function handlePaymentCaptured(
             }
         );
     }
-
-    console.log(`[Webhook] Processed payment.captured for account ${billingAccountId}`);
 }
 
 /**
@@ -283,13 +273,11 @@ async function handlePaymentFailed(
 ) {
     const payment = event.payload.payment?.entity;
     if (!payment) {
-        console.warn("[Webhook] payment.failed missing payment entity");
         return;
     }
 
     const billingAccountId = payment.notes?.fairlx_billing_account_id;
     if (!billingAccountId) {
-        console.warn("[Webhook] payment.failed missing billing account ID in notes");
         return;
     }
 
@@ -380,8 +368,6 @@ async function handlePaymentFailed(
             }
         );
     }
-
-    console.log(`[Webhook] Processed payment.failed for account ${billingAccountId}`);
 }
 
 /**
@@ -397,13 +383,11 @@ async function handleSubscriptionCharged(
 ) {
     const subscription = event.payload.subscription?.entity;
     if (!subscription) {
-        console.warn("[Webhook] subscription.charged missing subscription entity");
         return;
     }
 
     const billingAccountId = subscription.notes?.fairlx_billing_account_id;
     if (!billingAccountId) {
-        console.warn("[Webhook] subscription.charged missing billing account ID in notes");
         return;
     }
 
@@ -423,8 +407,6 @@ async function handleSubscriptionCharged(
             gracePeriodEnd: null,
         }
     );
-
-    console.log(`[Webhook] Processed subscription.charged for account ${billingAccountId}`);
 }
 
 /**
@@ -439,13 +421,11 @@ async function handleSubscriptionHalted(
 ) {
     const subscription = event.payload.subscription?.entity;
     if (!subscription) {
-        console.warn("[Webhook] subscription.halted missing subscription entity");
         return;
     }
 
     const billingAccountId = subscription.notes?.fairlx_billing_account_id;
     if (!billingAccountId) {
-        console.warn("[Webhook] subscription.halted missing billing account ID in notes");
         return;
     }
 
@@ -483,8 +463,6 @@ async function handleSubscriptionHalted(
                     }),
                 }
             );
-
-            console.log(`[Webhook] Account ${billingAccountId} suspended after subscription halt`);
         }
     }
 }
@@ -501,13 +479,11 @@ async function handleSubscriptionCancelled(
 ) {
     const subscription = event.payload.subscription?.entity;
     if (!subscription) {
-        console.warn("[Webhook] subscription.cancelled missing subscription entity");
         return;
     }
 
     const billingAccountId = subscription.notes?.fairlx_billing_account_id;
     if (!billingAccountId) {
-        console.warn("[Webhook] subscription.cancelled missing billing account ID in notes");
         return;
     }
 
@@ -532,8 +508,6 @@ async function handleSubscriptionCancelled(
             }),
         }
     );
-
-    console.log(`[Webhook] Processed subscription.cancelled for account ${billingAccountId}`);
 }
 
 /**
@@ -549,14 +523,12 @@ async function handlePaymentAuthorized(
 ) {
     const payment = event.payload.payment?.entity;
     if (!payment) {
-        console.warn("[Webhook] payment.authorized missing payment entity");
         return;
     }
 
     const billingAccountId = payment.notes?.fairlx_billing_account_id;
     if (!billingAccountId) {
         // Not a Fairlx payment, skip
-        console.log("[Webhook] payment.authorized - not a Fairlx payment, skipping");
         return;
     }
 
@@ -576,8 +548,6 @@ async function handlePaymentAuthorized(
             }),
         }
     );
-
-    console.log(`[Webhook] Processed payment.authorized for account ${billingAccountId}`);
 }
 
 /**
@@ -592,13 +562,12 @@ async function handleRefundProcessed(
 ) {
     const refund = event.payload.refund?.entity;
     if (!refund) {
-        console.warn("[Webhook] refund.processed missing refund entity");
         return;
     }
 
     const billingAccountId = refund.notes?.fairlx_billing_account_id;
     if (!billingAccountId) {
-        console.log("[Webhook] refund.processed - not a Fairlx refund, skipping");
+        // Not a Fairlx refund, skip
         return;
     }
 
@@ -619,8 +588,6 @@ async function handleRefundProcessed(
             }),
         }
     );
-
-    console.log(`[Webhook] Processed refund.processed for account ${billingAccountId}`);
 }
 
 /**
@@ -635,13 +602,12 @@ async function handleRefundFailed(
 ) {
     const refund = event.payload.refund?.entity;
     if (!refund) {
-        console.warn("[Webhook] refund.failed missing refund entity");
         return;
     }
 
     const billingAccountId = refund.notes?.fairlx_billing_account_id;
     if (!billingAccountId) {
-        console.log("[Webhook] refund.failed - not a Fairlx refund, skipping");
+        // Not a Fairlx refund, skip
         return;
     }
 
@@ -661,8 +627,6 @@ async function handleRefundFailed(
             }),
         }
     );
-
-    console.log(`[Webhook] Processed refund.failed for account ${billingAccountId}`);
 }
 
 // ============================================================================
@@ -683,13 +647,11 @@ async function handleTokenConfirmed(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const token = (event.payload as any)?.token?.entity;
     if (!token) {
-        console.warn("[Webhook] token.confirmed missing token entity");
         return;
     }
 
     const customerId = token.customer_id;
     if (!customerId) {
-        console.warn("[Webhook] token.confirmed missing customer_id");
         return;
     }
 
@@ -704,7 +666,6 @@ async function handleTokenConfirmed(
     );
 
     if (billingAccounts.total === 0) {
-        console.log("[Webhook] token.confirmed - billing account not found for customer:", customerId);
         return;
     }
 
@@ -742,8 +703,6 @@ async function handleTokenConfirmed(
             }),
         }
     );
-
-    console.log(`[Webhook] Processed token.confirmed for account ${account.$id}`);
 }
 
 /**
@@ -760,13 +719,11 @@ async function handleTokenFailed(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const token = (event.payload as any)?.token?.entity;
     if (!token) {
-        console.warn("[Webhook] token.failed missing token entity");
         return;
     }
 
     const customerId = token.customer_id;
     if (!customerId) {
-        console.warn("[Webhook] token.failed missing customer_id");
         return;
     }
 
@@ -781,7 +738,6 @@ async function handleTokenFailed(
     );
 
     if (billingAccounts.total === 0) {
-        console.log("[Webhook] token.failed - billing account not found for customer:", customerId);
         return;
     }
 
@@ -817,8 +773,6 @@ async function handleTokenFailed(
             }),
         }
     );
-
-    console.log(`[Webhook] Processed ${event.event} for account ${account.$id}`);
 }
 
 export default app;

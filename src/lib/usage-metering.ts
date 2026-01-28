@@ -78,9 +78,8 @@ export async function logTrafficUsage(
                 },
             },
         });
-    } catch (error) {
-        // Log error but don't throw - metering should not block operations
-        console.error("[UsageMetering] Failed to log traffic usage:", error);
+    } catch {
+        // Metering should not block operations
     }
 }
 
@@ -123,8 +122,8 @@ export async function logStorageUsage(
                 },
             },
         });
-    } catch (error) {
-        console.error("[UsageMetering] Failed to log storage usage:", error);
+    } catch {
+        // Metering should not block operations
     }
 }
 
@@ -188,9 +187,8 @@ export async function logComputeUsage(
                     },
                 },
             });
-        } catch (error: unknown) {
-            // Log errors but don't throw - metering should never block operations
-            console.error("[UsageMetering] Failed to log compute usage:", error);
+        } catch {
+            // Metering should never block operations
         }
     }, 100); // Small delay to let main operation complete first
 }
@@ -224,8 +222,8 @@ export async function logAIUsage(
                 source: UsageSource.AI,
             }
         );
-    } catch (error) {
-        console.error("[UsageMetering] Failed to log AI usage:", error);
+    } catch {
+        // Metering should not block operations
     }
 }
 

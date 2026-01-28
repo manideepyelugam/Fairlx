@@ -106,8 +106,8 @@ export function DepartmentPermissionsDialog({
 
             setHasChanges(false);
             onOpenChange(false);
-        } catch (error) {
-            console.error("Failed to save permissions", error);
+        } catch {
+            // Error handled silently
         } finally {
             setIsSaving(false);
         }

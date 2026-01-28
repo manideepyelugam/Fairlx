@@ -65,8 +65,8 @@ class NotificationDispatcher {
             const deliveryPromises = recipientUserIds.map(async (userId) => {
                 try {
                     await this.processRecipient(userId, event);
-                } catch (error) {
-                    console.error(`[Dispatcher] Failed to process recipient ${userId}:`, error);
+                } catch {
+                    // Silently fail for individual recipients
                 }
             });
 
@@ -75,8 +75,7 @@ class NotificationDispatcher {
             // console.log("==========================================================");
             // console.log(`[Dispatcher] NOTIFICATION DISPATCH COMPLETED for event: ${event.type}`);
             // console.log("==========================================================");
-        } catch (error) {
-            console.error("[Dispatcher] DISPATCH FAILED WITH ERROR:", error);
+        } catch {
             // Don't throw - notifications should not break the main flow
         }
     }
@@ -127,8 +126,8 @@ class NotificationDispatcher {
                 try {
                     await handler.send(userId, payload);
                     // console.log(`[Dispatcher] Sent via ${channelName} to user: ${userId}`);
-                } catch (error) {
-                    console.error(`[Dispatcher] ${channelName} delivery failed for user ${userId}:`, error);
+                } catch {
+                    // Channel delivery failed - silently continue
                 }
             }
         });
@@ -162,8 +161,8 @@ class NotificationDispatcher {
                         recipients.add(member.userId as string);
                     }
                 });
-            } catch (error) {
-                console.error("[Dispatcher] Failed to resolve assignee members:", error);
+            } catch {
+                // Failed to resolve assignee members - continue
             }
         } else {
             // console.log("[Dispatcher:resolveRecipients] No assigneeIds in workitem");
@@ -213,8 +212,8 @@ class NotificationDispatcher {
                     // Invalid JSON, use defaults
                 }
             }
-        } catch (error) {
-            console.error(`[Dispatcher] Failed to get preferences for user ${userId}:`, error);
+        } catch {
+            // Use default preferences on error
         }
 
         return DEFAULT_NOTIFICATION_PREFERENCES;
@@ -303,8 +302,8 @@ class NotificationDispatcher {
             );
             // console.log(`[Dispatcher] DB NOTIFICATION CREATED`);
             // console.log(`[Dispatcher] Title: "${payload.title}", Message: "${payload.summary}"`);
-        } catch (error) {
-            console.error(`[Dispatcher] FAILED to store in-app notification for user ${userId}:`, error);
+        } catch {
+            // Failed to store notification - silently continue
         }
     }
 

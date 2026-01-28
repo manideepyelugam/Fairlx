@@ -102,8 +102,7 @@ export function LinkedProviders() {
         setIsLinkingGoogle(true);
         try {
             await signUpWithGoogle();
-        } catch (error) {
-            console.error("Failed to link Google:", error);
+        } catch {
             setIsLinkingGoogle(false);
         }
     };
@@ -112,8 +111,7 @@ export function LinkedProviders() {
         setIsLinkingGithub(true);
         try {
             await signUpWithGithub();
-        } catch (error) {
-            console.error("Failed to link GitHub:", error);
+        } catch {
             setIsLinkingGithub(false);
         }
     };

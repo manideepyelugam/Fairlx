@@ -120,9 +120,8 @@ const app = new Hono()
           name: org.name,
           imageUrl: org.imageUrl,
         };
-      } catch (error) {
+      } catch {
         // Organization might not exist or user doesn't have access
-        console.error("Failed to fetch organization:", error);
       }
     }
 
@@ -398,8 +397,7 @@ const app = new Hono()
       await databases.deleteDocument(DATABASE_ID, WORKSPACES_ID, workspaceId);
 
       return c.json({ data: { $id: workspaceId } });
-    } catch (error) {
-      console.error("Error during workspace deletion:", error);
+    } catch {
       return c.json({ error: "Failed to delete workspace and related data" }, 500);
     }
   })

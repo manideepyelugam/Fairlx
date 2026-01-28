@@ -42,7 +42,6 @@ export const useAppRefresh = () => {
         // Guard: Throttle - prevent rapid consecutive refreshes
         const now = Date.now();
         if (now - lastRefreshRef.current < THROTTLE_MS) {
-            console.log("[Refresh] Throttled - too soon since last refresh");
             return;
         }
 
@@ -89,8 +88,7 @@ export const useAppRefresh = () => {
                 return;
             }
 
-            // For other errors, log but don't crash
-            console.error("[Refresh] Error during refresh:", error);
+            // For other errors, don't crash
         } finally {
             // Ensure UI shows refresh state briefly
             setTimeout(() => {

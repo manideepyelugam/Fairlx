@@ -43,7 +43,7 @@ export function assertInvariant(
     context?: Record<string, unknown>
 ): asserts condition {
     if (!condition) {
-        const violation: InvariantViolation = {
+        const _violation: InvariantViolation = {
             message,
             invariantName,
             context,
@@ -55,8 +55,6 @@ export function assertInvariant(
                 `[INVARIANT VIOLATION: ${invariantName}] ${message}\n` +
                 `Context: ${JSON.stringify(context, null, 2)}`
             );
-        } else {
-            console.error("[INVARIANT VIOLATION]", JSON.stringify(violation));
         }
     }
 }
@@ -446,12 +444,10 @@ export async function cleanupGhostMembers(
 
     for (const ghost of ghosts) {
         if (dryRun) {
-            console.log(`[DRY RUN] Would delete ghost member: ${ghost.memberId} (${ghost.reason})`);
             deleted++;
         } else {
             try {
                 await databases.deleteDocument(DATABASE_ID, MEMBERS_ID, ghost.memberId);
-                console.log(`[CLEANUP] Deleted ghost member: ${ghost.memberId} (${ghost.reason})`);
                 deleted++;
             } catch (error) {
                 errors.push(`Failed to delete ${ghost.memberId}: ${error}`);

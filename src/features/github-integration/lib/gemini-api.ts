@@ -152,7 +152,6 @@ export class GeminiAPI {
         await new Promise((r) => setTimeout(r, 500));
         return this.callGemini(payload, retries - 1);
       }
-      console.error("Gemini call failed:", err);
       throw err;
     }
   }
@@ -556,8 +555,7 @@ Format your response in clean Markdown with proper headings, code blocks, and bu
         faq[question] = await this.callGemini(payload);
         // small delay
         await new Promise((r) => setTimeout(r, 250));
-      } catch (err) {
-        console.error(`Error generating FAQ for question: ${question}`, err);
+      } catch {
         faq[question] = "Unable to generate answer at this time.";
       }
     }

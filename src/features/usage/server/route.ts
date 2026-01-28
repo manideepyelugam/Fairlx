@@ -78,8 +78,7 @@ async function checkOrgAdminAccess(
         const member = members.documents[0];
         const hasAccess = member.role === "OWNER" || member.role === "ADMIN";
         return hasAccess;
-    } catch (error) {
-        console.error("[Usage] checkOrgAdminAccess error:", error);
+    } catch {
         return false;
     }
 }
@@ -107,8 +106,7 @@ async function getOrgWorkspaceIds(
 
         const workspaceIds = workspaces.documents.map((ws: { $id: string }) => ws.$id);
         return workspaceIds;
-    } catch (error) {
-        console.error("[Usage] getOrgWorkspaceIds error:", error);
+    } catch {
         return [];
     }
 }
@@ -190,8 +188,7 @@ async function getBillingEntityForEvent(
             entityId: workspace.organizationId,
             entityType: "organization",
         };
-    } catch (error) {
-        console.error("[Usage] Error determining billing entity:", error);
+    } catch {
         // Fallback: bill to workspace owner
         try {
             const workspace = await databases.getDocument(

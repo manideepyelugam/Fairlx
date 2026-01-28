@@ -70,7 +70,6 @@ export function verifyWebhookSignature(
     const webhookSecret = secret || process.env.RAZORPAY_WEBHOOK_SECRET;
 
     if (!webhookSecret) {
-        console.error("[Razorpay] Webhook secret not configured");
         return false;
     }
 
@@ -84,8 +83,7 @@ export function verifyWebhookSignature(
             Buffer.from(signature),
             Buffer.from(expectedSignature)
         );
-    } catch (error) {
-        console.error("[Razorpay] Signature verification failed:", error);
+    } catch {
         return false;
     }
 }
@@ -108,7 +106,6 @@ export function verifyPaymentSignature(
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
     if (!keySecret) {
-        console.error("[Razorpay] API key secret not configured");
         return false;
     }
 
@@ -123,8 +120,7 @@ export function verifyPaymentSignature(
             Buffer.from(signature),
             Buffer.from(expectedSignature)
         );
-    } catch (error) {
-        console.error("[Razorpay] Payment signature verification failed:", error);
+    } catch {
         return false;
     }
 }
@@ -147,7 +143,6 @@ export function verifySubscriptionSignature(
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
     if (!keySecret) {
-        console.error("[Razorpay] API key secret not configured");
         return false;
     }
 
@@ -162,8 +157,7 @@ export function verifySubscriptionSignature(
             Buffer.from(signature),
             Buffer.from(expectedSignature)
         );
-    } catch (error) {
-        console.error("[Razorpay] Subscription signature verification failed:", error);
+    } catch {
         return false;
     }
 }
@@ -200,7 +194,7 @@ export async function createCustomer(options: CreateCustomerOptions) {
         if (apiError.error?.description === "Customer already exists for the merchant" ||
             apiError.error?.code === "BAD_REQUEST_ERROR") {
 
-            console.log(`[Razorpay] Customer exists, fetching by email: ${options.email}`);
+            // Customer exists, fetch by email
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const customers: any = await razorpay.customers.all({
                 email: options.email,
@@ -255,10 +249,8 @@ export async function ensureCustomerContact(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (!(customer as any).contact) {
             await updateCustomer(customerId, { contact });
-            console.log(`[Razorpay] Updated customer ${customerId} with contact`);
         }
     } catch (error) {
-        console.error(`[Razorpay] Failed to update customer contact:`, error);
         throw error;
     }
 }
