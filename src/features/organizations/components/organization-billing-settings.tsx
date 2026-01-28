@@ -95,8 +95,8 @@ export function OrganizationBillingSettings({
                 const settings = organization.billingSettings ? JSON.parse(organization.billingSettings) : {};
                 setBillingEmailValue(settings.primaryEmail || "");
                 setAlternativeEmailValue(settings.alternativeEmail || "");
-            } catch (e) {
-                console.error("Failed to parse billing settings", e);
+            } catch {
+                // Failed to parse billing settings
             }
         }
     }, [organization]);
@@ -150,8 +150,7 @@ export function OrganizationBillingSettings({
                 toast.success("Billing settings updated successfully!");
                 setIsSaving(false);
             },
-            onError: (error) => {
-                console.error("Failed to save billing settings:", error);
+            onError: () => {
                 toast.error("Failed to save billing settings");
                 setIsSaving(false);
             }
@@ -200,8 +199,7 @@ export function OrganizationBillingSettings({
                             contactPhone: billingPhone, // Required for e-Mandate
                         }
                     });
-                } catch (error) {
-                    console.error("Failed to auto-setup billing account:", error);
+                } catch {
                     toast.error("Failed to initialize billing account. Please contact support.");
                     setIsAddingPayment(false);
                     return;
@@ -268,8 +266,7 @@ export function OrganizationBillingSettings({
                             razorpaySignature: response.razorpay_signature,
                         });
                         // Success toast is handled by the mutation
-                    } catch (error) {
-                        console.error("Failed to update payment method:", error);
+                    } catch {
                         toast.error("Payment recorded but failed to update. Please contact support.");
                     }
                     setIsAddingPayment(false);
@@ -283,8 +280,7 @@ export function OrganizationBillingSettings({
 
             const razorpay = new window.Razorpay(razorpayOptions);
             razorpay.open();
-        } catch (error) {
-            console.error("Failed to add payment method:", error);
+        } catch {
             toast.error("Failed to initialize payment. Please try again.");
             setIsAddingPayment(false);
         }
@@ -306,7 +302,7 @@ export function OrganizationBillingSettings({
                 src="https://checkout.razorpay.com/v1/checkout.js"
                 onLoad={() => setIsScriptLoaded(true)}
                 onError={() => {
-                    console.error("Failed to load Razorpay script");
+                    // Failed to load Razorpay script
                 }}
             />
 

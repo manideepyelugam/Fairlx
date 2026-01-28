@@ -275,8 +275,8 @@ const WorkflowEditor = () => {
               positionX: Math.round(position.x),
               positionY: Math.round(position.y),
             },
-          }).catch((error) => {
-            console.error(`Failed to save position for ${statusId}:`, error);
+          }).catch(() => {
+            // Failed to save position
           })
         )
       );
@@ -335,8 +335,8 @@ const WorkflowEditor = () => {
             positionY: Math.round(position.y),
           },
         });
-      } catch (error) {
-        console.error("Failed to place status on canvas:", error);
+      } catch {
+        // Failed to place status on canvas
       }
     },
     [workflowId, updateStatus, reactFlowInstance]
@@ -387,8 +387,8 @@ const WorkflowEditor = () => {
             positionY: 0,
           },
         });
-      } catch (error) {
-        console.error("Failed to remove status:", error);
+      } catch {
+        // Failed to remove status
       }
     },
     [workflowId, updateStatus]
@@ -468,8 +468,8 @@ const WorkflowEditor = () => {
             toStatusId: connection.target,
           },
         });
-      } catch (error) {
-        console.error("Failed to create transition:", error);
+      } catch {
+        // Failed to create transition
       }
     },
     [workflowId, createTransition]

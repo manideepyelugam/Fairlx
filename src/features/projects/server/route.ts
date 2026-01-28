@@ -329,8 +329,7 @@ const app = new Hono()
       await databases.deleteDocument(DATABASE_ID, PROJECTS_ID, projectId);
 
       return c.json({ data: { $id: existingProject.$id } });
-    } catch (error) {
-      console.error("Error during project deletion:", error);
+    } catch {
       return c.json({ error: "Failed to delete project and related data" }, 500);
     }
   })
@@ -578,7 +577,6 @@ const app = new Hono()
 
         return c.json({ data: transformProject(updatedProject) });
       } catch (error) {
-        console.error("Error assigning project to team:", error);
         return c.json({
           error: "Failed to assign project to team",
           details: error instanceof Error ? error.message : String(error)
@@ -657,7 +655,6 @@ const app = new Hono()
 
         return c.json({ data: transformProject(updatedProject) });
       } catch (error) {
-        console.error("Error unassigning project from team:", error);
         return c.json({
           error: "Failed to unassign project from team",
           details: error instanceof Error ? error.message : String(error)

@@ -97,7 +97,6 @@ export function PersonalWorkspaceStep({
             // Advance step via callback (updates local state)
             onWorkspaceCreated(workspaceId);
         } catch (error) {
-            console.error("Workspace creation error:", error);
             toast.error(error instanceof Error ? error.message : "Failed to create workspace");
         } finally {
             setIsSubmitting(false);

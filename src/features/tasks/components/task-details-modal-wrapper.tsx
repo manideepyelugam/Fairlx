@@ -106,7 +106,12 @@ export const TaskDetailsModalWrapper = () => {
               {/* Description Section */}
               <div className="px-6 py-4 border-b">
                 <h3 className="font-semibold mb-2">Description</h3>
-                <TaskDescription task={data} canEdit={canEditTasks} />
+                <TaskDescription 
+                  task={data} 
+                  canEdit={canEditTasks} 
+                  workspaceId={workspaceId}
+                  projectId={data.projectId}
+                />
               </div>
 
               {/* Subtasks Section */}

@@ -44,8 +44,7 @@ export const useCompleteSprint = () => {
             queryClient.invalidateQueries({ queryKey: ["sprints"] });
             queryClient.invalidateQueries({ queryKey: ["work-items"] });
         },
-        onError: (error) => {
-            console.error(error);
+        onError: () => {
             toast.error("Failed to complete sprint");
         }
     });

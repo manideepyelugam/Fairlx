@@ -134,7 +134,6 @@ const app = new Hono()
           },
         });
       } catch (error: unknown) {
-        console.error("Error fetching commit summaries:", error);
         return c.json(
           {
             error: error instanceof Error

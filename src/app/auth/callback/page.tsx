@@ -185,8 +185,7 @@ export default function AuthCallbackPage() {
 
                 // Fallback: Unknown state → onboarding
                 router.replace("/onboarding");
-            } catch (err) {
-                console.error("Auth callback error:", err);
+            } catch {
                 setError("An error occurred during authentication");
             }
         }

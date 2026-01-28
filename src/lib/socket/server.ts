@@ -42,7 +42,6 @@ const connectedUsers = new Map<string, Set<string>>(); // userId -> Set of socke
  */
 export function initSocketServer(httpServer: HTTPServer): SocketIOServer {
     if (io) {
-        console.log("[SocketServer] Already initialized, returning existing instance");
         return io;
     }
 
@@ -59,7 +58,6 @@ export function initSocketServer(httpServer: HTTPServer): SocketIOServer {
 
     io.on("connection", handleConnection);
 
-    console.log("[SocketServer] Initialized successfully");
     return io;
 }
 
@@ -83,8 +81,6 @@ export function isSocketServerAvailable(): boolean {
 // =============================================================================
 
 function handleConnection(socket: Socket): void {
-    console.log(`[SocketServer] New connection: ${socket.id}`);
-
     // Handle authentication
     socket.on("auth:connect", (payload: SocketAuthPayload) => {
         handleAuth(socket, payload);
@@ -96,8 +92,8 @@ function handleConnection(socket: Socket): void {
     });
 
     // Handle errors
-    socket.on("error", (error) => {
-        console.error(`[SocketServer] Socket error for ${socket.id}:`, error);
+    socket.on("error", () => {
+        // Error handled silently in production
     });
 }
 
@@ -134,10 +130,7 @@ function handleAuth(socket: Socket, payload: SocketAuthPayload): void {
             userId,
             connectedAt: new Date().toISOString(),
         });
-
-        console.log(`[SocketServer] User ${userId} authenticated, joined room: ${userRoom}`);
-    } catch (error) {
-        console.error("[SocketServer] Auth error:", error);
+    } catch {
         socket.emit("auth:error", { message: "Authentication failed" });
     }
 }
@@ -145,7 +138,7 @@ function handleAuth(socket: Socket, payload: SocketAuthPayload): void {
 /**
  * Handle socket disconnection
  */
-function handleDisconnect(socket: Socket, reason: string): void {
+function handleDisconnect(socket: Socket, _reason: string): void {
     const userId = (socket as Socket & { userId?: string }).userId;
 
     if (userId) {
@@ -157,8 +150,6 @@ function handleDisconnect(socket: Socket, reason: string): void {
             }
         }
     }
-
-    console.log(`[SocketServer] Disconnected: ${socket.id}, reason: ${reason}`);
 }
 
 // =============================================================================
@@ -185,11 +176,8 @@ export function emitToUser(userId: string, payload: SocketNotificationPayload): 
 
         const userRoom = `user:${userId}`;
         io.to(userRoom).emit("notification:new", payload);
-
-        console.log(`[SocketServer] Emitted to ${userRoom}:`, payload.type);
-    } catch (error) {
+    } catch {
         // CRITICAL: Never throw - fire and forget
-        console.error("[SocketServer] Emit failed (non-blocking):", error);
     }
 }
 

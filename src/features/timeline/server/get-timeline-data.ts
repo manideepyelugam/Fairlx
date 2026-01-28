@@ -165,8 +165,7 @@ export async function getTimelineData(
         documents: populatedWorkItems,
       },
     };
-  } catch (error) {
-    console.error("Error fetching timeline data:", error);
+  } catch {
     return null;
   }
 }

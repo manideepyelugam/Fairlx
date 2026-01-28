@@ -62,7 +62,6 @@ const CommitCard = ({ commit }: { commit: CommitData }) => {
 
   // Safety check for required fields
   if (!commit.hash || !commit.message || !commit.author || !commit.date) {
-    console.warn('Invalid commit data:', commit);
     return null;
   }
 
@@ -211,8 +210,8 @@ export const CommitHistory = ({ projectId }: CommitHistoryProps) => {
       }
 
       setCommits([]);
-    } catch (error) {
-      console.error("[CommitHistory] Failed to load cached commits", error);
+    } catch {
+      // Silent fail for cache loading
     }
   }, [projectId]);
 
@@ -225,7 +224,7 @@ export const CommitHistory = ({ projectId }: CommitHistoryProps) => {
     };
 
     load()
-      .catch((error) => console.error("[CommitHistory] Failed to initialize cache", error))
+      .catch(() => { /* Silent fail for cache initialization */ })
       .finally(() => {
         if (!cancelled) {
           setIsLoadingCache(false);
@@ -301,8 +300,8 @@ export const CommitHistory = ({ projectId }: CommitHistoryProps) => {
               await saveCommitsToCache(projectId, sortCommitsByDate(optimizedCommits));
               clearLegacyCommits(projectId);
               notifyCommitsUpdated(projectId);
-            } catch (error) {
-              console.error('[Cache] Failed to save commits to IndexedDB:', error);
+            } catch {
+              // Silent fail for cache saving
             }
           }
         },

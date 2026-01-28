@@ -48,7 +48,6 @@ async function fetchLiveRates(): Promise<Record<string, number> | null> {
 
     // If no API key configured, use static rates immediately
     if (!apiKey) {
-        console.log("[Currency] No EXCHANGE_RATE_API_KEY configured, using static rates");
         return null;
     }
 
@@ -59,20 +58,17 @@ async function fetchLiveRates(): Promise<Record<string, number> | null> {
         );
 
         if (!response.ok) {
-            console.error("[Currency] API response not OK:", response.status);
             return null;
         }
 
         const data = await response.json();
 
         if (data.result === "error") {
-            console.error("[Currency] API returned error:", data);
             return null;
         }
 
         return data.conversion_rates;
-    } catch (error) {
-        console.error("[Currency] Failed to fetch live rates:", error);
+    } catch {
         return null;
     }
 }
@@ -98,7 +94,6 @@ export async function getExchangeRates(): Promise<RateCache> {
             fetchedAt: now,
             expiresAt: now + CACHE_DURATION_MS,
         };
-        console.log("[Currency] Fetched fresh exchange rates");
     } else {
         // Use fallback static rates
         rateCache = {
@@ -128,7 +123,6 @@ export async function getExchangeRates(): Promise<RateCache> {
             fetchedAt: now,
             expiresAt: now + CACHE_DURATION_MS,
         };
-        console.warn("[Currency] Using fallback static rates");
     }
 
     return rateCache;

@@ -82,8 +82,6 @@ export async function getOrCreateWallet(
         }
     );
 
-    console.log(`[Wallet] Created wallet ${wallet.$id} for ${options.organizationId || options.userId}`);
-
     return wallet;
 }
 
@@ -142,7 +140,6 @@ export async function topUpWallet(
     // 1. Acquire Distributed Lock (Atomic)
     // This returns false if event is already processed OR currently being processed
     if (!(await acquireProcessingLock(databases, eventKey, "wallet"))) {
-        console.log(`[Wallet] Duplicate top-up ignored: ${options.idempotencyKey}`);
         return { success: true, error: "already_processed" };
     }
 
@@ -190,12 +187,9 @@ export async function topUpWallet(
             }
         );
 
-        console.log(`[Wallet] Top-up successful: ${walletId} +${amount} (${wallet.currency})`);
-
         return { success: true, transaction };
 
     } catch (error) {
-        console.error(`[Wallet] Top-up failed: ${error}`);
         // Rollback lock mechanisms so it can be retried
         await releaseProcessingLock(databases, eventKey, "wallet");
         throw error;
@@ -231,7 +225,6 @@ export async function deductFromWallet(
 
     // 1. Acquire Distributed Lock
     if (!(await acquireProcessingLock(databases, eventKey, "wallet"))) {
-        console.log(`[Wallet] Duplicate deduction ignored: ${options.idempotencyKey}`);
         return { success: true, error: "already_processed" };
     }
 
@@ -246,7 +239,6 @@ export async function deductFromWallet(
         // 3. Status Check (Balance)
         const availableBalance = wallet.balance - wallet.lockedBalance;
         if (availableBalance < amount) {
-            console.log(`[Wallet] Insufficient balance: ${walletId} has ${availableBalance}, needs ${amount}`);
             // Release lock because logic failed, not system error?
             // If we release lock, they can retry. But balance is still insufficient.
             // If we KEEP lock, they cannot retry.
@@ -292,12 +284,9 @@ export async function deductFromWallet(
             }
         );
 
-        console.log(`[Wallet] Deduction successful: ${walletId} -${amount} (${wallet.currency})`);
-
         return { success: true, transaction };
 
     } catch (error) {
-        console.error(`[Wallet] Deduction failed: ${error}`);
         // Rollback lock to allow retry
         await releaseProcessingLock(databases, eventKey, "wallet");
         throw error;
@@ -332,7 +321,6 @@ export async function refundToWallet(
 
     // 1. Acquire Distributed Lock
     if (!(await acquireProcessingLock(databases, eventKey, "wallet"))) {
-        console.log(`[Wallet] Duplicate refund ignored: ${options.idempotencyKey}`);
         return { success: true, error: "already_processed" };
     }
 
@@ -373,12 +361,9 @@ export async function refundToWallet(
             }
         );
 
-        console.log(`[Wallet] Refund successful: ${walletId} +${amount} (${wallet.currency})`);
-
         return { success: true, transaction };
 
     } catch (error) {
-        console.error(`[Wallet] Refund failed: ${error}`);
         await releaseProcessingLock(databases, eventKey, "wallet");
         throw error;
     }

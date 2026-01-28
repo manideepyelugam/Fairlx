@@ -95,7 +95,6 @@ export async function assertOrgMembership(
         if (error instanceof AuthorizationError) {
             throw error;
         }
-        console.error("[AuthorizationGuards] assertOrgMembership failed:", error);
         throw new AuthorizationError(
             "NOT_ORG_MEMBER",
             "Unable to verify organization membership",
@@ -169,8 +168,7 @@ export async function deriveOrgFromWorkspace(
             orgId: workspace.organizationId || null,
             userId: workspace.userId || null,
         };
-    } catch (error) {
-        console.error("[AuthorizationGuards] deriveOrgFromWorkspace failed:", error);
+    } catch {
         return { orgId: null, userId: null };
     }
 }
@@ -267,7 +265,6 @@ export async function assertWorkspaceAccess(
         if (error instanceof AuthorizationError) {
             throw error;
         }
-        console.error("[AuthorizationGuards] assertWorkspaceAccess failed:", error);
         throw new AuthorizationError(
             "NO_WORKSPACE_ACCESS",
             "Unable to verify workspace access",

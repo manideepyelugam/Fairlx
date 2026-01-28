@@ -192,8 +192,7 @@ export async function validateUserOrgMembershipAsync(
         }
 
         return { isMember: false, role: null, membershipId: null };
-    } catch (error) {
-        console.error("[PermissionGuard] Failed to validate org membership:", error);
+    } catch {
         return { isMember: false, role: null, membershipId: null };
     }
 }
@@ -229,8 +228,7 @@ export async function isLastOrgOwner(
         }
 
         return false;
-    } catch (error) {
-        console.error("[PermissionGuard] Failed to check last owner:", error);
+    } catch {
         return false; // Fail open on error - prefer allowing action over blocking incorrectly
     }
 }

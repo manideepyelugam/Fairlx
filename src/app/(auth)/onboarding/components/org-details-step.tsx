@@ -85,8 +85,7 @@ export function OrgDetailsStep({
             toast.success("Verification email sent!", {
                 description: "Please check your inbox and verify your email.",
             });
-        } catch (error) {
-            console.error("Resend verification error:", error);
+        } catch {
             toast.error("Failed to send verification email. Please try again.");
         } finally {
             setIsResendingVerification(false);
@@ -145,7 +144,6 @@ export function OrgDetailsStep({
             // Advance step via callback
             onOrgCreated(organization.$id, values.name);
         } catch (error) {
-            console.error("Organization creation error:", error);
             toast.error(error instanceof Error ? error.message : "Failed to create organization");
         } finally {
             setIsSubmitting(false);

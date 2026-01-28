@@ -91,7 +91,6 @@ export function SetPasswordDialog({ open, onOpenChange }: SetPasswordDialogProps
             onOpenChange(false);
             form.reset();
         } catch (error) {
-            console.error("Set password error:", error);
             toast.error(error instanceof Error ? error.message : "Failed to set password");
         } finally {
             setIsSubmitting(false);

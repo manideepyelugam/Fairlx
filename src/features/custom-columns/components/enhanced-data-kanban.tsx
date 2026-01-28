@@ -369,7 +369,6 @@ export const EnhancedDataKanban = ({
         const [movedTask] = sourceColumn.splice(source.index, 1);
 
         if (!movedTask) {
-          console.warn("No task found at the source index");
           return prevTasks;
         }
 

@@ -120,8 +120,8 @@ const app = new Hono()
             );
             updates.push(updated);
           }
-        } catch (error) {
-          console.error(`Failed to update column ${column.id}:`, error);
+        } catch {
+          // Silent fail for individual column update
         }
       }
 

@@ -68,8 +68,7 @@ export default function WorkspaceSetupPage() {
             // Invalidate cache before redirect
             await queryClient.invalidateQueries({ queryKey: ["current"] });
             router.push("/");
-        } catch (error) {
-            console.error("Error finishing setup:", error);
+        } catch {
             // Fallback redirect
             router.push("/");
         }
@@ -120,7 +119,6 @@ export default function WorkspaceSetupPage() {
                 router.push("/");
             }
         } catch (error) {
-            console.error("Workspace setup error:", error);
             toast.error(error instanceof Error ? error.message : "Failed to create workspace");
         } finally {
             setIsSubmitting(false);

@@ -110,7 +110,7 @@ export default function OrganizationSetupPage() {
             });
 
             if (!prefsResponse.ok) {
-                console.error("Failed to update prefs, but org was created");
+                // Prefs update failed but org was created
             }
 
             // Invalidate cache so next page sees updated prefs immediately
@@ -123,7 +123,6 @@ export default function OrganizationSetupPage() {
             // Redirect to workspace setup
             router.push("/onboarding/workspace");
         } catch (error) {
-            console.error("Organization setup error:", error);
             toast.error(error instanceof Error ? error.message : "Failed to create organization");
         } finally {
             setIsSubmitting(false);

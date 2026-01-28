@@ -230,8 +230,8 @@ async function sendEmailNotification({
       [], // CC
       [] // BCC
     );
-  } catch (error) {
-    console.error('[sendEmailNotification] Failed to send email:', error);
+  } catch {
+    // Silent failure - email notification is non-critical
   }
 }
 
@@ -296,8 +296,8 @@ export async function createNotification({
       task,
       triggeredByName,
       metadata,
-    }).catch((error) => {
-      console.error('[createNotification] Email notification failed:', error);
+    }).catch(() => {
+      // Silent failure - email notification is non-critical
     });
   }
 
@@ -532,13 +532,13 @@ export async function notifyWorkspaceAdmins({
           task,
           triggeredByName,
         });
-      } catch (error) {
-        console.error('[notifyWorkspaceAdmins] Failed to create notification:', error);
+      } catch {
+        // Silent failure - notifications are non-critical
       }
     });
 
     await Promise.all(notificationPromises);
-  } catch (error) {
-    console.error('[notifyWorkspaceAdmins] Error in notification process:', error);
+  } catch {
+    // Silent failure - notifications are non-critical
   }
 }

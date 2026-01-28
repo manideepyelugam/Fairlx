@@ -217,8 +217,7 @@ export async function assertCanRebuild(
             if (error instanceof RebuildGuardError) {
                 throw error;
             }
-            // Query error - log but don't block
-            console.warn("[RebuildGuards] Failed to check finalized aggregations:", error);
+            // Query error - don't block
         }
     }
 

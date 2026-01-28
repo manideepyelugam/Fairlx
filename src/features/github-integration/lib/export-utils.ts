@@ -68,8 +68,7 @@ export async function exportToWord(
     // Generate blob and trigger download
     const blob = await Packer.toBlob(doc);
     downloadBlob(blob, `${fileName}.docx`);
-  } catch (error) {
-    console.error("Error exporting to Word:", error);
+  } catch {
     throw new Error("Failed to export to Word document");
   }
 }
@@ -371,8 +370,7 @@ export async function exportToPDF(
 
     // Save PDF
     pdf.save(`${fileName}.pdf`);
-  } catch (error) {
-    console.error("Error exporting to PDF:", error);
+  } catch {
     throw new Error("Failed to export to PDF document");
   }
 }

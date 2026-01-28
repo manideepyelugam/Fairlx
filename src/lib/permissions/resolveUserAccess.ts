@@ -183,8 +183,7 @@ export async function resolveUserAccess(
             departmentIds: orgAccess.departmentIds,
             hasDepartmentAccess: orgAccess.hasDepartmentAccess,
         };
-    } catch (error) {
-        console.error("[resolveUserAccess] Error resolving access:", error);
+    } catch {
         // On error, return base access only
         baseAccess.allowedPaths = getPathsForRouteKeys(baseAccess.allowedRouteKeys, workspaceId);
         return baseAccess;

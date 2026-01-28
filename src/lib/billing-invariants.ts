@@ -87,16 +87,12 @@ export async function assertInvoiceUsageImmutable(
 
         // If invoice is PAID, the aggregation must have been finalized before payment
         if (invoice.status === "PAID" && !aggregation.finalizedAt) {
-            console.warn(
-                "[BillingInvariants] Invoice paid but aggregation missing finalizedAt timestamp",
-                { invoiceId, aggregationSnapshotId }
-            );
+            // Missing finalizedAt timestamp - handled silently in production
         }
     } catch (error) {
         if (error instanceof InvariantViolationError) {
             throw error;
         }
-        console.error("[BillingInvariants] assertInvoiceUsageImmutable failed:", error);
         throw new InvariantViolationError(
             "INVOICE_USAGE_CHECK_FAILED",
             "Unable to verify invoice-usage immutability",
@@ -121,9 +117,7 @@ export function assertStatusTransition(
 ): void {
     try {
         assertValidStatusTransition(from, to);
-        console.log(`[BillingInvariants] Valid transition: ${billingAccountId} ${from} -> ${to}`);
     } catch (error) {
-        console.error(`[BillingInvariants] Invalid transition: ${billingAccountId} ${from} -> ${to}`);
         throw new InvariantViolationError(
             "STATUS_TRANSITION",
             error instanceof Error ? error.message : String(error),
@@ -197,8 +191,7 @@ export async function assertNoUsageDuringSuspension(
         if (error instanceof InvariantViolationError) {
             throw error;
         }
-        console.error("[BillingInvariants] assertNoUsageDuringSuspension failed:", error);
-        // Don't throw for check failures - log only
+        // Don't throw for check failures
     }
 }
 
@@ -266,7 +259,7 @@ export async function assertAggregationNotFinalized(
         if (String(error).includes("not found")) {
             return;
         }
-        console.error("[BillingInvariants] assertAggregationNotFinalized failed:", error);
+        // Error handled silently in production
     }
 }
 
@@ -348,21 +341,11 @@ export async function assertAggregationMatchesEvents(
             diff.computeUnits <= maxComputeDiff;
 
         if (!matches) {
-            console.warn("[BillingInvariants] Aggregation mismatch detected:", {
-                aggregationId,
-                expected: { trafficGB: expectedTrafficGB, storageGB: expectedStorageGB, computeUnits },
-                actual: {
-                    trafficGB: aggregation.trafficTotalGB,
-                    storageGB: aggregation.storageAvgGB,
-                    computeUnits: aggregation.computeTotalUnits,
-                },
-                diff,
-            });
+            // Aggregation mismatch detected - handled silently in production
         }
 
         return { matches, diff };
-    } catch (error) {
-        console.error("[BillingInvariants] assertAggregationMatchesEvents failed:", error);
+    } catch {
         return { matches: false };
     }
 }
@@ -407,8 +390,8 @@ export async function runBillingInvariantChecks(
                 }
             }
         }
-    } catch (error) {
-        console.error("[BillingInvariants] Invoice check failed:", error);
+    } catch {
+        // Invoice check failed - silently continue
     }
 
     return {
@@ -458,8 +441,7 @@ export function checkInvariant(
         // Development: Throw hard error to catch bugs early
         throw error;
     } else {
-        // Production: Log alert but continue operation
-        console.error(`[BILLING][ALERT][INVARIANT] VIOLATION: [${invariant}] ${message}`, context);
+        // Production: Continue operation silently
     }
 }
 
@@ -530,7 +512,7 @@ export async function runCriticalInvariantChecks(
 
         let violationCount = 0;
         for (const account of suspendedAccounts.documents) {
-            const accountData = account as unknown as BillingAccount;
+            const _accountData = account as unknown as BillingAccount;
             // Check for usage events since suspension (approximate check)
             const recentEvents = await databases.listDocuments(
                 DATABASE_ID,
@@ -544,7 +526,6 @@ export async function runCriticalInvariantChecks(
 
             if (recentEvents.total > 0) {
                 violationCount++;
-                console.error(`[BillingInvariants] Usage found during suspension for account ${accountData.$id}`);
             }
         }
 
@@ -585,7 +566,6 @@ export async function runCriticalInvariantChecks(
                     );
                     if (!aggregation.isFinalized) {
                         violationCount++;
-                        console.error(`[BillingInvariants] Paid invoice ${invoice.$id} references non-finalized aggregation`);
                     }
                 } catch {
                     // Aggregation not found - also a violation
@@ -630,7 +610,6 @@ export async function runCriticalInvariantChecks(
                 const age = Date.now() - lockedAt.getTime();
                 if (age > staleThreshold) {
                     staleCount++;
-                    console.warn(`[BillingInvariants] Stale lock on account ${account.$id}, locked ${Math.floor(age / 60000)}m ago`);
                 }
             }
         }
@@ -651,13 +630,6 @@ export async function runCriticalInvariantChecks(
     }
 
     const allPassed = results.every(r => r.passed);
-
-    // Log summary
-    console.log(`[BillingInvariants] Critical checks complete: ${allPassed ? "PASSED" : "FAILED"}`, {
-        total: results.length,
-        passed: results.filter(r => r.passed).length,
-        failed: results.filter(r => !r.passed).length,
-    });
 
     return { allPassed, results };
 }

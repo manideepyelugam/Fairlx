@@ -131,7 +131,6 @@ export function PaymentMethodSetup({
                 src="https://checkout.razorpay.com/v1/checkout.js"
                 onLoad={() => setIsScriptLoaded(true)}
                 onError={() => {
-                    console.error("Failed to load Razorpay script");
                     toast.error("Failed to load payment system");
                 }}
             />

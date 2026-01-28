@@ -213,8 +213,6 @@ export const trafficMeteringMiddleware = createMiddleware<MeteringContext>(
                     // CRITICAL FIX: Log ALL traffic, even without workspace context
                     // For requests without workspace, try organization context
                     if (!workspaceId && !organizationId) {
-                        // Log to console for admin monitoring
-                        console.log(`[TrafficMetering] Unattributed traffic: ${endpoint} (${totalBytes} bytes)`);
                         return;
                     }
 
@@ -279,8 +277,7 @@ export const trafficMeteringMiddleware = createMiddleware<MeteringContext>(
                             if (workspaces.total > 0) {
                                 targetWorkspaceId = workspaces.documents[0].$id;
                             } else {
-                                // Org exists but has no workspaces - log but don't bill to missing workspace
-                                console.log(`[TrafficMetering] Unattributed traffic (Org with no workspaces): ${endpoint} (${totalBytes} bytes)`);
+                                // Org exists but has no workspaces - skip billing
                                 return;
                             }
                         }
@@ -290,8 +287,7 @@ export const trafficMeteringMiddleware = createMiddleware<MeteringContext>(
                         if (appwriteError.code === 404) {
                             return;
                         }
-                        // For other errors, log and continue without billing attribution
-                        console.warn('[TrafficMetering] Could not determine billing entity, skipping');
+                        // For other errors, continue without billing attribution
                     }
 
                     // Build event data
@@ -339,10 +335,7 @@ export const trafficMeteringMiddleware = createMiddleware<MeteringContext>(
                     // Silently handle duplicates (idempotency working)
                     const errorMessage = error instanceof Error ? error.message : String(error);
                     if (!errorMessage.includes('duplicate') && !errorMessage.includes('unique')) {
-                        console.error('[TrafficMetering] Failed to log:', error);
-                        if (eventData) {
-                            console.error('[TrafficMetering] Payload causing error:', JSON.stringify(eventData, null, 2));
-                        }
+                        // Error handled silently in production
                     }
                 }
             }, 50);
@@ -388,7 +381,7 @@ export async function logAnonymousTraffic(
     } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         if (!errorMessage.includes('duplicate') && !errorMessage.includes('unique')) {
-            console.error('[TrafficMetering] Failed to log anonymous traffic:', error);
+            // Error handled silently in production
         }
     }
 }

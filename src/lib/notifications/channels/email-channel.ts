@@ -34,7 +34,6 @@ export class EmailChannelHandler implements ChannelHandler {
             const user = await users.get(userId);
 
             if (!user.email) {
-                console.warn(`[EmailChannel] User ${userId} has no email address`);
                 return;
             }
 
@@ -74,7 +73,6 @@ export class EmailChannelHandler implements ChannelHandler {
 
             // console.log(`[EmailChannel] Email sent to user: ${userId} (${user.email})`);
         } catch (error) {
-            console.error(`[EmailChannel] Failed to send email to user ${userId}:`, error);
             throw error;
         }
     }

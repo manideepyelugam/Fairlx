@@ -300,7 +300,6 @@ export const DataKanban = ({
       // Get the task being moved
       const movedTask = tasks[sourceStatus][source.index];
       if (!movedTask) {
-        console.warn("No task found at the source index");
         return;
       }
 
@@ -334,8 +333,7 @@ export const DataKanban = ({
               );
               return;
             }
-          } catch (error) {
-            console.error("Failed to validate transition:", error);
+          } catch {
             // On validation error, allow the transition (fail-open)
           }
         }
@@ -357,7 +355,6 @@ export const DataKanban = ({
 
         // If there's no moved task (shouldn't happen, but just in case), return the previous state
         if (!draggedTask) {
-          console.warn("No task found at the source index");
           return prevTasks;
         }
 

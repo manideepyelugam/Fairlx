@@ -24,8 +24,7 @@ export async function getAssignee(assigneeId: string): Promise<Assignee | null> 
       email: user.email,
       profileImageUrl: user.prefs?.profileImageUrl || null,
     };
-  } catch (error) {
-    console.error(`Error fetching assignee ${assigneeId}:`, error);
+  } catch {
     return null;
   }
 }

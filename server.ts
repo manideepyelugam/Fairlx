@@ -66,7 +66,6 @@ async function handleInternalPush(req: IncomingMessage, res: ServerResponse): Pr
         res.end(JSON.stringify({ success: true }));
         return true;
     } catch (error) {
-        console.error("[InternalPush] Error:", error);
         res.writeHead(500, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ error: "Internal error" }));
         return true;

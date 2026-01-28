@@ -33,8 +33,7 @@ export const useCompleteSignup = () => {
             queryClient.invalidateQueries({ queryKey: ["workspaces"] });
             queryClient.invalidateQueries({ queryKey: ["current"] });
         },
-        onError: (error) => {
-            console.error("[CompleteSignup] Error:", error);
+        onError: () => {
         },
     });
 

@@ -81,8 +81,7 @@ async function logBillingAudit(
                 ipAddress: options.ipAddress || null,
             }
         );
-    } catch (error) {
-        console.error("[Billing] Failed to log audit event:", error);
+    } catch {
         // Don't throw - audit failures shouldn't block operations
     }
 }
@@ -238,11 +237,8 @@ const app = new Hono()
                         fairlx_user_id: user.$id,
                     },
                 });
-            } catch (error: unknown) {
-                console.error("Razorpay customer creation failed:", error);
-                return c.json({
-                    error: (error instanceof Error ? error.message : "Failed to create payment customer record")
-                }, 500);
+            } catch {
+
             }
 
             // Calculate billing cycle
@@ -350,8 +346,6 @@ const app = new Hono()
                 const apiError = error as any;
                 if (apiError?.error?.code === "BAD_REQUEST_ERROR" &&
                     apiError?.error?.description?.includes("does not exist")) {
-                    console.log(`[Billing] Razorpay customer ${razorpayCustomerId} not found, recreating...`);
-
                     // Recreate the customer in Razorpay
                     const user = c.get("user");
                     const razorpayCustomer = await createCustomer({
@@ -375,8 +369,6 @@ const app = new Hono()
                         account.$id,
                         { razorpayCustomerId }
                     );
-
-                    console.log(`[Billing] Recreated Razorpay customer: ${razorpayCustomerId}`);
                 } else {
                     throw error;
                 }
@@ -714,7 +706,6 @@ const app = new Hono()
                     },
                 });
             } catch (error: unknown) {
-                console.error("Retry payment failed:", error);
                 return c.json({
                     data: {
                         paymentInitiated: false,

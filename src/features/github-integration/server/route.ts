@@ -129,7 +129,6 @@ const app = new Hono()
 
         return c.json({ data: repository });
       } catch (error: unknown) {
-        console.error("Error linking GitHub repository:", error);
         return c.json(
           {
             error: "Failed to link repository",
@@ -200,7 +199,6 @@ const app = new Hono()
 
         return c.json({ data: repo });
       } catch (error: unknown) {
-        console.error("Error fetching repository:", error);
         return c.json(
           {
             error: "Failed to fetch repository",
@@ -264,7 +262,6 @@ const app = new Hono()
 
         return c.json({ success: true });
       } catch (error: unknown) {
-        console.error("Error disconnecting repository:", error);
         return c.json(
           {
             error: "Failed to disconnect repository",

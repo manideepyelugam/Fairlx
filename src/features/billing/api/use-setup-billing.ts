@@ -55,7 +55,6 @@ export const useSetupBilling = () => {
         },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onError: (error: any) => {
-            console.error("Setup billing error:", error);
             // Don't show generic error if we have a specific one
             const message = error instanceof Error ?
                 (error.message.startsWith("{") ? "Validation failed" : error.message) :

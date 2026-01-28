@@ -328,8 +328,7 @@ const app = new Hono()
                     ).toISOString(),
                 },
             });
-        } catch (error) {
-            console.error("[Organizations] Soft-delete failed:", error);
+        } catch {
             return c.json({ error: "Failed to delete organization" }, 500);
         }
     })
@@ -620,8 +619,7 @@ const app = new Hono()
                     workspaceMembershipsRemoved,
                 },
             });
-        } catch (error) {
-            console.error("[Organizations] Member removal failed:", error);
+        } catch {
             return c.json({ error: "Failed to remove member" }, 500);
         }
     })
@@ -847,7 +845,6 @@ const app = new Hono()
                         message: "This email is already registered. Please try again.",
                     }, 400);
                 }
-                console.error("Create org member error:", error);
                 return c.json({
                     error: appwriteError.message || "Failed to create member",
                 }, 500);
@@ -950,7 +947,6 @@ const app = new Hono()
                 });
 
                 if (!emailResult.success) {
-                    console.error("Failed to send welcome email:", emailResult.error);
                     return c.json({
                         error: `Failed to send email: ${emailResult.error || "Unknown error"}. Please check your SMTP configuration in Appwrite Console.`
                     }, 424); // 424 Failed Dependency
@@ -964,8 +960,7 @@ const app = new Hono()
                     tempPassword: process.env.NODE_ENV === "development" ? newTempPassword : undefined,
                 });
 
-            } catch (error) {
-                console.error("Resend welcome email error:", error);
+            } catch {
                 return c.json({ error: "Failed to resend welcome email" }, 500);
             }
         }
@@ -1011,10 +1006,6 @@ const app = new Hono()
                         currentPrefs.primaryOrganizationId
                     );
 
-                    console.log(
-                        `[Organizations] IDEMPOTENT: User ${user.$id} already converted to org ${existingOrg.$id}`
-                    );
-
                     return c.json({
                         data: existingOrg,
                         message: "Account is already an organization (idempotent response)",
@@ -1023,9 +1014,6 @@ const app = new Hono()
                 } catch {
                     // Org doesn't exist but prefs say ORG - corrupted state
                     // Allow conversion to proceed to fix it
-                    console.warn(
-                        `[Organizations] Corrupted state: User ${user.$id} has ORG type but org ${currentPrefs.primaryOrganizationId} not found`
-                    );
                 }
             }
 
@@ -1147,10 +1135,8 @@ const app = new Hono()
                     data: organization,
                     message: "Successfully converted to organization account",
                 });
-            } catch (error) {
+            } catch {
                 // ROLLBACK: Clean up in reverse order
-                console.error("[Organizations] Conversion failed, rolling back:", error);
-
                 for (const item of rollbackStack.reverse()) {
                     try {
                         if (item.type === "organization") {
@@ -1158,8 +1144,8 @@ const app = new Hono()
                         } else if (item.type === "orgMember") {
                             await databases.deleteDocument(DATABASE_ID, ORGANIZATION_MEMBERS_ID, item.id);
                         }
-                    } catch (rollbackError) {
-                        console.error(`[Organizations] Rollback failed for ${item.type}:`, rollbackError);
+                    } catch {
+                        // Rollback failed silently
                     }
                 }
 
@@ -1176,8 +1162,8 @@ const app = new Hono()
                                 billingScope: "user",
                             }
                         );
-                    } catch (revertError) {
-                        console.error("[Organizations] Workspace revert failed:", revertError);
+                    } catch {
+                        // Workspace revert failed silently
                     }
                 }
 
@@ -1232,8 +1218,7 @@ const app = new Hono()
                 limit,
                 offset,
             });
-        } catch (error) {
-            console.error("[Organizations] Failed to fetch audit logs:", error);
+        } catch {
             return c.json({ error: "Failed to fetch audit logs" }, 500);
         }
     });

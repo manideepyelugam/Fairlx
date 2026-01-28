@@ -39,11 +39,9 @@ const IS_DEVELOPMENT = process.env.NODE_ENV === "development";
 function verifyCronSecret(authHeader: string | undefined): boolean {
     if (!CRON_SECRET) {
         if (IS_DEVELOPMENT) {
-            console.warn("[Cron] CRON_SECRET not configured - allowing request in DEV mode only!");
             return true;
         }
         // PRODUCTION: Must have secret configured
-        console.error("[Cron] CRITICAL: CRON_SECRET not configured in production!");
         return false;
     }
 
@@ -74,18 +72,15 @@ const app = new Hono()
         const authHeader = c.req.header("Authorization");
 
         if (!verifyCronSecret(authHeader)) {
-            console.warn("[Cron] Unauthorized billing cycle request");
             return c.json({ error: "Unauthorized" }, 401);
         }
 
-        console.log("[Cron] Starting billing cycle processing...");
         const startTime = Date.now();
 
         try {
             const results = await processBillingCycle();
 
             const duration = Date.now() - startTime;
-            console.log(`[Cron] Billing cycle completed in ${duration}ms`);
 
             return c.json({
                 success: true,
@@ -96,7 +91,6 @@ const app = new Hono()
                 durationMs: duration,
             });
         } catch (error) {
-            console.error("[Cron] Billing cycle failed:", error);
             return c.json({
                 success: false,
                 error: error instanceof Error ? error.message : "Unknown error",
@@ -116,18 +110,15 @@ const app = new Hono()
         const authHeader = c.req.header("Authorization");
 
         if (!verifyCronSecret(authHeader)) {
-            console.warn("[Cron] Unauthorized grace period enforcement request");
             return c.json({ error: "Unauthorized" }, 401);
         }
 
-        console.log("[Cron] Starting grace period enforcement...");
         const startTime = Date.now();
 
         try {
             const results = await enforceGracePeriods();
 
             const duration = Date.now() - startTime;
-            console.log(`[Cron] Grace period enforcement completed in ${duration}ms`);
 
             return c.json({
                 success: true,
@@ -137,7 +128,6 @@ const app = new Hono()
                 durationMs: duration,
             });
         } catch (error) {
-            console.error("[Cron] Grace period enforcement failed:", error);
             return c.json({
                 success: false,
                 error: error instanceof Error ? error.message : "Unknown error",
@@ -157,18 +147,15 @@ const app = new Hono()
         const authHeader = c.req.header("Authorization");
 
         if (!verifyCronSecret(authHeader)) {
-            console.warn("[Cron] Unauthorized reminder request");
             return c.json({ error: "Unauthorized" }, 401);
         }
 
-        console.log("[Cron] Starting reminder email processing...");
         const startTime = Date.now();
 
         try {
             const results = await sendGracePeriodReminders();
 
             const duration = Date.now() - startTime;
-            console.log(`[Cron] Reminder processing completed in ${duration}ms`);
 
             return c.json({
                 success: true,
@@ -178,7 +165,6 @@ const app = new Hono()
                 durationMs: duration,
             });
         } catch (error) {
-            console.error("[Cron] Reminder processing failed:", error);
             return c.json({
                 success: false,
                 error: error instanceof Error ? error.message : "Unknown error",
@@ -198,11 +184,9 @@ const app = new Hono()
         const authHeader = c.req.header("Authorization");
 
         if (!verifyCronSecret(authHeader)) {
-            console.warn("[Cron] Unauthorized alert evaluation request");
             return c.json({ error: "Unauthorized" }, 401);
         }
 
-        console.log("[Cron] Starting alert evaluation...");
         const startTime = Date.now();
 
         try {
@@ -212,7 +196,6 @@ const app = new Hono()
             const results = await evaluateAllAlerts(adminDb);
 
             const duration = Date.now() - startTime;
-            console.log(`[Cron] Alert evaluation completed in ${duration}ms`);
 
             return c.json({
                 success: true,
@@ -222,7 +205,6 @@ const app = new Hono()
                 durationMs: duration,
             });
         } catch (error) {
-            console.error("[Cron] Alert evaluation failed:", error);
             return c.json({
                 success: false,
                 error: error instanceof Error ? error.message : "Unknown error",

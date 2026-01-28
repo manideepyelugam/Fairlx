@@ -619,8 +619,7 @@ const app = new Hono()
                 );
 
                 return c.json({ data: created.map(p => p.permissionKey) });
-            } catch (e) {
-                console.error("Update permissions error:", e);
+            } catch {
                 return c.json({ error: "Failed to update permissions" }, 500);
             }
         }

@@ -156,8 +156,6 @@ export async function captureAllStorageSnapshots(
         results.push(result);
     }
 
-    console.log(`[StorageSnapshot] Captured ${results.filter(r => r.success).length}/${results.length} snapshots`);
-
     return results;
 }
 

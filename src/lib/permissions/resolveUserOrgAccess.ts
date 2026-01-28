@@ -221,8 +221,7 @@ export async function resolveUserOrgAccess(
         });
 
         return result;
-    } catch (error) {
-        console.error("[resolveUserOrgAccess] Error resolving access:", error);
+    } catch {
         return noAccess;
     }
 }
