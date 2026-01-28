@@ -37,6 +37,7 @@ export default function RootLayout({
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
+          themes={["light", "dark", "mid-dark", "system"]}
         >
           <NuqsAdapter>
             <QueryProvider>
