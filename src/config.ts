@@ -30,6 +30,8 @@ export const PROJECT_DOCS_BUCKET_ID = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_D
 
 // Teams & Programs Collections
 export const PROGRAMS_ID = process.env.NEXT_PUBLIC_APPWRITE_PROGRAMS_ID!;
+export const PROGRAM_MEMBERS_ID = process.env.NEXT_PUBLIC_APPWRITE_PROGRAM_MEMBERS_ID!;
+export const PROGRAM_MILESTONES_ID = process.env.NEXT_PUBLIC_APPWRITE_PROGRAM_MILESTONES_ID!;
 export const CUSTOM_ROLES_ID = process.env.NEXT_PUBLIC_APPWRITE_CUSTOM_ROLES_ID!;
 
 // Project-Scoped RBAC Collections

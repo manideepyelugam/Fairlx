@@ -1,4 +1,4 @@
-import { useQueryState, parseAsBoolean } from "nuqs";
+import { useQueryState, parseAsBoolean, parseAsString } from "nuqs";
 
 export const useEditProgramModal = () => {
   const [isOpen, setIsOpen] = useQueryState(
@@ -6,13 +6,29 @@ export const useEditProgramModal = () => {
     parseAsBoolean.withDefault(false).withOptions({ clearOnDefault: true })
   );
 
-  const open = () => setIsOpen(true);
-  const close = () => setIsOpen(false);
+  const [programId, setProgramId] = useQueryState(
+    "edit-program-id",
+    parseAsString.withDefault("").withOptions({ clearOnDefault: true })
+  );
+
+  const open = (id?: string) => {
+    if (id) {
+      setProgramId(id);
+    }
+    setIsOpen(true);
+  };
+
+  const close = () => {
+    setIsOpen(false);
+    setProgramId("");
+  };
 
   return {
     isOpen,
+    programId,
     open,
     close,
     setIsOpen,
+    setProgramId,
   };
 };
