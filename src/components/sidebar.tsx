@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Navigation } from "./navigation";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 import { Projects } from "./projects";
+import { ProjectTools } from "./project-tools";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { Spaces } from "./spaces";
 import { Tools } from "./tools";
@@ -87,7 +88,7 @@ export const Sidebar = () => {
   }
 
   return (
-    <aside className="h-full bg-background w-full overflow-hidden border-r border-border flex flex-col">
+    <aside className="h-full bg-sidebar w-full overflow-hidden border-r border-border flex flex-col">
       <div className="flex items-center w-full py-5 px-4 border-b border-border flex-shrink-0">
         <Link href={hasWorkspace ? "/" : "/welcome"} >
           <Image src="/Logo.png" className="object-contain " alt="logo" width={80} height={90} />
@@ -110,6 +111,7 @@ export const Sidebar = () => {
           <>
             <Tools />
             <Projects />
+            <ProjectTools />
             <Spaces />
           </>
         )}

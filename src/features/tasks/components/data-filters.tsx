@@ -112,7 +112,7 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly, disableManageC
   if (isLoading) return null;
 
   return (
-    <div className="flex flex-col px-4 py-6 border-b border-border lg:flex-row gap-2">
+    <div className="flex flex-col px-4 py-6 border-b border lg:flex-row gap-2">
       <TaskSearch className="w-full text-xs lg:w-64" />
 
       <Select
