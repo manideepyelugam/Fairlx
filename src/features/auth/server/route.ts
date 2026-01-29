@@ -104,7 +104,27 @@ const app = new Hono()
     const { name, email, password } = c.req.valid("json");
 
     try {
-      const { account } = await createAdminClient();
+      // SECURITY: Block signup if email belongs to an existing org member
+      // This prevents org members from creating duplicate personal accounts
+      // They must use their invited account and log in instead
+      const { databases, account } = await createAdminClient();
+      const { Query } = await import("node-appwrite");
+      
+      const existingOrgMembers = await databases.listDocuments(
+        DATABASE_ID,
+        ORGANIZATION_MEMBERS_ID,
+        [
+          Query.equal("email", email.toLowerCase()),
+          Query.limit(1)
+        ]
+      );
+
+      if (existingOrgMembers.total > 0) {
+        return c.json({
+          error: "This email already belongs to an Organization. Contact your admin to get access.",
+          code: "ORG_MEMBER_EMAIL_BLOCKED"
+        }, 403);
+      }
 
       // Create user account
       const user = await account.create(ID.unique(), email, password, name);
