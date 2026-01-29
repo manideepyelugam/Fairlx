@@ -2,7 +2,7 @@
 
 import { LoaderIcon } from "lucide-react";
 import { useQueryState } from "nuqs";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
@@ -10,7 +10,9 @@ import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { useGetMembers } from "@/features/members/api/use-get-members";
 
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import * as TabsPrimitive from "@radix-ui/react-tabs";
+import { cn } from "@/lib/utils";
 
 import { createColumns } from "./columns";
 import { DataCalendar } from "./data-calendar";
@@ -29,6 +31,91 @@ import { CompleteSprintModal } from "@/features/sprints/components/complete-spri
 
 import { useTaskFilters } from "../hooks/use-task-filters";
 import { TaskStatus, TaskPriority, PopulatedTask } from "../types";
+
+// Custom sliding TabsList for this component only
+interface SlidingTabsListProps extends React.ComponentPropsWithoutRef<typeof TabsPrimitive.List> {
+  children: React.ReactNode;
+}
+
+const SlidingTabsList = ({ className, children, ...props }: SlidingTabsListProps) => {
+  const listRef = useRef<HTMLDivElement>(null);
+  const [indicatorStyle, setIndicatorStyle] = useState<React.CSSProperties>({
+    width: 0,
+    transform: "translateX(0px)",
+    opacity: 0,
+  });
+
+  useEffect(() => {
+    const updateIndicator = () => {
+      const list = listRef.current;
+      if (!list) return;
+
+      const activeTab = list.querySelector('[data-state="active"]') as HTMLElement;
+      if (activeTab) {
+        const listRect = list.getBoundingClientRect();
+        const activeRect = activeTab.getBoundingClientRect();
+        
+        setIndicatorStyle({
+          width: activeRect.width,
+          transform: `translateX(${activeRect.left - listRect.left}px)`,
+          opacity: 1,
+        });
+      }
+    };
+
+    updateIndicator();
+
+    const list = listRef.current;
+    if (list) {
+      const observer = new MutationObserver(updateIndicator);
+      observer.observe(list, {
+        attributes: true,
+        attributeFilter: ["data-state"],
+        subtree: true,
+      });
+
+      window.addEventListener("resize", updateIndicator);
+
+      return () => {
+        observer.disconnect();
+        window.removeEventListener("resize", updateIndicator);
+      };
+    }
+  }, [children]);
+
+  return (
+    <TabsPrimitive.List
+      ref={listRef}
+      className={cn(
+        "relative inline-flex h-9 items-center justify-center rounded-lg p-1",
+        className
+      )}
+      {...props}
+    >
+      {/* Sliding indicator */}
+      <span
+        className="absolute top-1 left-0 h-[calc(100%-8px)] rounded-md bg-blue-600 shadow-sm transition-all duration-300 ease-out"
+        style={indicatorStyle}
+      />
+      {/* Tab triggers with relative positioning */}
+      <span className="relative z-10 inline-flex items-center gap-x-1">
+        {children}
+      </span>
+    </TabsPrimitive.List>
+  );
+};
+
+// Custom TabsTrigger for this component with specific colors
+const SlidingTabsTrigger = ({ className, ...props }: React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>) => (
+  <TabsPrimitive.Trigger
+    className={cn(
+      "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+      "text-foreground data-[state=active]:text-white",
+      className
+    )}
+    {...props}
+  />
+);
 
 // Map WorkItemStatus to TaskStatus for compatibility with existing components
 // For custom column IDs (strings not in the default map), pass them through directly
@@ -261,37 +348,37 @@ export const TaskViewSwitcher = ({
     <Tabs
       defaultValue={view}
       onValueChange={setView}
-      className="flex-1 w-full border-border rounded-lg bg-card"
+      className="flex-1 w-full border rounded-lg bg-card"
     >
       <div className="h-full flex flex-col overflow-auto ">
         <div className="flex flex-col gap-y-2  px-4 py-6 lg:flex-row justify-between items-center">
-          <TabsList className="w-full lg:w-auto bg-muted/50 border border-border">
-            <TabsTrigger className="h-8 w-full text-xs lg:w-auto" value="dashboard">
+          <SlidingTabsList className="w-full lg:w-auto bg-muted/50 border border-border">
+            <SlidingTabsTrigger className="h-8 w-full text-xs lg:w-auto" value="dashboard">
               {showMyTasksOnly ? "My Space" : "Dashboard"}
-            </TabsTrigger>
-            <TabsTrigger className="h-8 w-full text-xs lg:w-auto" value="table">
+            </SlidingTabsTrigger>
+            <SlidingTabsTrigger className="h-8 w-full text-xs lg:w-auto" value="table">
               Table
-            </TabsTrigger>
-            <TabsTrigger className="h-8 w-full text-xs  lg:w-auto" value="kanban">
+            </SlidingTabsTrigger>
+            <SlidingTabsTrigger className="h-8 w-full text-xs lg:w-auto" value="kanban">
               Kanban
-            </TabsTrigger>
-            <TabsTrigger className="h-8 w-full text-xs lg:w-auto" value="calendar">
+            </SlidingTabsTrigger>
+            <SlidingTabsTrigger className="h-8 w-full text-xs lg:w-auto" value="calendar">
               Calendar
-            </TabsTrigger>
-            <TabsTrigger className="h-8 w-full text-xs lg:w-auto" value="timeline">
+            </SlidingTabsTrigger>
+            <SlidingTabsTrigger className="h-8 w-full text-xs lg:w-auto" value="timeline">
               Timeline
-            </TabsTrigger>
+            </SlidingTabsTrigger>
             {paramProjectId && (
-              <TabsTrigger className="h-8 w-full text-xs lg:w-auto" value="backlog">
+              <SlidingTabsTrigger className="h-8 w-full text-xs lg:w-auto" value="backlog">
                 Backlog
-              </TabsTrigger>
+              </SlidingTabsTrigger>
             )}
             {showMyTasksOnly && (
-              <TabsTrigger className="h-8 w-full text-xs lg:w-auto" value="my-backlog">
+              <SlidingTabsTrigger className="h-8 w-full text-xs lg:w-auto" value="my-backlog">
                 My Backlog
-              </TabsTrigger>
+              </SlidingTabsTrigger>
             )}
-          </TabsList>
+          </SlidingTabsList>
 
           {isAdmin && view === "kanban" && setupState.activeSprint && (
             <Button
