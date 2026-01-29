@@ -294,26 +294,34 @@ export const EditorToolbar = ({ editor, onSetLink }: EditorToolbarProps) => {
             Text Color
           </div>
           <div className="grid grid-cols-5 gap-1 p-2">
-            {FONT_COLORS.map((color) => (
-              <button
-                key={color.name}
-                type="button"
-                onClick={() => {
-                  if (color.value) {
-                    editor.chain().focus().setColor(color.value).run();
-                  } else {
-                    editor.chain().focus().unsetColor().run();
-                  }
-                  setShowColorMenu(false);
-                }}
-                className={cn(
-                  "size-6 rounded border border-border hover:ring-2 hover:ring-primary",
-                  !color.value && "bg-foreground"
-                )}
-                style={{ backgroundColor: color.value || undefined }}
-                title={color.name}
-              />
-            ))}
+            {FONT_COLORS.map((color) => {
+              const isSelected = color.value
+                ? editor.isActive("textStyle", { color: color.value })
+                : !editor.isActive("textStyle", { color: /.+/ });
+              return (
+                <button
+                  key={color.name}
+                  type="button"
+                  onClick={() => {
+                    if (color.value) {
+                      editor.chain().focus().setColor(color.value).run();
+                    } else {
+                      editor.chain().focus().unsetColor().run();
+                    }
+                    setShowColorMenu(false);
+                    // Ensure editor regains focus after dropdown closes
+                    setTimeout(() => editor.commands.focus(), 0);
+                  }}
+                  className={cn(
+                    "size-6 rounded border border-border hover:ring-2 hover:ring-primary",
+                    !color.value && "bg-foreground",
+                    isSelected && "ring-2 ring-primary ring-offset-1"
+                  )}
+                  style={{ backgroundColor: color.value || undefined }}
+                  title={color.name}
+                />
+              );
+            })}
           </div>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -336,25 +344,35 @@ export const EditorToolbar = ({ editor, onSetLink }: EditorToolbarProps) => {
             Highlight Color
           </div>
           <div className="grid grid-cols-4 gap-1 p-2">
-            {HIGHLIGHT_COLORS.map((color) => (
-              <button
-                key={color.name}
-                type="button"
-                onClick={() => {
-                  editor.chain().focus().toggleHighlight({ color: color.value }).run();
-                  setShowHighlightMenu(false);
-                }}
-                className="size-6 rounded border border-border hover:ring-2 hover:ring-primary"
-                style={{ backgroundColor: color.value }}
-                title={color.name}
-              />
-            ))}
+            {HIGHLIGHT_COLORS.map((color) => {
+              const isSelected = editor.isActive("highlight", { color: color.value });
+              return (
+                <button
+                  key={color.name}
+                  type="button"
+                  onClick={() => {
+                    editor.chain().focus().toggleHighlight({ color: color.value }).run();
+                    setShowHighlightMenu(false);
+                    // Ensure editor regains focus after dropdown closes
+                    setTimeout(() => editor.commands.focus(), 0);
+                  }}
+                  className={cn(
+                    "size-6 rounded border border-border hover:ring-2 hover:ring-primary",
+                    isSelected && "ring-2 ring-primary ring-offset-1"
+                  )}
+                  style={{ backgroundColor: color.value }}
+                  title={color.name}
+                />
+              );
+            })}
           </div>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={() => {
               editor.chain().focus().unsetHighlight().run();
               setShowHighlightMenu(false);
+              // Ensure editor regains focus after dropdown closes
+              setTimeout(() => editor.commands.focus(), 0);
             }}
           >
             Remove highlight

@@ -21,6 +21,7 @@ export type Project = Models.Document & {
   imageUrl: string;
   workspaceId: string;
   spaceId?: string;                     // NEW: Link to Space (optional for backward compat)
+  programId?: string;                   // Link to Program (optional)
   deadline?: string;
   assignedTeamIds?: string[];           // Teams that can access this project
 

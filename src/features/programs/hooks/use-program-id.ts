@@ -1,5 +1,6 @@
-import { useQueryState, parseAsString } from "nuqs";
+import { useParams } from "next/navigation";
 
 export const useProgramId = () => {
-  return useQueryState("programId", parseAsString);
+  const params = useParams();
+  return params.programId as string;
 };
