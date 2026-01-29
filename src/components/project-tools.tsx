@@ -61,7 +61,7 @@ export const ProjectTools = () => {
   const params = useParams();
   const urlWorkspaceId = useWorkspaceId();
   const urlProjectId = useProjectId();
-  
+
   // Get projectId from URL params (works globally, not just on project pages)
   const projectId = (params?.projectId as string) || urlProjectId;
   const workspaceId = urlWorkspaceId;
@@ -77,7 +77,7 @@ export const ProjectTools = () => {
   const { isAdmin: isWorkspaceAdmin } = useCurrentMember({ workspaceId: workspaceId || "" });
 
   // Fetch user's project permissions using convenience methods
-  const { 
+  const {
     canViewProject,
     canManageProjectSettings,
     canViewSprints,
@@ -88,14 +88,14 @@ export const ProjectTools = () => {
     isLoading: isLoadingPermissions,
     permissions,
     isProjectAdmin,
-  } = useProjectPermissions({ 
+  } = useProjectPermissions({
     projectId: projectId || null,
     workspaceId,
   });
 
   // Workspace admins get full access to all project tools
   const hasFullAccess = isProjectAdmin || isWorkspaceAdmin;
-  
+
   // User can view project if they have project-level permission OR are workspace admin
   const effectiveCanViewProject = canViewProject || isWorkspaceAdmin;
   const effectiveCanManageSettings = canManageProjectSettings || isWorkspaceAdmin;
@@ -145,12 +145,12 @@ export const ProjectTools = () => {
       canView: () => effectiveCanManageSettings,
     },
   ], [
-    effectiveCanViewProject, 
-    effectiveCanManageSettings, 
-    canViewSprints, 
-    canManageTeams, 
+    effectiveCanViewProject,
+    effectiveCanManageSettings,
+    canViewSprints,
+    canManageTeams,
     canCreateTeams,
-    canInviteMembers, 
+    canInviteMembers,
     canRemoveMembers
   ]);
 
@@ -158,7 +158,7 @@ export const ProjectTools = () => {
   const visibleTools = useMemo(() => {
     // If no project is selected, return empty
     if (!projectId) return [];
-    
+
     // Still loading permissions - return empty (will show skeleton)
     if (isLoadingPermissions) return [];
 
@@ -191,7 +191,7 @@ export const ProjectTools = () => {
   // Loading state - show skeleton while loading project or permissions
   if (isLoadingProject) {
     return (
-      <div className="flex flex-col px-3 py-2 border-border">
+      <div className="flex flex-col px-3 py-2 border-t border-sidebar-border">
         <div className="flex items-center gap-2 pl-2 mb-2">
           <Skeleton className="size-5 rounded" />
           <Skeleton className="h-4 w-24" />
@@ -213,7 +213,7 @@ export const ProjectTools = () => {
   // Show loading skeleton for permissions (project is loaded)
   if (isLoadingPermissions) {
     return (
-      <div className="flex flex-col px-3 py-2 border-border">
+      <div className="flex flex-col px-3 py-2 border-t border-sidebar-border">
         <div className="flex items-center gap-2 pl-2 mb-2">
           <ProjectAvatar
             name={project.name}
@@ -256,12 +256,12 @@ export const ProjectTools = () => {
   };
 
   return (
-    <div className="flex flex-col px-3 py-2 border-border">
+    <div className="flex flex-col px-3 py-2 border-t border-sidebar-border">
       {/* Project Header with Toggle */}
       <div className="flex items-center mt-2  justify-between">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-2 text-[13px] tracking-normal font-medium pl-2 text-primary hover:text-primary/80 w-full"
+          className="flex items-center gap-2 text-[13px] tracking-normal font-medium pl-2 text-sidebar-foreground/90 hover:text-sidebar-foreground w-full"
         >
           <span className="flex items-center gap-1">
             {isExpanded ? (
@@ -298,8 +298,8 @@ export const ProjectTools = () => {
                 className={cn(
                   "flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer text-sm transition-colors w-full",
                   isActive
-                    ? "bg-accent text-accent-foreground font-medium"
-                    : "hover:bg-accent/50 text-muted-foreground"
+                    ? "bg-sidebar-accent text-sidebar-foreground font-medium"
+                    : "hover:bg-sidebar-accent/50 text-sidebar-foreground/70"
                 )}
               >
                 <span className={cn(
