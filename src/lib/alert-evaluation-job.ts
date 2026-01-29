@@ -247,6 +247,7 @@ export async function evaluateAllAlerts(
         ]
     );
 
+    // Evaluate each alert
     for (const alert of alerts.documents) {
         // Skip if recently triggered (rate limiting - 24 hour cooldown)
         if (alert.lastTriggeredAt) {
@@ -260,8 +261,6 @@ export async function evaluateAllAlerts(
         const result = await evaluateAlert(databases, alert);
         results.push(result);
     }
-
-    const _triggered = results.filter(r => r.triggered);
 
     return results;
 }
