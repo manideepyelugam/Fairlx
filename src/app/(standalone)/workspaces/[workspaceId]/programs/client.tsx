@@ -30,7 +30,6 @@ import { useGetPrograms } from "@/features/programs/api/use-get-programs";
 import { useDeleteProgram } from "@/features/programs/api/use-delete-program";
 import { useCreateProgramModal } from "@/features/programs/hooks/use-create-program-modal";
 import { useEditProgramModal } from "@/features/programs/hooks/use-edit-program-modal";
-import { useProgramId } from "@/features/programs/hooks/use-program-id";
 import { CreateProgramModal } from "@/features/programs/components/create-program-modal";
 import { EditProgramModal } from "@/features/programs/components/edit-program-modal";
 import { ProgramStatus } from "@/features/programs/types";
@@ -88,7 +87,6 @@ export const ProgramsClient = () => {
   const { data: programs, isLoading } = useGetPrograms({ workspaceId });
   const { open: openCreate } = useCreateProgramModal();
   const { open: openEdit } = useEditProgramModal();
-  const [, setProgramId] = useProgramId();
   const { mutate: deleteProgram } = useDeleteProgram();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -127,8 +125,7 @@ export const ProgramsClient = () => {
   }, [programs]);
 
   const handleEdit = (programId: string) => {
-    setProgramId(programId);
-    openEdit();
+    openEdit(programId);
   };
 
   const handleDelete = async (programId: string) => {

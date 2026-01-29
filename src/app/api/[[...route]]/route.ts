@@ -20,7 +20,7 @@ import subtasks from "@/features/subtasks/server/route";
 // import teams from "@/features/teams/server/route";
 // NEW: Project-scoped teams (replacing workspace teams)
 import projectTeams from "@/features/project-teams/server/route";
-import programs from "@/features/programs/server/route";
+import programs from "@/features/programs/server/index";
 import comments from "@/features/comments/api/route";
 import projectDocs from "@/features/project-docs/server/route";
 // New Jira-like features
