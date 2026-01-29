@@ -8,7 +8,7 @@ import { useGetProgram } from "../api/use-get-program";
 import { useProgramId } from "../hooks/use-program-id";
 
 export const EditProgramModal = () => {
-  const [programId] = useProgramId();
+  const programId = useProgramId();
   const { isOpen, setIsOpen, close } = useEditProgramModal();
   const { data } = useGetProgram({ programId: programId || "" });
 

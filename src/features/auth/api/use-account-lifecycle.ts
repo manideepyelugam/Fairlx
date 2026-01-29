@@ -42,12 +42,18 @@ const INITIAL_LIFECYCLE_STATE: AccountLifecycleState = {
     orgRole: null,
 };
 
+/**
+ * Initial routing state during loading.
+ * CRITICAL: redirectTo is null to prevent false redirects during hydration.
+ * LifecycleGuard will wait for isLoaded before making routing decisions.
+ */
 const INITIAL_ROUTING: LifecycleRouting = {
-    state: "UNAUTHENTICATED",
-    redirectTo: "/sign-in",
+    state: "LOADING",
+    redirectTo: null, // CRITICAL: No redirect during initial load
     allowedPaths: [],
-    blockedPaths: ["*"],
+    blockedPaths: [], // Don't block anything during initial load
 };
+
 
 interface LifecycleQueryResult {
     data: AccountLifecycleState;
@@ -87,6 +93,8 @@ export const useGetAccountLifecycle = () => {
         },
         staleTime: 1000 * 60 * 5, // 5 minutes
         refetchOnWindowFocus: true,
+        refetchInterval: 5 * 1000, // Poll every 30 seconds to detect mustResetPassword changes
+        refetchIntervalInBackground: false, // Don't poll when tab is not focused
         retry: 1,
         // Disable query during SSR to prevent hydration mismatch
         enabled: typeof window !== "undefined",
