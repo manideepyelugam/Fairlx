@@ -39,10 +39,6 @@ export function LifecycleGuard({ children }: LifecycleGuardProps) {
         // Skip if not loaded yet or already redirecting
         if (!isLoaded || redirectingRef.current) return;
 
-        // CRITICAL: Skip ALL routing if mustResetPassword - overlay takes over
-        // This prevents redirect loops when all paths are blocked
-        if (lifecycleState.mustResetPassword) return;
-
         // Skip guards for public routes
         if (isPublicRoute) {
             // Special case: If user is authenticated and on sign-in/sign-up,
@@ -109,7 +105,7 @@ export function LifecycleGuard({ children }: LifecycleGuardProps) {
             return;
         }
 
-    }, [isLoaded, isPublicRoute, lifecycleState.isAuthenticated, lifecycleState.mustResetPassword, lifecycleRouting, pathname, router]);
+    }, [isLoaded, isPublicRoute, lifecycleState.isAuthenticated, lifecycleRouting, pathname, router]);
 
     // ZERO-FLASH: Show loader while state is loading
     if (!isLoaded) {
