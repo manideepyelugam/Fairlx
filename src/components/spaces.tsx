@@ -54,11 +54,11 @@ export const Spaces = () => {
   }, {} as Record<string, typeof spaces>);
 
   return (
-    <div className="flex flex-col px-3 py-4 border-border">
+    <div className="flex flex-col px-3 py-4 border-t border-sidebar-border">
       <div className="flex items-center justify-between ">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-1 text-[13px] tracking-normal font-medium pl-2 text-primary hover:text-primary/80"
+          className="flex items-center gap-1 text-[13px] tracking-normal font-medium pl-2 text-sidebar-foreground/90 hover:text-sidebar-foreground"
         >
           {isExpanded ? (
             <ChevronDown className="size-3" />
@@ -73,7 +73,7 @@ export const Spaces = () => {
               <TooltipTrigger asChild>
                 <button
                   onClick={() => router.push(`/workspaces/${workspaceId}/spaces?guide=true`)}
-                  className="p-1 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition"
+                  className="p-1 text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent rounded transition"
                 >
                   <Info className="size-4" />
                 </button>
@@ -86,7 +86,7 @@ export const Spaces = () => {
           {isAdmin && (
             <RiAddCircleFill
               onClick={open}
-              className="size-5 text-muted-foreground cursor-pointer hover:opacity-75 transition"
+              className="size-5 text-sidebar-foreground/70 cursor-pointer hover:opacity-75 transition"
             />
           )}
         </div>
@@ -95,7 +95,7 @@ export const Spaces = () => {
       <div className={`transition-all duration-700 overflow-hidden mt-2 ${isExpanded ? 'max-h-screen' : 'max-h-0'}`}>
         <div className="space-y-1">
           {rootSpaces.length === 0 ? (
-            <p className="text-xs text-muted-foreground px-2 py-1">No spaces yet</p>
+            <p className="text-xs text-sidebar-foreground/60 px-2 py-1">No spaces yet</p>
           ) : (
             rootSpaces.map((space) => (
               <SpaceItem
@@ -142,7 +142,7 @@ const SpaceItem = ({ space, childSpaces, selectedSpaceId, onSelect, level }: Spa
       <div
         className={cn(
           "flex items-center gap-2 pl-0 py-1.5 rounded-md  cursor-pointer text-sm transition-colors",
-          isSelected ? "bg-accent text-accent-foreground" : "hover:bg-accent/50",
+          isSelected ? "bg-sidebar-accent text-sidebar-foreground" : "hover:bg-sidebar-accent/50 text-sidebar-foreground/80",
         )}
         style={{ paddingLeft: `${8 + level * 12}px` }}
         onClick={() => onSelect(space.$id)}
@@ -153,7 +153,7 @@ const SpaceItem = ({ space, childSpaces, selectedSpaceId, onSelect, level }: Spa
               e.stopPropagation();
               setIsOpen(!isOpen);
             }}
-            className="p-0.5 hover:bg-accent rounded"
+            className="p-0.5 hover:bg-sidebar-accent rounded"
           >
             {isOpen ? (
               <ChevronDown className="size-3" />

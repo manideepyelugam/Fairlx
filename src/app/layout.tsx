@@ -38,7 +38,12 @@ export default function RootLayout({
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
-          themes={["light", "dark", "mid-dark", "system"]}
+          themes={["light", "dark", "pitch-dark"]}
+          value={{
+            light: "light",
+            dark: "dark",
+            "pitch-dark": "pitch-dark"
+          }}
         >
           <NuqsAdapter>
             <QueryProvider>

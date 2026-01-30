@@ -38,8 +38,8 @@ export const Sidebar = () => {
   // ============================================================
   if (isAccessLoading && hasOrg) {
     return (
-      <aside className="h-full bg-background w-full overflow-hidden border-r border-border flex flex-col">
-        <div className="flex items-center w-full py-5 px-4 border-b border-border flex-shrink-0">
+      <aside className="h-full bg-sidebar w-full overflow-hidden border-r border-sidebar-border flex flex-col">
+        <div className="flex items-center w-full py-5 px-4 border-b border-sidebar-border flex-shrink-0">
           <Link href="/welcome">
             <Image src="/Logo.png" className="object-contain" alt="logo" width={80} height={90} />
           </Link>
@@ -64,8 +64,8 @@ export const Sidebar = () => {
   // ============================================================
   if (isRestrictedOrgMember) {
     return (
-      <aside className="h-full bg-background w-full overflow-hidden border-r border-border flex flex-col">
-        <div className="flex items-center w-full py-5 px-4 border-b border-border flex-shrink-0">
+      <aside className="h-full bg-sidebar w-full overflow-hidden border-r border-sidebar-border flex flex-col">
+        <div className="flex items-center w-full py-5 px-4 border-b border-sidebar-border flex-shrink-0">
           <Link href="/welcome">
             <Image src="/Logo.png" className="object-contain" alt="logo" width={80} height={90} />
           </Link>
@@ -88,8 +88,8 @@ export const Sidebar = () => {
   }
 
   return (
-    <aside className="h-full bg-sidebar w-full overflow-hidden border-r border-border flex flex-col">
-      <div className="flex items-center w-full py-5 px-4 border-b border-border flex-shrink-0">
+    <aside className="h-full bg-sidebar w-full overflow-hidden border-r border-sidebar-border flex flex-col">
+      <div className="flex items-center w-full py-5 px-4 border-b border-sidebar-border flex-shrink-0">
         <Link href={hasWorkspace ? "/" : "/welcome"} >
           <Image src="/Logo.png" className="object-contain " alt="logo" width={80} height={90} />
         </Link>

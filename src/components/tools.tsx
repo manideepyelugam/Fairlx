@@ -127,11 +127,11 @@ export const Tools = () => {
   };
 
   return (
-    <div className="flex flex-col px-3 py-4 border-border">
+    <div className="flex flex-col px-3 py-4 border-t border-sidebar-border">
       <div className="flex items-center justify-between">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-1 text-[13px] tracking-normal font-medium pl-2 text-primary hover:text-primary/80"
+          className="flex items-center gap-1 text-[13px] tracking-normal font-medium pl-2 text-sidebar-foreground/90 hover:text-sidebar-foreground"
         >
           {isExpanded ? (
             <ChevronDown className="size-3" />
@@ -153,11 +153,13 @@ export const Tools = () => {
                 className={cn(
                   "flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer text-sm transition-colors w-full",
                   isActive
-                    ? "bg-accent text-accent-foreground"
-                    : "hover:bg-accent text-muted-foreground"
+                    ? "bg-sidebar-accent text-sidebar-foreground"
+                    : "hover:bg-sidebar-accent text-sidebar-foreground/70"
                 )}
               >
-                {tool.icon}
+                <span className={cn(isActive ? "text-primary" : "text-sidebar-foreground/70")}>
+                  {tool.icon}
+                </span>
                 <span className="truncate text-xs font-medium">{tool.label}</span>
               </button>
             );

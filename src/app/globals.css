@@ -49,7 +49,7 @@ body {
     --sidebar-accent: 0 0% 96.1%;
   }
 
-  .dark {
+  .pitch-dark {
     /* Surfaces - shadcn-style near-black */
     --background: 0 0% 0%;
     --foreground: 0 0% 98%;
@@ -100,37 +100,37 @@ body {
     --sidebar-accent: 0 0% 10%;
   }
 
-  /* Mid-Dark Mode - Premium gray-900 theme inspired by Linear/Raycast */
-  .mid-dark {
-    /* Surfaces - gray-900 style, rich dark gray */
-    --background: 220 13% 7%;
-    --foreground: 210 20% 90%;
+  /* Dark Mode - Premium gray-900 theme inspired by Linear/Raycast */
+  .dark {
+    /* Surfaces - specific #08090a background */
+    --background: 210 11% 3.5%;
+    --foreground: 210 20% 98%;
 
-    --card: 220 13% 11%;
-    --card-foreground: 210 20% 90%;
+    --card: 210 11% 6%;
+    --card-foreground: 210 20% 98%;
 
-    --popover: 220 13% 14%;
-    --popover-foreground: 210 20% 90%;
+    --popover: 210 11% 8%;
+    --popover-foreground: 210 20% 98%;
 
     /* Primary - soft blue accent */
     --primary: 215 85% 65%;
     --primary-foreground: 210 40% 98%;
 
     /* Secondary - subtle elevation */
-    --secondary: 220 13% 18%;
-    --secondary-foreground: 210 20% 88%;
+    --secondary: 210 11% 10%;
+    --secondary-foreground: 210 20% 95%;
 
     /* Muted - subtle backgrounds */
-    --muted: 220 13% 15%;
-    --muted-foreground: 215 10% 70%;
+    --muted: 210 11% 8%;
+    --muted-foreground: 215 10% 60%;
 
     /* Accent - matches secondary */
-    --accent: 220 13% 18%;
-    --accent-foreground: 210 20% 90%;
+    --accent: 210 11% 10%;
+    --accent-foreground: 210 20% 95%;
 
     /* Borders & inputs - soft gray */
-    --border: 220 13% 20%;
-    --input: 220 13% 18%;
+    --border: 210 11% 10%;
+    --input: 210 11% 12%;
     --ring: 215 85% 65%;
 
     /* Destructive */
@@ -144,12 +144,12 @@ body {
     --chart-4: 270 55% 55%;
     --chart-5: 340 65% 55%;
 
-    /* Sidebar - slightly darker than main canvas */
-    --sidebar-background: 220 13% 5%;
+    /* Sidebar - matches main background #08090a */
+    --sidebar-background: 210 11% 3.5%;
     --sidebar-foreground: 210 20% 90%;
-    --sidebar-border: 220 13% 16%;
-    --sidebar-muted: 220 13% 10%;
-    --sidebar-accent: 220 13% 14%;
+    --sidebar-border: 210 11% 10%;
+    --sidebar-muted: 210 11% 8%;
+    --sidebar-accent: 210 11% 8%;
 
     --radius: 0.75rem;
   }
@@ -212,19 +212,19 @@ body {
   @apply flex items-start gap-2 mb-1;
 }
 
-.rich-text-editor .ProseMirror ul[data-type="taskList"] li > label {
+.rich-text-editor .ProseMirror ul[data-type="taskList"] li>label {
   @apply flex items-center justify-center mt-1;
 }
 
-.rich-text-editor .ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"] {
+.rich-text-editor .ProseMirror ul[data-type="taskList"] li>label input[type="checkbox"] {
   @apply size-4 rounded border-border cursor-pointer accent-primary;
 }
 
-.rich-text-editor .ProseMirror ul[data-type="taskList"] li > div {
+.rich-text-editor .ProseMirror ul[data-type="taskList"] li>div {
   @apply flex-1;
 }
 
-.rich-text-editor .ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div {
+.rich-text-editor .ProseMirror ul[data-type="taskList"] li[data-checked="true"]>div {
   @apply line-through text-muted-foreground;
 }
 

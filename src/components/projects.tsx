@@ -48,11 +48,11 @@ export const Projects = () => {
   };
 
   return (
-    <div className="flex flex-col px-3 py-2 border-border">
+    <div className="flex flex-col px-3 py-2 border-t border-sidebar-border">
       <div className="flex items-center justify-between ">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-1  text-[13px] tracking-normal font-medium pl-2 text-primary hover:text-primary/80"
+          className="flex items-center gap-1  text-[13px] tracking-normal font-medium pl-2 text-sidebar-foreground/80 hover:text-sidebar-foreground"
         >
           {isExpanded ? (
             <ChevronDown className="size-3" />
@@ -64,14 +64,14 @@ export const Projects = () => {
         {isAdmin && (
           <RiAddCircleFill
             onClick={() => open()}
-            className="size-5 text-muted-foreground cursor-pointer hover:opacity-75 transition"
+            className="size-5 text-sidebar-foreground/70 cursor-pointer hover:opacity-75 transition"
           />
         )}
       </div>
 
       <div className={`transition-all duration-700 pl-2   overflow-hidden ${isExpanded ? 'max-h-96 mt-2' : ' mt-0 max-h-0'}`}>
         <Select onValueChange={onSelect} value={projectId}>
-          <SelectTrigger className={`w-full p-2 font-medium text-xs`}>
+          <SelectTrigger className="w-full p-2 font-medium text-xs bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground/90">
             <SelectValue placeholder="No project selected." />
           </SelectTrigger>
 

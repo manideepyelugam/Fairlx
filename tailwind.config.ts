@@ -84,7 +84,12 @@ const config: Config = {
 			},
 		}
 	},
-	plugins: [tailwindcssAnimate],
+	plugins: [
+		tailwindcssAnimate,
+		function ({ addVariant }: { addVariant: Function }) {
+			addVariant('pitch-dark', '&:is(.pitch-dark *)');
+		},
+	],
 };
 export default config;
 

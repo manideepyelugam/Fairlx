@@ -98,7 +98,7 @@ export const WorkspaceSwitcher = () => {
 
   return (
     <TooltipProvider>
-      <div className="flex flex-col px-3 pt-3 pb-4 border-t-[1.5px] border-border">
+      <div className="flex flex-col px-3 pt-3 pb-4 border-t border-sidebar-border">
         <ConfirmDialog />
 
         {/* Organization indicator for ORG accounts with refresh */}
@@ -126,14 +126,14 @@ export const WorkspaceSwitcher = () => {
         )} */}
 
         <div className="flex items-center justify-between pb-4">
-          <p className="text-[13px] tracking-normal font-medium  pl-2 text-primary">Workspaces</p>
+          <p className="text-[13px] tracking-normal font-medium  pl-2 text-sidebar-foreground/80">Workspaces</p>
 
           {/* Only show dropdown if user can create workspace OR has options */}
           {(canCreateWorkspace || (member && workspaces && workspaces.documents.length > 1)) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="size-5 p-0 hover:bg-transparent">
-                  <RiAddCircleFill className="size-5 text-muted-foreground cursor-pointer hover:opacity-75 transition" />
+                  <RiAddCircleFill className="size-5 text-sidebar-foreground/70 cursor-pointer hover:text-sidebar-foreground transition" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
@@ -163,7 +163,7 @@ export const WorkspaceSwitcher = () => {
 
         <Select onValueChange={onSelect} value={selectedWorkspaceId}>
 
-          <SelectTrigger className="w-full p-2 font-medium text-xs ">
+          <SelectTrigger className="w-full p-2 font-medium text-xs bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground/90">
             <SelectValue placeholder="No workspace selected." />
           </SelectTrigger>
 
