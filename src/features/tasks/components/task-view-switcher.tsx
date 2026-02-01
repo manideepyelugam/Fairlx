@@ -246,15 +246,12 @@ export const TaskViewSwitcher = ({
   
   // Get project-level task permissions
   const { 
-    canViewTasksProject, 
     canEditTasksProject, 
     canDeleteTasksProject, 
-    canCreateTasksProject,
-    isLoading: isLoadingPermissions 
+    canCreateTasksProject
   } = useProjectPermissions({ projectId: effectiveProjectId || null, workspaceId });
   
   // Effective permissions: Admin OR has project-level permission
-  const canViewTasks = isAdmin || canViewTasksProject;
   const canEditTasks = isAdmin || canEditTasksProject;
   const canDeleteTasks = isAdmin || canDeleteTasksProject;
   const canCreateTasks = isAdmin || canCreateTasksProject;

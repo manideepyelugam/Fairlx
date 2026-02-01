@@ -81,16 +81,10 @@ export const SprintOptionsMenu = ({
   
    // Get project-level sprint permissions
     const {
-      canViewSprintsProject,
-      canCreateSprintsProject,
       canEditSprintsProject,
       canDeleteSprintsProject,
       canStartSprintProject,
       canCompleteSprintProject,
-      canCreateTasksProject,
-      canEditTasksProject,
-      canDeleteTasksProject,
-      isLoading: isLoadingPermissions,
     } = useProjectPermissions({ projectId, workspaceId: sprint.workspaceId });
   
   // Check if user is workspace admin

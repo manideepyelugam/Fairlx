@@ -142,7 +142,6 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   
   // Get project-level sprint permissions
   const {
-    canViewSprintsProject,
     canCreateSprintsProject,
     canEditSprintsProject,
     canDeleteSprintsProject,
@@ -151,11 +150,9 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     canCreateTasksProject,
     canEditTasksProject,
     canDeleteTasksProject,
-    isLoading: isLoadingPermissions,
   } = useProjectPermissions({ projectId, workspaceId });
   
   // Effective permissions: Admin OR project-level permission
-  const canViewSprints = isWorkspaceAdmin || canViewSprintsProject;
   const canCreateSprints = isWorkspaceAdmin || canCreateSprintsProject || can(PERMISSIONS.SPRINT_CREATE);
   const canEditSprints = isWorkspaceAdmin || canEditSprintsProject || can(PERMISSIONS.SPRINT_UPDATE);
   const canDeleteSprints = isWorkspaceAdmin || canDeleteSprintsProject || can(PERMISSIONS.SPRINT_DELETE);

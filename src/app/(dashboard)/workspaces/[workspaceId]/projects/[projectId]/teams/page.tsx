@@ -5,7 +5,7 @@ import { useProjectId } from "@/features/projects/hooks/use-project-id";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { ProjectTeamsList } from "@/features/project-teams/components";
 import { useProjectPermissions } from "@/hooks/use-project-permissions";
-import { useCurrentMember } from "@/features/members/api/use-current-member";
+import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function ProjectTeamsPage() {
@@ -21,8 +21,8 @@ export default function ProjectTeamsPage() {
     } = useProjectPermissions({ projectId, workspaceId });
     
     // Check if user is workspace admin (organization creator/admin)
-    const { data: currentMember, isLoading: isLoadingMember } = useCurrentMember({ workspaceId });
-    const isWorkspaceAdmin = currentMember?.role === "ADMIN" || currentMember?.role === "OWNER";
+    const { isAdmin, isLoading: isLoadingMember } = useCurrentMember({ workspaceId });
+    const isWorkspaceAdmin = isAdmin;
     
     // Effective permissions
     const canViewTeams = isWorkspaceAdmin || isProjectAdmin || canViewMembersProject;

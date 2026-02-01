@@ -36,7 +36,7 @@ import {
   WorkItemPriority,
 } from "../types";
 import { useProjectPermissions } from "@/hooks/use-project-permissions";
-import { useCurrentMember } from "@/features/members/api/use-current-member";
+import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 
 interface BacklogViewProps {
   workspaceId: string;
@@ -67,8 +67,8 @@ export const BacklogView = ({ workspaceId, projectId }: BacklogViewProps) => {
   } = useProjectPermissions({ projectId, workspaceId });
   
   // Check if user is workspace admin
-  const { data: currentMember } = useCurrentMember({ workspaceId });
-  const isWorkspaceAdmin = currentMember?.role === "ADMIN";
+  const { isAdmin } = useCurrentMember({ workspaceId });
+  const isWorkspaceAdmin = isAdmin;
   
   // Effective permissions (admin OR project-level)
   const canViewWorkItems = isWorkspaceAdmin || canViewTasksProject;

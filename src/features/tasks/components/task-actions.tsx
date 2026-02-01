@@ -17,7 +17,7 @@ import { useEditTaskModal } from "../hooks/use-edit-task-modal";
 import { usePermission } from "@/hooks/use-permission";
 import { PERMISSIONS } from "@/lib/permissions";
 import { useProjectPermissions } from "@/hooks/use-project-permissions";
-import { useCurrentMember } from "@/features/members/api/use-current-member";
+import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 
 interface TaskActionsProps {
   id: string;
@@ -46,11 +46,11 @@ export const TaskActions = ({
   const {
     canEditTasksProject,
     canDeleteTasksProject,
-  } = useProjectPermissions(projectId);
+  } = useProjectPermissions({ projectId, workspaceId });
   
   // Check if user is workspace admin
-  const { data: currentMember } = useCurrentMember({ workspaceId });
-  const isWorkspaceAdmin = currentMember?.role === "ADMIN";
+  const { isAdmin } = useCurrentMember({ workspaceId });
+  const isWorkspaceAdmin = isAdmin;
 
   const [ConfirmDialog, confirm] = useConfirm(
     "Delete Work Item",

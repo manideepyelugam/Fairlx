@@ -42,7 +42,7 @@ import {
 import { formatFileSize, MAX_TOTAL_PROJECT_SIZE } from "../schemas";
 import { useConfirm } from "@/hooks/use-confirm";
 import { useProjectPermissions } from "@/hooks/use-project-permissions";
-import { useCurrentMember } from "@/features/members/api/use-current-member";
+import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 
 interface DocumentListProps {
   projectId: string;
@@ -73,8 +73,8 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
   } = useProjectPermissions({ projectId, workspaceId });
   
   // Check if user is workspace admin (organization creator/admin)
-  const { data: currentMember } = useCurrentMember({ workspaceId });
-  const isWorkspaceAdmin = currentMember?.role === "ADMIN" || currentMember?.role === "OWNER";
+  const { isAdmin } = useCurrentMember({ workspaceId });
+  const isWorkspaceAdmin = isAdmin;
   
   // Effective permissions (admin OR project-level)
   const canView = isWorkspaceAdmin || isProjectAdmin || canViewProjectDocs;

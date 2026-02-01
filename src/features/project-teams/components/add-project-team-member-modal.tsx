@@ -30,7 +30,6 @@ import { useAddProjectTeamMember } from "../api/use-add-project-team-member";
 import { useGetProjectMembers } from "@/features/project-members/api/use-get-project-members";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useGetMembers } from "@/features/members/api/use-get-members";
-import { Badge } from "@/components/ui/badge";
 
 const formSchema = z.object({
     userId: z.string().min(1, "Please select a member"),

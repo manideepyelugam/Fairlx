@@ -43,7 +43,7 @@ import { useConfirm } from "@/hooks/use-confirm";
 import { PERMISSIONS } from "@/lib/permissions";
 import { usePermission } from "@/hooks/use-permission";
 import { useProjectPermissions } from "@/hooks/use-project-permissions";
-import { useCurrentMember } from "@/features/members/api/use-current-member";
+import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 
 const formSchema = z.object({
     name: z.string().min(1, "Sprint name is required"),
@@ -67,22 +67,26 @@ export const SprintSettingsSheet = ({
     open,
     onOpenChange,
     sprint,
-    projectId,
     workspaceId,
 }: SprintSettingsSheetProps) => {
     const { mutate: updateSprint, isPending: isUpdating } = useUpdateSprint();
     const { mutate: deleteSprint, isPending: isDeleting } = useDeleteSprint();
     const { can } = usePermission();
     
+    const effectiveWorkspaceId = workspaceId || sprint?.workspaceId || "";
+    
     // Project-level permissions
     const {
         canEditSprintsProject,
         canDeleteSprintsProject,
-    } = useProjectPermissions(projectId);
+    } = useProjectPermissions({ 
+        projectId: sprint?.projectId,
+        workspaceId: effectiveWorkspaceId
+    });
     
     // Check if user is workspace admin
-    const { data: currentMember } = useCurrentMember({ workspaceId: workspaceId || sprint?.workspaceId });
-    const isWorkspaceAdmin = currentMember?.role === "ADMIN";
+    const { isAdmin } = useCurrentMember({ workspaceId: effectiveWorkspaceId });
+    const isWorkspaceAdmin = isAdmin;
     
     // Effective permissions (admin OR project-level OR workspace-level)
     const canEditSprints = isWorkspaceAdmin || canEditSprintsProject || can(PERMISSIONS.SPRINT_UPDATE);

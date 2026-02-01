@@ -46,8 +46,7 @@ export const TaskIdClient = () => {
   // Get project-level task permissions
   const { 
     canEditTasksProject, 
-    canDeleteTasksProject,
-    isLoading: isLoadingPermissions 
+    canDeleteTasksProject
   } = useProjectPermissions({ 
     projectId: data?.projectId || null, 
     workspaceId 

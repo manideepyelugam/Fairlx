@@ -85,7 +85,7 @@ export const ProjectIdSettingsClient = () => {
   });
   
   // Project-level permissions for delete
-  const { canDeleteProject, isLoading: isLoadingPermissions } = useProjectPermissions({
+  const { canDeleteProject } = useProjectPermissions({
     projectId,
     workspaceId: project?.workspaceId,
   });

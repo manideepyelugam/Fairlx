@@ -98,7 +98,7 @@ const statusConfig = {
   [WorkItemStatus.DONE]: { label: "Done", dot: "bg-green-500", bg: "bg-green-50 dark:bg-green-900/30", text: "text-green-600" },
 };
 
-export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails, canView, canEdit, canDelete }: WorkItemCardProps) => {
+export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails, canView, canEdit }: WorkItemCardProps) => {
   const [editingPoints, setEditingPoints] = useState(false);
   const [assignAssigneeOpen, setAssignAssigneeOpen] = useState(false);
   const [assignEpicOpen, setAssignEpicOpen] = useState(false);

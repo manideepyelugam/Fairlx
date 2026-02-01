@@ -6,7 +6,6 @@ import { Plus, Zap, Clock, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { ProjectPermissionGuard } from "@/components/project-permission-guard";
 import { useGetSprints } from "../api/use-get-sprints";
 import { SprintCard } from "./sprint-card";
 import { CreateSprintDialog } from "./create-sprint-dialog";
@@ -35,28 +34,11 @@ export const SprintBoard = ({ workspaceId, projectId }: SprintBoardProps) => {
     
     // Get project-level sprint permissions
     const {
-      canViewSprintsProject,
       canCreateSprintsProject,
-      canEditSprintsProject,
-      canDeleteSprintsProject,
-      canStartSprintProject,
-      canCompleteSprintProject,
-      canCreateTasksProject,
-      canEditTasksProject,
-      canDeleteTasksProject,
-      isLoading: isLoadingPermissions,
     } = useProjectPermissions({ projectId, workspaceId });
     
     // Effective permissions: Admin OR project-level permission
-    const canViewSprints = isWorkspaceAdmin || canViewSprintsProject;
     const canCreateSprints = isWorkspaceAdmin || canCreateSprintsProject || can(PERMISSIONS.SPRINT_CREATE);
-    const canEditSprints = isWorkspaceAdmin || canEditSprintsProject || can(PERMISSIONS.SPRINT_UPDATE);
-    const canDeleteSprints = isWorkspaceAdmin || canDeleteSprintsProject || can(PERMISSIONS.SPRINT_DELETE);
-    const canStartSprint = isWorkspaceAdmin || canStartSprintProject || can(PERMISSIONS.SPRINT_START);
-    const canCompleteSprint = isWorkspaceAdmin || canCompleteSprintProject || can(PERMISSIONS.SPRINT_COMPLETE);
-    const canCreateWorkItems = isWorkspaceAdmin || canCreateTasksProject || can(PERMISSIONS.WORKITEM_CREATE);
-    const canEditWorkItems = isWorkspaceAdmin || canEditTasksProject || can(PERMISSIONS.WORKITEM_UPDATE);
-    const canDeleteWorkItems = isWorkspaceAdmin || canDeleteTasksProject || can(PERMISSIONS.WORKITEM_DELETE);
   
   const { data: sprintsData, isLoading: sprintsLoading } = useGetSprints({
     workspaceId,

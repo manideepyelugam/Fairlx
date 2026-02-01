@@ -193,7 +193,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
           )}
           <StatusSelector
             value={task.status}
-            onChange={canEdit ? (value) => handleUpdate({ status: value }) : undefined}
+            onChange={canEdit ? (value) => handleUpdate({ status: value }) : () => {}}
             projectId={task.projectId}
             placeholder="Status"
             disabled={!canEdit}
@@ -283,7 +283,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 <RichTextEditor
                   content={description}
                   onChange={canEdit ? setDescription : () => {}}
-                  onBlur={canEdit ? handleDescriptionBlur : undefined}
+                  onBlur={canEdit ? handleDescriptionBlur : () => {}}
                   placeholder={canEdit ? "Add a description... Use @ to mention team members, / for commands" : "No description"}
                   editable={canEdit}
                   workspaceId={workspaceId}
@@ -330,7 +330,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 <label className="text-xs text-muted-foreground mb-1.5 block">Status</label>
                 <StatusSelector
                   value={task.status}
-                  onChange={canEdit ? (value) => handleUpdate({ status: value }) : undefined}
+                  onChange={canEdit ? (value) => handleUpdate({ status: value }) : () => {}}
                   projectId={task.projectId}
                   disabled={!canEdit}
                 />
@@ -341,7 +341,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 <label className="text-xs text-muted-foreground mb-1.5 block">Type</label>
                 <TypeSelector
                   value={task.type || "TASK"}
-                  onValueChange={canEdit ? (value) => handleUpdate({ type: value }) : undefined}
+                  onValueChange={canEdit ? (value) => handleUpdate({ type: value }) : () => {}}
                   project={project}
                   customTypes={project?.customWorkItemTypes}
                   className="w-full bg-card border-border"
@@ -354,7 +354,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 <label className="text-xs text-muted-foreground mb-1.5 block">Priority</label>
                 <PrioritySelector
                   value={task.priority}
-                  onValueChange={canEdit ? (value) => handleUpdate({ priority: value }) : undefined}
+                  onValueChange={canEdit ? (value) => handleUpdate({ priority: value }) : () => {}}
                   customPriorities={project?.customPriorities}
                   disabled={!canEdit}
                 />
@@ -366,7 +366,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 <AssigneeMultiSelect
                   memberOptions={memberOptions}
                   selectedAssigneeIds={task.assigneeIds || []}
-                  onAssigneesChange={canEdit ? (ids) => handleUpdate({ assigneeIds: ids }) : undefined}
+                  onAssigneesChange={canEdit ? (ids) => handleUpdate({ assigneeIds: ids }) : () => {}}
                   placeholder="Select assignees"
                   disabled={!canEdit}
                 />
@@ -377,7 +377,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 <label className="text-xs text-muted-foreground mb-1.5 block">Start Date</label>
                 <DatePicker
                   value={task.dueDate ? new Date(task.dueDate) : undefined}
-                  onChange={canEdit ? (date) => handleUpdate({ dueDate: date }) : undefined}
+                  onChange={canEdit ? (date) => handleUpdate({ dueDate: date }) : () => {}}
                   placeholder="Set start date"
                   className="w-full bg-card border-border"
                   disabled={!canEdit}
@@ -398,7 +398,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 <label className="text-xs text-muted-foreground mb-1.5 block">End Date</label>
                 <DatePicker
                   value={task.endDate ? new Date(task.endDate) : undefined}
-                  onChange={canEdit ? (date) => handleUpdate({ endDate: date }) : undefined}
+                  onChange={canEdit ? (date) => handleUpdate({ endDate: date }) : () => {}}
                   placeholder="Set end date"
                   className="w-full bg-card border-border"
                   disabled={!canEdit}
@@ -422,7 +422,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                     if (val !== task.estimatedHours) {
                       handleUpdate({ estimatedHours: val || undefined });
                     }
-                  } : undefined}
+                  } : () => {}}
                   className="h-9 bg-card border-border"
                   disabled={!canEdit}
                 />
@@ -441,7 +441,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                     if (val !== task.storyPoints) {
                       handleUpdate({ storyPoints: val || undefined });
                     }
-                  } : undefined}
+                  } : () => {}}
                   className="h-9 bg-card border-border"
                   disabled={!canEdit}
                 />
@@ -451,7 +451,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
               <div className="flex items-center gap-2 pt-2">
                 <Checkbox
                   checked={task.flagged}
-                  onCheckedChange={canEdit ? (checked) => handleUpdate({ flagged: checked as boolean }) : undefined}
+                  onCheckedChange={canEdit ? (checked) => handleUpdate({ flagged: checked as boolean }) : () => {}}
                   id="flagged"
                   disabled={!canEdit}
                 />

@@ -18,7 +18,7 @@ import { TaskComments } from "@/features/comments/components/task-comments";
 import { WorkItemLinksSection } from "@/features/work-item-links/components/work-item-links-section";
 import { Button } from "@/components/ui/button";
 import { useCurrent } from "@/features/auth/api/use-current";
-import { useCurrentMember } from "@/features/members/api/use-current-member";
+import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { useProjectPermissions } from "@/hooks/use-project-permissions";
 import { cn } from "@/lib/utils";
 
@@ -46,18 +46,16 @@ export const TaskDetailsModalWrapper = () => {
   const projectId = data?.projectId || "";
 
   // Check workspace admin status
-  const { data: currentMember } = useCurrentMember({ workspaceId });
-  const isWorkspaceAdmin = currentMember?.role === "ADMIN";
+  const { isAdmin } = useCurrentMember({ workspaceId });
+  const isWorkspaceAdmin = isAdmin;
 
   // Project-level permissions
   const {
-    canViewTasksProject,
     canEditTasksProject,
     canDeleteTasksProject,
   } = useProjectPermissions({ projectId, workspaceId });
 
   // Effective permissions (admin OR project-level)
-  const canViewTasks = isWorkspaceAdmin || canViewTasksProject;
   const canEditTasks = isWorkspaceAdmin || canEditTasksProject;
   const canDeleteTasks = isWorkspaceAdmin || canDeleteTasksProject;
 

@@ -43,8 +43,7 @@ import { useAddProjectMember } from "@/features/project-members/api/use-add-proj
 import { useRemoveProjectMember } from "@/features/project-members/api/use-remove-project-member";
 import { useConfirm } from "@/hooks/use-confirm";
 import { useProjectPermissions } from "@/hooks/use-project-permissions";
-import { useCurrentMember } from "@/features/members/api/use-current-member";
-import { ProjectPermissionKey } from "@/lib/permissions/types";
+import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 
 import { ProjectPermissionsEditor } from "@/components/project-permissions-editor";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -77,8 +76,8 @@ export const ProjectMembersClient = () => {
     } = useProjectPermissions({ projectId, workspaceId });
     
     // Check if user is workspace admin (organization creator/admin)
-    const { data: currentMember } = useCurrentMember({ workspaceId });
-    const isWorkspaceAdmin = currentMember?.role === "ADMIN" || currentMember?.role === "OWNER";
+    const { isAdmin } = useCurrentMember({ workspaceId });
+    const isWorkspaceAdmin = isAdmin;
     
     // Effective permissions (admin OR project-level)
     const canViewMembers = isWorkspaceAdmin || isProjectAdmin || canViewMembersProject;

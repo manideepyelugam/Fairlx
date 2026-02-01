@@ -156,7 +156,7 @@ export const ProjectTools = () => {
     effectiveCanManageSettings,
     effectiveCanViewDocs,
     effectiveCanViewMembers,
-    canViewSprints,
+    effectiveCanViewSprints,
     canManageTeams,
     canCreateTeams,
     canInviteMembers,

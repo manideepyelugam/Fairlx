@@ -30,7 +30,7 @@ import { useUpdateWorkItem } from "../api/use-update-work-item";
 import { useConfirm } from "@/hooks/use-confirm";
 import { PopulatedWorkItem, WorkItemPriority } from "../types";
 import { useProjectPermissions } from "@/hooks/use-project-permissions";
-import { useCurrentMember } from "@/features/members/api/use-current-member";
+import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { usePermission } from "@/hooks/use-permission";
 import { PERMISSIONS } from "@/lib/permissions";
 
@@ -86,11 +86,14 @@ export const WorkItemOptionsMenu = ({
   const {
     canEditTasksProject,
     canDeleteTasksProject,
-  } = useProjectPermissions(projectId || workItem.projectId);
+  } = useProjectPermissions({ 
+    projectId: projectId || workItem.projectId,
+    workspaceId: workItem.workspaceId
+  });
   
   // Check if user is workspace admin
-  const { data: currentMember } = useCurrentMember({ workspaceId: workItem.workspaceId });
-  const isWorkspaceAdmin = currentMember?.role === "ADMIN";
+  const { isAdmin } = useCurrentMember({ workspaceId: workItem.workspaceId });
+  const isWorkspaceAdmin = isAdmin;
   
   // Effective permissions (admin OR project-level OR workspace-level)
   const canEditWorkItems = isWorkspaceAdmin || canEditTasksProject || can(PERMISSIONS.WORKITEM_UPDATE);
