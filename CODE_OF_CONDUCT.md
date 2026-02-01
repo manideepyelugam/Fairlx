@@ -1,36 +1,133 @@
-# Code of Conduct
-
-We are committed to a welcoming, safe, and collaborative community. This Code of Conduct applies to all project spaces (GitHub issues, discussions, pull requests, docs, chats, and events).
+# Contributor Covenant Code of Conduct
 
 ## Our Pledge
-- Foster an open, inclusive, harassment-free experience for everyone regardless of age, body size, visible or invisible disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, religion, or sexual identity and orientation.
-- Act professionally and respectfully toward others.
+
+We as members, contributors, and leaders pledge to make participation in our community a harassment-free experience for everyone, regardless of age, body size, visible or invisible disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, caste, color, religion, or sexual identity and orientation.
+
+We pledge to act and interact in ways that contribute to an open, welcoming, diverse, inclusive, and healthy community.
 
 ## Our Standards
-**Examples of positive behavior**
-- Using welcoming and inclusive language
-- Being respectful of differing viewpoints and experiences
-- Giving and gracefully accepting constructive feedback
-- Focusing on what is best for the community
-- Showing empathy toward other community members
 
-**Examples of unacceptable behavior**
-- Insults, put-downs, or derogatory comments
-- Public or private harassment or threats
-- Publishing others’ private information without consent
-- Sexualized language or imagery, or unwelcome sexual attention
-- Trolling or sustained disruption of conversations
+Examples of behavior that contributes to a positive environment for our community include:
 
-## Responsibilities
-- **Maintainers**: Enforce this Code, clarify standards, and take appropriate corrective action in response to misconduct.
-- **Community members**: Report unacceptable behavior and uphold these standards.
+- **Being respectful**: Demonstrating empathy and kindness toward other people
+- **Being inclusive**: Welcoming and supporting people of all backgrounds and identities
+- **Being constructive**: Giving and gracefully accepting constructive feedback
+- **Being responsible**: Taking responsibility for our mistakes, apologizing to those affected, and learning from the experience
+- **Being community-focused**: Focusing on what is best not just for us as individuals, but for the overall community
 
-## Enforcement
-- Report incidents to the maintainers at `conduct@scrumpty.com` (or via GitHub’s report abuse tools).
-- Reports are reviewed promptly and confidentially. Actions may include warnings, temporary bans, or permanent bans.
+Examples of unacceptable behavior include:
+
+- **Harassment**: The use of sexualized language or imagery, and sexual attention or advances of any kind
+- **Trolling**: Insulting or derogatory comments, personal or political attacks, and sustained disruption of discussions
+- **Privacy violations**: Publishing others' private information, such as physical or email addresses, without explicit permission
+- **Discrimination**: Derogatory comments related to gender, gender identity, sexual orientation, disability, mental illness, physical appearance, body size, race, ethnicity, religion, or socio-economic status
+- **Inappropriate conduct**: Other conduct which could reasonably be considered inappropriate in a professional setting
+- **Threats**: Threats of violence or incitement of violence towards any individual or group
+- **Unwelcome contact**: Following, photography, or recording without consent; continued one-on-one communication after requests to cease
+
+## Enforcement Responsibilities
+
+Community leaders and maintainers are responsible for clarifying and enforcing our standards of acceptable behavior and will take appropriate and fair corrective action in response to any behavior that they deem inappropriate, threatening, offensive, or harmful.
+
+Community leaders have the right and responsibility to remove, edit, or reject comments, commits, code, wiki edits, issues, and other contributions that are not aligned with this Code of Conduct, and will communicate reasons for moderation decisions when appropriate.
 
 ## Scope
-This Code applies within all project spaces and when an individual officially represents the project.
+
+This Code of Conduct applies within all community spaces, including:
+
+- GitHub repositories (issues, pull requests, discussions, code comments)
+- Project communication channels (Discord, Slack, email lists, forums)
+- Public events where an individual is representing the project
+- Social media when explicitly representing the project
+
+This Code of Conduct also applies when an individual is officially representing the community in public spaces. Examples include using an official email address, posting via an official social media account, or acting as an appointed representative at an online or offline event.
+
+## Enforcement
+
+### Reporting
+
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible for enforcement at:
+
+- **Email**: conduct@fairlx.com (if available)
+- **GitHub**: Use the "Report abuse" feature on specific content
+- **Private Message**: Contact project maintainers directly
+
+All complaints will be reviewed and investigated promptly and fairly. All community leaders are obligated to respect the privacy and security of the reporter of any incident.
+
+When reporting, please include:
+- Your contact information
+- Names (real, usernames, or pseudonyms) of any individuals involved
+- Description of the incident and when it occurred
+- Any supporting documentation (screenshots, logs, etc.)
+- Any additional context or information that may be helpful
+
+### Confidentiality
+
+All reports will be handled with discretion. We will respect confidentiality requests for the purpose of protecting victims of abuse. We will not name harassment victims without their affirmative consent.
+
+### Investigation
+
+After receiving a report, the maintainers will:
+
+1. **Acknowledge receipt** within 48 hours
+2. **Review the report** and gather additional information if needed
+3. **Determine appropriate action** based on the severity and context
+4. **Notify the reporter** of the outcome (respecting privacy where applicable)
+
+## Enforcement Guidelines
+
+Community leaders will follow these Enforcement Guidelines in determining the consequences for any action they deem in violation of this Code of Conduct:
+
+### 1. Correction
+
+**Community Impact**: Use of inappropriate language or other behavior deemed unprofessional or unwelcome in the community.
+
+**Consequence**: A private, written warning from community leaders, providing clarity around the nature of the violation and an explanation of why the behavior was inappropriate. A public apology may be requested.
+
+### 2. Warning
+
+**Community Impact**: A violation through a single incident or series of actions.
+
+**Consequence**: A warning with consequences for continued behavior. No interaction with the people involved, including unsolicited interaction with those enforcing the Code of Conduct, for a specified period of time. This includes avoiding interactions in community spaces as well as external channels like social media. Violating these terms may lead to a temporary or permanent ban.
+
+### 3. Temporary Ban
+
+**Community Impact**: A serious violation of community standards, including sustained inappropriate behavior.
+
+**Consequence**: A temporary ban from any sort of interaction or public communication with the community for a specified period of time. No public or private interaction with the people involved, including unsolicited interaction with those enforcing the Code of Conduct, is allowed during this period. Violating these terms may lead to a permanent ban.
+
+### 4. Permanent Ban
+
+**Community Impact**: Demonstrating a pattern of violation of community standards, including sustained inappropriate behavior, harassment of an individual, or aggression toward or disparagement of classes of individuals.
+
+**Consequence**: A permanent ban from any sort of public interaction within the community.
+
+## Appeals
+
+If you believe you have been unfairly accused of violating this Code of Conduct, you may appeal the decision by contacting the project maintainers with a concise description of your grievance. Appeals will be reviewed by a different maintainer than the one who made the original enforcement decision.
 
 ## Attribution
-Adapted from the Contributor Covenant, version 2.1.
+
+This Code of Conduct is adapted from the [Contributor Covenant](https://www.contributor-covenant.org), version 2.1, available at [https://www.contributor-covenant.org/version/2/1/code_of_conduct.html](https://www.contributor-covenant.org/version/2/1/code_of_conduct.html).
+
+Community Impact Guidelines were inspired by [Mozilla's code of conduct enforcement ladder](https://github.com/mozilla/diversity).
+
+For answers to common questions about this code of conduct, see the FAQ at [https://www.contributor-covenant.org/faq](https://www.contributor-covenant.org/faq). Translations are available at [https://www.contributor-covenant.org/translations](https://www.contributor-covenant.org/translations).
+
+## Contact
+
+For questions or concerns about this Code of Conduct, please contact:
+
+- Project Maintainers: Via GitHub Discussions or Issues
+- Email: conduct@fairlx.com (if available)
+
+---
+
+<div align="center">
+
+**Together, we build a better community.**
+
+Thank you for helping make Fairlx a welcoming space for all contributors.
+
+</div>
