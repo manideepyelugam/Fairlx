@@ -23,6 +23,8 @@ import { WorkItemLinksSection } from "@/features/work-item-links/components/work
 import { useDeleteTask } from "@/features/tasks/api/use-delete-task";
 import { useCurrent } from "@/features/auth/api/use-current";
 import { useConfirm } from "@/hooks/use-confirm";
+import { useCurrentMember } from "@/features/members/hooks/use-current-member";
+import { useProjectPermissions } from "@/hooks/use-project-permissions";
 
 export const TaskIdClient = () => {
   const [activeTab, setActiveTab] = useState<"activity" | "timelogs">("activity");
@@ -38,9 +40,21 @@ export const TaskIdClient = () => {
     "destructive"
   );
 
-  // Permissions handled by backend. UI optimistic for now or TODO: useGetProjectMember
-  const canEditTasks = true;
-  const canDeleteTasks = true;
+  // Get workspace admin status
+  const { isAdmin } = useCurrentMember({ workspaceId });
+  
+  // Get project-level task permissions
+  const { 
+    canEditTasksProject, 
+    canDeleteTasksProject
+  } = useProjectPermissions({ 
+    projectId: data?.projectId || null, 
+    workspaceId 
+  });
+  
+  // Effective permissions: Admin OR has project-level permission
+  const canEditTasks = isAdmin || canEditTasksProject;
+  const canDeleteTasks = isAdmin || canDeleteTasksProject;
 
   const handleDeleteTask = async () => {
     const ok = await confirm();

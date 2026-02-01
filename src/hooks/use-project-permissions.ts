@@ -5,6 +5,7 @@ import { useCallback, useMemo } from "react";
 import { client } from "@/lib/rpc";
 import { ProjectPermissionResult } from "@/features/project-members/types";
 import { PROJECT_PERMISSIONS } from "@/lib/project-permissions";
+import { ProjectPermissionKey } from "@/lib/permissions/types";
 
 interface UseProjectPermissionsProps {
     projectId: string | null | undefined;
@@ -123,5 +124,36 @@ export const useProjectPermissions = ({ projectId, workspaceId }: UseProjectPerm
         permissions,
         roles: data?.roles || [],
         isProjectAdmin: data?.isProjectAdmin || false,
+        
+        // New ProjectPermissionKey-based convenience methods
+        canViewProjectDocs: can(ProjectPermissionKey.VIEW_DOCS),
+        canCreateDocs: can(ProjectPermissionKey.CREATE_DOCS),
+        canEditDocs: can(ProjectPermissionKey.EDIT_DOCS),
+        canDeleteDocs: can(ProjectPermissionKey.DELETE_DOCS),
+        canEditSprintDetails: can(ProjectPermissionKey.EDIT_SPRINTS),
+        canDeleteSprintItems: can(ProjectPermissionKey.DELETE_SPRINTS),
+        canViewMembers: can(ProjectPermissionKey.VIEW_MEMBERS),
+        canManageProjectMembers: can(ProjectPermissionKey.MANAGE_MEMBERS),
+        canManageProjectTeams: can(ProjectPermissionKey.MANAGE_TEAMS),
+        canManageProjectPermissions: can(ProjectPermissionKey.MANAGE_PERMISSIONS),
+        canEditProjectSettings: can(ProjectPermissionKey.EDIT_SETTINGS),
+        canDeleteProject: can(ProjectPermissionKey.DELETE_PROJECT),
+        
+        // Task permissions (using ProjectPermissionKey)
+        canViewTasksProject: can(ProjectPermissionKey.VIEW_TASKS),
+        canEditTasksProject: can(ProjectPermissionKey.EDIT_TASKS),
+        canDeleteTasksProject: can(ProjectPermissionKey.DELETE_TASKS),
+        canCreateTasksProject: can(ProjectPermissionKey.CREATE_TASKS),
+        
+        // Sprint permissions (using ProjectPermissionKey)
+        canViewSprintsProject: can(ProjectPermissionKey.VIEW_SPRINTS),
+        canCreateSprintsProject: can(ProjectPermissionKey.CREATE_SPRINTS),
+        canEditSprintsProject: can(ProjectPermissionKey.EDIT_SPRINTS),
+        canDeleteSprintsProject: can(ProjectPermissionKey.DELETE_SPRINTS),
+        canStartSprintProject: can(ProjectPermissionKey.START_SPRINT),
+        canCompleteSprintProject: can(ProjectPermissionKey.COMPLETE_SPRINT),
+        
+        // Team permissions (using ProjectPermissionKey)
+        canViewTeamsProject: can(ProjectPermissionKey.VIEW_TEAMS),
     };
 };
