@@ -16,6 +16,8 @@ import { useUpdateTask } from "../api/use-update-task";
 import { useEditTaskModal } from "../hooks/use-edit-task-modal";
 import { usePermission } from "@/hooks/use-permission";
 import { PERMISSIONS } from "@/lib/permissions";
+import { useProjectPermissions } from "@/hooks/use-project-permissions";
+import { useCurrentMember } from "@/features/members/api/use-current-member";
 
 interface TaskActionsProps {
   id: string;
@@ -39,6 +41,16 @@ export const TaskActions = ({
 
   const { open } = useEditTaskModal();
   const { can } = usePermission();
+  
+  // Project-level permissions
+  const {
+    canEditTasksProject,
+    canDeleteTasksProject,
+  } = useProjectPermissions(projectId);
+  
+  // Check if user is workspace admin
+  const { data: currentMember } = useCurrentMember({ workspaceId });
+  const isWorkspaceAdmin = currentMember?.role === "ADMIN";
 
   const [ConfirmDialog, confirm] = useConfirm(
     "Delete Work Item",
@@ -70,8 +82,8 @@ export const TaskActions = ({
     router.push(`/workspaces/${workspaceId}/projects/${projectId}`);
   };
 
-  const canEditTask = canEdit && can(PERMISSIONS.WORKITEM_UPDATE);
-  const canDeleteTask = canDelete && can(PERMISSIONS.WORKITEM_DELETE);
+  const canEditTask = canEdit && (isWorkspaceAdmin || canEditTasksProject || can(PERMISSIONS.WORKITEM_UPDATE));
+  const canDeleteTask = canDelete && (isWorkspaceAdmin || canDeleteTasksProject || can(PERMISSIONS.WORKITEM_DELETE));
 
   return (
     <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>

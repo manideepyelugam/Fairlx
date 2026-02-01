@@ -26,10 +26,14 @@ import { PopulatedSprint, SprintStatus } from "../types";
 import { cn } from "@/lib/utils";
 import { usePermission } from "@/hooks/use-permission";
 import { PERMISSIONS } from "@/lib/permissions";
+import { useProjectPermissions } from "@/hooks/use-project-permissions";
+// import { useCurrentMember } from "@/features/members/api/use-current-member";
+import {useCurrentMember} from "@/features/members/hooks/use-current-member";
 
 interface SprintOptionsMenuProps {
   sprint: PopulatedSprint;
   hasActiveSprint?: boolean;
+  projectId?: string;
 }
 
 const statusConfig = {
@@ -62,6 +66,7 @@ const statusConfig = {
 export const SprintOptionsMenu = ({
   sprint,
   hasActiveSprint,
+  projectId,
 }: SprintOptionsMenuProps) => {
   const [DeleteDialog, confirmDelete] = useConfirm(
     "Delete Sprint",
@@ -73,6 +78,30 @@ export const SprintOptionsMenu = ({
   const { mutate: updateSprint, isPending: isUpdating } = useUpdateSprint();
 
   const { can } = usePermission();
+  
+   // Get project-level sprint permissions
+    const {
+      canViewSprintsProject,
+      canCreateSprintsProject,
+      canEditSprintsProject,
+      canDeleteSprintsProject,
+      canStartSprintProject,
+      canCompleteSprintProject,
+      canCreateTasksProject,
+      canEditTasksProject,
+      canDeleteTasksProject,
+      isLoading: isLoadingPermissions,
+    } = useProjectPermissions({ projectId, workspaceId: sprint.workspaceId });
+  
+  // Check if user is workspace admin
+  // const { data: currentMember } = useCurrentMember({ workspaceId: sprint.workspaceId });
+    const { isAdmin: isWorkspaceAdmin } = useCurrentMember({ workspaceId: sprint.workspaceId });
+  
+  // Effective permissions (admin OR project-level OR workspace-level)
+  const canEditSprints = isWorkspaceAdmin || canEditSprintsProject || can(PERMISSIONS.SPRINT_UPDATE);
+  const canDeleteSprints = isWorkspaceAdmin || canDeleteSprintsProject || can(PERMISSIONS.SPRINT_DELETE);
+  const canStartSprint = isWorkspaceAdmin || canStartSprintProject || can(PERMISSIONS.SPRINT_START);
+  const canCompleteSprint = isWorkspaceAdmin || canCompleteSprintProject || can(PERMISSIONS.SPRINT_COMPLETE);
 
   const handleDelete = async () => {
     const confirmed = await confirmDelete();
@@ -111,8 +140,10 @@ export const SprintOptionsMenu = ({
             const StatusIcon = config.icon;
 
             // Permission Checks
-            if (status === SprintStatus.ACTIVE && !can(PERMISSIONS.SPRINT_START)) return null;
-            if (status === SprintStatus.COMPLETED && !can(PERMISSIONS.SPRINT_COMPLETE)) return null;
+            if (status === SprintStatus.ACTIVE && !canStartSprint) return null;
+            if (status === SprintStatus.COMPLETED && !canCompleteSprint) return null;
+            // For PLANNED and CANCELLED status changes, require edit permission
+            if ((status === SprintStatus.PLANNED || status === SprintStatus.CANCELLED) && !canEditSprints) return null;
 
             const isDisabled = isUpdating || (status === SprintStatus.ACTIVE && hasActiveSprint && sprint.status !== SprintStatus.ACTIVE);
             const isCurrentStatus = sprint.status === status;
@@ -141,7 +172,7 @@ export const SprintOptionsMenu = ({
 
           <DropdownMenuSeparator className="my-1" />
 
-          {can(PERMISSIONS.SPRINT_DELETE) && (
+          {canDeleteSprints && (
             <DropdownMenuItem
               onClick={handleDelete}
               disabled={isDeleting}

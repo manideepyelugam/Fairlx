@@ -7,13 +7,17 @@ import { format, isPast, differenceInDays } from "date-fns";
 import { PageError } from "@/components/page-error";
 import { PageLoader } from "@/components/page-loader";
 import { Badge } from "@/components/ui/badge";
+import { ProjectPermissionGuard } from "@/components/project-permission-guard";
+import { ProjectPermissionKey } from "@/lib/permissions/types";
 
 import { useGetProject } from "@/features/projects/api/use-get-project";
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
+import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { TaskViewSwitcher } from "@/features/tasks/components/task-view-switcher";
 
 export const ProjectIdClient = () => {
   const projectId = useProjectId();
+  const workspaceId = useWorkspaceId();
   const { data: project, isLoading: isLoadingProject } = useGetProject({
     projectId,
   });
@@ -75,15 +79,22 @@ export const ProjectIdClient = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/sprints`} className="!text-sm">
-            <button
-              type="button"
-              className="inline-flex items-center rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors"
-            >
-              <Layers className="size-4 mr-3" />
-              Sprint Board
-            </button>
-          </Link>
+          {/* Sprint Board - only visible with VIEW_SPRINTS permission */}
+          <ProjectPermissionGuard
+            permission={ProjectPermissionKey.VIEW_SPRINTS}
+            projectId={projectId}
+            workspaceId={workspaceId}
+          >
+            <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/sprints`} className="!text-sm">
+              <button
+                type="button"
+                className="inline-flex items-center rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors"
+              >
+                <Layers className="size-4 mr-3" />
+                Sprint Board
+              </button>
+            </Link>
+          </ProjectPermissionGuard>
 
           <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/docs`} className="!text-sm">
             <button
@@ -125,15 +136,22 @@ export const ProjectIdClient = () => {
             </button>
           </Link>
 
-          <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/settings`} className="!text-sm">
-            <button
-              type="button"
-              className="inline-flex items-center rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors"
-            >
-              <Settings className="size-4 mr-3" />
-              Settings
-            </button>
-          </Link>
+          {/* Settings link - only visible to users with EDIT_SETTINGS permission */}
+          <ProjectPermissionGuard
+            permission={ProjectPermissionKey.EDIT_SETTINGS}
+            projectId={projectId}
+            workspaceId={workspaceId}
+          >
+            <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/settings`} className="!text-sm">
+              <button
+                type="button"
+                className="inline-flex items-center rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors"
+              >
+                <Settings className="size-4 mr-3" />
+                Settings
+              </button>
+            </Link>
+          </ProjectPermissionGuard>
         </div>
 
       </div>

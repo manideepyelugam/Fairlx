@@ -53,6 +53,9 @@ interface WorkItemDrawerProps {
   onCloseAction: () => void;
   onUpdate?: (workItemId: string, updates: Partial<PopulatedWorkItem>) => void;
   onDelete?: (workItemId: string) => void;
+  // Permission props
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 export const WorkItemDrawer = ({
@@ -61,6 +64,8 @@ export const WorkItemDrawer = ({
   onCloseAction,
   onUpdate,
   onDelete,
+  canEdit = true,
+  canDelete = true,
 }: WorkItemDrawerProps) => {
   const [title, setTitle] = useState(workItem?.title || "");
   const [description, setDescription] = useState(workItem?.description || "");
@@ -125,8 +130,8 @@ export const WorkItemDrawer = ({
                   {workItem.key}
                 </Badge>
                 {/* Type Selector */}
-                <Select value={type} onValueChange={(value) => setType(value as WorkItemType)}>
-                  <SelectTrigger className="w-28 h-7 text-xs">
+                <Select value={type} onValueChange={(value) => setType(value as WorkItemType)} disabled={canEdit === false}>
+                  <SelectTrigger className="w-28 h-7 text-xs" disabled={canEdit === false}>
                     <Layers className="size-3 mr-1" />
                     <SelectValue />
                   </SelectTrigger>
@@ -139,8 +144,8 @@ export const WorkItemDrawer = ({
                   </SelectContent>
                 </Select>
                 {/* Status Selector */}
-                <Select value={status} onValueChange={(value) => setStatus(value as WorkItemStatus)}>
-                  <SelectTrigger className="w-32 h-7 text-xs">
+                <Select value={status} onValueChange={(value) => setStatus(value as WorkItemStatus)} disabled={canEdit === false}>
+                  <SelectTrigger className="w-32 h-7 text-xs" disabled={canEdit === false}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -157,6 +162,7 @@ export const WorkItemDrawer = ({
                 onChange={(e) => setTitle(e.target.value)}
                 className="text-lg font-semibold border-none px-0 focus-visible:ring-0"
                 placeholder="Work item title"
+                disabled={canEdit === false}
               />
             </div>
             <DropdownMenu>
@@ -174,11 +180,15 @@ export const WorkItemDrawer = ({
                   <ExternalLink className="size-4 mr-2" />
                   Open in new tab
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-red-600" onClick={handleDelete}>
-                  <Trash2 className="size-4 mr-2" />
-                  Delete
-                </DropdownMenuItem>
+                {canDelete !== false && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="text-red-600" onClick={handleDelete}>
+                      <Trash2 className="size-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -304,14 +314,15 @@ export const WorkItemDrawer = ({
                 className="h-9 text-sm w-24"
                 placeholder="0"
                 min="0"
+                disabled={canEdit === false}
               />
             </div>
 
             {/* Priority */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Priority</Label>
-              <Select defaultValue={workItem.priority}>
-                <SelectTrigger className="h-9 text-sm">
+              <Select defaultValue={workItem.priority} disabled={canEdit === false}>
+                <SelectTrigger className="h-9 text-sm" disabled={canEdit === false}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -333,6 +344,7 @@ export const WorkItemDrawer = ({
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Add a description..."
                 className="min-h-[300px] text-sm"
+                disabled={canEdit === false}
               />
             </div>
           </TabsContent>
@@ -403,9 +415,9 @@ export const WorkItemDrawer = ({
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 pt-6 border-t mt-6">
           <Button variant="outline" onClick={onCloseAction}>
-            Cancel
+            {canEdit === false ? "Close" : "Cancel"}
           </Button>
-          <Button onClick={handleSave}>Save changes</Button>
+          {canEdit !== false && <Button onClick={handleSave}>Save changes</Button>}
         </div>
       </SheetContent>
     </Sheet>

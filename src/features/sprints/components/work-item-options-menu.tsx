@@ -29,14 +29,10 @@ import { useDeleteWorkItem } from "../api/use-delete-work-item";
 import { useUpdateWorkItem } from "../api/use-update-work-item";
 import { useConfirm } from "@/hooks/use-confirm";
 import { PopulatedWorkItem, WorkItemPriority } from "../types";
-
-interface WorkItemOptionsMenuProps {
-  workItem: PopulatedWorkItem;
-  onSplit?: () => void;
-  onAssignEpic?: () => void;
-  onAssignAssignee?: () => void;
-  onEditStoryPoints?: () => void;
-}
+import { useProjectPermissions } from "@/hooks/use-project-permissions";
+import { useCurrentMember } from "@/features/members/api/use-current-member";
+import { usePermission } from "@/hooks/use-permission";
+import { PERMISSIONS } from "@/lib/permissions";
 
 const priorityConfig = {
   [WorkItemPriority.LOW]: {
@@ -64,6 +60,7 @@ interface WorkItemOptionsMenuProps {
   onAssignAssignee?: () => void;
   onEditStoryPoints?: () => void;
   hideAssignAssignee?: boolean;
+  projectId?: string;
 }
 
 export const WorkItemOptionsMenu = ({
@@ -73,6 +70,7 @@ export const WorkItemOptionsMenu = ({
   onAssignAssignee,
   onEditStoryPoints,
   hideAssignAssignee,
+  projectId,
 }: WorkItemOptionsMenuProps) => {
   const [DeleteDialog, confirmDelete] = useConfirm(
     "Delete Work Item",
@@ -82,6 +80,21 @@ export const WorkItemOptionsMenu = ({
 
   const { mutate: deleteWorkItem, isPending: isDeleting } = useDeleteWorkItem();
   const { mutate: updateWorkItem, isPending: isUpdating } = useUpdateWorkItem();
+  
+  // Permission hooks
+  const { can } = usePermission();
+  const {
+    canEditTasksProject,
+    canDeleteTasksProject,
+  } = useProjectPermissions(projectId || workItem.projectId);
+  
+  // Check if user is workspace admin
+  const { data: currentMember } = useCurrentMember({ workspaceId: workItem.workspaceId });
+  const isWorkspaceAdmin = currentMember?.role === "ADMIN";
+  
+  // Effective permissions (admin OR project-level OR workspace-level)
+  const canEditWorkItems = isWorkspaceAdmin || canEditTasksProject || can(PERMISSIONS.WORKITEM_UPDATE);
+  const canDeleteWorkItems = isWorkspaceAdmin || canDeleteTasksProject || can(PERMISSIONS.WORKITEM_DELETE);
 
   const handleDelete = async () => {
     const confirmed = await confirmDelete();
@@ -137,67 +150,75 @@ export const WorkItemOptionsMenu = ({
             <Hash className="size-3.5 mr-2 text-muted-foreground" />
             Copy Key
           </DropdownMenuItem>
-          <DropdownMenuSeparator className="my-1" />
-          <DropdownMenuItem onClick={handleToggleFlag} className="text-xs py-1.5 cursor-pointer">
-            <Flag
-              className={cn(
-                "size-3.5 mr-2",
-                workItem.flagged ? "fill-red-500 text-red-500" : "text-muted-foreground"
-              )}
-            />
-            {workItem.flagged ? "Remove Flag" : "Add Flag"}
-          </DropdownMenuItem>
-          <DropdownMenuSeparator className="my-1" />
-          {!hideAssignAssignee && (
-            <DropdownMenuItem onClick={onAssignAssignee} className="text-xs py-1.5 cursor-pointer">
-              <Users className="size-3.5 mr-2 text-muted-foreground" />
-              Assign Members
-            </DropdownMenuItem>
-          )}
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="text-xs py-1.5">
-              <div className={cn("size-2 rounded-full mr-2", priorityConfig[workItem.priority].dotColor)} />
-              Set Priority
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-32">
-              {Object.entries(priorityConfig).map(([priority, config]) => (
-                <DropdownMenuItem
-                  key={priority}
-                  onClick={() => handleSetPriority(priority as WorkItemPriority)}
-                  disabled={isUpdating}
+          {canEditWorkItems && (
+            <>
+              <DropdownMenuSeparator className="my-1" />
+              <DropdownMenuItem onClick={handleToggleFlag} className="text-xs py-1.5 cursor-pointer">
+                <Flag
                   className={cn(
-                    "text-xs py-1.5 cursor-pointer",
-                    workItem.priority === priority && "bg-muted"
+                    "size-3.5 mr-2",
+                    workItem.flagged ? "fill-red-500 text-red-500" : "text-muted-foreground"
                   )}
-                >
-                  <div className={cn("size-2 rounded-full mr-2", config.dotColor)} />
-                  {config.label}
+                />
+                {workItem.flagged ? "Remove Flag" : "Add Flag"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="my-1" />
+              {!hideAssignAssignee && (
+                <DropdownMenuItem onClick={onAssignAssignee} className="text-xs py-1.5 cursor-pointer">
+                  <Users className="size-3.5 mr-2 text-muted-foreground" />
+                  Assign Members
                 </DropdownMenuItem>
-              ))}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-          <DropdownMenuItem onClick={onAssignEpic} className="text-xs py-1.5 cursor-pointer">
-            <Layers className="size-3.5 mr-2 text-purple-500" />
-            Link to Epic
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={onEditStoryPoints} className="text-xs py-1.5 cursor-pointer">
-            <Hash className="size-3.5 mr-2 text-muted-foreground" />
-            Edit Points
-          </DropdownMenuItem>
-          <DropdownMenuSeparator className="my-1" />
-          <DropdownMenuItem onClick={onSplit} className="text-xs py-1.5 cursor-pointer">
-            <GitBranch className="size-3.5 mr-2 text-muted-foreground" />
-            Split Item
-          </DropdownMenuItem>
-          <DropdownMenuSeparator className="my-1" />
-          <DropdownMenuItem
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="text-xs py-1.5 cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/20"
-          >
-            <Trash2 className="size-3.5 mr-2" />
-            Delete Item
-          </DropdownMenuItem>
+              )}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="text-xs py-1.5">
+                  <div className={cn("size-2 rounded-full mr-2", priorityConfig[workItem.priority].dotColor)} />
+                  Set Priority
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-32">
+                  {Object.entries(priorityConfig).map(([priority, config]) => (
+                    <DropdownMenuItem
+                      key={priority}
+                      onClick={() => handleSetPriority(priority as WorkItemPriority)}
+                      disabled={isUpdating}
+                      className={cn(
+                        "text-xs py-1.5 cursor-pointer",
+                        workItem.priority === priority && "bg-muted"
+                      )}
+                    >
+                      <div className={cn("size-2 rounded-full mr-2", config.dotColor)} />
+                      {config.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuItem onClick={onAssignEpic} className="text-xs py-1.5 cursor-pointer">
+                <Layers className="size-3.5 mr-2 text-purple-500" />
+                Link to Epic
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onEditStoryPoints} className="text-xs py-1.5 cursor-pointer">
+                <Hash className="size-3.5 mr-2 text-muted-foreground" />
+                Edit Points
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="my-1" />
+              <DropdownMenuItem onClick={onSplit} className="text-xs py-1.5 cursor-pointer">
+                <GitBranch className="size-3.5 mr-2 text-muted-foreground" />
+                Split Item
+              </DropdownMenuItem>
+            </>
+          )}
+          {canDeleteWorkItems && (
+            <>
+              <DropdownMenuSeparator className="my-1" />
+              <DropdownMenuItem
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="text-xs py-1.5 cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-900/20"
+              >
+                <Trash2 className="size-3.5 mr-2" />
+                Delete Item
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </>

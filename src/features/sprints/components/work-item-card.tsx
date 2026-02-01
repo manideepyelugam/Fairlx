@@ -69,6 +69,10 @@ interface WorkItemCardProps {
   workspaceId: string;
   projectId?: string;
   onViewDetails?: () => void;
+  // Permission overrides (optional - if not provided, will use hooks)
+  canView?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 const typeConfig = {
@@ -94,7 +98,7 @@ const statusConfig = {
   [WorkItemStatus.DONE]: { label: "Done", dot: "bg-green-500", bg: "bg-green-50 dark:bg-green-900/30", text: "text-green-600" },
 };
 
-export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails }: WorkItemCardProps) => {
+export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails, canView, canEdit, canDelete }: WorkItemCardProps) => {
   const [editingPoints, setEditingPoints] = useState(false);
   const [assignAssigneeOpen, setAssignAssigneeOpen] = useState(false);
   const [assignEpicOpen, setAssignEpicOpen] = useState(false);
@@ -168,10 +172,17 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails }
               <TypeIcon className={cn("size-3.5", typeConfig[workItem.type].color)} />
             </div>
 
-            <button onClick={onViewDetails} className="flex-1 text-left truncate">
-              <span className="text-xs font-semibold text-blue-600">{workItem.key}</span>{" "}
-              <span className="text-xs">{workItem.title}</span>
-            </button>
+            {canView !== false ? (
+              <button onClick={onViewDetails} className="flex-1 text-left truncate">
+                <span className="text-xs font-semibold text-blue-600">{workItem.key}</span>{" "}
+                <span className="text-xs">{workItem.title}</span>
+              </button>
+            ) : (
+              <div className="flex-1 text-left truncate">
+                <span className="text-xs font-semibold text-blue-600">{workItem.key}</span>{" "}
+                <span className="text-xs">{workItem.title}</span>
+              </div>
+            )}
 
             {workItem.flagged && <Flag className="size-4 text-red-500 fill-red-500" />}
 
@@ -181,6 +192,7 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails }
               onAssignEpic={() => setAssignEpicOpen(true)}
               onSplit={() => setSplitOpen(true)}
               onEditStoryPoints={() => setEditingPoints(true)}
+              projectId={projectId}
             />
           </div>
 
@@ -188,7 +200,7 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails }
           <div className="flex items-center gap-2 flex-wrap">
 
             {/* Type Selector */}
-            <Select value={workItem.type} onValueChange={handleTypeChange}>
+            <Select value={workItem.type} onValueChange={handleTypeChange} disabled={canEdit === false}>
               <SelectTrigger className={cn("h-6 px-2 text-[10px]", typeConfig[workItem.type]?.light || "bg-muted", typeConfig[workItem.type]?.color || "text-muted-foreground")}>
                 <div className="flex items-center gap-1">
                   <TypeIcon className="size-3" />
@@ -224,7 +236,7 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails }
             </Select>
 
             {/* Status */}
-            <Select value={workItem.status} onValueChange={handleStatusChange}>
+            <Select value={workItem.status} onValueChange={handleStatusChange} disabled={canEdit === false}>
               <SelectTrigger className={cn("h-6 px-2 text-[10px]", status.bg, status.text)}>
                 <div className="flex items-center gap-1">
                   <span className={cn("size-1.5 rounded-full", status.dot)} />
@@ -262,7 +274,7 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails }
             </Badge>
 
             {/* Story Points */}
-            {editingPoints ? (
+            {editingPoints && canEdit !== false ? (
               <form onSubmit={handlePointsSubmit}>
                 <Input
                   name="points"
@@ -273,7 +285,13 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails }
                 />
               </form>
             ) : (
-              <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => setEditingPoints(true)}>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="h-6 text-[10px]" 
+                onClick={() => canEdit !== false && setEditingPoints(true)}
+                disabled={canEdit === false}
+              >
                 {workItem.storyPoints || 0} pts
               </Button>
             )}

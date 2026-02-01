@@ -165,6 +165,13 @@ const app = new Hono()
       return c.json({ error: "Unauthorized" }, 401);
     }
 
+    // Project permission check: verify user can delete tasks in this project
+    const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+    const access = await resolveUserProjectAccess(databases, user.$id, task.projectId);
+    if (!access.hasAccess || !hasProjectPermission(access, ProjectPermissionKey.DELETE_TASKS)) {
+      return c.json({ error: "Forbidden: No permission to delete tasks in this project" }, 403);
+    }
+
     // Delete related time logs
     try {
       const timeLogs = await databases.listDocuments(
@@ -743,6 +750,13 @@ const app = new Hono()
         return c.json({ error: "Unauthorized" }, 401);
       }
 
+      // Project permission check: verify user can view tasks in this project
+      const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+      const projectAccess = await resolveUserProjectAccess(databases, currentUser.$id, task.projectId);
+      if (!projectAccess.hasAccess || !hasProjectPermission(projectAccess, ProjectPermissionKey.VIEW_TASKS)) {
+        return c.json({ error: "Forbidden: No permission to view tasks in this project" }, 403);
+      }
+
       // Fetch project safely
       let project;
       try {
@@ -882,6 +896,17 @@ const app = new Hono()
         return c.json({ error: "Unauthorized" }, 401);
       }
 
+      // Project permission check: verify user can edit tasks in each affected project
+      const projectIds = [...new Set(tasksToUpdate.documents.map((t) => t.projectId))];
+      const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+      
+      for (const projId of projectIds) {
+        const projectAccess = await resolveUserProjectAccess(databases, user.$id, projId);
+        if (!projectAccess.hasAccess || !hasProjectPermission(projectAccess, ProjectPermissionKey.EDIT_TASKS)) {
+          return c.json({ error: `Forbidden: No permission to edit tasks in project ${projId}` }, 403);
+        }
+      }
+
       // ======= WORKFLOW TRANSITION VALIDATION FOR BULK UPDATES =======
       // Validate each status transition before performing updates
       const failedValidations: { taskId: string; error: string }[] = [];
@@ -892,8 +917,7 @@ const app = new Hono()
         tasksToUpdate.documents.map((task) => [task.$id, task])
       );
 
-      // Get project workflows for validation
-      const projectIds = [...new Set(tasksToUpdate.documents.map((t) => t.projectId))];
+      // Get project workflows for validation (reuse projectIds from permission check above)
       const projects = await databases.listDocuments<Project>(
         DATABASE_ID,
         PROJECTS_ID,

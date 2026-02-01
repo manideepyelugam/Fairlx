@@ -132,6 +132,13 @@ const app = new Hono()
         return c.json({ error: "Unauthorized" }, 401);
       }
 
+      // Project permission check: verify user can view sprints in this project
+      const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+      const access = await resolveUserProjectAccess(databases, user.$id, sprint.projectId);
+      if (!access.hasAccess || !hasProjectPermission(access, ProjectPermissionKey.VIEW_SPRINTS)) {
+        return c.json({ error: "Forbidden: No permission to view sprints in this project" }, 403);
+      }
+
       // Get work items for sprint
       const workItems = await databases.listDocuments<WorkItem>(
         DATABASE_ID,
@@ -368,26 +375,33 @@ const app = new Hono()
 
       const updates = c.req.valid("json");
 
-      // Permission Check
+      // Project permission check for sprint editing
+      const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+      const access = await resolveUserProjectAccess(databases, user.$id, sprint.projectId);
+      
+      if (!access.hasAccess) {
+        return c.json({ error: "Forbidden: No access to this project" }, 403);
+      }
+
+      // Permission Check for status changes
       if (updates.status) {
         if (updates.status === SprintStatus.ACTIVE && sprint.status !== SprintStatus.ACTIVE) {
-          if (!(await can(databases, sprint.workspaceId, user.$id, PERMISSIONS.SPRINT_START))) {
-            return c.json({ error: "Forbidden: Cannot start sprint" }, 403);
+          if (!hasProjectPermission(access, ProjectPermissionKey.START_SPRINT)) {
+            return c.json({ error: "Forbidden: No permission to start sprints" }, 403);
           }
         } else if (updates.status === SprintStatus.COMPLETED && sprint.status !== SprintStatus.COMPLETED) {
-          if (!(await can(databases, sprint.workspaceId, user.$id, PERMISSIONS.SPRINT_COMPLETE))) {
-            return c.json({ error: "Forbidden: Cannot complete sprint" }, 403);
+          if (!hasProjectPermission(access, ProjectPermissionKey.COMPLETE_SPRINT)) {
+            return c.json({ error: "Forbidden: No permission to complete sprints" }, 403);
           }
         }
       }
 
       // Verify permissions: allow status changes with specific rights, require EDIT for everything else.
-
       const isStatusChangeOnly = Object.keys(updates).length === 1 && updates.status;
-      const hasEditPermission = await can(databases, sprint.workspaceId, user.$id, PERMISSIONS.SPRINT_UPDATE);
+      const hasEditPermission = hasProjectPermission(access, ProjectPermissionKey.EDIT_SPRINTS);
 
       if (!isStatusChangeOnly && !hasEditPermission) {
-        return c.json({ error: "Forbidden: Needs Edit Sprints permission" }, 403);
+        return c.json({ error: "Forbidden: No permission to edit sprints" }, 403);
       }
 
       // Ensure unguarded status transitions also require EDIT permission.
@@ -397,7 +411,7 @@ const app = new Hono()
           (updates.status === SprintStatus.COMPLETED && sprint.status !== SprintStatus.COMPLETED);
 
         if (!isGuardedTransition && !hasEditPermission) {
-          return c.json({ error: "Forbidden" }, 403);
+          return c.json({ error: "Forbidden: No permission to edit sprints" }, 403);
         }
       }
 
@@ -461,8 +475,11 @@ const app = new Hono()
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      if (!(await can(databases, workspaceId, user.$id, PERMISSIONS.SPRINT_COMPLETE))) {
-        return c.json({ error: "Forbidden" }, 403);
+      // Project permission check for completing sprints
+      const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+      const access = await resolveUserProjectAccess(databases, user.$id, projectId);
+      if (!access.hasAccess || !hasProjectPermission(access, ProjectPermissionKey.COMPLETE_SPRINT)) {
+        return c.json({ error: "Forbidden: No permission to complete sprints in this project" }, 403);
       }
 
       // 1. Fetch sprint items
@@ -552,8 +569,11 @@ const app = new Hono()
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      if (!(await can(databases, sprint.workspaceId, user.$id, PERMISSIONS.SPRINT_DELETE))) {
-        return c.json({ error: "Forbidden" }, 403);
+      // Project permission check for deleting sprints
+      const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+      const access = await resolveUserProjectAccess(databases, user.$id, sprint.projectId);
+      if (!access.hasAccess || !hasProjectPermission(access, ProjectPermissionKey.DELETE_SPRINTS)) {
+        return c.json({ error: "Forbidden: No permission to delete sprints in this project" }, 403);
       }
 
       // Move all work items in this sprint to backlog (null sprint)
@@ -614,6 +634,13 @@ const app = new Hono()
 
       if (!member) {
         return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      // Project permission check for reordering sprints (requires EDIT_SPRINTS)
+      const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+      const access = await resolveUserProjectAccess(databases, user.$id, sprint.projectId);
+      if (!access.hasAccess || !hasProjectPermission(access, ProjectPermissionKey.EDIT_SPRINTS)) {
+        return c.json({ error: "Forbidden: No permission to edit sprints in this project" }, 403);
       }
 
       const updatedSprint = await databases.updateDocument<Sprint>(

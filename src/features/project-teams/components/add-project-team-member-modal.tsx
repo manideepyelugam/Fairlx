@@ -29,6 +29,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAddProjectTeamMember } from "../api/use-add-project-team-member";
 import { useGetProjectMembers } from "@/features/project-members/api/use-get-project-members";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
+import { useGetMembers } from "@/features/members/api/use-get-members";
+import { Badge } from "@/components/ui/badge";
 
 const formSchema = z.object({
     userId: z.string().min(1, "Please select a member"),
@@ -62,15 +64,28 @@ export function AddProjectTeamMemberModal({
         projectId,
         workspaceId
     });
+    
+    // Fetch workspace members to identify admins
+    const { data: workspaceMembersData } = useGetMembers({ workspaceId });
+    
+    // Create a set of admin userIds (ADMIN/OWNER roles cannot be added to teams)
+    const adminUserIds = new Set(
+        (workspaceMembersData?.documents || [])
+            .filter((m) => m.role === "ADMIN" || m.role === "OWNER")
+            .map((m) => m.userId)
+    );
 
-    // Transform project members to display format
-    const availableMembers = (membersData?.documents || []).map((member) => ({
-        $id: member.$id,
-        userId: member.userId,
-        name: member.user?.name || "Unknown",
-        email: member.user?.email || "",
-        profileImageUrl: member.user?.profileImageUrl,
-    }));
+    // Transform project members to display format, filtering out workspace admins
+    // Admins already have all permissions and don't need to be in teams
+    const availableMembers = (membersData?.documents || [])
+        .filter((member) => !adminUserIds.has(member.userId)) // Filter out admins
+        .map((member) => ({
+            $id: member.$id,
+            userId: member.userId,
+            name: member.user?.name || "Unknown",
+            email: member.user?.email || "",
+            profileImageUrl: member.user?.profileImageUrl,
+        }));
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),

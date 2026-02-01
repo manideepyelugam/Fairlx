@@ -8,6 +8,7 @@ import { useProjectId } from "@/features/projects/hooks/use-project-id";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { useGetMembers } from "@/features/members/api/use-get-members";
+import { useProjectPermissions } from "@/hooks/use-project-permissions";
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
@@ -242,6 +243,21 @@ export const TaskViewSwitcher = ({
 
   // Get effective project ID
   const effectiveProjectId = paramProjectId || projectId;
+  
+  // Get project-level task permissions
+  const { 
+    canViewTasksProject, 
+    canEditTasksProject, 
+    canDeleteTasksProject, 
+    canCreateTasksProject,
+    isLoading: isLoadingPermissions 
+  } = useProjectPermissions({ projectId: effectiveProjectId || null, workspaceId });
+  
+  // Effective permissions: Admin OR has project-level permission
+  const canViewTasks = isAdmin || canViewTasksProject;
+  const canEditTasks = isAdmin || canEditTasksProject;
+  const canDeleteTasks = isAdmin || canDeleteTasksProject;
+  const canCreateTasks = isAdmin || canCreateTasksProject;
 
   // Use Work Items instead of Tasks - map status filter from TaskStatus to WorkItemStatus
   const mappedStatus = status ? taskStatusToWorkItemStatus(status as TaskStatus) : undefined;
@@ -425,13 +441,13 @@ export const TaskViewSwitcher = ({
                 variant="table"
               >
                 <DataTable
-                  columns={createColumns(isAdmin, isAdmin)}
+                  columns={createColumns(canEditTasks, canDeleteTasks)}
                   data={filteredTasks?.documents ?? []}
                 />
               </ProjectSetupOverlay>
             ) : (
               <DataTable
-                columns={createColumns(isAdmin, isAdmin)}
+                columns={createColumns(canEditTasks, canDeleteTasks)}
                 data={filteredTasks?.documents ?? []}
               />
             )}
@@ -449,9 +465,9 @@ export const TaskViewSwitcher = ({
                 <EnhancedDataKanban
                   data={kanbanTasks}
                   onChange={onKanbanChange}
-                  canCreateTasks={isAdmin}
-                  canEditTasks={isAdmin}
-                  canDeleteTasks={isAdmin}
+                  canCreateTasks={canCreateTasks}
+                  canEditTasks={canEditTasks}
+                  canDeleteTasks={canDeleteTasks}
                   members={members?.documents ?? []}
                   projectId={paramProjectId || projectId || undefined}
                 />
@@ -460,9 +476,9 @@ export const TaskViewSwitcher = ({
               <EnhancedDataKanban
                 data={kanbanTasks}
                 onChange={onKanbanChange}
-                canCreateTasks={isAdmin}
-                canEditTasks={isAdmin}
-                canDeleteTasks={isAdmin}
+                canCreateTasks={canCreateTasks}
+                canEditTasks={canEditTasks}
+                canDeleteTasks={canDeleteTasks}
                 members={members?.documents ?? []}
                 projectId={paramProjectId || projectId || undefined}
               />

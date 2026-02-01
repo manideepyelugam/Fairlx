@@ -477,7 +477,7 @@ export const DataKanban = ({
                           key={task.$id}
                           draggableId={task.$id}
                           index={index}
-                          isDragDisabled={selectionMode}
+                          isDragDisabled={selectionMode || !canEditTasks}
                         >
                           {(provided) => (
                             <div

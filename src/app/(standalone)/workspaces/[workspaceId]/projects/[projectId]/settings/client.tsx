@@ -68,6 +68,7 @@ import { WorkTypesSettings } from "@/features/projects/components/work-types-set
 import { PrioritySettings } from "@/features/projects/components/priority-settings";
 import { LabelSettings } from "@/features/projects/components/label-settings";
 import { CopySettingsDialog } from "@/features/projects/components/copy-settings-dialog";
+import { useProjectPermissions } from "@/hooks/use-project-permissions";
 
 export const ProjectIdSettingsClient = () => {
   const projectId = useProjectId();
@@ -81,6 +82,12 @@ export const ProjectIdSettingsClient = () => {
 
   const { isLoading: isMemberLoading, isAdmin } = useCurrentMember({
     workspaceId: project?.workspaceId || "",
+  });
+  
+  // Project-level permissions for delete
+  const { canDeleteProject, isLoading: isLoadingPermissions } = useProjectPermissions({
+    projectId,
+    workspaceId: project?.workspaceId,
   });
 
   // Mutations
@@ -170,7 +177,7 @@ export const ProjectIdSettingsClient = () => {
     { id: "types", label: "Work Types", icon: Layers },
     { id: "priorities", label: "Priorities", icon: Flag },
     { id: "labels", label: "Labels", icon: Tag },
-    ...(isAdmin ? [{ id: "danger", label: "Danger Zone", icon: Shield, danger: true }] : []),
+    ...((isAdmin || canDeleteProject) ? [{ id: "danger", label: "Danger Zone", icon: Shield, danger: true }] : []),
   ];
 
   return (
@@ -653,8 +660,8 @@ export const ProjectIdSettingsClient = () => {
               </Card>
             )}
 
-            {/* Danger Zone */}
-            {activeTab === "danger" && isAdmin && (
+            {/* Danger Zone - Only show if user has DELETE_PROJECT permission */}
+            {activeTab === "danger" && (isAdmin || canDeleteProject) && (
               <Card className="border-red-200">
                 <CardHeader className="mb-3">
                   <CardTitle className="!text-[18px] flex items-center gap-2 text-red-600">

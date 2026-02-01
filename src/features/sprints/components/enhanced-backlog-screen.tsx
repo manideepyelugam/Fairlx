@@ -58,6 +58,8 @@ import { useGetWorkItems } from "../api/use-get-work-items";
 import { useCreateSprint } from "../api/use-create-sprint";
 import { PERMISSIONS } from "@/lib/permissions";
 import { usePermission } from "@/hooks/use-permission";
+import { useProjectPermissions } from "@/hooks/use-project-permissions";
+import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { useUpdateSprint } from "../api/use-update-sprint";
 import { useUpdateWorkItem } from "../api/use-update-work-item";
 import { useCreateWorkItem } from "../api/use-create-work-item";
@@ -134,6 +136,34 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   const { open: openCreateTaskModal } = useCreateTaskModal();
 
   const { can } = usePermission();
+  
+  // Get workspace admin status
+  const { isAdmin: isWorkspaceAdmin } = useCurrentMember({ workspaceId });
+  
+  // Get project-level sprint permissions
+  const {
+    canViewSprintsProject,
+    canCreateSprintsProject,
+    canEditSprintsProject,
+    canDeleteSprintsProject,
+    canStartSprintProject,
+    canCompleteSprintProject,
+    canCreateTasksProject,
+    canEditTasksProject,
+    canDeleteTasksProject,
+    isLoading: isLoadingPermissions,
+  } = useProjectPermissions({ projectId, workspaceId });
+  
+  // Effective permissions: Admin OR project-level permission
+  const canViewSprints = isWorkspaceAdmin || canViewSprintsProject;
+  const canCreateSprints = isWorkspaceAdmin || canCreateSprintsProject || can(PERMISSIONS.SPRINT_CREATE);
+  const canEditSprints = isWorkspaceAdmin || canEditSprintsProject || can(PERMISSIONS.SPRINT_UPDATE);
+  const canDeleteSprints = isWorkspaceAdmin || canDeleteSprintsProject || can(PERMISSIONS.SPRINT_DELETE);
+  const canStartSprint = isWorkspaceAdmin || canStartSprintProject || can(PERMISSIONS.SPRINT_START);
+  const canCompleteSprint = isWorkspaceAdmin || canCompleteSprintProject || can(PERMISSIONS.SPRINT_COMPLETE);
+  const canCreateWorkItems = isWorkspaceAdmin || canCreateTasksProject || can(PERMISSIONS.WORKITEM_CREATE);
+  const canEditWorkItems = isWorkspaceAdmin || canEditTasksProject || can(PERMISSIONS.WORKITEM_UPDATE);
+  const canDeleteWorkItems = isWorkspaceAdmin || canDeleteTasksProject || can(PERMISSIONS.WORKITEM_DELETE);
 
 
   // API Hooks
@@ -540,7 +570,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                     <DropdownMenuItem>Without epic</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                {can(PERMISSIONS.WORKITEM_CREATE) && (
+                {canCreateWorkItems && (
                   <Button
                     onClick={() => setIsCreateEpicDialogOpen(true)}
                     variant="outline" size={"xs"}
@@ -549,7 +579,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                     Add Epic
                   </Button>
                 )}
-                {can(PERMISSIONS.WORKITEM_CREATE) && (
+                {canCreateWorkItems && (
                   <Button
                     size="xs"
                     // Default/Primary variant
@@ -559,7 +589,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                     Quick create
                   </Button>
                 )}
-                {can(PERMISSIONS.WORKITEM_CREATE) && (
+                {canCreateWorkItems && (
                   <Button
                     size="xs"
                     // Default/Primary variant
@@ -569,7 +599,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                     Create Full Workitem
                   </Button>
                 )}
-                {can(PERMISSIONS.SPRINT_CREATE) && (
+                {canCreateSprints && (
                   <Button
                     variant="primary"
                     size="xs"
@@ -602,7 +632,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
               </Button>
             </div>
             <div className="flex items-center gap-2">
-              {can(PERMISSIONS.WORKITEM_UPDATE) && (
+              {canEditWorkItems && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="bg-background border-border text-primary hover:bg-accent">
@@ -622,14 +652,16 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleBulkDelete}
-                className="bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/30 hover:border-destructive/40 shadow-none"
-              >
-                Delete
-              </Button>
+              {canDeleteWorkItems && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDelete}
+                  className="bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/30 hover:border-destructive/40 shadow-none"
+                >
+                  Delete
+                </Button>
+              )}
             </div>
           </div>
         )}
@@ -697,7 +729,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                 {format(new Date(sprint.startDate), "d MMM")} – {format(new Date(sprint.endDate), "d MMM")}
                               </span>
                             ) : (
-                              can(PERMISSIONS.SPRINT_UPDATE) && (
+                              canEditSprints && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -733,7 +765,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
 
                         {/* Actions */}
                         <div className="flex items-center gap-2">
-                          {sprint.status === SprintStatus.PLANNED && can(PERMISSIONS.SPRINT_UPDATE) && (
+                          {sprint.status === SprintStatus.PLANNED && canStartSprint && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -746,7 +778,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                             </Button>
                           )}
 
-                          {sprint.status === SprintStatus.ACTIVE && can(PERMISSIONS.SPRINT_COMPLETE) && (
+                          {sprint.status === SprintStatus.ACTIVE && canCompleteSprint && (
                             <Button
                               size="xs"
                               // Default/Primary variant
@@ -757,7 +789,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                             </Button>
                           )}
 
-                          {(can(PERMISSIONS.SPRINT_UPDATE) || can(PERMISSIONS.SPRINT_DELETE)) && (
+                          {(canEditSprints || canDeleteSprints) && (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -765,7 +797,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                {can(PERMISSIONS.SPRINT_UPDATE) && (
+                                {canEditSprints && (
                                   <DropdownMenuItem
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -777,7 +809,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                     Rename sprint
                                   </DropdownMenuItem>
                                 )}
-                                {can(PERMISSIONS.SPRINT_UPDATE) && (
+                                {canEditSprints && (
                                   <DropdownMenuItem
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -788,7 +820,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                     Sprint settings
                                   </DropdownMenuItem>
                                 )}
-                                {can(PERMISSIONS.SPRINT_DELETE) && (
+                                {canDeleteSprints && (
                                   <DropdownMenuItem
                                     className="text-red-600"
                                     onClick={() => handleDeleteSprint(sprint.$id)}
@@ -1092,7 +1124,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                 >
                                   Add
                                 </Button>
-                                {can(PERMISSIONS.SPRINT_UPDATE) && (
+                                {canStartSprint && (
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -1122,7 +1154,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                               </div>
                             </div>
                           ) : (
-                            can(PERMISSIONS.WORKITEM_CREATE) && (
+                            canCreateWorkItems && (
                               <button
                                 onClick={() => setIsCreatingInSprint(sprint.$id)}
                                 className="w-full px-4 py-3 text-left text-sm text-muted-foreground hover:bg-accent transition-colors flex items-center gap-2 border-t border-border"
@@ -1172,7 +1204,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                       </div>
                     </div>
 
-                    {can(PERMISSIONS.SPRINT_CREATE) && (
+                    {canCreateSprints && (
                       <Button size="sm" onClick={handleCreateSprint}>
                         Create sprint
                       </Button>
@@ -1401,7 +1433,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                   </Select>
 
                                   {/* Actions Dropdown */}
-                                  {can(PERMISSIONS.WORKITEM_DELETE) && (
+                                  {canDeleteWorkItems && (
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
                                         <Button
@@ -1501,7 +1533,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                         </div>
                       </div>
                     ) : (
-                      can(PERMISSIONS.WORKITEM_CREATE) && (
+                      canCreateWorkItems && (
                         <button
                           onClick={() => setIsCreatingInBacklog(true)}
                           className="w-full px-4 py-3 text-left text-sm text-muted-foreground hover:bg-muted transition-colors flex items-center gap-2 border-t border-border"
@@ -1745,6 +1777,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
         open={!!sprintSettingsId}
         onOpenChange={(open) => !open && setSprintSettingsId(null)}
         sprint={sprints.find((s) => s.$id === sprintSettingsId) || null}
+        projectId={projectId}
+        workspaceId={workspaceId}
       />
 
       {/* Create Epic Dialog */}

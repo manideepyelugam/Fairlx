@@ -42,6 +42,8 @@ import { Sprint, SprintStatus } from "../types";
 import { useConfirm } from "@/hooks/use-confirm";
 import { PERMISSIONS } from "@/lib/permissions";
 import { usePermission } from "@/hooks/use-permission";
+import { useProjectPermissions } from "@/hooks/use-project-permissions";
+import { useCurrentMember } from "@/features/members/api/use-current-member";
 
 const formSchema = z.object({
     name: z.string().min(1, "Sprint name is required"),
@@ -57,16 +59,34 @@ interface SprintSettingsSheetProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     sprint: Sprint | null;
+    projectId?: string;
+    workspaceId?: string;
 }
 
 export const SprintSettingsSheet = ({
     open,
     onOpenChange,
     sprint,
+    projectId,
+    workspaceId,
 }: SprintSettingsSheetProps) => {
     const { mutate: updateSprint, isPending: isUpdating } = useUpdateSprint();
     const { mutate: deleteSprint, isPending: isDeleting } = useDeleteSprint();
     const { can } = usePermission();
+    
+    // Project-level permissions
+    const {
+        canEditSprintsProject,
+        canDeleteSprintsProject,
+    } = useProjectPermissions(projectId);
+    
+    // Check if user is workspace admin
+    const { data: currentMember } = useCurrentMember({ workspaceId: workspaceId || sprint?.workspaceId });
+    const isWorkspaceAdmin = currentMember?.role === "ADMIN";
+    
+    // Effective permissions (admin OR project-level OR workspace-level)
+    const canEditSprints = isWorkspaceAdmin || canEditSprintsProject || can(PERMISSIONS.SPRINT_UPDATE);
+    const canDeleteSprints = isWorkspaceAdmin || canDeleteSprintsProject || can(PERMISSIONS.SPRINT_DELETE);
 
     const [DeleteDialog, confirmDelete] = useConfirm(
         "Delete Sprint",
@@ -293,7 +313,7 @@ export const SprintSettingsSheet = ({
                                 />
 
                                 <div className="flex items-center justify-between pt-4">
-                                    {can(PERMISSIONS.SPRINT_DELETE) ? (
+                                    {canDeleteSprints ? (
                                         <Button
                                             type="button"
                                             variant="destructive"
@@ -322,7 +342,7 @@ export const SprintSettingsSheet = ({
                                         >
                                             Cancel
                                         </Button>
-                                        {can(PERMISSIONS.SPRINT_UPDATE) && (
+                                        {canEditSprints && (
                                             <Button type="submit" disabled={isUpdating}>
                                                 {isUpdating ? (
                                                     <>

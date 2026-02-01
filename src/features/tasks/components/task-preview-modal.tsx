@@ -31,6 +31,8 @@ import { useUpdateTask } from "../api/use-update-task";
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { useGetProject } from "@/features/projects/api/use-get-project";
 import { useCurrent } from "@/features/auth/api/use-current";
+import { useCurrentMember } from "@/features/members/hooks/use-current-member";
+import { useProjectPermissions } from "@/hooks/use-project-permissions";
 import { CommentList } from "@/features/comments/components/comment-list";
 import { CommentInput } from "@/features/comments/components/comment-input";
 
@@ -62,9 +64,11 @@ interface TaskPreviewContentProps {
   onEdit: () => void;
   onClose: () => void;
   onAttachmentPreview?: (attachment: Attachment) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
-const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPreview }: TaskPreviewContentProps) => {
+const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPreview, canEdit = false, canDelete = false }: TaskPreviewContentProps) => {
   const { mutate: updateTask } = useUpdateTask();
   const { data: members } = useGetMembers({ workspaceId });
   const { data: project } = useGetProject({ projectId: task.projectId });
@@ -189,9 +193,10 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
           )}
           <StatusSelector
             value={task.status}
-            onChange={(value) => handleUpdate({ status: value })}
+            onChange={canEdit ? (value) => handleUpdate({ status: value }) : undefined}
             projectId={task.projectId}
             placeholder="Status"
+            disabled={!canEdit}
           />
           <span className="text-xs text-muted-foreground font-mono">{task.key}</span>
         </div>
@@ -240,7 +245,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
           <div className="p-5">
             {/* Task Title */}
             <div className="mb-4">
-              {isEditingTitle ? (
+              {isEditingTitle && canEdit ? (
                 <Input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
@@ -253,8 +258,8 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 />
               ) : (
                 <h1
-                  className="text-xl font-semibold text-foreground border border-transparent hover:border-border rounded p-2 -ml-2 cursor-text transition-colors"
-                  onClick={() => setIsEditingTitle(true)}
+                  className={`text-xl font-semibold text-foreground border border-transparent rounded p-2 -ml-2 transition-colors ${canEdit ? 'hover:border-border cursor-text' : ''}`}
+                  onClick={() => canEdit && setIsEditingTitle(true)}
                 >
                   {task.title}
                 </h1>
@@ -277,14 +282,14 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
               <div className="min-h-[100px]">
                 <RichTextEditor
                   content={description}
-                  onChange={setDescription}
-                  onBlur={handleDescriptionBlur}
-                  placeholder="Add a description... Use @ to mention team members, / for commands"
-                  editable={true}
+                  onChange={canEdit ? setDescription : () => {}}
+                  onBlur={canEdit ? handleDescriptionBlur : undefined}
+                  placeholder={canEdit ? "Add a description... Use @ to mention team members, / for commands" : "No description"}
+                  editable={canEdit}
                   workspaceId={workspaceId}
                   projectId={task.projectId}
                   minHeight="100px"
-                  showToolbar={true}
+                  showToolbar={canEdit}
                 />
               </div>
             </div>
@@ -325,8 +330,9 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 <label className="text-xs text-muted-foreground mb-1.5 block">Status</label>
                 <StatusSelector
                   value={task.status}
-                  onChange={(value) => handleUpdate({ status: value })}
+                  onChange={canEdit ? (value) => handleUpdate({ status: value }) : undefined}
                   projectId={task.projectId}
+                  disabled={!canEdit}
                 />
               </div>
 
@@ -335,10 +341,11 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 <label className="text-xs text-muted-foreground mb-1.5 block">Type</label>
                 <TypeSelector
                   value={task.type || "TASK"}
-                  onValueChange={(value) => handleUpdate({ type: value })}
+                  onValueChange={canEdit ? (value) => handleUpdate({ type: value }) : undefined}
                   project={project}
                   customTypes={project?.customWorkItemTypes}
                   className="w-full bg-card border-border"
+                  disabled={!canEdit}
                 />
               </div>
 
@@ -347,8 +354,9 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 <label className="text-xs text-muted-foreground mb-1.5 block">Priority</label>
                 <PrioritySelector
                   value={task.priority}
-                  onValueChange={(value) => handleUpdate({ priority: value })}
+                  onValueChange={canEdit ? (value) => handleUpdate({ priority: value }) : undefined}
                   customPriorities={project?.customPriorities}
+                  disabled={!canEdit}
                 />
               </div>
 
@@ -358,8 +366,9 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 <AssigneeMultiSelect
                   memberOptions={memberOptions}
                   selectedAssigneeIds={task.assigneeIds || []}
-                  onAssigneesChange={(ids) => handleUpdate({ assigneeIds: ids })}
+                  onAssigneesChange={canEdit ? (ids) => handleUpdate({ assigneeIds: ids }) : undefined}
                   placeholder="Select assignees"
+                  disabled={!canEdit}
                 />
               </div>
 
@@ -368,9 +377,10 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 <label className="text-xs text-muted-foreground mb-1.5 block">Start Date</label>
                 <DatePicker
                   value={task.dueDate ? new Date(task.dueDate) : undefined}
-                  onChange={(date) => handleUpdate({ dueDate: date })}
+                  onChange={canEdit ? (date) => handleUpdate({ dueDate: date }) : undefined}
                   placeholder="Set start date"
                   className="w-full bg-card border-border"
+                  disabled={!canEdit}
                 />
               </div>
 
@@ -388,9 +398,10 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 <label className="text-xs text-muted-foreground mb-1.5 block">End Date</label>
                 <DatePicker
                   value={task.endDate ? new Date(task.endDate) : undefined}
-                  onChange={(date) => handleUpdate({ endDate: date })}
+                  onChange={canEdit ? (date) => handleUpdate({ endDate: date }) : undefined}
                   placeholder="Set end date"
                   className="w-full bg-card border-border"
+                  disabled={!canEdit}
                 />
               </div>
 
@@ -406,13 +417,14 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                   min="0"
                   placeholder="None"
                   defaultValue={task.estimatedHours}
-                  onBlur={(e) => {
+                  onBlur={canEdit ? (e) => {
                     const val = e.target.value ? parseFloat(e.target.value) : null;
                     if (val !== task.estimatedHours) {
                       handleUpdate({ estimatedHours: val || undefined });
                     }
-                  }}
+                  } : undefined}
                   className="h-9 bg-card border-border"
+                  disabled={!canEdit}
                 />
               </div>
 
@@ -424,13 +436,14 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                   min="0"
                   placeholder="None"
                   defaultValue={task.storyPoints}
-                  onBlur={(e) => {
+                  onBlur={canEdit ? (e) => {
                     const val = e.target.value ? parseInt(e.target.value) : null;
                     if (val !== task.storyPoints) {
                       handleUpdate({ storyPoints: val || undefined });
                     }
-                  }}
+                  } : undefined}
                   className="h-9 bg-card border-border"
+                  disabled={!canEdit}
                 />
               </div>
 
@@ -438,8 +451,9 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
               <div className="flex items-center gap-2 pt-2">
                 <Checkbox
                   checked={task.flagged}
-                  onCheckedChange={(checked) => handleUpdate({ flagged: checked as boolean })}
+                  onCheckedChange={canEdit ? (checked) => handleUpdate({ flagged: checked as boolean }) : undefined}
                   id="flagged"
+                  disabled={!canEdit}
                 />
                 <label htmlFor="flagged" className="text-sm font-medium text-muted-foreground cursor-pointer">Flagged</label>
               </div>
@@ -474,6 +488,22 @@ export const TaskPreviewModalWrapper = () => {
   const { data, isLoading } = useGetTask({ taskId: taskId || "" });
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
   const isOpen = !!taskId;
+
+  // Get workspace admin status
+  const { isAdmin } = useCurrentMember({ workspaceId });
+  
+  // Get project-level task permissions
+  const { 
+    canEditTasksProject, 
+    canDeleteTasksProject,
+  } = useProjectPermissions({ 
+    projectId: data?.projectId || null, 
+    workspaceId 
+  });
+  
+  // Effective permissions: Admin OR has project-level permission
+  const canEditTasks = isAdmin || canEditTasksProject;
+  const canDeleteTasks = isAdmin || canDeleteTasksProject;
 
 
 
@@ -582,6 +612,8 @@ export const TaskPreviewModalWrapper = () => {
                 onEdit={handleEdit}
                 onClose={handleClose}
                 onAttachmentPreview={handleAttachmentPreview}
+                canEdit={canEditTasks}
+                canDelete={canDeleteTasks}
               />
 
               {/* Attachment preview overlay */}
