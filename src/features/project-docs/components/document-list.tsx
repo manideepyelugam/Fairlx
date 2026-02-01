@@ -11,6 +11,7 @@ import {
   Trash2,
   CheckSquare,
   Square,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -25,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 import { DocumentCard } from "./document-card";
 import { DocumentUploadModal } from "./document-upload-modal";
@@ -39,6 +41,8 @@ import {
 } from "../types";
 import { formatFileSize, MAX_TOTAL_PROJECT_SIZE } from "../schemas";
 import { useConfirm } from "@/hooks/use-confirm";
+import { useProjectPermissions } from "@/hooks/use-project-permissions";
+import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 
 interface DocumentListProps {
   projectId: string;
@@ -57,6 +61,26 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
   // Modal states
   const [editDocument, setEditDocument] = useState<PopulatedProjectDocument | null>(null);
   const [replaceDocument, setReplaceDocument] = useState<PopulatedProjectDocument | null>(null);
+
+  // Permission hooks
+  const {
+    canViewProjectDocs,
+    canCreateDocs,
+    canEditDocs,
+    canDeleteDocs,
+    isProjectAdmin,
+    isLoading: isLoadingPermissions,
+  } = useProjectPermissions({ projectId, workspaceId });
+  
+  // Check if user is workspace admin (organization creator/admin)
+  const { isAdmin } = useCurrentMember({ workspaceId });
+  const isWorkspaceAdmin = isAdmin;
+  
+  // Effective permissions (admin OR project-level)
+  const canView = isWorkspaceAdmin || isProjectAdmin || canViewProjectDocs;
+  const canCreate = isWorkspaceAdmin || isProjectAdmin || canCreateDocs;
+  const canEdit = isWorkspaceAdmin || isProjectAdmin || canEditDocs;
+  const canDelete = isWorkspaceAdmin || isProjectAdmin || canDeleteDocs;
 
   // Bulk delete confirmation
   const [DeleteConfirmDialog, confirmBulkDelete] = useConfirm(
@@ -132,6 +156,13 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
+    
+    // Permission check
+    if (!canDelete) {
+      toast.error("You don't have permission to delete documents");
+      return;
+    }
+    
     const ok = await confirmBulkDelete();
     if (!ok) return;
 
@@ -166,7 +197,7 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
   const isAllSelected = filteredDocuments.length > 0 && selectedIds.size === filteredDocuments.length;
   const isSomeSelected = selectedIds.size > 0 && selectedIds.size < filteredDocuments.length;
 
-  if (isLoading) {
+  if (isLoading || isLoadingPermissions) {
     return (
       <div className="flex items-center justify-center h-48">
         <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -181,6 +212,18 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
         <h3 className="text-sm font-medium text-foreground">Failed to load documents</h3>
         <p className="text-xs font-light text-muted-foreground">{error.message}</p>
       </div>
+    );
+  }
+
+  // Permission denied view
+  if (!canView) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          You don&apos;t have permission to view project documents.
+        </AlertDescription>
+      </Alert>
     );
   }
 
@@ -238,16 +281,18 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
           <span className="text-[10px] border p-2.5 rounded-md font-light text-muted-foreground">
             {formatFileSize(stats?.totalSize || 0)} / {formatFileSize(MAX_TOTAL_PROJECT_SIZE)}
           </span>
-          <DocumentUploadModal
-            projectId={projectId}
-            workspaceId={workspaceId}
-            currentTotalSize={stats?.totalSize || 0}
-            trigger={
-              <Button className="h-9 px-4 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
-                Upload
-              </Button>
-            }
-          />
+          {canCreate && (
+            <DocumentUploadModal
+              projectId={projectId}
+              workspaceId={workspaceId}
+              currentTotalSize={stats?.totalSize || 0}
+              trigger={
+                <Button className="h-9 px-4 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+                  Upload
+                </Button>
+              }
+            />
+          )}
         </div>
       </div>
 
@@ -288,16 +333,18 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
               <Download className="h-3.5 w-3.5 mr-1" />
               Download
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-              onClick={handleBulkDelete}
-              disabled={isDeleting}
-            >
-              <Trash2 className="h-3.5 w-3.5 mr-1" />
-              Delete
-            </Button>
+            {canDelete && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                onClick={handleBulkDelete}
+                disabled={isDeleting}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                Delete
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -312,9 +359,9 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
           <p className="text-xs font-light text-muted-foreground mt-1 mb-4">
             {searchQuery
               ? "Try adjusting your search query"
-              : "Upload your first document to get started"}
+              : canCreate ? "Upload your first document to get started" : "No documents have been uploaded yet"}
           </p>
-          {!searchQuery && (
+          {!searchQuery && canCreate && (
             <DocumentUploadModal
               projectId={projectId}
               workspaceId={workspaceId}
@@ -336,11 +383,13 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
               document={doc}
               workspaceId={workspaceId}
               projectId={projectId}
-              onEdit={setEditDocument}
-              onReplace={setReplaceDocument}
+              onEdit={canEdit ? setEditDocument : undefined}
+              onReplace={canEdit ? setReplaceDocument : undefined}
               isSelected={selectedIds.has(doc.$id)}
               onSelect={() => handleSelectOne(doc.$id)}
               isLast={index === filteredDocuments.length - 1}
+              canEdit={canEdit}
+              canDelete={canDelete}
             />
           ))}
         </div>

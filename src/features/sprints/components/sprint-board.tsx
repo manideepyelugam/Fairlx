@@ -6,7 +6,6 @@ import { Plus, Zap, Clock, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-
 import { useGetSprints } from "../api/use-get-sprints";
 import { SprintCard } from "./sprint-card";
 import { CreateSprintDialog } from "./create-sprint-dialog";
@@ -14,6 +13,8 @@ import { SprintStatus } from "../types";
 import { usePermission } from "@/hooks/use-permission";
 import { PERMISSIONS } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
+import { useProjectPermissions } from "@/hooks/use-project-permissions";
+import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 
 interface SprintBoardProps {
   workspaceId: string;
@@ -23,7 +24,22 @@ interface SprintBoardProps {
 export const SprintBoard = ({ workspaceId, projectId }: SprintBoardProps) => {
   const [createSprintOpen, setCreateSprintOpen] = useState(false);
   const { can } = usePermission();
+  
+ 
+  
 
+    
+    // Get workspace admin status
+    const { isAdmin: isWorkspaceAdmin } = useCurrentMember({ workspaceId });
+    
+    // Get project-level sprint permissions
+    const {
+      canCreateSprintsProject,
+    } = useProjectPermissions({ projectId, workspaceId });
+    
+    // Effective permissions: Admin OR project-level permission
+    const canCreateSprints = isWorkspaceAdmin || canCreateSprintsProject || can(PERMISSIONS.SPRINT_CREATE);
+  
   const { data: sprintsData, isLoading: sprintsLoading } = useGetSprints({
     workspaceId,
     projectId,
@@ -61,15 +77,17 @@ export const SprintBoard = ({ workspaceId, projectId }: SprintBoardProps) => {
             </p>
           </div>
         </div>
-        {can(PERMISSIONS.SPRINT_CREATE) && (
-          <Button
-            size="sm"
-            onClick={() => setCreateSprintOpen(true)}
-            className="h-8 px-3 text-xs font-medium"
-          >
+        {canCreateSprints && (
+        
+                <Button
+              size="xs"
+              onClick={() => setCreateSprintOpen(true)}
+              className="h-8 px-3 text-xs font-medium"
+            >
             <Plus className="size-3.5 mr-1.5" />
             New Sprint
           </Button>
+        
         )}
       </div>
 
@@ -154,7 +172,7 @@ export const SprintBoard = ({ workspaceId, projectId }: SprintBoardProps) => {
               <p className="text-xs text-muted-foreground mb-4 text-center max-w-xs">
                 Start a sprint to begin tracking work items and team velocity
               </p>
-              {can(PERMISSIONS.SPRINT_CREATE) && (
+              {canCreateSprints && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -192,7 +210,7 @@ export const SprintBoard = ({ workspaceId, projectId }: SprintBoardProps) => {
               <p className="text-xs text-muted-foreground mb-4 text-center max-w-xs">
                 Plan your upcoming sprints to keep your team aligned
               </p>
-              {can(PERMISSIONS.SPRINT_CREATE) && (
+              {canCreateSprints && (
                 <Button
                   size="sm"
                   variant="outline"

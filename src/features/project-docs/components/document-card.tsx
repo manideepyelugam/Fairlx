@@ -43,6 +43,8 @@ interface DocumentCardProps {
   isSelected?: boolean;
   onSelect?: () => void;
   isLast?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 export const DocumentCard = ({
@@ -54,6 +56,8 @@ export const DocumentCard = ({
   isSelected = false,
   onSelect,
   isLast = false,
+  canEdit = true,
+  canDelete = true,
 }: DocumentCardProps) => {
   const [ConfirmDialog, confirmDelete] = useConfirm(
     "Delete Document",
@@ -243,22 +247,24 @@ export const DocumentCard = ({
             </Tooltip>
           </TooltipProvider>
 
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                  onClick={(e) => { e.stopPropagation(); handleDelete(); }}
-                  disabled={isDeleting}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent className="text-xs">Delete</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          {canDelete && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                    onClick={(e) => { e.stopPropagation(); handleDelete(); }}
+                    disabled={isDeleting}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="text-xs">Delete</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -272,19 +278,29 @@ export const DocumentCard = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit?.(document); }} className="text-xs">
-                <Pencil className="h-3.5 w-3.5 mr-2" />
-                Edit Details
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onReplace?.(document); }} className="text-xs">
-                <RefreshCw className="h-3.5 w-3.5 mr-2" />
-                Replace File
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleArchive(); }} disabled={isUpdating} className="text-xs">
-                <Archive className="h-3.5 w-3.5 mr-2" />
-                {document.isArchived ? "Unarchive" : "Archive"}
-              </DropdownMenuItem>
+              {canEdit && (
+                <>
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit?.(document); }} className="text-xs">
+                    <Pencil className="h-3.5 w-3.5 mr-2" />
+                    Edit Details
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onReplace?.(document); }} className="text-xs">
+                    <RefreshCw className="h-3.5 w-3.5 mr-2" />
+                    Replace File
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleArchive(); }} disabled={isUpdating} className="text-xs">
+                    <Archive className="h-3.5 w-3.5 mr-2" />
+                    {document.isArchived ? "Unarchive" : "Archive"}
+                  </DropdownMenuItem>
+                </>
+              )}
+              {!canEdit && (
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDownload(); }} className="text-xs">
+                  <Download className="h-3.5 w-3.5 mr-2" />
+                  Download
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
