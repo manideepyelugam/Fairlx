@@ -197,9 +197,9 @@ const app = new Hono()
         query.push(Query.search("title", search));
       }
 
-      if (limit) {
-        query.push(Query.limit(limit));
-      }
+      // Always set a limit - Appwrite defaults to 25 if not specified
+      // Use provided limit or default to 1000 to fetch all work items
+      query.push(Query.limit(limit || 10000));
 
       const workItems = await databases.listDocuments<WorkItem>(
         DATABASE_ID,
