@@ -398,6 +398,7 @@ const app = new Hono()
       if (updates.color !== undefined) updatePayload.color = updates.color;
       if (updates.archived !== undefined) updatePayload.archived = updates.archived;
       if (updates.defaultWorkflowId !== undefined) updatePayload.defaultWorkflowId = updates.defaultWorkflowId;
+      if (updates.workflowInheritance !== undefined) updatePayload.workflowInheritance = updates.workflowInheritance;
       if (uploadedImageUrl) updatePayload.imageUrl = uploadedImageUrl;
 
       const updatedSpace = await databases.updateDocument<Space>(

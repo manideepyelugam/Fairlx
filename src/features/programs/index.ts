@@ -39,6 +39,7 @@ export * from "./api/use-get-program-summary";
 export * from "./hooks/use-create-program-modal";
 export * from "./hooks/use-edit-program-modal";
 export * from "./hooks/use-program-id";
+export * from "./hooks/use-program-id-param";
 
 // Export components - Forms & Modals
 export * from "./components/create-program-form";
