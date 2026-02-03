@@ -25,6 +25,14 @@ import { Task, TaskStatus, TaskPriority } from "../types";
 /**
  * Validate if a status transition is allowed for the user
  * Checks workflow rules, role restrictions, team restrictions, and approval requirements
+ * 
+ * @param databases - Database client
+ * @param workflowId - The workflow to validate against
+ * @param fromStatus - Current status key
+ * @param toStatus - Target status key
+ * @param userId - User attempting the transition
+ * @param projectId - Project ID (for team membership lookup)
+ * @param memberRole - User's workspace member role
  */
 async function validateStatusTransition(
   databases: Databases,
@@ -32,7 +40,7 @@ async function validateStatusTransition(
   fromStatus: string,
   toStatus: string,
   userId: string,
-  workspaceId: string,
+  projectId: string,
   memberRole: string
 ): Promise<{ allowed: boolean; reason?: string; message?: string }> {
   // If same status, always allowed
@@ -91,12 +99,12 @@ async function validateStatusTransition(
       }
     }
 
-    // Check team restrictions
+    // Check team restrictions (uses project-scoped teams)
     if (transition.allowedTeamIds && transition.allowedTeamIds.length > 0) {
       const userTeams = await databases.listDocuments(
         DATABASE_ID,
         PROJECT_TEAM_MEMBERS_ID,
-        [Query.equal("userId", userId), Query.equal("projectId", transition.projectId)] // Assuming transition has projectId, otherwise we need to look it up
+        [Query.equal("userId", userId), Query.equal("projectId", projectId)]
       );
 
       const userTeamIds = userTeams.documents.map((t) => t.teamId as string);
@@ -113,13 +121,13 @@ async function validateStatusTransition(
       }
     }
 
-    // Check approval requirement
+    // Check approval requirement (uses project-scoped teams)
     if (transition.requiresApproval) {
       // Check if user is in approver team
       const userTeams = await databases.listDocuments(
         DATABASE_ID,
         PROJECT_TEAM_MEMBERS_ID,
-        [Query.equal("userId", userId), Query.equal("projectId", transition.projectId)]
+        [Query.equal("userId", userId), Query.equal("projectId", projectId)]
       );
 
       const userTeamIds = userTeams.documents.map((t) => t.teamId as string);
@@ -388,7 +396,7 @@ const app = new Hono()
     async (c) => {
       const user = c.get("user");
       const databases = c.get("databases");
-      const { name, type, status, workspaceId, projectId, dueDate, assigneeIds, description, estimatedHours, priority, labels } =
+      const { name, type, status, workspaceId, projectId, dueDate, assigneeIds, assignedTeamIds, description, estimatedHours, priority, labels } =
         c.req.valid("json");
 
       const member = await getMember({
@@ -509,6 +517,7 @@ const app = new Hono()
           projectId,
           dueDate: dueDate || null,
           assigneeIds: assigneeIds || [],
+          assignedTeamIds: assignedTeamIds || [],
           position: newPosition,
           description: description || null,
           estimatedHours: estimatedHours || null,
@@ -540,7 +549,7 @@ const app = new Hono()
       const user = c.get("user");
       const databases = c.get("databases");
       // Note: endDate is in schema but not in database - we ignore it
-      const { name, type, status, projectId, dueDate, assigneeIds, description, estimatedHours, priority, labels, flagged, storyPoints } =
+      const { name, type, status, projectId, dueDate, assigneeIds, assignedTeamIds, description, estimatedHours, priority, labels, flagged, storyPoints } =
         c.req.valid("json");
 
       const { taskId } = c.req.param();
@@ -587,7 +596,7 @@ const app = new Hono()
               existingTask.status,
               status,
               user.$id,
-              existingTask.workspaceId,
+              existingTask.projectId,  // Use projectId for team lookups
               member.role as string
             );
 
@@ -633,6 +642,11 @@ const app = new Hono()
       // Handle assignees - always update if provided (even if empty array to clear assignees)
       if (assigneeIds !== undefined) {
         updateData.assigneeIds = assigneeIds;
+      }
+
+      // Handle team assignments - update if provided
+      if (assignedTeamIds !== undefined) {
+        updateData.assignedTeamIds = assignedTeamIds;
       }
 
       // Ensure we have at least some data to update
@@ -949,7 +963,7 @@ const app = new Hono()
               existingTask.status,
               taskUpdate.status,
               user.$id,
-              workspaceId,
+              existingTask.projectId,  // Use projectId for team lookups
               member.role as string
             );
 

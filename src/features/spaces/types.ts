@@ -15,6 +15,13 @@ export enum SpaceTemplate {
   CUSTOM = "CUSTOM",               // Custom configuration
 }
 
+// Workflow inheritance mode for projects within a space
+export enum WorkflowInheritanceMode {
+  REQUIRE = "REQUIRE",   // Projects MUST use space default workflow (locked)
+  SUGGEST = "SUGGEST",   // Projects get space default but can override
+  NONE = "NONE",         // Projects choose their own workflow
+}
+
 // Space entity - logical container between Workspace and Projects
 export type Space = Models.Document & {
   name: string;
@@ -27,6 +34,7 @@ export type Space = Models.Document & {
   color?: string | null;            // Theme color for the space
   ownerId: string;                  // Space owner (creator)
   defaultWorkflowId?: string | null; // Default workflow for new projects
+  workflowInheritance?: WorkflowInheritanceMode; // How projects inherit workflow
   position: number;                 // For ordering
   archived: boolean;
 };

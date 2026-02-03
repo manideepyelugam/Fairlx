@@ -11,6 +11,7 @@ import {
   Link,
   Copy,
   Loader2,
+  Trash as TrashIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -28,7 +29,9 @@ import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { PopulatedTask } from "../types";
 
 import { useUpdateTask } from "../api/use-update-task";
+import { useDeleteTask } from "../api/use-delete-task";
 import { useGetMembers } from "@/features/members/api/use-get-members";
+import { useConfirm } from "@/hooks/use-confirm";
 import { useGetProject } from "@/features/projects/api/use-get-project";
 import { useCurrent } from "@/features/auth/api/use-current";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
@@ -64,11 +67,12 @@ interface TaskPreviewContentProps {
   onEdit: () => void;
   onClose: () => void;
   onAttachmentPreview?: (attachment: Attachment) => void;
+  onDelete?: () => void;
   canEdit?: boolean;
   canDelete?: boolean;
-}
+} 
 
-const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPreview, canEdit = false, canDelete = false }: TaskPreviewContentProps) => {
+const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPreview, onDelete, canEdit = false, canDelete = false }: TaskPreviewContentProps) => {
   const { mutate: updateTask } = useUpdateTask();
   const { data: members } = useGetMembers({ workspaceId });
   const { data: project } = useGetProject({ projectId: task.projectId });
@@ -229,12 +233,23 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
             </button>
           </IconHelp>
 
+          {canDelete && onDelete && (
+            <IconHelp content="Delete task" side="bottom">
+              <button
+                className="hover:bg-accent p-1.5 rounded-md transition-colors"
+                onClick={onDelete}
+              >
+                <TrashIcon size={16} strokeWidth={1.5} className="text-red-500" />
+              </button>
+            </IconHelp>
+          )}
+
           <button
             className="hover:bg-accent p-1.5 rounded-md transition-colors ml-1"
             onClick={handleCloseWithSync}
           >
             <X size={18} strokeWidth={1.5} className="text-muted-foreground" />
-          </button>
+          </button> 
         </div>
       </div>
 
@@ -505,7 +520,29 @@ export const TaskPreviewModalWrapper = () => {
   const canEditTasks = isAdmin || canEditTasksProject;
   const canDeleteTasks = isAdmin || canDeleteTasksProject;
 
+  // Delete handling using existing hook + confirm dialog
+  const { mutate } = useDeleteTask();
+  const [ConfirmDialog, confirm] = useConfirm(
+    "Delete task?",
+    "This action cannot be undone.",
+    "destructive"
+  );
 
+  const handleDeleteTask = async () => {
+    if (!data?.$id) return;
+    const ok = await confirm();
+    if (!ok) return;
+
+    mutate(
+      { param: { taskId: data.$id } },
+      {
+        onSuccess: () => {
+          close();
+          router.push(`/workspaces/${workspaceId}/tasks`);
+        },
+      }
+    );
+  };
 
   const handleEdit = () => {
     if (!workspaceId || !data?.$id) return;   // <-- Ensures ID exists
@@ -518,7 +555,7 @@ export const TaskPreviewModalWrapper = () => {
     } catch {
       // Navigation error handled silently
     }
-  };
+  }; 
 
 
   const handleClose = useCallback(() => {
@@ -606,12 +643,15 @@ export const TaskPreviewModalWrapper = () => {
             </div>
           ) : (
             <>
+              <ConfirmDialog />
+
               <TaskPreviewContent
                 task={data}
                 workspaceId={workspaceId}
                 onEdit={handleEdit}
                 onClose={handleClose}
                 onAttachmentPreview={handleAttachmentPreview}
+                onDelete={handleDeleteTask}
                 canEdit={canEditTasks}
                 canDelete={canDeleteTasks}
               />
