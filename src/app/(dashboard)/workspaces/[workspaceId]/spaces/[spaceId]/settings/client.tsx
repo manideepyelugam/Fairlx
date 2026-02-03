@@ -49,7 +49,7 @@ import { useDeleteSpace } from "@/features/spaces/api/use-delete-space";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { useGetWorkflows } from "@/features/workflows/api/use-get-workflows";
-import { SpaceVisibility } from "@/features/spaces/types";
+import { SpaceVisibility, WorkflowInheritanceMode } from "@/features/spaces/types";
 import { SpaceWorkflowsModal } from "@/features/workflows/components/space-workflows-modal";
 
 const SPACE_COLORS = [
@@ -82,6 +82,7 @@ export const SpaceSettingsClient = () => {
   const [color, setColor] = useState("");
   const [visibility, setVisibility] = useState<SpaceVisibility>(SpaceVisibility.PUBLIC);
   const [defaultWorkflowId, setDefaultWorkflowId] = useState<string>("");
+  const [workflowInheritance, setWorkflowInheritance] = useState<WorkflowInheritanceMode>(WorkflowInheritanceMode.SUGGEST);
   const [hasChanges, setHasChanges] = useState(false);
   const [isWorkflowsModalOpen, setIsWorkflowsModalOpen] = useState(false);
 
@@ -94,6 +95,7 @@ export const SpaceSettingsClient = () => {
       setColor(space.color || "#6366f1");
       setVisibility(space.visibility || SpaceVisibility.PUBLIC);
       setDefaultWorkflowId(space.defaultWorkflowId || "");
+      setWorkflowInheritance(space.workflowInheritance || WorkflowInheritanceMode.SUGGEST);
     }
   });
 
@@ -129,6 +131,9 @@ export const SpaceSettingsClient = () => {
       case "defaultWorkflowId":
         setDefaultWorkflowId(value === "NO_WORKFLOW_VALUE" ? "" : value);
         break;
+      case "workflowInheritance":
+        setWorkflowInheritance(value as WorkflowInheritanceMode);
+        break;
     }
     setHasChanges(true);
   };
@@ -144,6 +149,7 @@ export const SpaceSettingsClient = () => {
           color: color || space.color,
           visibility: visibility || space.visibility,
           defaultWorkflowId: defaultWorkflowId || undefined,
+          workflowInheritance: workflowInheritance || WorkflowInheritanceMode.SUGGEST,
         },
       },
       {
@@ -385,7 +391,43 @@ export const SpaceSettingsClient = () => {
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              New projects will use this workflow by default. Projects can override with their own workflow.
+              New projects will use this workflow by default.
+            </p>
+          </div>
+
+          {/* Workflow Inheritance Mode */}
+          <div className="space-y-2">
+            <Label>Workflow Inheritance</Label>
+            <Select
+              value={workflowInheritance || space.workflowInheritance || WorkflowInheritanceMode.SUGGEST}
+              onValueChange={(v) => handleFieldChange("workflowInheritance", v)}
+            >
+              <SelectTrigger className="w-full md:w-[300px]">
+                <SelectValue placeholder="Select inheritance mode" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={WorkflowInheritanceMode.REQUIRE}>
+                  <div className="flex flex-col">
+                    <span className="font-medium">Required</span>
+                    <span className="text-xs text-muted-foreground">Projects must use the space workflow (locked)</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value={WorkflowInheritanceMode.SUGGEST}>
+                  <div className="flex flex-col">
+                    <span className="font-medium">Suggested</span>
+                    <span className="text-xs text-muted-foreground">Projects inherit workflow but can override</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value={WorkflowInheritanceMode.NONE}>
+                  <div className="flex flex-col">
+                    <span className="font-medium">None</span>
+                    <span className="text-xs text-muted-foreground">Projects choose their own workflow</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Controls how projects in this space inherit the default workflow.
             </p>
           </div>
 

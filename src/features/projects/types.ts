@@ -32,6 +32,7 @@ export type Project = Models.Document & {
 
   // Workflow configuration
   workflowId?: string;                  // NEW: Custom workflow for this project (overrides space default)
+  workflowLocked?: boolean;             // NEW: If true, workflow is inherited from space and cannot be changed
 
   // Settings
   defaultAssigneeId?: string;           // NEW: Default assignee for new work items

@@ -51,6 +51,7 @@ import { useGetProjects } from "@/features/projects/api/use-get-projects";
 import { useUpdateProject } from "@/features/projects/api/use-update-project";
 import { useSyncFromProject } from "@/features/workflows/api/use-sync-from-project";
 import { useSyncWithResolution } from "@/features/workflows/api/use-sync-with-resolution";
+import { useGetMultipleProjectTeams } from "@/features/project-teams/api/use-get-multiple-project-teams";
 import { useConfirm } from "@/hooks/use-confirm";
 import { PageLoader } from "@/components/page-loader";
 
@@ -96,9 +97,6 @@ const WorkflowEditor = () => {
 
   const { data: workflow, isLoading: workflowLoading } = useGetWorkflow({ workflowId });
   const { data: projectsData } = useGetProjects({ workspaceId });
-  // const { data: teamsData, isLoading: isLoadingTeams } = useGetTeams({ workspaceId, spaceId });
-  const teamsData = { documents: [], total: 0 };
-  const isLoadingTeams = false;
   const { mutate: deleteWorkflow, isPending: isDeleting } = useDeleteWorkflow();
   const { mutateAsync: createStatus } = useCreateWorkflowStatus();
   const { mutateAsync: updateStatus } = useUpdateStatus();
@@ -116,6 +114,47 @@ const WorkflowEditor = () => {
     // Filter to only show projects in this space
     return projectsData.documents.filter(p => p.spaceId === spaceId);
   }, [projectsData, spaceId]);
+
+  // Get projects connected to this workflow (for team lookups)
+  const connectedProjects = useMemo(() =>
+    projects.filter(p => p.workflowId === workflowId),
+    [projects, workflowId]
+  );
+
+  // Fetch teams from ALL connected projects (for transition access control)
+  const connectedProjectIds = useMemo(() => 
+    connectedProjects.map(p => p.$id),
+    [connectedProjects]
+  );
+
+  // Fetch teams from each connected project in parallel using useQueries
+  const projectTeamsQueries = useGetMultipleProjectTeams({ projectIds: connectedProjectIds });
+
+  // Aggregate teams from all projects with project context labels
+  const teamsForDialog = useMemo(() => {
+    const allTeams: Array<{ $id: string; name: string; projectId: string; projectName: string }> = [];
+    
+    connectedProjects.forEach((project, index) => {
+      const teamsData = projectTeamsQueries[index]?.data;
+      if (teamsData?.documents) {
+        teamsData.documents.forEach(team => {
+          allTeams.push({
+            $id: team.$id,
+            name: connectedProjects.length > 1 
+              ? `${team.name} (${project.name})` 
+              : team.name,
+            projectId: project.$id,
+            projectName: project.name,
+          });
+        });
+      }
+    });
+    
+    return allTeams;
+  }, [connectedProjects, projectTeamsQueries]);
+
+  // Check if any teams are still loading
+  const isLoadingTeams = projectTeamsQueries.some(query => query.isLoading);
 
   // Available projects to connect (those without this workflow or different workflow)
   const availableProjects = useMemo(() =>
@@ -652,9 +691,19 @@ const WorkflowEditor = () => {
                   <Badge variant="outline" className="text-xs">System</Badge>
                 )}
               </div>
-              {workflow.description && (
-                <p className="text-xs text-muted-foreground">{workflow.description}</p>
-              )}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                {workflow.description && (
+                  <span>{workflow.description}</span>
+                )}
+                {connectedProjects.length > 0 && (
+                  <>
+                    {workflow.description && <span>•</span>}
+                    <span>Used by: {connectedProjects.slice(0, 3).map(p => p.name).join(", ")}
+                      {connectedProjects.length > 3 && ` +${connectedProjects.length - 3} more`}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex-1" />
@@ -911,7 +960,7 @@ const WorkflowEditor = () => {
         onOpenChange={setTransitionDialogOpen}
         transition={editingTransition}
         statuses={statuses}
-        teams={teamsData?.documents || []}
+        teams={teamsForDialog}
         isLoadingTeams={isLoadingTeams}
         onSave={handleSaveTransition}
       />

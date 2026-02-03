@@ -50,10 +50,9 @@ export const routes = {
     tasks: (workspaceId: string) => `/workspaces/${workspaceId}/tasks`,
     myBacklog: (workspaceId: string) => `/workspaces/${workspaceId}/my-backlog`,
 
-    // === TEAM ===
-    team: (workspaceId: string, teamId: string) =>
-        `/workspaces/${workspaceId}/teams/${teamId}`,
-    teams: (workspaceId: string) => `/workspaces/${workspaceId}/teams`,
+    // === PROJECT TEAMS (Project-scoped) ===
+    projectTeams: (workspaceId: string, projectId: string) =>
+        `/workspaces/${workspaceId}/projects/${projectId}/teams`,
 
     // === SPACE ===
     space: (workspaceId: string, spaceId: string) =>

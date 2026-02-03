@@ -29,7 +29,6 @@ import { useGetProgram } from "@/features/programs/api/use-get-program";
 import { useProgramIdParam } from "@/features/programs/hooks/use-program-id-param";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useEditProgramModal } from "@/features/programs/hooks/use-edit-program-modal";
-import { useProgramId } from "@/features/programs/hooks/use-program-id";
 import { EditProgramModal } from "@/features/programs/components/edit-program-modal";
 import { ProgramProjectsList } from "@/features/programs/components/program-projects-list";
 import { ProgramMembersTable } from "@/features/programs/components/program-members-table";
@@ -85,12 +84,10 @@ export const ProgramIdClient = () => {
     programId,
   });
   const { open: openEdit } = useEditProgramModal();
-  const [, setProgramId] = useProgramId();
   const { isAdmin } = useCurrentMember({ workspaceId });
 
   const handleEdit = () => {
-    setProgramId(programId);
-    openEdit();
+    openEdit(programId);
   };
 
   if (isLoadingProgram) {
