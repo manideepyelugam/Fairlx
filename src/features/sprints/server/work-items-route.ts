@@ -248,91 +248,131 @@ const app = new Hono()
         })
       );
 
-      const populatedWorkItems = await Promise.all(
-        workItems.documents.map(async (workItem) => {
-          // Get assignees from the pre-built map
-          const assignees = (workItem.assigneeIds || [])
-            .map(id => assigneeMap.get(id))
-            .filter((a): a is NonNullable<typeof a> => a !== null);
+      // ========================================
+      // OPTIMIZED: Batch fetch all related data in bulk instead of per-item
+      // ========================================
 
-          let epic = null;
-          if (workItem.epicId) {
-            try {
-              const epicDoc = await databases.getDocument<WorkItem>(
-                DATABASE_ID,
-                WORK_ITEMS_ID,
-                workItem.epicId
-              );
-              epic = {
-                $id: epicDoc.$id,
-                key: epicDoc.key,
-                title: epicDoc.title,
-              };
-            } catch {
-              // Epic might be deleted
-            }
-          }
+      // Collect all unique IDs we need to fetch
+      const epicIds = new Set<string>();
+      const parentIds = new Set<string>();
+      const projectIds = new Set<string>();
+      const workItemIds = workItems.documents.map(w => w.$id);
 
-          let parent = null;
-          if (workItem.parentId) {
-            try {
-              const parentDoc = await databases.getDocument<WorkItem>(
-                DATABASE_ID,
-                WORK_ITEMS_ID,
-                workItem.parentId
-              );
-              parent = {
-                $id: parentDoc.$id,
-                key: parentDoc.key,
-                title: parentDoc.title,
-              };
-            } catch {
-              // Parent might be deleted
-            }
-          }
+      workItems.documents.forEach((workItem) => {
+        if (workItem.epicId) epicIds.add(workItem.epicId);
+        if (workItem.parentId) parentIds.add(workItem.parentId);
+        if (workItem.projectId) projectIds.add(workItem.projectId);
+      });
 
-          // Populate project data
-          let project = null;
-          if (workItem.projectId) {
-            try {
-              const projectDoc = await databases.getDocument<Project>(
-                DATABASE_ID,
-                PROJECTS_ID,
-                workItem.projectId
-              );
-              project = {
-                $id: projectDoc.$id,
-                name: projectDoc.name,
-                imageUrl: projectDoc.imageUrl,
-              };
-            } catch {
-              // Project might be deleted
-            }
-          }
+      // Batch fetch epics and parents (they're both work items)
+      const relatedWorkItemIds = [...new Set([...epicIds, ...parentIds])];
+      const relatedWorkItemsMap = new Map<string, { $id: string; key: string; title: string }>();
 
-          const children = await databases.listDocuments(
+      if (relatedWorkItemIds.length > 0) {
+        try {
+          const relatedWorkItems = await databases.listDocuments<WorkItem>(
             DATABASE_ID,
             WORK_ITEMS_ID,
-            [Query.equal("parentId", workItem.$id)]
+            [Query.equal("$id", relatedWorkItemIds), Query.limit(relatedWorkItemIds.length)]
           );
+          relatedWorkItems.documents.forEach((item) => {
+            relatedWorkItemsMap.set(item.$id, {
+              $id: item.$id,
+              key: item.key,
+              title: item.title,
+            });
+          });
+        } catch {
+          // Related items fetch failed - continue without them
+        }
+      }
 
-          let childrenData = undefined;
-          if (includeChildren && children.total > 0) {
-            childrenData = children.documents as PopulatedWorkItem[];
-          }
+      // Batch fetch all projects
+      const projectMap = new Map<string, { $id: string; name: string; imageUrl?: string }>();
+      const projectIdArray = Array.from(projectIds);
 
-          return {
-            ...workItem,
-            type: workItem.type || "TASK", // Default to TASK if type is not set
-            assignees,
-            epic,
-            parent,
-            project,
-            childrenCount: children.total,
-            children: childrenData,
-          };
-        })
-      );
+      if (projectIdArray.length > 0) {
+        try {
+          const projects = await databases.listDocuments<Project>(
+            DATABASE_ID,
+            PROJECTS_ID,
+            [Query.equal("$id", projectIdArray), Query.limit(projectIdArray.length)]
+          );
+          projects.documents.forEach((proj) => {
+            projectMap.set(proj.$id, {
+              $id: proj.$id,
+              name: proj.name,
+              imageUrl: proj.imageUrl || undefined,
+            });
+          });
+        } catch {
+          // Projects fetch failed - continue without them
+        }
+      }
+
+      // Batch fetch all children counts in ONE query
+      const childrenCountMap = new Map<string, number>();
+      const childrenByParentMap = new Map<string, PopulatedWorkItem[]>();
+      
+      if (workItemIds.length > 0) {
+        try {
+          const allChildren = await databases.listDocuments<WorkItem>(
+            DATABASE_ID,
+            WORK_ITEMS_ID,
+            [Query.equal("parentId", workItemIds), Query.limit(10000)]
+          );
+          // Count children per parent and optionally store children data
+          allChildren.documents.forEach((child) => {
+            const parentId = child.parentId;
+            if (parentId) {
+              childrenCountMap.set(parentId, (childrenCountMap.get(parentId) || 0) + 1);
+              
+              // If includeChildren is requested, store the child data
+              if (includeChildren) {
+                const existing = childrenByParentMap.get(parentId) || [];
+                existing.push(child as PopulatedWorkItem);
+                childrenByParentMap.set(parentId, existing);
+              }
+            }
+          });
+        } catch {
+          // Children fetch failed - continue with 0 counts
+        }
+      }
+
+      // Now populate work items using the pre-fetched maps (NO individual queries!)
+      const populatedWorkItems = workItems.documents.map((workItem) => {
+        // Get assignees from the pre-built map
+        const assignees = (workItem.assigneeIds || [])
+          .map(id => assigneeMap.get(id))
+          .filter((a): a is NonNullable<typeof a> => a !== null);
+
+        // Get epic from map
+        const epic = workItem.epicId ? relatedWorkItemsMap.get(workItem.epicId) || null : null;
+
+        // Get parent from map
+        const parent = workItem.parentId ? relatedWorkItemsMap.get(workItem.parentId) || null : null;
+
+        // Get project from map
+        const project = workItem.projectId ? projectMap.get(workItem.projectId) || null : null;
+
+        // Get children count from map
+        const childrenCount = childrenCountMap.get(workItem.$id) || 0;
+
+        // Get children data if requested
+        const childrenData = includeChildren ? childrenByParentMap.get(workItem.$id) : undefined;
+
+        return {
+          ...workItem,
+          type: workItem.type || "TASK",
+          assignees,
+          epic,
+          parent,
+          project,
+          childrenCount,
+          children: childrenData,
+        };
+      });
 
       return c.json({
         data: {
