@@ -93,7 +93,7 @@ export const useGetAccountLifecycle = () => {
         },
         staleTime: 1000 * 60 * 5, // 5 minutes
         refetchOnWindowFocus: true,
-        refetchInterval: 5 * 1000, // Poll every 30 seconds to detect mustResetPassword changes
+        refetchInterval: 60 * 1000, // Poll every 60 seconds (was incorrectly set to 5s)
         refetchIntervalInBackground: false, // Don't poll when tab is not focused
         retry: 1,
         // Disable query during SSR to prevent hydration mismatch

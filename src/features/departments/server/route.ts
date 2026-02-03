@@ -65,20 +65,31 @@ const app = new Hono()
             ]
         );
 
-        // Count members per department
-        const populatedDepartments: PopulatedDepartment[] = await Promise.all(
-            departments.documents.map(async (dept) => {
-                const memberAssignments = await databases.listDocuments(
-                    DATABASE_ID,
-                    ORG_MEMBER_DEPARTMENTS_ID,
-                    [Query.equal("departmentId", dept.$id)]
-                );
-                return {
-                    ...dept,
-                    memberCount: memberAssignments.total,
-                };
-            })
-        );
+        // OPTIMIZED: Fetch ALL member assignments in ONE query instead of per-department
+        const allDepartmentIds = departments.documents.map(d => d.$id);
+        const allMemberAssignments = allDepartmentIds.length > 0
+            ? await databases.listDocuments(
+                DATABASE_ID,
+                ORG_MEMBER_DEPARTMENTS_ID,
+                [
+                    Query.equal("departmentId", allDepartmentIds),
+                    Query.limit(5000), // Reasonable limit for org member assignments
+                ]
+            )
+            : { documents: [] };
+
+        // Build a count map: departmentId -> memberCount
+        const memberCountMap = new Map<string, number>();
+        allMemberAssignments.documents.forEach((assignment) => {
+            const deptId = assignment.departmentId;
+            memberCountMap.set(deptId, (memberCountMap.get(deptId) || 0) + 1);
+        });
+
+        // Populate departments with counts from the map (NO extra queries!)
+        const populatedDepartments: PopulatedDepartment[] = departments.documents.map((dept) => ({
+            ...dept,
+            memberCount: memberCountMap.get(dept.$id) || 0,
+        }));
 
         return c.json({ data: { documents: populatedDepartments, total: departments.total } });
     })
