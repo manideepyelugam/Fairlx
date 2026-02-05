@@ -43,7 +43,6 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
@@ -52,6 +51,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import DOMPurify from "dompurify";
+import { RichTextEditor } from "@/components/editor/rich-text-editor";
 
 import { useGetSprints } from "../api/use-get-sprints";
 import { useGetWorkItems } from "../api/use-get-work-items";
@@ -132,6 +140,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_isEditMode, setIsEditMode] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<Partial<PopulatedWorkItem>>({});
+  const [isDescriptionDialogOpen, setIsDescriptionDialogOpen] = useState(false);
+  const [editingDescription, setEditingDescription] = useState("");
 
   const { open: openCreateTaskModal } = useCreateTaskModal();
 
@@ -1649,12 +1659,25 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Description</Label>
-                        <Textarea
-                          value={pendingChanges.description ?? selectedItem.description ?? ""}
-                          onChange={(e) => setPendingChanges(prev => ({ ...prev, description: e.target.value }))}
-                          placeholder="Add a description..."
-                          className="min-h-[120px] text-xs"
+                        <div className="flex items-center justify-between">
+                          <Label>Description</Label>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setEditingDescription(pendingChanges.description ?? selectedItem.description ?? "");
+                              setIsDescriptionDialogOpen(true);
+                            }}
+                          >
+                            <Edit2 className="size-3 mr-1" />
+                            Edit
+                          </Button>
+                        </div>
+                        <div
+                          className="prose prose-sm max-w-none dark:prose-invert min-h-[60px] p-3 border rounded-md bg-muted/30"
+                          dangerouslySetInnerHTML={{
+                            __html: DOMPurify.sanitize(pendingChanges.description ?? selectedItem.description ?? "<p class='text-muted-foreground'>No description</p>")
+                          }}
                         />
                       </div>
 
@@ -1785,6 +1808,38 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
         open={isCreateEpicDialogOpen}
         onCloseAction={() => setIsCreateEpicDialogOpen(false)}
       />
+
+      {/* Description Edit Dialog */}
+      <Dialog open={isDescriptionDialogOpen} onOpenChange={setIsDescriptionDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Edit Description</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto min-h-[300px]">
+            <RichTextEditor
+              content={editingDescription}
+              onChange={(content) => setEditingDescription(content)}
+              workspaceId={workspaceId}
+              projectId={projectId}
+              placeholder="Add a description..."
+              minHeight="250px"
+            />
+          </div>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setIsDescriptionDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setPendingChanges(prev => ({ ...prev, description: editingDescription }));
+                setIsDescriptionDialogOpen(false);
+              }}
+            >
+              Save Description
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DragDropContext>
   );
 }

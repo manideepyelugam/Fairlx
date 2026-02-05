@@ -81,6 +81,27 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
   const [title, setTitle] = useState(task.title);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
 
+  // Helper to convert plain text to HTML if needed
+  const normalizeDescription = (desc: string | null | undefined): string => {
+    if (!desc) return "";
+
+    // Check if content is already HTML (contains HTML tags)
+    const isHTML = /<[a-z][\s\S]*>/i.test(desc);
+
+    if (isHTML) {
+      return desc;
+    }
+
+    // Convert plain text to HTML paragraphs
+    const paragraphs = desc
+      .split('\n')
+      .filter(line => line.trim() !== '')
+      .map(line => `<p>${line}</p>`)
+      .join('');
+
+    return paragraphs || '<p></p>';
+  };
+
   // Use localStorage-based draft for description
   const {
     content: description,
@@ -89,7 +110,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
     syncNow: syncDescriptionNow,
   } = useLocalDraft({
     taskId: task.$id,
-    initialContent: task.description || "",
+    initialContent: normalizeDescription(task.description),
     onSync: async (content) => {
       updateTask({
         param: { taskId: task.$id },
