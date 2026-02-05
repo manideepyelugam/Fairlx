@@ -220,7 +220,8 @@ export async function resolveUserProjectAccess(
         }
 
         // 3. Check direct project membership (Existing Logic)
-        const memberships = await databases.listDocuments<ProjectMember>(
+        // First try to find ACTIVE members
+        let memberships = await databases.listDocuments<ProjectMember>(
             DATABASE_ID,
             PROJECT_MEMBERS_ID,
             [
@@ -231,13 +232,34 @@ export async function resolveUserProjectAccess(
             ]
         );
 
+        // Fallback: If no ACTIVE member found, check for any membership without status filter
+        // This handles backward compatibility where status field might not be set
+        if (memberships.total === 0) {
+            memberships = await databases.listDocuments<ProjectMember>(
+                DATABASE_ID,
+                PROJECT_MEMBERS_ID,
+                [
+                    Query.equal("projectId", projectId),
+                    Query.equal("userId", userId),
+                    Query.limit(1),
+                ]
+            );
+            
+            // Filter out explicitly REMOVED members
+            if (memberships.total > 0 && memberships.documents[0].status === ProjectMemberStatus.REMOVED) {
+                return noAccess;
+            }
+        }
+
         if (memberships.total === 0) {
             // Project membership needed if no higher-level access found
             return noAccess;
         }
 
         const membership = memberships.documents[0];
-        const role = membership.role as ProjectMemberRole;
+        // Handle both patterns: inline role enum or roleId reference
+        // If role field is set, use it directly; otherwise default to MEMBER
+        const role = (membership.role as ProjectMemberRole) || ProjectMemberRole.MEMBER;
 
         // 2. Get role-based permissions
         const rolePermissions = ROLE_PERMISSIONS[role] || [];
@@ -365,7 +387,8 @@ export async function isProjectMember(
     userId: string,
     projectId: string
 ): Promise<boolean> {
-    const memberships = await databases.listDocuments(
+    // First try with ACTIVE status filter
+    let memberships = await databases.listDocuments(
         DATABASE_ID,
         PROJECT_MEMBERS_ID,
         [
@@ -375,7 +398,29 @@ export async function isProjectMember(
             Query.limit(1),
         ]
     );
-    return memberships.total > 0;
+    
+    if (memberships.total > 0) {
+        return true;
+    }
+    
+    // Fallback: check without status filter for backward compatibility
+    memberships = await databases.listDocuments(
+        DATABASE_ID,
+        PROJECT_MEMBERS_ID,
+        [
+            Query.equal("projectId", projectId),
+            Query.equal("userId", userId),
+            Query.limit(1),
+        ]
+    );
+    
+    // Return true if member exists and is not explicitly REMOVED
+    if (memberships.total > 0) {
+        const member = memberships.documents[0];
+        return member.status !== ProjectMemberStatus.REMOVED;
+    }
+    
+    return false;
 }
 
 /**

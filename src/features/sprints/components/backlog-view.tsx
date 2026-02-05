@@ -35,6 +35,8 @@ import {
   WorkItemStatus,
   WorkItemPriority,
 } from "../types";
+import { useProjectPermissions } from "@/hooks/use-project-permissions";
+import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 
 interface BacklogViewProps {
   workspaceId: string;
@@ -55,6 +57,24 @@ export const BacklogView = ({ workspaceId, projectId }: BacklogViewProps) => {
   const [showEpicPanel, setShowEpicPanel] = useState(false);
   const [groupByEpic, setGroupByEpic] = useState(false);
   const [showFiltersPanel, setShowFiltersPanel] = useState(false);
+
+  // Permission hooks
+  const {
+    canViewTasksProject,
+    canCreateTasksProject,
+    canEditTasksProject,
+    canDeleteTasksProject,
+  } = useProjectPermissions({ projectId, workspaceId });
+  
+  // Check if user is workspace admin
+  const { isAdmin } = useCurrentMember({ workspaceId });
+  const isWorkspaceAdmin = isAdmin;
+  
+  // Effective permissions (admin OR project-level)
+  const canViewWorkItems = isWorkspaceAdmin || canViewTasksProject;
+  const canCreateWorkItems = isWorkspaceAdmin || canCreateTasksProject;
+  const canEditWorkItems = isWorkspaceAdmin || canEditTasksProject;
+  const canDeleteWorkItems = isWorkspaceAdmin || canDeleteTasksProject;
 
   // Persist expanded epics
   useEffect(() => {
@@ -374,12 +394,14 @@ export const BacklogView = ({ workspaceId, projectId }: BacklogViewProps) => {
                 {/* View Options & Quick Filters */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-3">
-                    <CreateWorkItemBar
-                      workspaceId={workspaceId}
-                      projectId={projectId}
-                      sprintId={null}
-                      onCreateEpic={() => setCreateEpicOpen(true)}
-                    />
+                    {canCreateWorkItems && (
+                      <CreateWorkItemBar
+                        workspaceId={workspaceId}
+                        projectId={projectId}
+                        sprintId={null}
+                        onCreateEpic={() => setCreateEpicOpen(true)}
+                      />
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
@@ -435,6 +457,9 @@ export const BacklogView = ({ workspaceId, projectId }: BacklogViewProps) => {
                                   workItem={workItem}
                                   workspaceId={workspaceId}
                                   projectId={projectId}
+                                  canView={canViewWorkItems}
+                                  canEdit={canEditWorkItems}
+                                  canDelete={canDeleteWorkItems}
                                 />
                               ))}
                             </div>
@@ -479,6 +504,9 @@ export const BacklogView = ({ workspaceId, projectId }: BacklogViewProps) => {
                                     workItem={workItem}
                                     workspaceId={workspaceId}
                                     projectId={projectId}
+                                    canView={canViewWorkItems}
+                                    canEdit={canEditWorkItems}
+                                    canDelete={canDeleteWorkItems}
                                   />
                                 ))}
                               </div>
@@ -497,6 +525,9 @@ export const BacklogView = ({ workspaceId, projectId }: BacklogViewProps) => {
                             workItem={workItem}
                             workspaceId={workspaceId}
                             projectId={projectId}
+                            canView={canViewWorkItems}
+                            canEdit={canEditWorkItems}
+                            canDelete={canDeleteWorkItems}
                           />
                         </div>
                       ))}

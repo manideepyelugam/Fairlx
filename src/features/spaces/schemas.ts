@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SpaceVisibility, SpaceTemplate, SpaceRole } from "./types";
+import { SpaceVisibility, SpaceTemplate, SpaceRole, WorkflowInheritanceMode } from "./types";
 
 export const createSpaceSchema = z.object({
   name: z.string().trim().min(1, "Space name is required").max(100),
@@ -29,6 +29,7 @@ export const updateSpaceSchema = z.object({
     z.string().transform((value) => (value === "" ? undefined : value)),
   ]).optional(),
   defaultWorkflowId: z.string().optional().nullable(),
+  workflowInheritance: z.nativeEnum(WorkflowInheritanceMode).optional(),
   archived: z.boolean().optional(),
 });
 

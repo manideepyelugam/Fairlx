@@ -1,5 +1,5 @@
 import { Databases, Query } from "node-appwrite";
-import { DATABASE_ID, PROJECT_MEMBERS_ID, PROJECT_ROLES_ID, MEMBERS_ID } from "@/config";
+import { DATABASE_ID, PROJECT_MEMBERS_ID, PROJECT_ROLES_ID, MEMBERS_ID, PROJECT_TEAM_MEMBERS_ID, PROJECT_PERMISSIONS_ID } from "@/config";
 import { ProjectMember, ProjectRole, ProjectPermissionResult } from "@/features/project-members/types";
 import { PROJECT_PERMISSIONS, DEFAULT_PROJECT_ROLES } from "./project-permissions";
 import { MemberRole } from "@/features/members/types";
@@ -146,7 +146,6 @@ export async function getProjectPermissionResult(
 ): Promise<ProjectPermissionResult> {
     try {
         // Fetch all project memberships
-        // Fetch all project memberships
         let memberships;
         try {
             memberships = await databases.listDocuments<ProjectMember>(
@@ -178,7 +177,7 @@ export async function getProjectPermissionResult(
             };
         }
 
-        // Collect role IDs and team IDs
+        // Collect role IDs
         const roleIds = [...new Set(memberships.documents.map((m) => m.roleId))];
 
         // Fetch roles
@@ -188,7 +187,7 @@ export async function getProjectPermissionResult(
             [Query.equal("$id", roleIds)]
         );
 
-        // Build role-to-team mapping
+        // Build role-to-team mapping and collect role permissions
         const roleInfos: ProjectPermissionResult["roles"] = [];
         const allPermissions = new Set<string>();
 
@@ -204,6 +203,58 @@ export async function getProjectPermissionResult(
                 for (const permission of role.permissions || []) {
                     allPermissions.add(permission);
                 }
+            }
+        }
+
+        // ============================================================
+        // IMPORTANT: Also fetch TEAM-LEVEL permissions from PROJECT_PERMISSIONS_ID
+        // This is where "Run by Team" permissions are stored
+        // ============================================================
+        
+        // 1. Get user's team memberships from PROJECT_TEAM_MEMBERS
+        const teamMemberships = await databases.listDocuments(
+            DATABASE_ID,
+            PROJECT_TEAM_MEMBERS_ID,
+            [
+                Query.equal("projectId", projectId),
+                Query.equal("userId", userId),
+            ]
+        ).catch(() => ({ documents: [], total: 0 }));
+        
+        const teamIds = teamMemberships.documents.map((tm) => tm.teamId as string);
+        
+        // 2. Fetch permissions assigned to those teams
+        if (teamIds.length > 0) {
+            const teamPermissions = await databases.listDocuments(
+                DATABASE_ID,
+                PROJECT_PERMISSIONS_ID,
+                [
+                    Query.equal("projectId", projectId),
+                    Query.contains("assignedToTeamId", teamIds),
+                ]
+            ).catch(() => ({ documents: [], total: 0 }));
+            
+            // Add team permissions to the set
+            for (const perm of teamPermissions.documents) {
+                if (perm.permissionKey) {
+                    allPermissions.add(perm.permissionKey as string);
+                }
+            }
+        }
+        
+        // 3. Also fetch direct user permissions (assigned to user, not team)
+        const directPermissions = await databases.listDocuments(
+            DATABASE_ID,
+            PROJECT_PERMISSIONS_ID,
+            [
+                Query.equal("projectId", projectId),
+                Query.equal("assignedToUserId", userId),
+            ]
+        ).catch(() => ({ documents: [], total: 0 }));
+        
+        for (const perm of directPermissions.documents) {
+            if (perm.permissionKey) {
+                allPermissions.add(perm.permissionKey as string);
             }
         }
 

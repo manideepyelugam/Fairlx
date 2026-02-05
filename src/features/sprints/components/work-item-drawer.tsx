@@ -46,6 +46,15 @@ import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { PopulatedWorkItem, WorkItemStatus, WorkItemType } from "../types";
 import { SubtasksList } from "@/features/subtasks/components";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import DOMPurify from "dompurify";
+import { RichTextEditor } from "@/components/editor/rich-text-editor";
 
 interface WorkItemDrawerProps {
   workItem: PopulatedWorkItem | null;
@@ -53,6 +62,9 @@ interface WorkItemDrawerProps {
   onCloseAction: () => void;
   onUpdate?: (workItemId: string, updates: Partial<PopulatedWorkItem>) => void;
   onDelete?: (workItemId: string) => void;
+  // Permission props
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 export const WorkItemDrawer = ({
@@ -61,6 +73,8 @@ export const WorkItemDrawer = ({
   onCloseAction,
   onUpdate,
   onDelete,
+  canEdit = true,
+  canDelete = true,
 }: WorkItemDrawerProps) => {
   const [title, setTitle] = useState(workItem?.title || "");
   const [description, setDescription] = useState(workItem?.description || "");
@@ -69,6 +83,8 @@ export const WorkItemDrawer = ({
   const [storyPoints, setStoryPoints] = useState(workItem?.storyPoints?.toString() || "");
   const [comments, setComments] = useState<Array<{ id: string; author: string; text: string; date: string }>>([]);
   const [newComment, setNewComment] = useState("");
+  const [isDescriptionDialogOpen, setIsDescriptionDialogOpen] = useState(false);
+  const [editingDescription, setEditingDescription] = useState("");
 
   if (!workItem) return null;
 
@@ -108,6 +124,7 @@ export const WorkItemDrawer = ({
   };
 
   return (
+  <>
     <Sheet open={open} onOpenChange={onCloseAction}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
         {/* Header */}
@@ -125,8 +142,8 @@ export const WorkItemDrawer = ({
                   {workItem.key}
                 </Badge>
                 {/* Type Selector */}
-                <Select value={type} onValueChange={(value) => setType(value as WorkItemType)}>
-                  <SelectTrigger className="w-28 h-7 text-xs">
+                <Select value={type} onValueChange={(value) => setType(value as WorkItemType)} disabled={canEdit === false}>
+                  <SelectTrigger className="w-28 h-7 text-xs" disabled={canEdit === false}>
                     <Layers className="size-3 mr-1" />
                     <SelectValue />
                   </SelectTrigger>
@@ -139,8 +156,8 @@ export const WorkItemDrawer = ({
                   </SelectContent>
                 </Select>
                 {/* Status Selector */}
-                <Select value={status} onValueChange={(value) => setStatus(value as WorkItemStatus)}>
-                  <SelectTrigger className="w-32 h-7 text-xs">
+                <Select value={status} onValueChange={(value) => setStatus(value as WorkItemStatus)} disabled={canEdit === false}>
+                  <SelectTrigger className="w-32 h-7 text-xs" disabled={canEdit === false}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -157,6 +174,7 @@ export const WorkItemDrawer = ({
                 onChange={(e) => setTitle(e.target.value)}
                 className="text-lg font-semibold border-none px-0 focus-visible:ring-0"
                 placeholder="Work item title"
+                disabled={canEdit === false}
               />
             </div>
             <DropdownMenu>
@@ -174,11 +192,15 @@ export const WorkItemDrawer = ({
                   <ExternalLink className="size-4 mr-2" />
                   Open in new tab
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-red-600" onClick={handleDelete}>
-                  <Trash2 className="size-4 mr-2" />
-                  Delete
-                </DropdownMenuItem>
+                {canDelete !== false && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="text-red-600" onClick={handleDelete}>
+                      <Trash2 className="size-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -304,14 +326,15 @@ export const WorkItemDrawer = ({
                 className="h-9 text-sm w-24"
                 placeholder="0"
                 min="0"
+                disabled={canEdit === false}
               />
             </div>
 
             {/* Priority */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Priority</Label>
-              <Select defaultValue={workItem.priority}>
-                <SelectTrigger className="h-9 text-sm">
+              <Select defaultValue={workItem.priority} disabled={canEdit === false}>
+                <SelectTrigger className="h-9 text-sm" disabled={canEdit === false}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -326,15 +349,27 @@ export const WorkItemDrawer = ({
 
           {/* Description Tab */}
           <TabsContent value="description" className="space-y-4 mt-6">
-            <div className="space-y-2">
+            <div className="flex items-center justify-between">
               <Label className="text-sm font-medium">Description</Label>
-              <Textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Add a description..."
-                className="min-h-[300px] text-sm"
-              />
+              {canEdit !== false && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setEditingDescription(description || workItem.description || "");
+                    setIsDescriptionDialogOpen(true);
+                  }}
+                >
+                  Edit
+                </Button>
+              )}
             </div>
+            <div
+              className="prose prose-sm max-w-none dark:prose-invert min-h-[200px] p-4 border rounded-md bg-muted/30"
+              dangerouslySetInnerHTML={{
+                __html: DOMPurify.sanitize(description || workItem.description || "<p class='text-muted-foreground'>No description added yet</p>")
+              }}
+            />
           </TabsContent>
 
           {/* Subtasks Tab */}
@@ -403,11 +438,43 @@ export const WorkItemDrawer = ({
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 pt-6 border-t mt-6">
           <Button variant="outline" onClick={onCloseAction}>
-            Cancel
+            {canEdit === false ? "Close" : "Cancel"}
           </Button>
-          <Button onClick={handleSave}>Save changes</Button>
+          {canEdit !== false && <Button onClick={handleSave}>Save changes</Button>}
         </div>
       </SheetContent>
     </Sheet>
+
+    {/* Description Edit Dialog */}
+    <Dialog open={isDescriptionDialogOpen} onOpenChange={setIsDescriptionDialogOpen}>
+      <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Edit Description</DialogTitle>
+        </DialogHeader>
+        <div className="flex-1 overflow-y-auto min-h-[300px]">
+          <RichTextEditor
+            content={editingDescription}
+            onChange={(content) => setEditingDescription(content)}
+            workspaceId={workItem?.workspaceId}
+            placeholder="Add a description..."
+            minHeight="250px"
+          />
+        </div>
+        <DialogFooter className="mt-4">
+          <Button variant="outline" onClick={() => setIsDescriptionDialogOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              setDescription(editingDescription);
+              setIsDescriptionDialogOpen(false);
+            }}
+          >
+            Save Description
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </>
   );
 };

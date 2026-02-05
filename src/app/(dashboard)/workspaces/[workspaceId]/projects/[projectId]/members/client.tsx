@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, UserPlus, MoreHorizontal, Trash2 } from "lucide-react";
+import { Loader2, UserPlus, MoreHorizontal, Trash2, AlertCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,6 +31,7 @@ import {
 import { MultiSelect } from "@/components/ui/multi-select";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
@@ -41,6 +42,8 @@ import { useGetProjectRoles } from "@/features/project-members/api/use-get-proje
 import { useAddProjectMember } from "@/features/project-members/api/use-add-project-member";
 import { useRemoveProjectMember } from "@/features/project-members/api/use-remove-project-member";
 import { useConfirm } from "@/hooks/use-confirm";
+import { useProjectPermissions } from "@/hooks/use-project-permissions";
+import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 
 import { ProjectPermissionsEditor } from "@/components/project-permissions-editor";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -62,6 +65,26 @@ export const ProjectMembersClient = () => {
         "destructive"
     );
 
+    // Permission hooks
+    const {
+        canViewMembers: canViewMembersProject,
+        canManageProjectMembers,
+        canManageProjectTeams,
+        canManageProjectPermissions,
+        isProjectAdmin,
+        isLoading: isLoadingPermissions,
+    } = useProjectPermissions({ projectId, workspaceId });
+    
+    // Check if user is workspace admin (organization creator/admin)
+    const { isAdmin } = useCurrentMember({ workspaceId });
+    const isWorkspaceAdmin = isAdmin;
+    
+    // Effective permissions (admin OR project-level)
+    const canViewMembers = isWorkspaceAdmin || isProjectAdmin || canViewMembersProject;
+    const canManageMembers = isWorkspaceAdmin || isProjectAdmin || canManageProjectMembers;
+    const canManageTeams = isWorkspaceAdmin || isProjectAdmin || canManageProjectTeams;
+    const canManagePermissions = isWorkspaceAdmin || isProjectAdmin || canManageProjectPermissions;
+
     // Queries
     const { data: projectMembersData, isLoading: isLoadingProjectMembers } = useGetProjectMembers({ projectId, workspaceId });
     const { data: workspaceMembersData, isLoading: isLoadingWorkspaceMembers } = useGetMembers({ workspaceId });
@@ -77,11 +100,16 @@ export const ProjectMembersClient = () => {
     const teams = teamsData?.documents ?? [];
     const roles = rolesData?.documents ?? [];
 
-    const isLoading = isLoadingProjectMembers || isLoadingWorkspaceMembers || isLoadingTeams || isLoadingRoles;
+    const isLoading = isLoadingProjectMembers || isLoadingWorkspaceMembers || isLoadingTeams || isLoadingRoles || isLoadingPermissions;
 
     const handleAddMember = async () => {
         // Team is now optional - users can be added without a team
         if (selectedUserIds.length === 0 || !selectedRoleId) return;
+        
+        // Permission check
+        if (!canManageMembers) {
+            return;
+        }
 
         try {
             const promises = selectedUserIds.map(userId =>
@@ -104,6 +132,11 @@ export const ProjectMembersClient = () => {
     };
 
     const handleRemoveMember = async (memberId: string) => {
+        // Permission check
+        if (!canManageMembers) {
+            return;
+        }
+        
         const ok = await confirmRemove();
         if (!ok) return;
         removeMember({ memberId, projectId });
@@ -134,6 +167,16 @@ export const ProjectMembersClient = () => {
         <div className="p-6 space-y-6">
             <ConfirmRemoveDialog />
 
+            {/* Permission denied message */}
+            {!canViewMembers && !isLoading && (
+                <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                        You don&apos;t have permission to view project members.
+                    </AlertDescription>
+                </Alert>
+            )}
+
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
@@ -148,20 +191,25 @@ export const ProjectMembersClient = () => {
                 {/* Only show Add Member button on Members tab, handled inside TabsContent if needed, or global header */}
             </div>
 
-            <Tabs defaultValue="members" className="w-full">
-                <TabsList>
-                    <TabsTrigger value="members" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Members</TabsTrigger>
-                    <TabsTrigger value="teams" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Teams</TabsTrigger>
-                    <TabsTrigger value="permissions" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Permissions & Roles</TabsTrigger>
-                </TabsList>
+            {canViewMembers && (
+                <Tabs defaultValue="members" className="w-full">
+                    <TabsList>
+                        <TabsTrigger value="members" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Members</TabsTrigger>
+                        <TabsTrigger value="teams" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Teams</TabsTrigger>
+                        {canManagePermissions && (
+                            <TabsTrigger value="permissions" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Permissions & Roles</TabsTrigger>
+                        )}
+                    </TabsList>
 
-                <TabsContent value="members" className="mt-6 space-y-6">
-                    <div className="flex justify-end">
-                        <Button onClick={() => setIsAddMemberOpen(true)}>
-                            <UserPlus className="mr-2 h-4 w-4" />
-                            Add from Workspace
-                        </Button>
-                    </div>
+                    <TabsContent value="members" className="mt-6 space-y-6">
+                        {canManageMembers && (
+                            <div className="flex justify-end">
+                                <Button onClick={() => setIsAddMemberOpen(true)}>
+                                    <UserPlus className="mr-2 h-4 w-4" />
+                                    Add from Workspace
+                                </Button>
+                            </div>
+                        )}
 
                     {projectMembers.length === 0 ? (
                         <Card>
@@ -170,12 +218,14 @@ export const ProjectMembersClient = () => {
                                 <h3 className="text-lg font-medium mb-2">No Members Yet</h3>
                                 <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
                                     Project members can view and contribute to this project.
-                                    Add members from your workspace to get started.
+                                    {canManageMembers ? " Add members from your workspace to get started." : ""}
                                 </p>
-                                <Button onClick={() => setIsAddMemberOpen(true)}>
-                                    <UserPlus className="mr-2 h-4 w-4" />
-                                    Add from Workspace
-                                </Button>
+                                {canManageMembers && (
+                                    <Button onClick={() => setIsAddMemberOpen(true)}>
+                                        <UserPlus className="mr-2 h-4 w-4" />
+                                        Add from Workspace
+                                    </Button>
+                                )}
                             </CardContent>
                         </Card>
                     ) : (
@@ -207,14 +257,21 @@ export const ProjectMembersClient = () => {
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem
-                                                        className="text-destructive focus:text-destructive"
-                                                        onClick={() => handleRemoveMember(member.$id)}
-                                                        disabled={isRemovingMember}
-                                                    >
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Remove
-                                                    </DropdownMenuItem>
+                                                    {canManageMembers && (
+                                                        <DropdownMenuItem
+                                                            className="text-destructive focus:text-destructive"
+                                                            onClick={() => handleRemoveMember(member.$id)}
+                                                            disabled={isRemovingMember}
+                                                        >
+                                                            <Trash2 className="mr-2 h-4 w-4" />
+                                                            Remove
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    {!canManageMembers && (
+                                                        <DropdownMenuItem disabled className="text-muted-foreground">
+                                                            No actions available
+                                                        </DropdownMenuItem>
+                                                    )}
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </div>
@@ -222,8 +279,11 @@ export const ProjectMembersClient = () => {
                                         <div className="flex items-center justify-between text-sm">
                                             <div className="flex items-center gap-2 text-muted-foreground">
                                                 <span>Team:</span>
-                                                <Badge variant="outline" className="text-xs font-normal">
-                                                    {member.team?.name || "Unknown"}
+                                                <Badge 
+                                                    variant={member.team?.name === "No Team" || !member.team?.name ? "secondary" : "outline"} 
+                                                    className={`text-xs font-normal ${member.team?.name === "No Team" || !member.team?.name ? "text-muted-foreground" : ""}`}
+                                                >
+                                                    {member.team?.name || "No Team"}
                                                 </Badge>
                                             </div>
                                             <div className="flex items-center gap-2 text-muted-foreground">
@@ -249,13 +309,16 @@ export const ProjectMembersClient = () => {
                 </TabsContent>
 
                 <TabsContent value="teams" className="mt-6">
-                    <ProjectTeamsList projectId={projectId} canManage={true} />
+                    <ProjectTeamsList projectId={projectId} canManage={canManageTeams} />
                 </TabsContent>
 
-                <TabsContent value="permissions" className="mt-6">
-                    <ProjectPermissionsEditor />
-                </TabsContent>
+                {canManagePermissions && (
+                    <TabsContent value="permissions" className="mt-6">
+                        <ProjectPermissionsEditor />
+                    </TabsContent>
+                )}
             </Tabs>
+            )}
 
             {/* Add Member Dialog */}
             <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>

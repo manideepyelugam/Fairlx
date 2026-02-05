@@ -81,10 +81,13 @@ export const ProjectTools = () => {
     canViewProject,
     canManageProjectSettings,
     canViewSprints,
+    canViewSprintsProject,
     canManageTeams,
     canCreateTeams,
     canInviteMembers,
     canRemoveMembers,
+    canViewProjectDocs,
+    canViewMembers,
     isLoading: isLoadingPermissions,
     permissions,
     isProjectAdmin,
@@ -99,6 +102,10 @@ export const ProjectTools = () => {
   // User can view project if they have project-level permission OR are workspace admin
   const effectiveCanViewProject = canViewProject || isWorkspaceAdmin;
   const effectiveCanManageSettings = canManageProjectSettings || isWorkspaceAdmin;
+  const effectiveCanViewDocs = canViewProjectDocs || effectiveCanViewProject || isWorkspaceAdmin;
+  const effectiveCanViewMembers = canViewMembers || effectiveCanViewProject || isWorkspaceAdmin;
+  // Effective sprint view permission: ProjectPermissionKey-based OR legacy OR admin
+  const effectiveCanViewSprints = canViewSprintsProject || canViewSprints || isWorkspaceAdmin;
 
   // Define project tools with their permission checks
   const projectTools: ProjectToolItem[] = useMemo(() => [
@@ -107,14 +114,14 @@ export const ProjectTools = () => {
       label: "Sprint Board",
       href: "/sprints",
       icon: <Layers className="size-4" />,
-      canView: () => canViewSprints || effectiveCanViewProject,
+      canView: () => effectiveCanViewSprints,
     },
     {
       id: "docs",
       label: "Docs",
       href: "/docs",
       icon: <FileText className="size-4" />,
-      canView: () => effectiveCanViewProject,
+      canView: () => effectiveCanViewDocs,
     },
     {
       id: "github",
@@ -135,7 +142,7 @@ export const ProjectTools = () => {
       label: "Members",
       href: "/members",
       icon: <UserPlus className="size-4" />,
-      canView: () => canInviteMembers || canRemoveMembers || effectiveCanViewProject,
+      canView: () => canInviteMembers || canRemoveMembers || effectiveCanViewMembers,
     },
     {
       id: "settings",
@@ -147,7 +154,9 @@ export const ProjectTools = () => {
   ], [
     effectiveCanViewProject,
     effectiveCanManageSettings,
-    canViewSprints,
+    effectiveCanViewDocs,
+    effectiveCanViewMembers,
+    effectiveCanViewSprints,
     canManageTeams,
     canCreateTeams,
     canInviteMembers,

@@ -14,6 +14,8 @@ import { WorkItemCard } from "./work-item-card";
 import { useGetWorkItems } from "../api/use-get-work-items";
 import { PopulatedSprint, SprintStatus } from "../types";
 import { cn } from "@/lib/utils";
+import { useProjectPermissions } from "@/hooks/use-project-permissions";
+import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 
 interface SprintCardProps {
   sprint: PopulatedSprint;
@@ -60,6 +62,24 @@ export const SprintCard = ({
   hasActiveSprint,
 }: SprintCardProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // Permission hooks
+  const {
+    canViewTasksProject,
+    canCreateTasksProject,
+    canEditTasksProject,
+    canDeleteTasksProject,
+  } = useProjectPermissions({ projectId, workspaceId });
+  
+  // Check if user is workspace admin
+    const { isAdmin: isWorkspaceAdmin } = useCurrentMember({ workspaceId });
+
+  
+  // Effective permissions (admin OR project-level)
+  const canViewWorkItems = isWorkspaceAdmin || canViewTasksProject;
+  const canCreateWorkItems = isWorkspaceAdmin || canCreateTasksProject;
+  const canEditWorkItems = isWorkspaceAdmin || canEditTasksProject;
+  const canDeleteWorkItems = isWorkspaceAdmin || canDeleteTasksProject;
 
   const { data: workItemsData } = useGetWorkItems({
     workspaceId,
@@ -202,7 +222,7 @@ export const SprintCard = ({
           </div>
 
           {/* Options menu */}
-          <SprintOptionsMenu sprint={sprint} hasActiveSprint={hasActiveSprint} />
+          <SprintOptionsMenu sprint={sprint} hasActiveSprint={hasActiveSprint} projectId={projectId} />
         </div>
       </CardHeader>
 
@@ -211,12 +231,14 @@ export const SprintCard = ({
           {/* Divider */}
           <div className="h-px bg-border -mx-4" />
 
-          {/* Create Work Item Bar */}
-          <CreateWorkItemBar
-            workspaceId={workspaceId}
-            projectId={projectId}
-            sprintId={sprint.$id}
-          />
+          {/* Create Work Item Bar - only show if user can create work items */}
+          {canCreateWorkItems && (
+            <CreateWorkItemBar
+              workspaceId={workspaceId}
+              projectId={projectId}
+              sprintId={sprint.$id}
+            />
+          )}
 
           {/* Work Items List */}
           {workItems.length > 0 ? (
@@ -227,6 +249,9 @@ export const SprintCard = ({
                   workItem={workItem}
                   workspaceId={workspaceId}
                   projectId={projectId}
+                  canView={canViewWorkItems}
+                  canEdit={canEditWorkItems}
+                  canDelete={canDeleteWorkItems}
                 />
               ))}
             </div>

@@ -1421,6 +1421,12 @@ const app = new Hono()
 
         // 3. Add project's customWorkItemTypes (may override or add new ones)
         for (const type of projectCustomTypes) {
+          // Skip entries with missing or invalid label
+          if (!type.label || typeof type.label !== 'string') {
+            console.warn('Skipping customWorkItemType with invalid label:', type);
+            continue;
+          }
+          
           const normalizedName = type.label.toLowerCase();
           const existingIndex = allProjectStatuses.findIndex(
             s => s.name.toLowerCase() === normalizedName

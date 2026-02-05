@@ -9,6 +9,7 @@ import {
     PROJECT_MEMBERS_ID,
     PROJECT_ROLES_ID,
     PROJECT_TEAMS_ID,
+    PROJECT_TEAM_MEMBERS_ID,
 } from "@/config";
 import {
     getProjectPermissionResult,
@@ -79,12 +80,44 @@ const app = new Hono()
             // Populate with team and role info
             const populated: PopulatedProjectMember[] = await Promise.all(
                 memberships.documents.map(async (membership) => {
-                    // Get team
-                    const team = await adminDb.getDocument(
+                    // Look up team membership from PROJECT_TEAM_MEMBERS collection
+                    let team: { $id: string; name: string } = { $id: "", name: "No Team" };
+                    
+                    // First check PROJECT_TEAM_MEMBERS_ID for actual team membership
+                    const teamMemberships = await adminDb.listDocuments(
                         DATABASE_ID,
-                        PROJECT_TEAMS_ID,
-                        membership.teamId
-                    ).catch(() => ({ $id: membership.teamId, name: "Unknown" }));
+                        PROJECT_TEAM_MEMBERS_ID,
+                        [
+                            Query.equal("projectId", membership.projectId),
+                            Query.equal("userId", membership.userId),
+                            Query.limit(1),
+                        ]
+                    ).catch(() => ({ documents: [], total: 0 }));
+                    
+                    if (teamMemberships.total > 0) {
+                        // User is in a team - get team info
+                        const teamMember = teamMemberships.documents[0];
+                        const teamDoc = await adminDb.getDocument(
+                            DATABASE_ID,
+                            PROJECT_TEAMS_ID,
+                            teamMember.teamId as string
+                        ).catch(() => null);
+                        
+                        if (teamDoc) {
+                            team = { $id: teamDoc.$id, name: teamDoc.name as string };
+                        }
+                    } else if (membership.teamId && membership.teamId.trim() !== "") {
+                        // Fallback: check legacy teamId field
+                        const teamDoc = await adminDb.getDocument(
+                            DATABASE_ID,
+                            PROJECT_TEAMS_ID,
+                            membership.teamId
+                        ).catch(() => null);
+                        
+                        if (teamDoc) {
+                            team = { $id: teamDoc.$id, name: teamDoc.name as string };
+                        }
+                    }
 
                     // Get role
                     const role = await adminDb.getDocument<ProjectRole>(
@@ -170,11 +203,45 @@ const app = new Hono()
             // Populate members
             const populated: PopulatedProjectMember[] = await Promise.all(
                 memberships.documents.map(async (membership) => {
-                    const team = await adminDb.getDocument(
+                    // Look up team membership from PROJECT_TEAM_MEMBERS collection
+                    // This is the source of truth for team assignments
+                    let team: { $id: string; name: string } = { $id: "", name: "No Team" };
+                    
+                    // First check PROJECT_TEAM_MEMBERS_ID for actual team membership
+                    const teamMemberships = await adminDb.listDocuments(
                         DATABASE_ID,
-                        PROJECT_TEAMS_ID,
-                        membership.teamId
-                    ).catch(() => ({ $id: membership.teamId, name: "Unknown" }));
+                        PROJECT_TEAM_MEMBERS_ID,
+                        [
+                            Query.equal("projectId", membership.projectId),
+                            Query.equal("userId", membership.userId),
+                            Query.limit(1),
+                        ]
+                    ).catch(() => ({ documents: [], total: 0 }));
+                    
+                    if (teamMemberships.total > 0) {
+                        // User is in a team - get team info
+                        const teamMember = teamMemberships.documents[0];
+                        const teamDoc = await adminDb.getDocument(
+                            DATABASE_ID,
+                            PROJECT_TEAMS_ID,
+                            teamMember.teamId as string
+                        ).catch(() => null);
+                        
+                        if (teamDoc) {
+                            team = { $id: teamDoc.$id, name: teamDoc.name as string };
+                        }
+                    } else if (membership.teamId && membership.teamId.trim() !== "") {
+                        // Fallback: check legacy teamId field on membership record
+                        const teamDoc = await adminDb.getDocument(
+                            DATABASE_ID,
+                            PROJECT_TEAMS_ID,
+                            membership.teamId
+                        ).catch(() => null);
+                        
+                        if (teamDoc) {
+                            team = { $id: teamDoc.$id, name: teamDoc.name as string };
+                        }
+                    }
 
                     const role = await adminDb.getDocument<ProjectRole>(
                         DATABASE_ID,
@@ -280,7 +347,7 @@ const app = new Hono()
                 return c.json({ error: "Invalid role for this project" }, 400);
             }
 
-            // Create membership
+            // Create membership - only include fields that exist in the database schema
             const membership = await adminDb.createDocument<ProjectMember>(
                 DATABASE_ID,
                 PROJECT_MEMBERS_ID,
@@ -288,7 +355,7 @@ const app = new Hono()
                 {
                     workspaceId: data.workspaceId,
                     projectId: data.projectId,
-                    // Appwrite requires teamId field - use empty string for "no team"
+                    // Use empty string for "no team" assignment
                     teamId: data.teamId && data.teamId !== "__none__" ? data.teamId : "",
                     userId: data.userId,
                     roleId: data.roleId,
@@ -396,9 +463,27 @@ const app = new Hono()
                 return c.json({ error: "Unauthorized" }, 403);
             }
 
+            // Also remove user from any project team they're in
+            const teamMemberships = await adminDb.listDocuments(
+                DATABASE_ID,
+                PROJECT_TEAM_MEMBERS_ID,
+                [
+                    Query.equal("projectId", membership.projectId),
+                    Query.equal("userId", membership.userId),
+                ]
+            );
+
+            // Delete all team memberships for this user in this project
+            await Promise.all(
+                teamMemberships.documents.map((tm) =>
+                    adminDb.deleteDocument(DATABASE_ID, PROJECT_TEAM_MEMBERS_ID, tm.$id)
+                )
+            );
+
+            // Delete the project membership
             await adminDb.deleteDocument(DATABASE_ID, PROJECT_MEMBERS_ID, memberId);
 
-            return c.json({ data: { $id: memberId } });
+            return c.json({ data: { $id: memberId, removedFromTeams: teamMemberships.total } });
         }
     )
 
@@ -501,46 +586,46 @@ const app = new Hono()
         sessionMiddleware,
         zValidator("json", updateProjectRoleSchema),
         async (c) => {
-            const databases = c.get("databases");
+            const { databases: adminDb } = await createAdminClient();
             const user = c.get("user");
             const { roleId } = c.req.param();
             const updates = c.req.valid("json");
 
-            const role = await databases.getDocument<ProjectRole>(
-                DATABASE_ID,
-                PROJECT_ROLES_ID,
-                roleId
-            );
+            try {
+                const role = await adminDb.getDocument<ProjectRole>(
+                    DATABASE_ID,
+                    PROJECT_ROLES_ID,
+                    roleId
+                );
 
-            // Check permission
-            const hasPermission = await canProject(
-                databases,
-                user.$id,
-                role.projectId,
-                PROJECT_PERMISSIONS.ROLE_UPDATE,
-                { workspaceId: role.workspaceId, allowWorkspaceAdminOverride: true }
-            );
-
-            if (!hasPermission) {
-                return c.json({ error: "Unauthorized" }, 403);
-            }
-
-            // Prevent editing default roles' core properties
-            if (role.isDefault && updates.name) {
-                return c.json({ error: "Cannot rename default roles" }, 400);
-            }
-
-            const updated = await databases.updateDocument<ProjectRole>(
-                DATABASE_ID,
-                PROJECT_ROLES_ID,
-                roleId,
-                {
-                    ...updates,
-                    lastModifiedBy: user.$id,
+                // Check permission using resolveUserProjectAccess for reliable permission checking
+                const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+                const access = await resolveUserProjectAccess(adminDb, user.$id, role.projectId);
+                
+                if (!access.hasAccess || !hasProjectPermission(access, ProjectPermissionKey.MANAGE_PERMISSIONS)) {
+                    return c.json({ error: "Forbidden: No permission to manage role permissions" }, 403);
                 }
-            );
 
-            return c.json({ data: updated });
+                // Prevent editing default roles' core properties
+                if (role.isDefault && updates.name) {
+                    return c.json({ error: "Cannot rename default roles" }, 400);
+                }
+
+                const updated = await adminDb.updateDocument<ProjectRole>(
+                    DATABASE_ID,
+                    PROJECT_ROLES_ID,
+                    roleId,
+                    {
+                        ...updates,
+                        lastModifiedBy: user.$id,
+                    }
+                );
+
+                return c.json({ data: updated });
+            } catch (error) {
+                console.error("Error updating role:", error);
+                return c.json({ error: "Failed to update role" }, 500);
+            }
         }
     )
 
@@ -552,50 +637,50 @@ const app = new Hono()
         "/roles/:roleId",
         sessionMiddleware,
         async (c) => {
-            const databases = c.get("databases");
+            const { databases: adminDb } = await createAdminClient();
             const user = c.get("user");
             const { roleId } = c.req.param();
 
-            const role = await databases.getDocument<ProjectRole>(
-                DATABASE_ID,
-                PROJECT_ROLES_ID,
-                roleId
-            );
+            try {
+                const role = await adminDb.getDocument<ProjectRole>(
+                    DATABASE_ID,
+                    PROJECT_ROLES_ID,
+                    roleId
+                );
 
-            // Check permission
-            const hasPermission = await canProject(
-                databases,
-                user.$id,
-                role.projectId,
-                PROJECT_PERMISSIONS.ROLE_DELETE,
-                { workspaceId: role.workspaceId, allowWorkspaceAdminOverride: true }
-            );
+                // Check permission using resolveUserProjectAccess
+                const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+                const access = await resolveUserProjectAccess(adminDb, user.$id, role.projectId);
+                
+                if (!access.hasAccess || !hasProjectPermission(access, ProjectPermissionKey.MANAGE_PERMISSIONS)) {
+                    return c.json({ error: "Forbidden: No permission to delete roles" }, 403);
+                }
 
-            if (!hasPermission) {
-                return c.json({ error: "Unauthorized" }, 403);
+                // Prevent deleting default roles
+                if (role.isDefault) {
+                    return c.json({ error: "Cannot delete default roles" }, 400);
+                }
+
+                // Check if any members are using this role
+                const membersWithRole = await adminDb.listDocuments<ProjectMember>(
+                    DATABASE_ID,
+                    PROJECT_MEMBERS_ID,
+                    [Query.equal("roleId", roleId)]
+                );
+
+                if (membersWithRole.total > 0) {
+                    return c.json({
+                        error: `Cannot delete role. ${membersWithRole.total} member(s) are using this role.`,
+                    }, 400);
+                }
+
+                await adminDb.deleteDocument(DATABASE_ID, PROJECT_ROLES_ID, roleId);
+
+                return c.json({ data: { $id: roleId } });
+            } catch (error) {
+                console.error("Error deleting role:", error);
+                return c.json({ error: "Failed to delete role" }, 500);
             }
-
-            // Prevent deleting default roles
-            if (role.isDefault) {
-                return c.json({ error: "Cannot delete default roles" }, 400);
-            }
-
-            // Check if any members are using this role
-            const membersWithRole = await databases.listDocuments<ProjectMember>(
-                DATABASE_ID,
-                PROJECT_MEMBERS_ID,
-                [Query.equal("roleId", roleId)]
-            );
-
-            if (membersWithRole.total > 0) {
-                return c.json({
-                    error: `Cannot delete role. ${membersWithRole.total} member(s) are using this role.`,
-                }, 400);
-            }
-
-            await databases.deleteDocument(DATABASE_ID, PROJECT_ROLES_ID, roleId);
-
-            return c.json({ data: { $id: roleId } });
         }
     );
 

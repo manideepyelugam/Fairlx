@@ -11,6 +11,8 @@ import { useDeleteProjectTeam } from "../api/use-delete-project-team";
 import { ProjectTeamCard } from "./project-team-card";
 import { CreateProjectTeamModal } from "./create-project-team-modal";
 import { AddProjectTeamMemberModal } from "./add-project-team-member-modal";
+import { TeamMembersModal } from "./team-members-modal";
+import { PopulatedProjectTeam } from "../types";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -32,6 +34,7 @@ export function ProjectTeamsList({ projectId, canManage = false }: ProjectTeamsL
     const [addMemberTeamId, setAddMemberTeamId] = useState<string | null>(null);
     const [deleteTeamId, setDeleteTeamId] = useState<string | null>(null);
     const [deleteTeamName, setDeleteTeamName] = useState("");
+    const [viewMembersTeam, setViewMembersTeam] = useState<PopulatedProjectTeam | null>(null);
 
     const { data: teamsData, isLoading } = useGetProjectTeams({ projectId });
     const { mutate: deleteTeam, isPending: isDeleting } = useDeleteProjectTeam({ projectId });
@@ -64,7 +67,7 @@ export function ProjectTeamsList({ projectId, canManage = false }: ProjectTeamsL
                         Project Teams
                     </h2>
                     <p className="text-sm text-muted-foreground mt-1">
-                        Manage teams within this project. Teams can be named anything.
+                        Manage teams within this project. Click on a team to view its members.
                     </p>
                 </div>
                 {canManage && (
@@ -100,6 +103,7 @@ export function ProjectTeamsList({ projectId, canManage = false }: ProjectTeamsL
                             key={team.$id}
                             team={team}
                             canManage={canManage}
+                            onViewMembers={() => setViewMembersTeam(team)}
                             onAddMember={() => setAddMemberTeamId(team.$id)}
                             onDelete={() => {
                                 setDeleteTeamId(team.$id);
@@ -116,6 +120,17 @@ export function ProjectTeamsList({ projectId, canManage = false }: ProjectTeamsL
                 open={isCreateOpen}
                 onOpenChange={setIsCreateOpen}
             />
+
+            {/* View Members Modal */}
+            {viewMembersTeam && (
+                <TeamMembersModal
+                    team={viewMembersTeam}
+                    projectId={projectId}
+                    open={!!viewMembersTeam}
+                    onOpenChange={(open) => !open && setViewMembersTeam(null)}
+                    canManage={canManage}
+                />
+            )}
 
             {/* Add Member Modal */}
             {addMemberTeamId && (

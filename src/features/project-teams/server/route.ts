@@ -424,7 +424,8 @@ const app = new Hono()
                 }
 
                 // Verify user is a project member
-                const projectMemberships = await adminDb.listDocuments<ProjectMember>(
+                // First try with ACTIVE status
+                let projectMemberships = await adminDb.listDocuments<ProjectMember>(
                     DATABASE_ID,
                     PROJECT_MEMBERS_ID,
                     [
@@ -433,6 +434,23 @@ const app = new Hono()
                         Query.equal("status", ProjectMemberStatus.ACTIVE),
                     ]
                 );
+                
+                // Fallback: check without status filter for backward compatibility
+                if (projectMemberships.total === 0) {
+                    projectMemberships = await adminDb.listDocuments<ProjectMember>(
+                        DATABASE_ID,
+                        PROJECT_MEMBERS_ID,
+                        [
+                            Query.equal("projectId", team.projectId),
+                            Query.equal("userId", data.userId),
+                        ]
+                    );
+                    // Filter out explicitly REMOVED members
+                    if (projectMemberships.total > 0 && 
+                        projectMemberships.documents[0].status === ProjectMemberStatus.REMOVED) {
+                        projectMemberships = { documents: [], total: 0 } as typeof projectMemberships;
+                    }
+                }
 
                 if (projectMemberships.total === 0) {
                     return c.json({ error: "User is not a project member" }, 400);
@@ -613,6 +631,8 @@ const app = new Hono()
                                 permissionKey: key,
                                 assignedToTeamId: teamId,
                                 assignedToUserId: null,
+                                grantedBy: user.$id,
+                                grantedAt: new Date().toISOString(),
                             }
                         )
                     )

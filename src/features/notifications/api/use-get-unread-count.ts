@@ -22,8 +22,8 @@ export const useGetUnreadCount = ({ workspaceId, enabled = true }: UseGetUnreadC
       return data;
     },
     enabled: enabled && Boolean(workspaceId),
-    refetchInterval: enabled ? 30000 : false, // Refetch every 30 seconds when enabled
-    refetchIntervalInBackground: true, // Continue refetching even when window is not focused
+    refetchInterval: enabled ? 60000 : false, // Refetch every 60 seconds when enabled
+    refetchIntervalInBackground: false, // Don't refetch when window is not focused to reduce reads
   });
 
   return query;

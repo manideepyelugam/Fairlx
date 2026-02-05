@@ -44,6 +44,13 @@ const app = new Hono()
           return c.json({ error: "Unauthorized" }, 401);
         }
 
+        // Project permission check: verify user can view documents in this project
+        const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+        const access = await resolveUserProjectAccess(databases, user.$id, projectId);
+        if (!access.hasAccess || !hasProjectPermission(access, ProjectPermissionKey.VIEW_DOCS)) {
+          return c.json({ error: "Forbidden: No permission to view documents in this project" }, 403);
+        }
+
         // Build queries
         const queries = [
           Query.equal("projectId", projectId),
@@ -138,6 +145,13 @@ const app = new Hono()
         const project = await databases.getDocument(DATABASE_ID, PROJECTS_ID, projectId);
         if (!project || project.workspaceId !== workspaceId) {
           return c.json({ error: "Project not found" }, 404);
+        }
+
+        // Project permission check: verify user can create documents in this project
+        const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+        const accessForUpload = await resolveUserProjectAccess(databases, user.$id, projectId);
+        if (!accessForUpload.hasAccess || !hasProjectPermission(accessForUpload, ProjectPermissionKey.CREATE_DOCS)) {
+          return c.json({ error: "Forbidden: No permission to upload documents in this project" }, 403);
         }
 
         // Validate file size
@@ -245,6 +259,13 @@ const app = new Hono()
           return c.json({ error: "Unauthorized" }, 401);
         }
 
+        // Project permission check: verify user can edit documents in this project
+        const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+        const accessForEdit = await resolveUserProjectAccess(databases, user.$id, document.projectId);
+        if (!accessForEdit.hasAccess || !hasProjectPermission(accessForEdit, ProjectPermissionKey.EDIT_DOCS)) {
+          return c.json({ error: "Forbidden: No permission to edit documents in this project" }, 403);
+        }
+
         // Update document (Appwrite handles $updatedAt automatically)
         const updatedDocument = await databases.updateDocument<ProjectDocument>(
           DATABASE_ID,
@@ -298,6 +319,13 @@ const app = new Hono()
 
         if (!member) {
           return c.json({ error: "Unauthorized" }, 401);
+        }
+
+        // Project permission check: verify user can edit documents in this project
+        const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+        const accessForReplace = await resolveUserProjectAccess(databases, user.$id, document.projectId);
+        if (!accessForReplace.hasAccess || !hasProjectPermission(accessForReplace, ProjectPermissionKey.EDIT_DOCS)) {
+          return c.json({ error: "Forbidden: No permission to replace documents in this project" }, 403);
         }
 
         // Validate file size
@@ -405,6 +433,13 @@ const app = new Hono()
           return c.json({ error: "Document not found" }, 404);
         }
 
+        // Project permission check: verify user can delete documents in this project
+        const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+        const accessForDelete = await resolveUserProjectAccess(databases, user.$id, document.projectId);
+        if (!accessForDelete.hasAccess || !hasProjectPermission(accessForDelete, ProjectPermissionKey.DELETE_DOCS)) {
+          return c.json({ error: "Forbidden: No permission to delete documents in this project" }, 403);
+        }
+
         // Delete file from storage
         try {
           await storage.deleteFile(PROJECT_DOCS_BUCKET_ID, document.fileId);
@@ -456,6 +491,13 @@ const app = new Hono()
           return c.json({ error: "Document not found" }, 404);
         }
 
+        // Project permission check: verify user can view/download documents in this project
+        const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+        const accessForDownload = await resolveUserProjectAccess(databases, user.$id, document.projectId);
+        if (!accessForDownload.hasAccess || !hasProjectPermission(accessForDownload, ProjectPermissionKey.VIEW_DOCS)) {
+          return c.json({ error: "Forbidden: No permission to download documents in this project" }, 403);
+        }
+
         // Get file from storage
         const file = await storage.getFileDownload(PROJECT_DOCS_BUCKET_ID, document.fileId);
 
@@ -503,6 +545,13 @@ const app = new Hono()
 
         if (!document || document.workspaceId !== workspaceId) {
           return c.json({ error: "Document not found" }, 404);
+        }
+
+        // Project permission check: verify user can view documents in this project
+        const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+        const accessForGet = await resolveUserProjectAccess(databases, user.$id, document.projectId);
+        if (!accessForGet.hasAccess || !hasProjectPermission(accessForGet, ProjectPermissionKey.VIEW_DOCS)) {
+          return c.json({ error: "Forbidden: No permission to view documents in this project" }, 403);
         }
 
         // Get URL

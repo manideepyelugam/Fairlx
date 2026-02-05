@@ -34,13 +34,15 @@ import { useCreateTask } from "../api/use-create-task";
 import { StatusSelector } from "@/features/custom-columns/components/status-selector";
 import { PrioritySelector } from "./priority-selector";
 import { LabelSelector } from "./label-management";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/editor";
 import { AssigneeMultiSelect } from "./assignee-multi-select";
 import { useConfirm } from "@/hooks/use-confirm";
 import { CreateTaskAttachmentUpload } from "@/features/attachments/components/create-task-attachment-upload";
 import { useUploadAttachment } from "@/features/attachments/hooks/use-upload-attachment";
 import { useGetProject } from "@/features/projects/api/use-get-project";
+import { useGetProjectTeams } from "@/features/project-teams/api/use-get-project-teams";
 import { TypeSelector } from "./type-selector";
+import { TeamMultiSelect } from "./team-multi-select";
 
 interface CreateTaskFormProps {
   onCancel?: () => void;
@@ -73,6 +75,7 @@ export const CreateTaskForm = ({
       type: "TASK", // Default to TASK type
       description: "",
       assigneeIds: [],
+      assignedTeamIds: [],
       labels: [],
       estimatedHours: undefined,
       priority: undefined,
@@ -86,6 +89,17 @@ export const CreateTaskForm = ({
 
   const selectedProjectId = form.watch("projectId");
   const { data: project } = useGetProject({ projectId: selectedProjectId });
+  const { data: projectTeams } = useGetProjectTeams({ projectId: selectedProjectId });
+
+  // Convert project teams to options
+  const teamOptions = useMemo(() => {
+    if (!projectTeams?.documents) return [];
+    return projectTeams.documents.map((team: { $id: string; name: string; color?: string }) => ({
+      id: team.$id,
+      name: team.name,
+      color: team.color,
+    }));
+  }, [projectTeams]);
 
   const customWorkItemTypes = useMemo(() => project?.customWorkItemTypes || [], [project]);
   const customPriorities = useMemo(() => project?.customPriorities || [], [project]);
@@ -271,6 +285,25 @@ export const CreateTaskForm = ({
                 />
                 <FormField
                   control={form.control}
+                  name="assignedTeamIds"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Assigned Teams (Optional)</FormLabel>
+                      <FormControl>
+                        <TeamMultiSelect
+                          teamOptions={teamOptions}
+                          selectedTeamIds={field.value || []}
+                          onTeamsChange={field.onChange}
+                          placeholder="Select teams..."
+                          disabled={!selectedProjectId || teamOptions.length === 0}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
                   name="status"
                   render={({ field }) => (
                     <FormItem>
@@ -387,12 +420,14 @@ export const CreateTaskForm = ({
                     <FormItem>
                       <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Textarea
-                          placeholder="Enter work item description..."
-                          className="resize-none"
-                          rows={4}
-                          value={field.value ?? ""}
-                          onChange={(e) => field.onChange(e.target.value)}
+                        <RichTextEditor
+                          content={field.value ?? ""}
+                          onChange={field.onChange}
+                          placeholder="Add a description... Use @ to mention team members, / for commands"
+                          workspaceId={workspaceId}
+                          projectId={selectedProjectId}
+                          minHeight="150px"
+                          showToolbar={true}
                         />
                       </FormControl>
                       <FormMessage />

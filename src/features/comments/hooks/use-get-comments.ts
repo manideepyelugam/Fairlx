@@ -24,7 +24,7 @@ export const useGetComments = ({ taskId, workspaceId }: UseGetCommentsProps) => 
       return data;
     },
     enabled: !!taskId && !!workspaceId,
-    refetchInterval: 30000, // Refetch every 30 seconds for near-real-time updates
+    refetchInterval: 60000, // Refetch every 60 seconds (reduced from 30s to lower DB reads)
   });
 
   return query;

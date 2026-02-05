@@ -37,12 +37,14 @@ import { Task } from "../types";
 import { StatusSelector } from "@/features/custom-columns/components/status-selector";
 import { PrioritySelector } from "./priority-selector";
 import { LabelSelector } from "./label-management";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/editor";
 import { AssigneeMultiSelect } from "./assignee-multi-select";
 import { CreateTaskAttachmentUpload } from "@/features/attachments/components/create-task-attachment-upload";
 
 import { useGetProject } from "@/features/projects/api/use-get-project";
+import { useGetProjectTeams } from "@/features/project-teams/api/use-get-project-teams";
 import { TypeSelector } from "./type-selector";
+import { TeamMultiSelect } from "./team-multi-select";
 
 interface EditTaskFormProps {
   onCancel?: () => void;
@@ -72,13 +74,24 @@ export const EditTaskForm = ({
         ? new Date(initialValues.endDate)
         : undefined,
       assigneeIds: initialValues.assigneeIds || (initialValues.assigneeId ? [initialValues.assigneeId] : []),
-      assignedTeamId: initialValues.assignedTeamId ?? undefined,
+      assignedTeamIds: initialValues.assignedTeamIds || (initialValues.assignedTeamId ? [initialValues.assignedTeamId] : []),
       flagged: initialValues.flagged ?? false,
     },
   });
 
   const selectedProjectId = form.watch("projectId");
   const { data: project } = useGetProject({ projectId: selectedProjectId });
+  const { data: projectTeams } = useGetProjectTeams({ projectId: selectedProjectId });
+
+  // Convert project teams to options
+  const teamOptions = useMemo(() => {
+    if (!projectTeams?.documents) return [];
+    return projectTeams.documents.map((team: { $id: string; name: string; color?: string }) => ({
+      id: team.$id,
+      name: team.name,
+      color: team.color,
+    }));
+  }, [projectTeams]);
 
   const customWorkItemTypes = useMemo(() => project?.customWorkItemTypes || [], [project]);
   const customPriorities = useMemo(() => project?.customPriorities || [], [project]);
@@ -194,6 +207,25 @@ export const EditTaskForm = ({
                         selectedAssigneeIds={field.value || []}
                         onAssigneesChange={field.onChange}
                         placeholder="Select assignees..."
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="assignedTeamIds"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Assigned Teams (Optional)</FormLabel>
+                    <FormControl>
+                      <TeamMultiSelect
+                        teamOptions={teamOptions}
+                        selectedTeamIds={field.value || []}
+                        onTeamsChange={field.onChange}
+                        placeholder="Select teams..."
+                        disabled={teamOptions.length === 0}
                       />
                     </FormControl>
                     <FormMessage />
@@ -318,12 +350,14 @@ export const EditTaskForm = ({
                   <FormItem>
                     <FormLabel>Description (Optional)</FormLabel>
                     <FormControl>
-                      <Textarea
-                        placeholder="Enter work item description..."
-                        className="resize-none"
-                        rows={4}
-                        value={field.value ?? ""}
-                        onChange={(e) => field.onChange(e.target.value)}
+                      <RichTextEditor
+                        content={field.value ?? ""}
+                        onChange={field.onChange}
+                        placeholder="Add a description... Use @ to mention team members, / for commands"
+                        workspaceId={initialValues.workspaceId}
+                        projectId={selectedProjectId}
+                        minHeight="150px"
+                        showToolbar={true}
                       />
                     </FormControl>
                     <FormMessage />

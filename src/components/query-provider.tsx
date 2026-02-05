@@ -14,11 +14,12 @@ function makeQueryClient() {
       queries: {
         // With SSR, we usually want to set some default staleTime
         // above 0 to avoid refetching immediately on the client
-        staleTime: 60 * 1000,
-        // Ensure refetchInterval works in production
-        refetchOnWindowFocus: true,
-        refetchOnMount: true,
+        staleTime: 2 * 60 * 1000, // 2 minutes (increased from 1 min to reduce refetches)
+        // Reduce automatic refetching to lower database reads
+        refetchOnWindowFocus: false, // Disabled - was causing excessive reads
+        refetchOnMount: false, // Only refetch if data is stale
         refetchOnReconnect: true,
+        gcTime: 5 * 60 * 1000, // Keep unused data in cache for 5 minutes
       },
     },
   });

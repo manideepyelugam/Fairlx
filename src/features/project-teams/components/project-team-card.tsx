@@ -1,6 +1,6 @@
 "use client";
 
-import { Users, MoreHorizontal, Trash2, UserPlus } from "lucide-react";
+import { Users, MoreHorizontal, Trash2, UserPlus, Eye } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +14,7 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +25,7 @@ interface ProjectTeamCardProps {
     team: PopulatedProjectTeam;
     onAddMember?: () => void;
     onDelete?: () => void;
+    onViewMembers?: () => void;
     canManage?: boolean;
 }
 
@@ -31,10 +33,14 @@ export function ProjectTeamCard({
     team,
     onAddMember,
     onDelete,
+    onViewMembers,
     canManage = false,
 }: ProjectTeamCardProps) {
     return (
-        <Card className="group hover:shadow-md transition-shadow">
+        <Card 
+            className="group hover:shadow-md transition-shadow cursor-pointer"
+            onClick={onViewMembers}
+        >
             <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                 <div className="flex items-center gap-3">
                     <div
@@ -48,37 +54,44 @@ export function ProjectTeamCard({
                             {team.name}
                         </CardTitle>
                         <CardDescription className="text-sm">
-                            {team.memberCount} member{team.memberCount !== 1 ? "s" : ""}
+                            {team.memberCount} member{team.memberCount !== 1 ? "s" : ""} • Click to view
                         </CardDescription>
                     </div>
                 </div>
 
-                {canManage && (
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={onAddMember}>
-                                <UserPlus className="mr-2 h-4 w-4" />
-                                Add Member
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={onDelete}
-                                className="text-destructive focus:text-destructive"
-                            >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete Team
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                )}
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onViewMembers?.(); }}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Members
+                        </DropdownMenuItem>
+                        {canManage && (
+                            <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAddMember?.(); }}>
+                                    <UserPlus className="mr-2 h-4 w-4" />
+                                    Add Member
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={(e) => { e.stopPropagation(); onDelete?.(); }}
+                                    className="text-destructive focus:text-destructive"
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete Team
+                                </DropdownMenuItem>
+                            </>
+                        )}
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </CardHeader>
 
             <CardContent>

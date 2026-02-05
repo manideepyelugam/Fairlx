@@ -530,14 +530,14 @@ export const EnhancedDataKanban = ({
                               <div
                                 {...provided.droppableProps}
                                 ref={provided.innerRef}
-                                className="min-h-[500px] px-3 pb-3"
+                                className="h-[calc(100vh-300px)] max-h-[700px] overflow-y-auto px-3 pb-3"
                               >
                                 {columnTasks.map((task, index) => (
                                   <Draggable
                                     key={task.$id}
                                     draggableId={task.$id}
                                     index={index}
-                                    isDragDisabled={selectionMode}
+                                    isDragDisabled={selectionMode || !canEditTasks}
                                   >
                                     {(provided) => (
                                       <div

@@ -18,7 +18,8 @@ import { TaskComments } from "@/features/comments/components/task-comments";
 import { WorkItemLinksSection } from "@/features/work-item-links/components/work-item-links-section";
 import { Button } from "@/components/ui/button";
 import { useCurrent } from "@/features/auth/api/use-current";
-// import { useCurrentTeamMember } from "@/features/teams/hooks/use-current-team-member";
+import { useCurrentMember } from "@/features/members/hooks/use-current-member";
+import { useProjectPermissions } from "@/hooks/use-project-permissions";
 import { cn } from "@/lib/utils";
 
 import { useTaskDetailsModal } from "../hooks/use-task-details-modal";
@@ -41,9 +42,22 @@ export const TaskDetailsModalWrapper = () => {
   const { data, isLoading } = useGetTask({ taskId: taskId || "" });
   const { data: currentUser } = useCurrent();
 
-  // Legacy Team Permissions Removed - defaulting to true or needs Project Permission check
-  const canEditTasks = true; // Temporary fix: assume access if they can see the task
-  const canDeleteTasks = true; // Temporary fix: assume access if they can see the task
+  // Get project ID from task data for permission check
+  const projectId = data?.projectId || "";
+
+  // Check workspace admin status
+  const { isAdmin } = useCurrentMember({ workspaceId });
+  const isWorkspaceAdmin = isAdmin;
+
+  // Project-level permissions
+  const {
+    canEditTasksProject,
+    canDeleteTasksProject,
+  } = useProjectPermissions({ projectId, workspaceId });
+
+  // Effective permissions (admin OR project-level)
+  const canEditTasks = isWorkspaceAdmin || canEditTasksProject;
+  const canDeleteTasks = isWorkspaceAdmin || canDeleteTasksProject;
 
   const isOpen = !!taskId;
 

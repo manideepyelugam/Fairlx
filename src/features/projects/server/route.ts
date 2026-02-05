@@ -5,10 +5,11 @@ import { ID, Query, Models } from "node-appwrite";
 import { z } from "zod";
 
 import { getMember } from "@/features/members/utils";
-import { seedProjectRoles } from "@/features/projects/lib/utils";
+import { seedProjectRolesAndAssignOwner } from "@/features/projects/lib/utils";
 import { TaskStatus } from "@/features/tasks/types";
+import { WorkflowInheritanceMode, Space } from "@/features/spaces/types";
 
-import { DATABASE_ID, IMAGES_BUCKET_ID, PROJECTS_ID, TASKS_ID, TIME_LOGS_ID } from "@/config";
+import { DATABASE_ID, IMAGES_BUCKET_ID, PROJECTS_ID, TASKS_ID, TIME_LOGS_ID, SPACES_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 
 import { createProjectSchema, updateProjectSchema } from "../schemas";
@@ -75,6 +76,40 @@ const app = new Hono()
         ).toString("base64")}`;
       }
 
+      // If project is being created within a space, check for workflow inheritance
+      let inheritedWorkflowId: string | null = null;
+      let workflowLocked = false;
+      
+      const normalizedSpaceId = (spaceId === null || spaceId === "" || spaceId === "null" || spaceId === "undefined") ? null : spaceId;
+      
+      if (normalizedSpaceId) {
+        try {
+          const space = await databases.getDocument<Space>(
+            DATABASE_ID,
+            SPACES_ID,
+            normalizedSpaceId
+          );
+          
+          // Check if space has a default workflow and inheritance mode
+          if (space.defaultWorkflowId) {
+            const inheritanceMode = space.workflowInheritance || WorkflowInheritanceMode.SUGGEST;
+            
+            if (inheritanceMode === WorkflowInheritanceMode.REQUIRE) {
+              // Project MUST use space workflow
+              inheritedWorkflowId = space.defaultWorkflowId;
+              workflowLocked = true;
+            } else if (inheritanceMode === WorkflowInheritanceMode.SUGGEST) {
+              // Project gets space workflow as default but can override later
+              inheritedWorkflowId = space.defaultWorkflowId;
+              workflowLocked = false;
+            }
+            // If NONE, project doesn't inherit workflow
+          }
+        } catch {
+          // Space fetch failed, continue without inheritance
+        }
+      }
+
       const project = await databases.createDocument(
         DATABASE_ID,
         PROJECTS_ID,
@@ -85,13 +120,34 @@ const app = new Hono()
           deadline: deadline || undefined,
           imageUrl: uploadedImageUrl,
           workspaceId,
-          // Normalize spaceId (handle null, empty, "null", "undefined" strings)
-          spaceId: (spaceId === null || spaceId === "" || spaceId === "null" || spaceId === "undefined") ? null : spaceId,
+          spaceId: normalizedSpaceId,
+          // Inherit workflow from space if applicable
+          ...(inheritedWorkflowId && { workflowId: inheritedWorkflowId }),
+          ...(workflowLocked && { workflowLocked: true }),
         }
       );
 
-      // Seed default project roles
-      await seedProjectRoles(databases, project.$id, workspaceId, user.$id);
+      // Seed default project roles AND assign creator as Owner
+      // This is idempotent and safe to call multiple times
+      const seedResult = await seedProjectRolesAndAssignOwner(
+        databases,
+        project.$id,
+        workspaceId,
+        user.$id
+      );
+
+      // Log seeding result for debugging (non-blocking)
+      if (!seedResult.success) {
+        console.warn(
+          `[ProjectCreate] Role seeding had issues for project ${project.$id}:`,
+          {
+            rolesCreated: seedResult.rolesCreated,
+            rolesFailed: seedResult.rolesFailed,
+            ownerMembershipCreated: seedResult.ownerMembershipCreated,
+            error: seedResult.error,
+          }
+        );
+      }
 
 
       return c.json({ data: transformProject(project) });
@@ -170,6 +226,13 @@ const app = new Hono()
       return c.json({ error: "Unauthorized" }, 401);
     }
 
+    // Project permission check: verify user can view this project
+    const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+    const access = await resolveUserProjectAccess(databases, user.$id, projectId);
+    if (!access.hasAccess || !hasProjectPermission(access, ProjectPermissionKey.VIEW_PROJECT)) {
+      return c.json({ error: "Forbidden: No permission to view this project" }, 403);
+    }
+
     return c.json({ data: transformProject(project) });
   })
   .patch(
@@ -208,6 +271,13 @@ const app = new Hono()
 
       if (!member) {
         return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      // Project permission check: verify user can edit project settings
+      const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+      const accessForEdit = await resolveUserProjectAccess(databases, user.$id, projectId);
+      if (!accessForEdit.hasAccess || !hasProjectPermission(accessForEdit, ProjectPermissionKey.EDIT_SETTINGS)) {
+        return c.json({ error: "Forbidden: No permission to edit project settings" }, 403);
       }
 
       let uploadedImageUrl: string | undefined;
@@ -299,6 +369,13 @@ const app = new Hono()
       return c.json({ error: "Unauthorized" }, 401);
     }
 
+    // Project permission check: verify user can delete this project
+    const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+    const access = await resolveUserProjectAccess(databases, user.$id, projectId);
+    if (!access.hasAccess || !hasProjectPermission(access, ProjectPermissionKey.DELETE_PROJECT)) {
+      return c.json({ error: "Forbidden: No permission to delete this project" }, 403);
+    }
+
     // Cascade delete related data
     try {
       // Get all tasks for this project
@@ -352,6 +429,13 @@ const app = new Hono()
 
     if (!member) {
       return c.json({ error: "Unauthorized" }, 401);
+    }
+
+    // Project permission check: verify user can view this project for analytics
+    const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+    const accessForAnalytics = await resolveUserProjectAccess(databases, user.$id, projectId);
+    if (!accessForAnalytics.hasAccess || !hasProjectPermission(accessForAnalytics, ProjectPermissionKey.VIEW_PROJECT)) {
+      return c.json({ error: "Forbidden: No permission to view this project's analytics" }, 403);
     }
 
     const now = new Date();
