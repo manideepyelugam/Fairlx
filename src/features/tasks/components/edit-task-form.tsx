@@ -37,7 +37,7 @@ import { Task } from "../types";
 import { StatusSelector } from "@/features/custom-columns/components/status-selector";
 import { PrioritySelector } from "./priority-selector";
 import { LabelSelector } from "./label-management";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/editor";
 import { AssigneeMultiSelect } from "./assignee-multi-select";
 import { CreateTaskAttachmentUpload } from "@/features/attachments/components/create-task-attachment-upload";
 
@@ -350,12 +350,14 @@ export const EditTaskForm = ({
                   <FormItem>
                     <FormLabel>Description (Optional)</FormLabel>
                     <FormControl>
-                      <Textarea
-                        placeholder="Enter work item description..."
-                        className="resize-none"
-                        rows={4}
-                        value={field.value ?? ""}
-                        onChange={(e) => field.onChange(e.target.value)}
+                      <RichTextEditor
+                        content={field.value ?? ""}
+                        onChange={field.onChange}
+                        placeholder="Add a description... Use @ to mention team members, / for commands"
+                        workspaceId={initialValues.workspaceId}
+                        projectId={selectedProjectId}
+                        minHeight="150px"
+                        showToolbar={true}
                       />
                     </FormControl>
                     <FormMessage />

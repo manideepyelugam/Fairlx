@@ -46,6 +46,15 @@ import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { PopulatedWorkItem, WorkItemStatus, WorkItemType } from "../types";
 import { SubtasksList } from "@/features/subtasks/components";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import DOMPurify from "dompurify";
+import { RichTextEditor } from "@/components/editor/rich-text-editor";
 
 interface WorkItemDrawerProps {
   workItem: PopulatedWorkItem | null;
@@ -74,6 +83,8 @@ export const WorkItemDrawer = ({
   const [storyPoints, setStoryPoints] = useState(workItem?.storyPoints?.toString() || "");
   const [comments, setComments] = useState<Array<{ id: string; author: string; text: string; date: string }>>([]);
   const [newComment, setNewComment] = useState("");
+  const [isDescriptionDialogOpen, setIsDescriptionDialogOpen] = useState(false);
+  const [editingDescription, setEditingDescription] = useState("");
 
   if (!workItem) return null;
 
@@ -113,6 +124,7 @@ export const WorkItemDrawer = ({
   };
 
   return (
+  <>
     <Sheet open={open} onOpenChange={onCloseAction}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
         {/* Header */}
@@ -337,16 +349,27 @@ export const WorkItemDrawer = ({
 
           {/* Description Tab */}
           <TabsContent value="description" className="space-y-4 mt-6">
-            <div className="space-y-2">
+            <div className="flex items-center justify-between">
               <Label className="text-sm font-medium">Description</Label>
-              <Textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Add a description..."
-                className="min-h-[300px] text-sm"
-                disabled={canEdit === false}
-              />
+              {canEdit !== false && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setEditingDescription(description || workItem.description || "");
+                    setIsDescriptionDialogOpen(true);
+                  }}
+                >
+                  Edit
+                </Button>
+              )}
             </div>
+            <div
+              className="prose prose-sm max-w-none dark:prose-invert min-h-[200px] p-4 border rounded-md bg-muted/30"
+              dangerouslySetInnerHTML={{
+                __html: DOMPurify.sanitize(description || workItem.description || "<p class='text-muted-foreground'>No description added yet</p>")
+              }}
+            />
           </TabsContent>
 
           {/* Subtasks Tab */}
@@ -421,5 +444,37 @@ export const WorkItemDrawer = ({
         </div>
       </SheetContent>
     </Sheet>
+
+    {/* Description Edit Dialog */}
+    <Dialog open={isDescriptionDialogOpen} onOpenChange={setIsDescriptionDialogOpen}>
+      <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Edit Description</DialogTitle>
+        </DialogHeader>
+        <div className="flex-1 overflow-y-auto min-h-[300px]">
+          <RichTextEditor
+            content={editingDescription}
+            onChange={(content) => setEditingDescription(content)}
+            workspaceId={workItem?.workspaceId}
+            placeholder="Add a description..."
+            minHeight="250px"
+          />
+        </div>
+        <DialogFooter className="mt-4">
+          <Button variant="outline" onClick={() => setIsDescriptionDialogOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              setDescription(editingDescription);
+              setIsDescriptionDialogOpen(false);
+            }}
+          >
+            Save Description
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </>
   );
 };
