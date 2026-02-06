@@ -11,6 +11,10 @@ export { workitemDueSoonTemplate } from "./workitem-due-soon";
 export { workitemOverdueTemplate } from "./workitem-overdue";
 export { workitemMentionTemplate } from "./workitem-mention";
 
+// Auth & Organization email templates
+export { welcomeEmailTemplate } from "./welcome-email";
+export { verifyEmailTemplate } from "./verify-email";
+
 export * from "./base";
 // Theme exports - use specific imports from ./theme to avoid conflicts with base
 export {

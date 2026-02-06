@@ -100,7 +100,9 @@ export const uploadProfileImageSchema = z.object({
 
 export const verifyEmailSchema = z.object({
   userId: z.string(),
-  secret: z.string(),
+  secret: z.string().optional(),
+  token: z.string().optional(),
+  custom: z.union([z.string(), z.boolean()]).optional(),
 });
 
 export const resendVerificationSchema = z.object({

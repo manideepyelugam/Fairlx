@@ -17,14 +17,17 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 import { useGetMembers } from "@/features/members/api/use-get-members";
+import { useGetProjectMembers } from "@/features/project-members/api/use-get-project-members";
 import { useUpdateWorkItem } from "../api/use-update-work-item";
 import { PopulatedWorkItem } from "../types";
+import { useMemo } from "react";
 
 interface AssignAssigneeDialogProps {
   isOpen: boolean;
   onClose: () => void;
   workItem: PopulatedWorkItem;
   workspaceId: string;
+  projectId: string;
 }
 
 export const AssignAssigneeDialog = ({
@@ -32,15 +35,25 @@ export const AssignAssigneeDialog = ({
   onClose,
   workItem,
   workspaceId,
+  projectId,
 }: AssignAssigneeDialogProps) => {
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>(
     workItem.assigneeIds || []
   );
 
   const { data: membersData } = useGetMembers({ workspaceId });
+  const { data: projectMembersData } = useGetProjectMembers({ projectId });
   const { mutate: updateWorkItem, isPending } = useUpdateWorkItem();
 
-  const members = membersData?.documents || [];
+  const members = useMemo(() => {
+    if (!membersData?.documents || !projectMembersData?.documents) return [];
+
+    // Create a set of user IDs who are in this project
+    const projectUserIds = new Set(projectMembersData.documents.map(m => m.userId));
+
+    // Filter workspace members to only include those in the project
+    return membersData.documents.filter(m => projectUserIds.has(m.userId));
+  }, [membersData, projectMembersData]);
 
   const handleToggleAssignee = (memberId: string) => {
     setSelectedAssigneeIds((prev) =>

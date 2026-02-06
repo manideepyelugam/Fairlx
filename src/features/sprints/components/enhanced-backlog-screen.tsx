@@ -75,6 +75,7 @@ import { useDeleteSprint } from "../api/use-delete-sprint";
 import { useDeleteWorkItem } from "../api/use-delete-work-item";
 import { useGetEpics } from "../api/use-get-epics";
 import { useGetMembers } from "@/features/members/api/use-get-members";
+import { useGetProjectMembers } from "@/features/project-members/api/use-get-project-members";
 import { useBulkMoveWorkItems } from "../api/use-bulk-move-work-items";
 import { useBulkDeleteWorkItems } from "../api/use-bulk-delete-work-items";
 import { SprintStatus, WorkItemStatus, WorkItemPriority, WorkItemType } from "../types";
@@ -146,10 +147,10 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   const { open: openCreateTaskModal } = useCreateTaskModal();
 
   const { can } = usePermission();
-  
+
   // Get workspace admin status
   const { isAdmin: isWorkspaceAdmin } = useCurrentMember({ workspaceId });
-  
+
   // Get project-level sprint permissions
   const {
     canCreateSprintsProject,
@@ -161,7 +162,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     canEditTasksProject,
     canDeleteTasksProject,
   } = useProjectPermissions({ projectId, workspaceId });
-  
+
   // Effective permissions: Admin OR project-level permission
   const canCreateSprints = isWorkspaceAdmin || canCreateSprintsProject || can(PERMISSIONS.SPRINT_CREATE);
   const canEditSprints = isWorkspaceAdmin || canEditSprintsProject || can(PERMISSIONS.SPRINT_UPDATE);
@@ -178,6 +179,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   const { data: workItemsData } = useGetWorkItems({ workspaceId, projectId });
   const { data: epicsData } = useGetEpics({ workspaceId, projectId });
   const { data: membersData } = useGetMembers({ workspaceId });
+  const { data: projectMembersData } = useGetProjectMembers({ projectId });
   const { data: project } = useGetProject({ projectId }); // Fetch project settings
   const { data: customColumnsData } = useGetCustomColumns({ workspaceId, projectId });
   const customColumns = customColumnsData?.documents || [];
@@ -208,10 +210,17 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     { key: WorkItemPriority.URGENT, label: "Urgent" },
   ];
   const allPriorities = [...defaultPriorities, ...customPriorities];
-  // For status we might need custom columns, or check if project has them. 
-  // Assuming useGetCustomColumns is better, or we can use project settings if they are stored there.
-  // But StatusSelector handles it. 
-  // For the dropdowns here, let's use the project's custom definitions if available.
+
+  // Filter workspace members by project membership
+  const projectMembers = useMemo(() => {
+    if (!membersData?.documents || !projectMembersData?.documents) return [];
+
+    // Create a set of user IDs who are in this project
+    const projectUserIds = new Set(projectMembersData.documents.map(m => m.userId));
+
+    // Filter workspace members to only include those in the project
+    return membersData.documents.filter(m => projectUserIds.has(m.userId));
+  }, [membersData, projectMembersData]);
 
   // Organize data
   const sprints = useMemo(() => {
@@ -1041,6 +1050,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                               {item.assignees?.[0] ? (
                                                 <div className="flex items-center w-[80px] overflow-x-hidden gap-1">
                                                   <Avatar className="size-4">
+                                                    <AvatarImage src={item.assignees[0].profileImageUrl || undefined} />
                                                     <AvatarFallback className="text-[10px]">
                                                       {item.assignees[0].name?.charAt(0).toUpperCase()}
                                                     </AvatarFallback>
@@ -1054,10 +1064,11 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                           </SelectTrigger>
                                           <SelectContent>
                                             <SelectItem value="unassigned">Unassigned</SelectItem>
-                                            {membersData?.documents?.map((member) => (
+                                            {projectMembers.map((member) => (
                                               <SelectItem key={member.$id} value={member.$id}>
                                                 <div className="flex items-center gap-2">
                                                   <Avatar className="size-4">
+                                                    <AvatarImage src={member.profileImageUrl || undefined} />
                                                     <AvatarFallback className="text-[10px]">
                                                       {member.name?.charAt(0).toUpperCase()}
                                                     </AvatarFallback>
@@ -1411,6 +1422,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                         {item.assignees?.[0] ? (
                                           <div className="flex items-center w-[80px] overflow-hidden gap-1">
                                             <Avatar className="size-4 shrink-0">
+                                              <AvatarImage src={item.assignees[0].profileImageUrl || undefined} />
                                               <AvatarFallback className="text-[10px]">
                                                 {item.assignees[0].name?.charAt(0).toUpperCase()}
                                               </AvatarFallback>
@@ -1424,10 +1436,11 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                     </SelectTrigger>
                                     <SelectContent>
                                       <SelectItem value="unassigned">Unassigned</SelectItem>
-                                      {membersData?.documents?.map((member) => (
+                                      {projectMembers.map((member) => (
                                         <SelectItem key={member.$id} value={member.$id}>
                                           <div className="flex items-center gap-2">
                                             <Avatar className="size-4">
+                                              <AvatarImage src={member.profileImageUrl || undefined} />
                                               <AvatarFallback className="text-[10px]">
                                                 {member.name?.charAt(0).toUpperCase()}
                                               </AvatarFallback>
@@ -1738,7 +1751,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                             (a): a is NonNullable<typeof a> => a != null && typeof a.$id === "string"
                           ).map((assignee) => (
                             <Avatar key={assignee.$id} className="size-8">
-                              <AvatarImage src="" />
+                              <AvatarImage src={assignee.profileImageUrl || ""} />
                               <AvatarFallback className="text-xs">
                                 {(assignee.name ?? "?").charAt(0).toUpperCase()}
                               </AvatarFallback>

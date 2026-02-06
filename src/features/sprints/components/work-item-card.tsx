@@ -285,10 +285,10 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails, 
                 />
               </form>
             ) : (
-              <Button 
-                size="sm" 
-                variant="outline" 
-                className="h-6 text-[10px]" 
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 text-[10px]"
                 onClick={() => canEdit !== false && setEditingPoints(true)}
                 disabled={canEdit === false}
               >
@@ -323,6 +323,7 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails, 
         onClose={() => setAssignAssigneeOpen(false)}
         workItem={workItem}
         workspaceId={workspaceId}
+        projectId={projectId || workItem.projectId}
       />
 
       {projectId && (

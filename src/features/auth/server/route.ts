@@ -129,10 +129,25 @@ const app = new Hono()
         signupCompletedAt: null,
       });
 
-      // Send email verification using user session
-      await userAccount.createVerification(
-        `${process.env.NEXT_PUBLIC_APP_URL}/verify-email`
-      );
+      // Send branded verification email (with fallback to default)
+      try {
+        const { databases, messaging } = await createAdminClient();
+        const { verificationHelper } = await import("./verification-helper");
+
+        await verificationHelper.createAndSend({
+          databases,
+          messaging,
+          userId: user.$id,
+          userEmail: email,
+          userName: name,
+        });
+      } catch (verifyError) {
+        console.warn("Custom verification failed, using default:", verifyError);
+        // Fallback to Appwrite's default verification if collection missing
+        await userAccount.createVerification(
+          `${process.env.NEXT_PUBLIC_APP_URL}/verify-email`
+        );
+      }
 
       // Delete the temporary session since email is not verified yet
       await userAccount.deleteSession("current");
@@ -501,8 +516,33 @@ const app = new Hono()
 
       const account = new Account(verificationClient);
 
-      // Verify the email using the secret from the verification link
-      await account.updateVerification(userId, secret);
+      // Check if this is a custom verification (branded email flow)
+      const { token, custom } = c.req.valid("json");
+
+      if (custom === "true" || custom === true) {
+        // Custom branded verification flow
+        if (!token) {
+          return c.json({ error: "Verification token is missing" }, 400);
+        }
+
+        const { databases } = await createAdminClient();
+        const { verificationHelper } = await import("./verification-helper");
+        await verificationHelper.verify({
+          databases,
+          userId,
+          token,
+        });
+
+        // Use Admin SDK to mark the user as verified
+        const { users: adminUsers } = await createAdminClient();
+        await adminUsers.updateEmailVerification(userId, true);
+      } else {
+        // Standard Appwrite verification (fallback flow)
+        if (!secret) {
+          return c.json({ error: "Verification secret is missing" }, 400);
+        }
+        await account.updateVerification(userId, secret);
+      }
 
       // Get admin client to create session and get user data
       const { users } = await createAdminClient();
@@ -572,10 +612,24 @@ const app = new Hono()
         return c.json({ error: "Email is already verified. You can log in normally." }, 400);
       }
 
-      // Send verification email
-      await userAccount.createVerification(
-        `${process.env.NEXT_PUBLIC_APP_URL}/verify-email`
-      );
+      // Send branded verification email (with fallback to default)
+      try {
+        const { databases, messaging } = await createAdminClient();
+        const { verificationHelper } = await import("./verification-helper");
+
+        await verificationHelper.createAndSend({
+          databases,
+          messaging,
+          userId: user.$id,
+          userEmail: email,
+          userName: user.name,
+        });
+      } catch (verifyError) {
+        console.warn("Custom resend verification failed, using default:", verifyError);
+        await userAccount.createVerification(
+          `${process.env.NEXT_PUBLIC_APP_URL}/verify-email`
+        );
+      }
 
       // Delete the temporary session
       await userAccount.deleteSession("current");

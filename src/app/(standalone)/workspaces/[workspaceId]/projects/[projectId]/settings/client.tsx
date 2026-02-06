@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -83,7 +83,7 @@ export const ProjectIdSettingsClient = () => {
   const { isLoading: isMemberLoading, isAdmin } = useCurrentMember({
     workspaceId: project?.workspaceId || "",
   });
-  
+
   // Project-level permissions for delete
   const { canDeleteProject } = useProjectPermissions({
     projectId,
@@ -109,17 +109,19 @@ export const ProjectIdSettingsClient = () => {
   });
 
   // Update form when project data loads
-  if (project && form.getValues("name") !== project.name && !isUpdating) {
-    form.reset({
-      name: project.name,
-      description: project.description || "",
-      deadline: project.deadline || "",
-      image: project.imageUrl || "",
-      customWorkItemTypes: project.customWorkItemTypes || [],
-      customPriorities: project.customPriorities || [],
-      customLabels: project.customLabels || [],
-    });
-  }
+  useEffect(() => {
+    if (project && form.getValues("name") !== project.name && !isUpdating) {
+      form.reset({
+        name: project.name,
+        description: project.description || "",
+        deadline: project.deadline || "",
+        image: project.imageUrl || "",
+        customWorkItemTypes: project.customWorkItemTypes || [],
+        customPriorities: project.customPriorities || [],
+        customLabels: project.customLabels || [],
+      });
+    }
+  }, [project, form, isUpdating]);
 
   const isLoading = isLoadingProject || isMemberLoading;
 

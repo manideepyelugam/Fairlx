@@ -20,8 +20,10 @@ const VerifyEmailContent = () => {
 
     const userId = searchParams.get("userId");
     const secret = searchParams.get("secret");
+    const token = searchParams.get("token");
+    const custom = searchParams.get("custom");
 
-    if (!userId || !secret) {
+    if (!userId || (!secret && !token)) {
       setStatus("error");
       return;
     }
@@ -29,7 +31,7 @@ const VerifyEmailContent = () => {
     hasAttempted.current = true;
 
     verifyEmail.mutate(
-      { json: { userId, secret } },
+      { json: { userId, secret: secret || undefined, token: token || undefined, custom: custom || undefined } },
       {
         onSuccess: (data) => {
           if ('success' in data && data.success) {
