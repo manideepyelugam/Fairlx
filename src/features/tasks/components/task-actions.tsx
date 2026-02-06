@@ -98,13 +98,6 @@ export const TaskActions = ({
             <ExternalLink className="size-4 mr-2 stroke-2" />
             Work Item Details
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={onOpenProject}
-            className="font-medium p-[10px]"
-          >
-            <ExternalLink className="size-4 mr-2 stroke-2" />
-            Open Project
-          </DropdownMenuItem>
           {canEditTask && (
             <DropdownMenuItem
               onClick={() => {

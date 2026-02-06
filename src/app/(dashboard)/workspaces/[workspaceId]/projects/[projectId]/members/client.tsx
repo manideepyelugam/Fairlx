@@ -41,6 +41,7 @@ import { useGetProjectTeams } from "@/features/project-teams/api/use-get-project
 import { useGetProjectRoles } from "@/features/project-members/api/use-get-project-roles";
 import { useAddProjectMember } from "@/features/project-members/api/use-add-project-member";
 import { useRemoveProjectMember } from "@/features/project-members/api/use-remove-project-member";
+import { useUpdateProjectMember } from "@/features/project-members/api/use-update-project-member";
 import { useConfirm } from "@/hooks/use-confirm";
 import { useProjectPermissions } from "@/hooks/use-project-permissions";
 import { useCurrentMember } from "@/features/members/hooks/use-current-member";
@@ -94,6 +95,7 @@ export const ProjectMembersClient = () => {
     // Mutations
     const { mutateAsync: addMember, isPending: isAddingMember } = useAddProjectMember();
     const { mutate: removeMember, isPending: isRemovingMember } = useRemoveProjectMember();
+    const { mutate: updateMember, isPending: isUpdatingMember } = useUpdateProjectMember();
 
     const projectMembers = projectMembersData?.documents ?? [];
     const workspaceMembers = workspaceMembersData?.documents ?? [];
@@ -140,6 +142,19 @@ export const ProjectMembersClient = () => {
         const ok = await confirmRemove();
         if (!ok) return;
         removeMember({ memberId, projectId });
+    };
+
+    const handleRoleChange = (memberId: string, newRoleId: string) => {
+        // Permission check
+        if (!canManageMembers) {
+            return;
+        }
+        
+        updateMember({
+            memberId,
+            projectId,
+            roleId: newRoleId,
+        });
     };
 
     const memberOptions = workspaceMembers.map((member) => ({
@@ -288,17 +303,52 @@ export const ProjectMembersClient = () => {
                                             </div>
                                             <div className="flex items-center gap-2 text-muted-foreground">
                                                 <span>Role:</span>
-                                                <Badge
-                                                    variant="secondary"
-                                                    className="text-xs"
-                                                    style={{
-                                                        backgroundColor: member.role?.color ? `${member.role.color}20` : undefined,
-                                                        color: member.role?.color,
-                                                        borderColor: member.role?.color ? `${member.role.color}40` : undefined,
-                                                    }}
-                                                >
-                                                    {member.role?.name || "Member"}
-                                                </Badge>
+                                                {canManageMembers ? (
+                                                    <Select
+                                                        value={member.roleId}
+                                                        onValueChange={(newRoleId) => handleRoleChange(member.$id, newRoleId)}
+                                                        disabled={isUpdatingMember}
+                                                    >
+                                                        <SelectTrigger className="h-7  text-xs border-none bg-secondary hover:bg-secondary/80">
+                                                            <SelectValue>
+                                                                <Badge
+                                                                    variant="secondary"
+                                                                    className="text-xs border-0"
+                                                                   
+                                                                >
+                                                                    {member.role?.name || "Member"}
+                                                                </Badge>
+                                                            </SelectValue>
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {roles.map((role) => (
+                                                                <SelectItem key={role.$id} value={role.$id}>
+                                                                    <div className="flex items-center gap-2">
+                                                                        {role.color && (
+                                                                            <div
+                                                                                className="size-2 rounded-full"
+                                                                                style={{ backgroundColor: role.color }}
+                                                                            />
+                                                                        )}
+                                                                        {role.name}
+                                                                    </div>
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                ) : (
+                                                    <Badge
+                                                        variant="secondary"
+                                                        className="text-xs"
+                                                        style={{
+                                                            backgroundColor: member.role?.color ? `${member.role.color}20` : undefined,
+                                                            color: member.role?.color,
+                                                            borderColor: member.role?.color ? `${member.role.color}40` : undefined,
+                                                        }}
+                                                    >
+                                                        {member.role?.name || "Member"}
+                                                    </Badge>
+                                                )}
                                             </div>
                                         </div>
                                     </CardContent>
