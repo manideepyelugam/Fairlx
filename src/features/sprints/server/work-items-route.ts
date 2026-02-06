@@ -16,8 +16,10 @@ import {
   createStatusChangedEvent,
   createCompletedEvent,
   createPriorityChangedEvent,
+  createMentionEvent,
 } from "@/lib/notifications";
 import { Task } from "@/features/tasks/types";
+import { extractMentions, extractSnippet } from "@/lib/mentions";
 
 import {
   createWorkItemSchema,
@@ -313,7 +315,7 @@ const app = new Hono()
       // Batch fetch all children counts in ONE query
       const childrenCountMap = new Map<string, number>();
       const childrenByParentMap = new Map<string, PopulatedWorkItem[]>();
-      
+
       if (workItemIds.length > 0) {
         try {
           const allChildren = await databases.listDocuments<WorkItem>(
@@ -326,7 +328,7 @@ const app = new Hono()
             const parentId = child.parentId;
             if (parentId) {
               childrenCountMap.set(parentId, (childrenCountMap.get(parentId) || 0) + 1);
-              
+
               // If includeChildren is requested, store the child data
               if (includeChildren) {
                 const existing = childrenByParentMap.get(parentId) || [];
@@ -745,6 +747,26 @@ const app = new Hono()
         if (addedAssignees.length > 0) {
           const event = createAssignedEvent(taskLike, user.$id, userName, addedAssignees);
           dispatchWorkitemEvent(event).catch(() => { });
+        }
+      }
+
+      // Description @mention notifications
+      if (updates.description) {
+        const mentionedUserIds = extractMentions(updates.description);
+        const snippet = extractSnippet(updates.description);
+
+        for (const mentionedUserId of mentionedUserIds) {
+          // Skip self-mention
+          if (mentionedUserId === user.$id) continue;
+
+          const mentionEvent = createMentionEvent(
+            taskLike,
+            user.$id,
+            userName,
+            mentionedUserId,
+            snippet
+          );
+          dispatchWorkitemEvent(mentionEvent).catch(() => { });
         }
       }
 

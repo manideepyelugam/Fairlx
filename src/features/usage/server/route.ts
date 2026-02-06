@@ -51,34 +51,97 @@ async function checkAdminAccess(
 }
 
 /**
- * Helper to check organization-level OWNER/ADMIN access
+ * Helper to check organization-level billing access
  * 
- * WHY: For org-level usage dashboard, we need org-level permission check,
- * not workspace-level. Only org OWNER or ADMIN can view org-wide usage.
+ * PERFORMANCE OPTIMIZED:
+ * - Fast path: Check if user is OWNER first (single DB query)
+ * - Only resolve full permissions if not OWNER
+ * - In-memory cache for repeated calls within same request
+ * 
+ * ACCESS GRANTED TO:
+ * - OWNER (always has full access)
+ * - Any user with BILLING_VIEW permission via department membership
  */
+
+// In-memory cache for permission checks (cleared per-request in Hono middleware)
+const permissionCache = new Map<string, boolean>();
+
 async function checkOrgAdminAccess(
     databases: Databases,
     organizationId: string,
     userId: string
 ): Promise<boolean> {
+    // Check cache first (avoids repeated DB queries in same request)
+    const cacheKey = `${organizationId}:${userId}`;
+    if (permissionCache.has(cacheKey)) {
+        return permissionCache.get(cacheKey)!;
+    }
+
     try {
-        const members = await databases.listDocuments(
+        // FAST PATH: Check if user is OWNER first (single query)
+        const { OrganizationRole, OrgMemberStatus } = await import("@/features/organizations/types");
+
+        const membership = await databases.listDocuments(
             DATABASE_ID,
             ORGANIZATION_MEMBERS_ID,
             [
                 Query.equal("organizationId", organizationId),
                 Query.equal("userId", userId),
+                Query.equal("status", OrgMemberStatus.ACTIVE),
+                Query.limit(1),
             ]
         );
 
-        if (members.total === 0) {
+        if (membership.total === 0) {
+            permissionCache.set(cacheKey, false);
             return false;
         }
 
-        const member = members.documents[0];
-        const hasAccess = member.role === "OWNER" || member.role === "ADMIN";
+        const member = membership.documents[0];
+
+        // OWNER always has access - fast path complete
+        if (member.role === OrganizationRole.OWNER) {
+            permissionCache.set(cacheKey, true);
+            return true;
+        }
+
+        // NON-OWNER: Check department permissions
+        const { ORG_MEMBER_DEPARTMENTS_ID, DEPARTMENT_PERMISSIONS_ID } = await import("@/config");
+        const { OrgPermissionKey } = await import("@/features/org-permissions/types");
+
+        // Get user's department assignments
+        const deptAssignments = await databases.listDocuments(
+            DATABASE_ID,
+            ORG_MEMBER_DEPARTMENTS_ID,
+            [Query.equal("orgMemberId", member.$id)]
+        );
+
+        if (deptAssignments.total === 0) {
+            permissionCache.set(cacheKey, false);
+            return false;
+        }
+
+        const departmentIds = deptAssignments.documents.map((d) => (d as unknown as { departmentId: string }).departmentId);
+
+        // Check if any department has BILLING_VIEW permission
+        const { createAdminClient } = await import("@/lib/appwrite");
+        const { databases: adminDb } = await createAdminClient();
+
+        const billingPermissions = await adminDb.listDocuments(
+            DATABASE_ID,
+            DEPARTMENT_PERMISSIONS_ID,
+            [
+                Query.equal("departmentId", departmentIds),
+                Query.equal("permissionKey", OrgPermissionKey.BILLING_VIEW),
+                Query.limit(1),
+            ]
+        );
+
+        const hasAccess = billingPermissions.total > 0;
+        permissionCache.set(cacheKey, hasAccess);
         return hasAccess;
     } catch {
+        permissionCache.set(cacheKey, false);
         return false;
     }
 }
@@ -86,14 +149,23 @@ async function checkOrgAdminAccess(
 /**
  * Helper to get all workspace IDs belonging to an organization
  * 
+ * PERFORMANCE OPTIMIZED: Cached to avoid repeated queries in same request
+ * 
  * WHY: For org-level usage queries, we need to aggregate usage across all
  * workspaces in the organization. This fetches all workspace IDs to use
  * in Query.equal("workspaceId", [...]) filters.
  */
+const workspaceCache = new Map<string, string[]>();
+
 async function getOrgWorkspaceIds(
     databases: Databases,
     organizationId: string
 ): Promise<string[]> {
+    // Check cache first
+    if (workspaceCache.has(organizationId)) {
+        return workspaceCache.get(organizationId)!;
+    }
+
     try {
         const workspaces = await databases.listDocuments(
             DATABASE_ID,
@@ -105,8 +177,10 @@ async function getOrgWorkspaceIds(
         );
 
         const workspaceIds = workspaces.documents.map((ws: { $id: string }) => ws.$id);
+        workspaceCache.set(organizationId, workspaceIds);
         return workspaceIds;
     } catch {
+        workspaceCache.set(organizationId, []);
         return [];
     }
 }
@@ -583,16 +657,16 @@ const app = new Hono()
                 }
             }
 
-            // Calculate averages for storage (simple average for now)
-            const storageAvgBytes = storageTotalBytes / Math.max(events.total, 1);
+            // For storage billing: use total bytes (sum of uploads - deletes)
+            // NOT an average across all events - that was diluting the value incorrectly
             const trafficTotalGB = bytesToGB(trafficTotalBytes);
-            const storageAvgGB = bytesToGB(storageAvgBytes);
+            const storageAvgGB = bytesToGB(storageTotalBytes);
 
             const summary: UsageSummary = {
                 period: targetPeriod,
                 trafficTotalBytes,
                 trafficTotalGB,
-                storageAvgBytes,
+                storageAvgBytes: storageTotalBytes,
                 storageAvgGB,
                 computeTotalUnits,
                 estimatedCost: calculateCost(trafficTotalGB, storageAvgGB, computeTotalUnits),

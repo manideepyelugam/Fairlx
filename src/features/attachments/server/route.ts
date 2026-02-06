@@ -49,31 +49,26 @@ export const createAttachment = async (data: {
     }
   );
 
-  // Send notifications (non-blocking)
+  // Send notifications (non-blocking) using the new event-driven system
+  // This automatically deduplicates recipients and ignores the triggerer
   try {
+    const { dispatchWorkitemEvent, createAttachmentAddedEvent } = await import("@/lib/notifications");
     const task = await databases.getDocument<Task>(DATABASE_ID, TASKS_ID, data.taskId);
     const uploaderName = data.uploaderName || "Someone";
 
-    // Notify assignees
-    notifyTaskAssignees({
-      databases,
+    const event = createAttachmentAddedEvent(
       task,
-      triggeredByUserId: data.uploadedBy,
-      triggeredByName: uploaderName,
-      notificationType: "task_attachment_added",
-      workspaceId: data.workspaceId,
-    }).catch(() => {});
+      data.uploadedBy,
+      uploaderName,
+      attachment.$id,
+      attachment.name
+    );
 
-    // Notify workspace admins
-    notifyWorkspaceAdmins({
-      databases,
-      task,
-      triggeredByUserId: data.uploadedBy,
-      triggeredByName: uploaderName,
-      notificationType: "task_attachment_added",
-      workspaceId: data.workspaceId,
-    }).catch(() => {});
-  } catch {
+    dispatchWorkitemEvent(event).catch((err) => {
+      console.error("[Attachments] Failed to dispatch attachment event:", err);
+    });
+  } catch (err) {
+    console.error("[Attachments] Error preparing notifications:", err);
     // Silently fail - notifications are non-critical
   }
 
@@ -117,32 +112,26 @@ export const deleteAttachment = async (
     attachmentId
   );
 
-  // Send notifications (non-blocking)
+  // Send notifications (non-blocking) using the new event-driven system
   if (deletedBy && taskId) {
     try {
+      const { dispatchWorkitemEvent, createAttachmentDeletedEvent } = await import("@/lib/notifications");
       const task = await databases.getDocument<Task>(DATABASE_ID, TASKS_ID, taskId);
       const userName = deleterName || "Someone";
 
-      // Notify assignees
-      notifyTaskAssignees({
-        databases,
+      const event = createAttachmentDeletedEvent(
         task,
-        triggeredByUserId: deletedBy,
-        triggeredByName: userName,
-        notificationType: "task_attachment_deleted",
-        workspaceId,
-      }).catch(() => {});
+        deletedBy,
+        userName,
+        attachmentId,
+        attachment.name
+      );
 
-      // Notify workspace admins
-      notifyWorkspaceAdmins({
-        databases,
-        task,
-        triggeredByUserId: deletedBy,
-        triggeredByName: userName,
-        notificationType: "task_attachment_deleted",
-        workspaceId,
-      }).catch(() => {});
-    } catch {
+      dispatchWorkitemEvent(event).catch((err) => {
+        console.error("[Attachments] Failed to dispatch attachment delete event:", err);
+      });
+    } catch (err) {
+      console.error("[Attachments] Error preparing notifications:", err);
       // Silently fail - notifications are non-critical
     }
   }

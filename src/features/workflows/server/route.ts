@@ -320,6 +320,13 @@ const app = new Hono()
     const user = c.get("user");
     const { workflowId } = c.req.param();
 
+    // Guard: Skip reserved paths that should be handled by other routes
+    // This prevents "allowed-transitions" from being treated as a workflow ID
+    const reservedPaths = ["allowed-transitions"];
+    if (reservedPaths.includes(workflowId)) {
+      return c.json({ error: "Invalid workflow ID" }, 400);
+    }
+
     const workflow = await databases.getDocument<Workflow>(
       DATABASE_ID,
       WORKFLOWS_ID,
@@ -1426,7 +1433,7 @@ const app = new Hono()
             console.warn('Skipping customWorkItemType with invalid label:', type);
             continue;
           }
-          
+
           const normalizedName = type.label.toLowerCase();
           const existingIndex = allProjectStatuses.findIndex(
             s => s.name.toLowerCase() === normalizedName

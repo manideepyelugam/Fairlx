@@ -321,6 +321,11 @@ body {
   @apply border-t border-border my-6;
 }
 
+/* Inline image styles */
+.inline-desc-image {
+  @apply max-w-full rounded-lg my-2.5;
+}
+
 /* Mention styles */
 .rich-text-editor .ProseMirror .mention {
   @apply bg-primary/10 text-primary rounded px-1 py-0.5 font-medium;

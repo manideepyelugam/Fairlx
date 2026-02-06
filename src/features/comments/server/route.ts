@@ -2,23 +2,9 @@ import { createAdminClient } from "@/lib/appwrite";
 import { DATABASE_ID, COMMENTS_ID, TASKS_ID } from "@/config";
 import { Comment, PopulatedComment, CommentAuthor } from "../types";
 import { Query, ID } from "node-appwrite";
-import { dispatchWorkitemEvent, createCommentAddedEvent } from "@/lib/notifications";
+import { dispatchWorkitemEvent, createCommentAddedEvent, createMentionEvent } from "@/lib/notifications";
 import { Task } from "@/features/tasks/types";
-
-/**
- * Extract @mentioned user IDs from comment content
- * Matches patterns like @userId or @[userId]
- */
-function extractMentionedUserIds(content: string): string[] {
-  // Match @mentions in format @userId or @[userId]
-  const mentionRegex = /@\[?([a-zA-Z0-9_-]+)\]?/g;
-  const mentions: string[] = [];
-  let match;
-  while ((match = mentionRegex.exec(content)) !== null) {
-    mentions.push(match[1]);
-  }
-  return mentions;
-}
+import { extractMentions, extractSnippet } from "@/lib/mentions";
 
 // Get all comments for a task, optionally filtering by parentId
 export const getComments = async (
@@ -100,7 +86,7 @@ export const createComment = async (data: {
     }
   );
 
-  // Emit comment added event (non-blocking)
+  // Emit comment added event and mention events (non-blocking)
   try {
     const task = await databases.getDocument<Task>(
       DATABASE_ID,
@@ -108,8 +94,15 @@ export const createComment = async (data: {
       data.taskId
     );
     const authorName = data.authorName || "Someone";
-    const mentionedUserIds = extractMentionedUserIds(data.content);
+    const mentionedUserIds = extractMentions(data.content);
+    const snippet = extractSnippet(data.content);
 
+    // console.log("[Comments] Creating comment, content:", data.content.slice(0, 200));
+    // console.log("[Comments] Extracted mentions:", mentionedUserIds);
+
+    // Dispatch comment added event with all mentioned users
+    // Note: mentionedUserIds are passed to the event, and the dispatcher
+    // handles creating notifications for mentioned users - no separate dispatch needed
     const event = createCommentAddedEvent(
       task,
       data.authorId,
@@ -117,8 +110,11 @@ export const createComment = async (data: {
       comment.$id,
       mentionedUserIds.length > 0 ? mentionedUserIds : undefined
     );
-    dispatchWorkitemEvent(event).catch(() => { });
-  } catch {
+    dispatchWorkitemEvent(event).catch((err) => {
+      console.error("[Comments] Failed to dispatch comment event:", err);
+    });
+  } catch (err) {
+    console.error("[Comments] Error dispatching notifications:", err);
     // Silently fail - notifications are non-critical
   }
 

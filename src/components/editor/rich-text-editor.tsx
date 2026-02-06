@@ -14,6 +14,7 @@ import TableHeader from "@tiptap/extension-table-header";
 import TableCell from "@tiptap/extension-table-cell";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
+import Image from "@tiptap/extension-image";
 import { useCallback, useEffect, forwardRef, useImperativeHandle, useRef } from "react";
 
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ export interface RichTextEditorProps {
   minHeight?: string;
   showToolbar?: boolean;
   autofocus?: boolean;
+  onImageUpload?: (file: File) => Promise<string | null>;
 }
 
 export interface RichTextEditorRef {
@@ -56,11 +58,13 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>
       minHeight = "120px",
       showToolbar = true,
       autofocus = false,
+      onImageUpload,
     },
     ref
   ) => {
     const isFocusedRef = useRef(false);
     const lastContentRef = useRef(content);
+    const imageInputRef = useRef<HTMLInputElement>(null);
 
     const editor = useEditor({
       extensions: [
@@ -128,6 +132,13 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>
             class: "flex items-start gap-2",
           },
         }),
+        Image.configure({
+          inline: false,
+          allowBase64: false,
+          HTMLAttributes: {
+            class: "inline-desc-image",
+          },
+        }),
         ...(workspaceId ? [createMentionExtension()] : []),
         ...(workspaceId && projectId
           ? [createSlashCommandExtension(workspaceId, projectId)]
@@ -148,6 +159,66 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>
             "prose-pre:bg-muted prose-pre:rounded-lg",
             "[&_.is-editor-empty]:before:content-[attr(data-placeholder)] [&_.is-editor-empty]:before:text-muted-foreground [&_.is-editor-empty]:before:float-left [&_.is-editor-empty]:before:pointer-events-none [&_.is-editor-empty]:before:h-0"
           ),
+        },
+        handlePaste: (view, event) => {
+          // Handle pasted images
+          const items = event.clipboardData?.items;
+          if (!items || !onImageUpload) return false;
+
+          for (const item of items) {
+            if (item.type.startsWith("image/")) {
+              event.preventDefault();
+              const file = item.getAsFile();
+              if (file) {
+                onImageUpload(file)
+                  .then((url) => {
+                    if (url) {
+                      // Use the current view state, not the captured one
+                      const { state, dispatch } = view;
+                      const imageNode = state.schema.nodes.image;
+                      if (imageNode) {
+                        const node = imageNode.create({ src: url });
+                        const transaction = state.tr.replaceSelectionWith(node);
+                        dispatch(transaction);
+                      }
+                    }
+                  })
+                  .catch((err) => {
+                    console.error("[RichTextEditor] Image upload failed:", err);
+                  });
+              }
+              return true;
+            }
+          }
+          return false;
+        },
+        handleDrop: (view, event) => {
+          // Handle dropped images
+          const files = event.dataTransfer?.files;
+          if (!files || !onImageUpload) return false;
+
+          for (const file of files) {
+            if (file.type.startsWith("image/")) {
+              event.preventDefault();
+              onImageUpload(file)
+                .then((url) => {
+                  if (url) {
+                    const { state, dispatch } = view;
+                    const imageNode = state.schema.nodes.image;
+                    if (imageNode) {
+                      const node = imageNode.create({ src: url });
+                      const transaction = state.tr.replaceSelectionWith(node);
+                      dispatch(transaction);
+                    }
+                  }
+                })
+                .catch((err) => {
+                  console.error("[RichTextEditor] Image upload failed:", err);
+                });
+              return true;
+            }
+          }
+          return false;
         },
       },
       onUpdate: ({ editor: editorInstance }) => {
@@ -222,6 +293,30 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>
         .run();
     }, [editor]);
 
+    const handleImageUploadClick = useCallback(() => {
+      imageInputRef.current?.click();
+    }, []);
+
+    const handleImageInputChange = useCallback(
+      async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !onImageUpload || !editor) return;
+
+        try {
+          const url = await onImageUpload(file);
+          if (url) {
+            editor.chain().focus().setImage({ src: url }).run();
+          }
+        } catch (error) {
+          console.error("Failed to upload image:", error);
+        }
+
+        // Reset the input so the same file can be selected again
+        event.target.value = "";
+      },
+      [editor, onImageUpload]
+    );
+
     if (!editor) {
       return null;
     }
@@ -229,8 +324,21 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>
     return (
       <div className={cn("rich-text-editor rounded-md border border-border", className)}>
         {showToolbar && editable && (
-          <EditorToolbar editor={editor} onSetLink={setLink} />
+          <EditorToolbar
+            editor={editor}
+            onSetLink={setLink}
+            onImageUpload={onImageUpload ? handleImageUploadClick : undefined}
+          />
         )}
+
+        {/* Hidden file input for image upload */}
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleImageInputChange}
+        />
 
         {/* Bubble Menu for quick formatting */}
         {editable && (

@@ -2,21 +2,30 @@ import { Member } from "@/features/members/types";
 
 /**
  * Extracts mentioned user IDs from comment content
- * Mentions are in format @Username or @email@domain.com
+ * Mentions are in format @Username, @email@domain.com, or @Username[userId]
  */
 export function extractMentions(
   content: string,
   members: Member[]
 ): string[] {
   const mentionedIds: string[] = [];
-  // Match @mentions (words or emails after @)
-  const mentionRegex = /@([\w\s]+?)(?=\s|$|@)|@([\w.-]+@[\w.-]+)/g;
+
+  // Match TipTap format: @name[userId] - extract userId directly
+  const tiptapMentionRegex = /@[\w\s.-]+?\[([a-zA-Z0-9]+)\]/g;
   let match;
 
-  while ((match = mentionRegex.exec(content)) !== null) {
-    const mentionName = (match[1] || match[2])?.trim();
+  while ((match = tiptapMentionRegex.exec(content)) !== null) {
+    const userId = match[1];
+    if (userId && !mentionedIds.includes(userId)) {
+      mentionedIds.push(userId);
+    }
+  }
+
+  // Also check plain @mentions (for backwards compatibility)
+  const plainMentionRegex = /@([\w\s]+?)(?=\s|$|@)/g;
+  while ((match = plainMentionRegex.exec(content)) !== null) {
+    const mentionName = match[1]?.trim();
     if (mentionName) {
-      // Find member by name or email
       const member = members.find(
         (m) =>
           m.name?.toLowerCase() === mentionName.toLowerCase() ||
@@ -33,6 +42,7 @@ export function extractMentions(
 
 /**
  * Parses content and returns array of text parts and mention parts
+ * Handles both TipTap format @name[id] and plain @name format
  */
 export type ContentPart =
   | { type: "text"; content: string }
@@ -43,8 +53,10 @@ export function parseContentWithMentions(
   members?: Member[]
 ): ContentPart[] {
   const parts: ContentPart[] = [];
-  // Match @mentions followed by a name (stopping at next @ or newline)
-  const mentionRegex = /@([\w\s.-]+?)(?=\s@|\s{2}|$|\n)/g;
+
+  // Match @name[userId] format OR plain @name format
+  // Group 1: name, Group 2: optional userId (inside brackets)
+  const mentionRegex = /@([\w.-]+)(?:\[([a-zA-Z0-9]+)\])?/g;
   let lastIndex = 0;
   let match;
 
@@ -58,18 +70,25 @@ export function parseContentWithMentions(
     }
 
     const mentionName = match[1].trim();
-    
-    // Find member to get userId
-    const member = members?.find(
-      (m) =>
-        m.name?.toLowerCase() === mentionName.toLowerCase() ||
-        m.email?.toLowerCase() === mentionName.toLowerCase()
-    );
+    const mentionUserId = match[2]; // userId from brackets if present
+
+    // Try to find member by userId first, then by name
+    let member = null;
+    if (mentionUserId) {
+      member = members?.find((m) => m.userId === mentionUserId);
+    }
+    if (!member) {
+      member = members?.find(
+        (m) =>
+          m.name?.toLowerCase() === mentionName.toLowerCase() ||
+          m.email?.toLowerCase() === mentionName.toLowerCase()
+      );
+    }
 
     parts.push({
       type: "mention",
-      name: mentionName,
-      userId: member?.userId,
+      name: member?.name || mentionName, // Use resolved name if available
+      userId: mentionUserId || member?.userId,
     });
 
     lastIndex = match.index + match[0].length;
@@ -90,3 +109,4 @@ export function parseContentWithMentions(
 
   return parts;
 }
+

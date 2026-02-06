@@ -43,14 +43,11 @@ const app = new Hono()
 
       const attachments = await getAttachments(taskId, workspaceId);
 
-      // Add URLs to attachments
-      const storage = c.get("storage");
-      const attachmentsWithUrls = await Promise.all(
-        attachments.map(async (attachment) => ({
-          ...attachment,
-          url: storage.getFileView(ATTACHMENTS_BUCKET_ID, attachment.fileId).toString(),
-        }))
-      );
+      // Add URLs to attachments - use proxy URL for authentication support
+      const attachmentsWithUrls = attachments.map((attachment) => ({
+        ...attachment,
+        url: `/api/attachments/${attachment.$id}/preview?workspaceId=${workspaceId}`,
+      }));
 
       return c.json({ data: attachmentsWithUrls });
     }
@@ -113,8 +110,8 @@ const app = new Hono()
           uploadedBy: user.$id,
         });
 
-        // Add URL to response
-        const url = storage.getFileView(ATTACHMENTS_BUCKET_ID, attachment.fileId).toString();
+        // Add URL to response - Use proxy URL for authentication support
+        const url = `/api/attachments/${attachment.$id}/preview?workspaceId=${workspaceId}`;
 
         // Log storage usage for billing - every byte is billable
         logStorageUsage({

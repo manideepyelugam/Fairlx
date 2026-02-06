@@ -23,6 +23,7 @@ import {
   ToggleLeft,
   Code2,
   Minus,
+  ImageIcon,
 } from "lucide-react";
 import { useState, useCallback } from "react";
 
@@ -46,6 +47,7 @@ import { Separator } from "@/components/ui/separator";
 interface EditorToolbarProps {
   editor: Editor;
   onSetLink: () => void;
+  onImageUpload?: () => void;
 }
 
 const FONT_COLORS = [
@@ -110,7 +112,7 @@ const ToolbarButton = ({
   </TooltipProvider>
 );
 
-export const EditorToolbar = ({ editor, onSetLink }: EditorToolbarProps) => {
+export const EditorToolbar = ({ editor, onSetLink, onImageUpload }: EditorToolbarProps) => {
   const [showInsertMenu, setShowInsertMenu] = useState(false);
   const [showColorMenu, setShowColorMenu] = useState(false);
   const [showHighlightMenu, setShowHighlightMenu] = useState(false);
@@ -180,6 +182,15 @@ export const EditorToolbar = ({ editor, onSetLink }: EditorToolbarProps) => {
             <Minus className="mr-2 size-4" />
             Divider
           </DropdownMenuItem>
+          {onImageUpload && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onImageUpload}>
+                <ImageIcon className="mr-2 size-4" />
+                Image
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -189,11 +200,11 @@ export const EditorToolbar = ({ editor, onSetLink }: EditorToolbarProps) => {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="sm" className="h-8 gap-1 px-2 text-xs">
-            {editor.isActive("heading", { level: 1 }) ? "H1" : 
-             editor.isActive("heading", { level: 2 }) ? "H2" :
-             editor.isActive("heading", { level: 3 }) ? "H3" :
-             editor.isActive("heading", { level: 4 }) ? "H4" :
-             "Text"}
+            {editor.isActive("heading", { level: 1 }) ? "H1" :
+              editor.isActive("heading", { level: 2 }) ? "H2" :
+                editor.isActive("heading", { level: 3 }) ? "H3" :
+                  editor.isActive("heading", { level: 4 }) ? "H4" :
+                    "Text"}
             <ChevronDown className="size-3" />
           </Button>
         </DropdownMenuTrigger>

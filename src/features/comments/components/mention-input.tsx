@@ -83,7 +83,10 @@ export const MentionInput = ({
       const afterMention = value.substring(
         textareaRef.current?.selectionStart || mentionStartIndex + mentionQuery.length + 1
       );
-      const mentionText = `@${member.name || member.email} `;
+      // Include userId in parseable format: @Name[userId]
+      // The format @[userId] is parsed by extractMentions() for notification dispatch
+      const displayName = member.name || member.email || "User";
+      const mentionText = `@${displayName}[${member.userId}]`;
 
       const newValue = beforeMention + mentionText + afterMention;
       onChange(newValue);
@@ -106,7 +109,7 @@ export const MentionInput = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     const cursorPos = e.target.selectionStart;
-    
+
     onChange(newValue);
 
     // Check if we should show mention dropdown

@@ -137,6 +137,26 @@ export function createCommentAddedEvent(
     });
 }
 
+export function createMentionEvent(
+    workitem: Task,
+    triggeredBy: string,
+    triggeredByName: string,
+    mentionedUserId: string,
+    snippet: string
+): WorkitemEvent {
+    return createWorkitemEvent({
+        type: WorkitemEventType.WORKITEM_MENTION,
+        workitem,
+        triggeredBy,
+        triggeredByName,
+        metadata: {
+            mentionedBy: triggeredBy,
+            mentionedUserId,
+            snippet: snippet.slice(0, 120),
+        },
+    });
+}
+
 export function createAttachmentAddedEvent(
     workitem: Task,
     triggeredBy: string,
@@ -197,6 +217,8 @@ export function getNotificationTitle(event: WorkitemEvent): string {
             return `⚠️ Overdue: ${taskName}`;
         case WorkitemEventType.WORKITEM_COMMENT_ADDED:
             return "New Comment";
+        case WorkitemEventType.WORKITEM_MENTION:
+            return "You were mentioned";
         case WorkitemEventType.WORKITEM_ATTACHMENT_ADDED:
             return "Attachment Added";
         case WorkitemEventType.WORKITEM_ATTACHMENT_DELETED:
@@ -231,6 +253,8 @@ export function getNotificationSummary(event: WorkitemEvent): string {
             return `"${taskName}" is overdue`;
         case WorkitemEventType.WORKITEM_COMMENT_ADDED:
             return `${byName} commented on "${taskName}"`;
+        case WorkitemEventType.WORKITEM_MENTION:
+            return `${byName} mentioned you in "${taskName}"`;
         case WorkitemEventType.WORKITEM_ATTACHMENT_ADDED:
             return `${byName} added an attachment to "${taskName}"`;
         case WorkitemEventType.WORKITEM_ATTACHMENT_DELETED:
@@ -263,6 +287,7 @@ export function getDefaultChannelsForEvent(event: WorkitemEvent): ("socket" | "e
         case WorkitemEventType.WORKITEM_DUE_DATE_CHANGED:
         case WorkitemEventType.WORKITEM_UPDATED:
         case WorkitemEventType.WORKITEM_COMMENT_ADDED:
+        case WorkitemEventType.WORKITEM_MENTION:
             channels.push("email");
             break;
 
