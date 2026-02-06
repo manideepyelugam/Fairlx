@@ -1,6 +1,6 @@
 "use client";
 
-import { Users, MoreHorizontal, Trash2, UserPlus, Eye } from "lucide-react";
+import { Users, MoreHorizontal, Trash2, UserPlus, Eye, Pencil } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +26,7 @@ interface ProjectTeamCardProps {
     onAddMember?: () => void;
     onDelete?: () => void;
     onViewMembers?: () => void;
+    onEdit?: () => void;
     canManage?: boolean;
 }
 
@@ -34,6 +35,7 @@ export function ProjectTeamCard({
     onAddMember,
     onDelete,
     onViewMembers,
+    onEdit,
     canManage = false,
 }: ProjectTeamCardProps) {
     return (
@@ -77,6 +79,10 @@ export function ProjectTeamCard({
                         {canManage && (
                             <>
                                 <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit?.(); }}>
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Edit Team
+                                </DropdownMenuItem>
                                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAddMember?.(); }}>
                                     <UserPlus className="mr-2 h-4 w-4" />
                                     Add Member
