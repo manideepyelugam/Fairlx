@@ -189,6 +189,11 @@ class NotificationDispatcher {
             (event.metadata.mentionedUserIds as string[]).forEach((id) => recipients.add(id));
         }
 
+        // Add mentioned user for direct mention events
+        if (event.type === WorkitemEventType.WORKITEM_MENTION && event.metadata?.mentionedUserId) {
+            recipients.add(event.metadata.mentionedUserId as string);
+        }
+
         return Array.from(recipients);
     }
 
@@ -319,6 +324,7 @@ class NotificationDispatcher {
             case WorkitemEventType.WORKITEM_DELETED:
                 return "task_deleted";
             case WorkitemEventType.WORKITEM_COMMENT_ADDED:
+            case WorkitemEventType.WORKITEM_MENTION:
                 return "task_comment";
             default:
                 return "task_updated";

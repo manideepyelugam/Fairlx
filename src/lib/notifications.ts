@@ -46,6 +46,7 @@ export {
   createPriorityChangedEvent,
   createDueDateChangedEvent,
   createCommentAddedEvent,
+  createMentionEvent,
   createAttachmentAddedEvent,
   createAttachmentDeletedEvent,
   getNotificationTitle,

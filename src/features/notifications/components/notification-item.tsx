@@ -12,6 +12,7 @@ import {
   Flag,
   ArrowRight,
   User,
+  AtSign,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -86,6 +87,14 @@ const getNotificationStyle = (type: NotificationType) => {
         bgColor: "bg-red-100 dark:bg-red-950",
         badge: "Attachment Removed",
         badgeVariant: "destructive" as const,
+      };
+    case NotificationType.TASK_MENTION:
+      return {
+        icon: AtSign,
+        color: "text-indigo-600 dark:text-indigo-400",
+        bgColor: "bg-indigo-500/10 dark:bg-indigo-500/20",
+        badge: "Mentioned",
+        badgeVariant: "default" as const,
       };
     case NotificationType.TASK_UPDATED:
       return {

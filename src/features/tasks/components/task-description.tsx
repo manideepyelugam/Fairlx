@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { RichTextEditor, setMentionMembers } from "@/components/editor";
@@ -18,11 +19,11 @@ interface TaskDescriptionProps {
   projectId?: string;
 }
 
-export const TaskDescription = ({ 
-  task, 
-  canEdit = true, 
+export const TaskDescription = ({
+  task,
+  canEdit = true,
   workspaceId,
-  projectId 
+  projectId
 }: TaskDescriptionProps) => {
   const { mutate: updateTask } = useUpdateTask();
   const { data: members } = useGetMembers({ workspaceId: workspaceId || "" });
@@ -48,7 +49,9 @@ export const TaskDescription = ({
     if (members?.documents) {
       setMentionMembers(
         members.documents.map((member) => ({
-          id: member.$id,
+          // CRITICAL: Use userId for mention data-id, not member document $id
+          // This ensures notifications are routed to the correct user
+          id: member.userId,
           name: member.name || "",
           email: member.email,
           imageUrl: member.profileImageUrl,
@@ -61,6 +64,35 @@ export const TaskDescription = ({
     if (!canEdit) return;
     setValue(content);
   };
+
+  // Handle image upload for inline images in description
+  const handleImageUpload = useCallback(async (file: File): Promise<string | null> => {
+    if (!workspaceId) return null;
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("taskId", task.$id);
+      formData.append("workspaceId", workspaceId);
+
+      const response = await fetch('/api/attachments/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        toast.error("Failed to upload image");
+        return null;
+      }
+
+      const data = await response.json();
+      const url = data?.data?.url;
+      return url;
+    } catch (err) {
+      toast.error("Failed to upload image");
+      return null;
+    }
+  }, [task.$id, workspaceId]);
 
   return (
     <div className="relative">
@@ -81,6 +113,7 @@ export const TaskDescription = ({
         projectId={projectId}
         minHeight="100px"
         showToolbar={canEdit}
+        onImageUpload={canEdit && workspaceId ? handleImageUpload : undefined}
         className={cn(
           "border-0 bg-transparent",
           !canEdit && "pointer-events-none"

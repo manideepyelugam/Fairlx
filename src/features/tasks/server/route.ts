@@ -13,7 +13,9 @@ import {
   createCompletedEvent,
   createPriorityChangedEvent,
   createDueDateChangedEvent,
+  createMentionEvent,
 } from "@/lib/notifications";
+import { extractMentions, extractSnippet } from "@/lib/mentions";
 
 
 import { getMember } from "@/features/members/utils";
@@ -737,6 +739,28 @@ const app = new Hono()
         }
       }
 
+      // Description @mention notifications
+      if (description) {
+        const mentionedUserIds = extractMentions(description);
+        const snippet = extractSnippet(description);
+
+        for (const mentionedUserId of mentionedUserIds) {
+          // Skip self-mention
+          if (mentionedUserId === user.$id) continue;
+
+          const mentionEvent = createMentionEvent(
+            task,
+            user.$id,
+            userName,
+            mentionedUserId,
+            snippet
+          );
+          dispatchWorkitemEvent(mentionEvent).catch(() => {
+            // Silent failure for non-critical event dispatch
+          });
+        }
+      }
+
       return c.json({ data: task });
     }
   )
@@ -913,7 +937,7 @@ const app = new Hono()
       // Project permission check: verify user can edit tasks in each affected project
       const projectIds = [...new Set(tasksToUpdate.documents.map((t) => t.projectId))];
       const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
-      
+
       for (const projId of projectIds) {
         const projectAccess = await resolveUserProjectAccess(databases, user.$id, projId);
         if (!projectAccess.hasAccess || !hasProjectPermission(projectAccess, ProjectPermissionKey.EDIT_TASKS)) {

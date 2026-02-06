@@ -9,6 +9,7 @@ export enum NotificationType {
   TASK_DUE_DATE_CHANGED = "task_due_date_changed",
   TASK_DELETED = "task_deleted",
   TASK_COMMENT = "task_comment",
+  TASK_MENTION = "task_mention",
   TASK_ATTACHMENT_ADDED = "task_attachment_added",
   TASK_ATTACHMENT_DELETED = "task_attachment_deleted",
 }

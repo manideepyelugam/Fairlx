@@ -30,6 +30,7 @@ export enum WorkitemEventType {
 
     // Related entity events
     WORKITEM_COMMENT_ADDED = "WORKITEM_COMMENT_ADDED",
+    WORKITEM_MENTION = "WORKITEM_MENTION",
     WORKITEM_ATTACHMENT_ADDED = "WORKITEM_ATTACHMENT_ADDED",
     WORKITEM_ATTACHMENT_DELETED = "WORKITEM_ATTACHMENT_DELETED",
 
@@ -88,6 +89,11 @@ export interface WorkitemEventMetadata {
     commentContent?: string;
     mentionedUserIds?: string[];
     isMentioned?: boolean;
+
+    // Mention
+    mentionedBy?: string;
+    mentionedUserId?: string;
+    snippet?: string;
 
     // Attachment
     attachmentId?: string;

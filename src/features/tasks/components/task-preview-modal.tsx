@@ -70,7 +70,7 @@ interface TaskPreviewContentProps {
   onDelete?: () => void;
   canEdit?: boolean;
   canDelete?: boolean;
-} 
+}
 
 const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPreview, onDelete, canEdit = false, canDelete = false }: TaskPreviewContentProps) => {
   const { mutate: updateTask } = useUpdateTask();
@@ -135,7 +135,9 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
     if (members?.documents) {
       setMentionMembers(
         members.documents.map((member) => ({
-          id: member.$id,
+          // CRITICAL: Use userId for mention data-id, not member document $id
+          // This ensures notifications are routed to the correct user
+          id: member.userId,
           name: member.name || "",
           email: member.email,
           imageUrl: member.profileImageUrl,
@@ -168,6 +170,32 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
   const handleDescriptionBlur = () => {
     syncDescriptionNow();
   };
+
+  // Handle image upload for inline images in description
+  const handleImageUpload = useCallback(async (file: File): Promise<string | null> => {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("taskId", task.$id);
+      formData.append("workspaceId", workspaceId);
+
+      const response = await fetch('/api/attachments/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        toast.error("Failed to upload image");
+        return null;
+      }
+
+      const data = await response.json() as { data: { url: string } };
+      return data.data.url;
+    } catch {
+      toast.error("Failed to upload image");
+      return null;
+    }
+  }, [task.$id, workspaceId]);
 
   const handleCopyUrl = async () => {
     try {
@@ -218,7 +246,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
           )}
           <StatusSelector
             value={task.status}
-            onChange={canEdit ? (value) => handleUpdate({ status: value }) : () => {}}
+            onChange={canEdit ? (value) => handleUpdate({ status: value }) : () => { }}
             projectId={task.projectId}
             placeholder="Status"
             disabled={!canEdit}
@@ -270,7 +298,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
             onClick={handleCloseWithSync}
           >
             <X size={18} strokeWidth={1.5} className="text-muted-foreground" />
-          </button> 
+          </button>
         </div>
       </div>
 
@@ -318,14 +346,15 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
               <div className="min-h-[100px]">
                 <RichTextEditor
                   content={description}
-                  onChange={canEdit ? setDescription : () => {}}
-                  onBlur={canEdit ? handleDescriptionBlur : () => {}}
+                  onChange={canEdit ? setDescription : () => { }}
+                  onBlur={canEdit ? handleDescriptionBlur : () => { }}
                   placeholder={canEdit ? "Add a description... Use @ to mention team members, / for commands" : "No description"}
                   editable={canEdit}
                   workspaceId={workspaceId}
                   projectId={task.projectId}
                   minHeight="100px"
                   showToolbar={canEdit}
+                  onImageUpload={canEdit ? handleImageUpload : undefined}
                 />
               </div>
             </div>
@@ -366,7 +395,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 <label className="text-xs text-muted-foreground mb-1.5 block">Status</label>
                 <StatusSelector
                   value={task.status}
-                  onChange={canEdit ? (value) => handleUpdate({ status: value }) : () => {}}
+                  onChange={canEdit ? (value) => handleUpdate({ status: value }) : () => { }}
                   projectId={task.projectId}
                   disabled={!canEdit}
                 />
@@ -377,7 +406,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 <label className="text-xs text-muted-foreground mb-1.5 block">Type</label>
                 <TypeSelector
                   value={task.type || "TASK"}
-                  onValueChange={canEdit ? (value) => handleUpdate({ type: value }) : () => {}}
+                  onValueChange={canEdit ? (value) => handleUpdate({ type: value }) : () => { }}
                   project={project}
                   customTypes={project?.customWorkItemTypes}
                   className="w-full bg-card border-border"
@@ -390,7 +419,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 <label className="text-xs text-muted-foreground mb-1.5 block">Priority</label>
                 <PrioritySelector
                   value={task.priority}
-                  onValueChange={canEdit ? (value) => handleUpdate({ priority: value }) : () => {}}
+                  onValueChange={canEdit ? (value) => handleUpdate({ priority: value }) : () => { }}
                   customPriorities={project?.customPriorities}
                   disabled={!canEdit}
                 />
@@ -402,7 +431,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 <AssigneeMultiSelect
                   memberOptions={memberOptions}
                   selectedAssigneeIds={task.assigneeIds || []}
-                  onAssigneesChange={canEdit ? (ids) => handleUpdate({ assigneeIds: ids }) : () => {}}
+                  onAssigneesChange={canEdit ? (ids) => handleUpdate({ assigneeIds: ids }) : () => { }}
                   placeholder="Select assignees"
                   disabled={!canEdit}
                 />
@@ -413,7 +442,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 <label className="text-xs text-muted-foreground mb-1.5 block">Start Date</label>
                 <DatePicker
                   value={task.dueDate ? new Date(task.dueDate) : undefined}
-                  onChange={canEdit ? (date) => handleUpdate({ dueDate: date }) : () => {}}
+                  onChange={canEdit ? (date) => handleUpdate({ dueDate: date }) : () => { }}
                   placeholder="Set start date"
                   className="w-full bg-card border-border"
                   disabled={!canEdit}
@@ -434,7 +463,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 <label className="text-xs text-muted-foreground mb-1.5 block">End Date</label>
                 <DatePicker
                   value={task.endDate ? new Date(task.endDate) : undefined}
-                  onChange={canEdit ? (date) => handleUpdate({ endDate: date }) : () => {}}
+                  onChange={canEdit ? (date) => handleUpdate({ endDate: date }) : () => { }}
                   placeholder="Set end date"
                   className="w-full bg-card border-border"
                   disabled={!canEdit}
@@ -458,7 +487,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                     if (val !== task.estimatedHours) {
                       handleUpdate({ estimatedHours: val || undefined });
                     }
-                  } : () => {}}
+                  } : () => { }}
                   className="h-9 bg-card border-border"
                   disabled={!canEdit}
                 />
@@ -477,7 +506,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                     if (val !== task.storyPoints) {
                       handleUpdate({ storyPoints: val || undefined });
                     }
-                  } : () => {}}
+                  } : () => { }}
                   className="h-9 bg-card border-border"
                   disabled={!canEdit}
                 />
@@ -487,7 +516,7 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
               <div className="flex items-center gap-2 pt-2">
                 <Checkbox
                   checked={task.flagged}
-                  onCheckedChange={canEdit ? (checked) => handleUpdate({ flagged: checked as boolean }) : () => {}}
+                  onCheckedChange={canEdit ? (checked) => handleUpdate({ flagged: checked as boolean }) : () => { }}
                   id="flagged"
                   disabled={!canEdit}
                 />
@@ -527,16 +556,16 @@ export const TaskPreviewModalWrapper = () => {
 
   // Get workspace admin status
   const { isAdmin } = useCurrentMember({ workspaceId });
-  
+
   // Get project-level task permissions
-  const { 
-    canEditTasksProject, 
+  const {
+    canEditTasksProject,
     canDeleteTasksProject,
-  } = useProjectPermissions({ 
-    projectId: data?.projectId || null, 
-    workspaceId 
+  } = useProjectPermissions({
+    projectId: data?.projectId || null,
+    workspaceId
   });
-  
+
   // Effective permissions: Admin OR has project-level permission
   const canEditTasks = isAdmin || canEditTasksProject;
   const canDeleteTasks = isAdmin || canDeleteTasksProject;
@@ -576,7 +605,7 @@ export const TaskPreviewModalWrapper = () => {
     } catch {
       // Navigation error handled silently
     }
-  }; 
+  };
 
 
   const handleClose = useCallback(() => {
@@ -688,13 +717,13 @@ export const TaskPreviewModalWrapper = () => {
                   </div>
                   <div className="flex-1 overflow-auto p-4 flex items-center justify-center relative">
                     <IconHelp content="Close Attachment Preview" side="left">
-                    <button
-                      onClick={closeAttachmentPreview}
-                      className="absolute top-6 right-4 z-10 p-1 rounded-md bg-background hover:bg-accent border border-border shadow-md transition-colors"
-                      title="Close attachment preview"
-                    >
-                      <X className="size-4" />
-                    </button>
+                      <button
+                        onClick={closeAttachmentPreview}
+                        className="absolute top-6 right-4 z-10 p-1 rounded-md bg-background hover:bg-accent border border-border shadow-md transition-colors"
+                        title="Close attachment preview"
+                      >
+                        <X className="size-4" />
+                      </button>
                     </IconHelp>
                     {previewAttachment.mimeType.startsWith("image/") ? (
                       // Image preview
