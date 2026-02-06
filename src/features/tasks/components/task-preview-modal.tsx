@@ -679,19 +679,23 @@ export const TaskPreviewModalWrapper = () => {
 
               {/* Attachment preview overlay */}
               {previewAttachment && (
-                <div className="fixed inset-0 z-60 flex flex-col bg-background">
-                  <div className="flex items-center justify-between px-4 py-2 border-b border-border">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{previewAttachment.name}</span>
-                      <span className="text-xs text-muted-foreground">{previewAttachment.mimeType}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button className="p-1.5 rounded hover:bg-accent" onClick={closeAttachmentPreview}>
-                        <X className="size-4" />
-                      </button>
+                <div className="absolute inset-0 z-60 flex flex-col bg-background rounded-lg">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                    <div className="flex items-center gap-2 flex-1">
+                      <span className="text-sm font-medium truncate">{previewAttachment.name}</span>
+                      <span className="text-xs text-muted-foreground flex-shrink-0">{previewAttachment.mimeType}</span>
                     </div>
                   </div>
-                  <div className="flex-1 overflow-auto p-4 flex items-center justify-center">
+                  <div className="flex-1 overflow-auto p-4 flex items-center justify-center relative">
+                    <IconHelp content="Close Attachment Preview" side="left">
+                    <button
+                      onClick={closeAttachmentPreview}
+                      className="absolute top-6 right-4 z-10 p-1 rounded-md bg-background hover:bg-accent border border-border shadow-md transition-colors"
+                      title="Close attachment preview"
+                    >
+                      <X className="size-4" />
+                    </button>
+                    </IconHelp>
                     {previewAttachment.mimeType.startsWith("image/") ? (
                       // Image preview
                       // Use the preview endpoint
@@ -699,14 +703,14 @@ export const TaskPreviewModalWrapper = () => {
                       <img
                         src={`/api/attachments/${previewAttachment.$id}/preview?workspaceId=${workspaceId}`}
                         alt={previewAttachment.name}
-                        className="max-h-[80vh] max-w-full object-contain"
+                        className="max-h-full max-w-full object-contain"
                       />
                     ) : (
                       // Fallback to iframe for PDFs and other previewable types
                       <iframe
                         src={`/api/attachments/${previewAttachment.$id}/preview?workspaceId=${workspaceId}`}
                         title={previewAttachment.name}
-                        className="w-full h-[80vh] border-0"
+                        className="w-full h-full border-0"
                       />
                     )}
                   </div>
