@@ -34,22 +34,21 @@ const app = new Hono()
   })
   .get("/lifecycle", sessionMiddleware, async (c) => {
     // Dynamic import to avoid circular dependency
-    const { resolveAccountLifecycleState, getLifecycleState } = await import("./actions");
+    const { getLifecycleStateWithLegacy } = await import("./actions");
 
-    // Get both legacy state (backward compatible) and new lifecycle state (with routing)
-    const [legacyState, lifecycleState] = await Promise.all([
-      resolveAccountLifecycleState(),
-      getLifecycleState(),
-    ]);
+    // FIX: Single resolver call instead of two parallel calls.
+    // Previously called resolveAccountLifecycleState() + getLifecycleState()
+    // which BOTH independently called resolveUserLifecycleState() → 12 DB reads.
+    // Now: 1 call → ~6 DB reads (50% reduction per lifecycle poll).
+    const { legacyState, lifecycle } = await getLifecycleStateWithLegacy();
 
     return c.json({
       data: legacyState,
-      // New: Full lifecycle state with routing for modern consumption
       lifecycle: {
-        state: lifecycleState.state,
-        redirectTo: lifecycleState.redirectTo,
-        allowedPaths: lifecycleState.allowedPaths,
-        blockedPaths: lifecycleState.blockedPaths,
+        state: lifecycle.state,
+        redirectTo: lifecycle.redirectTo,
+        allowedPaths: lifecycle.allowedPaths,
+        blockedPaths: lifecycle.blockedPaths,
       }
     });
   })

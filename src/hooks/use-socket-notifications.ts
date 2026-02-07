@@ -94,7 +94,7 @@ export function useSocketNotifications({
     workspaceId,
     onNotification,
     enabled = true,
-    pollingIntervalMs = 30000,
+    pollingIntervalMs = 5 * 60 * 1000, // 5 minutes fallback (was 30s — way too aggressive)
 }: UseSocketNotificationsOptions): UseSocketNotificationsReturn {
     const [isConnected, setIsConnected] = useState(false);
     const [isAuthenticated, setIsAuthenticated] = useState(false);

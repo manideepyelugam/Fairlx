@@ -88,7 +88,7 @@ export const TaskDescription = ({
       const data = await response.json();
       const url = data?.data?.url;
       return url;
-    } catch (err) {
+    } catch {
       toast.error("Failed to upload image");
       return null;
     }

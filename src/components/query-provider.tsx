@@ -12,14 +12,14 @@ function makeQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        // With SSR, we usually want to set some default staleTime
-        // above 0 to avoid refetching immediately on the client
-        staleTime: 2 * 60 * 1000, // 2 minutes (increased from 1 min to reduce refetches)
-        // Reduce automatic refetching to lower database reads
-        refetchOnWindowFocus: false, // Disabled - was causing excessive reads
+        // SCALING: These defaults apply to ALL queries that don't override.
+        // At 1K+ users, aggressive refetching will exceed Appwrite plan limits.
+        staleTime: 5 * 60 * 1000, // 5 minutes (was 2 min)
+        refetchOnWindowFocus: false, // DISABLED globally — #1 cause of surprise reads
         refetchOnMount: false, // Only refetch if data is stale
         refetchOnReconnect: true,
-        gcTime: 5 * 60 * 1000, // Keep unused data in cache for 5 minutes
+        gcTime: 15 * 60 * 1000, // 15 minutes (was 5 min)
+        retry: 1, // Only 1 retry to avoid amplifying failed requests
       },
     },
   });

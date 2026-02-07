@@ -78,9 +78,7 @@ export const TaskActions = ({
     router.push(`/workspaces/${workspaceId}/tasks/${id}`);
   };
 
-  const onOpenProject = () => {
-    router.push(`/workspaces/${workspaceId}/projects/${projectId}`);
-  };
+  // Removed unused onOpenProject handler
 
   const canEditTask = canEdit && (isWorkspaceAdmin || canEditTasksProject || can(PERMISSIONS.WORKITEM_UPDATE));
   const canDeleteTask = canDelete && (isWorkspaceAdmin || canDeleteTasksProject || can(PERMISSIONS.WORKITEM_DELETE));
