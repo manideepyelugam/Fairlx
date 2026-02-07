@@ -30,7 +30,9 @@ export const useCreateProgram = () => {
       const response = await client.api.programs.$post({ json });
 
       if (!response.ok) {
-        throw new Error("Failed to create program.");
+        const errorData = await response.json().catch(() => null);
+        const errorMessage = (errorData as { error?: string })?.error || "Failed to create program.";
+        throw new Error(errorMessage);
       }
 
       return await response.json();
@@ -40,8 +42,8 @@ export const useCreateProgram = () => {
       queryClient.invalidateQueries({ queryKey: ["programs"] });
       queryClient.invalidateQueries({ queryKey: ["workspace-analytics"] });
     },
-    onError: () => {
-      toast.error("Failed to create program.");
+    onError: (error) => {
+      toast.error(error.message || "Failed to create program.");
     },
   });
 

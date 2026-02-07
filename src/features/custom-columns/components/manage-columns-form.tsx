@@ -200,15 +200,44 @@ export const ManageColumnsForm = ({ onCancel }: ManageColumnsFormProps) => {
       }
     }
 
-    // Apply column toggles
+    // Apply column toggles - collect all columns to disable first, then move tasks in bulk
+    const columnsToDisable: TaskStatus[] = [];
     for (const columnId of pendingColumnToggles) {
       const column = defaultColumns.find((col) => col.id === columnId);
       if (column && column.isEnabled) {
-        // Move tasks from disabled column to TODO
-        moveTasksFromDisabledColumn({ fromColumn: columnId });
+        columnsToDisable.push(columnId);
       }
+    }
+
+    // Move tasks from all disabled columns
+    for (const columnId of columnsToDisable) {
+      try {
+        await new Promise<void>((resolve, reject) => {
+          moveTasksFromDisabledColumn(
+            { fromColumn: columnId },
+            {
+              onSuccess: () => {
+                successCount++;
+                resolve();
+              },
+              onError: () => {
+                errorCount++;
+                reject();
+              },
+            }
+          );
+        });
+      } catch {
+        // Error already counted
+      }
+    }
+
+    // Apply all toggle settings after tasks have been moved
+    for (const columnId of pendingColumnToggles) {
       toggleColumn(columnId);
-      successCount++;
+      if (!columnsToDisable.includes(columnId)) {
+        successCount++;
+      }
     }
 
     // Clear pending changes

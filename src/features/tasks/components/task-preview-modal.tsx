@@ -3,7 +3,7 @@
 import { InferRequestType } from "hono";
 import { client } from "@/lib/rpc";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   X,
@@ -158,6 +158,32 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
       json: updates,
     });
   };
+
+  // Debounced update for date fields to prevent multiple API calls
+  const dateUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const handleDebouncedDateUpdate = useCallback((updates: UpdateTaskPayload) => {
+    // Clear any pending timeout
+    if (dateUpdateTimeoutRef.current) {
+      clearTimeout(dateUpdateTimeoutRef.current);
+    }
+    
+    // Set new timeout
+    dateUpdateTimeoutRef.current = setTimeout(() => {
+      updateTask({
+        param: { taskId: task.$id },
+        json: updates,
+      });
+    }, 500); // 500ms debounce
+  }, [task.$id, updateTask]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (dateUpdateTimeoutRef.current) {
+        clearTimeout(dateUpdateTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleTitleBlur = () => {
     setIsEditingTitle(false);
@@ -437,37 +463,28 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 />
               </div>
 
-              {/* Dates */}
-              <div>
-                <label className="text-xs text-muted-foreground mb-1.5 block">Start Date</label>
-                <DatePicker
-                  value={task.dueDate ? new Date(task.dueDate) : undefined}
-                  onChange={canEdit ? (date) => handleUpdate({ dueDate: date }) : () => { }}
-                  placeholder="Set start date"
-                  className="w-full bg-card border-border"
-                  disabled={!canEdit}
-                />
-              </div>
-
-              {/* Due Date (Using endDate field if that's what we want, or do we have separate due date?)
-                  Schema has dueDate and endDate.
-                  Original view showed 'Due' mapping to task.dueDate?
-                  Wait, 'Start' mapped to task.startDate, 'Due' to task.dueDate in original view.
-                  Schema: dueDate: z.coerce.date().optional(), endDate: z.coerce.date().optional()
-                  Wait, CreateTask uses 'dueDate' as Start Date label?
-                  Step 538: <FormLabel>Start Date</FormLabel> <DatePicker {...field} name="dueDate" />
-                  So dueDate = Start Date.
-                  And endDate = End Date.
-              */}
-              <div>
-                <label className="text-xs text-muted-foreground mb-1.5 block">End Date</label>
-                <DatePicker
-                  value={task.endDate ? new Date(task.endDate) : undefined}
-                  onChange={canEdit ? (date) => handleUpdate({ endDate: date }) : () => { }}
-                  placeholder="Set end date"
-                  className="w-full bg-card border-border"
-                  disabled={!canEdit}
-                />
+              {/* Dates - side by side */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-muted-foreground mb-1 block font-medium">Start Date</label>
+                  <DatePicker
+                    value={task.dueDate ? new Date(task.dueDate) : undefined}
+                    onChange={canEdit ? (date) => handleDebouncedDateUpdate({ dueDate: date }) : () => { }}
+                    placeholder="Set start date"
+                    className="w-full bg-card border-border h-8 text-xs"
+                    disabled={!canEdit}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted-foreground mb-1 block font-medium">End Date</label>
+                  <DatePicker
+                    value={task.endDate ? new Date(task.endDate) : undefined}
+                    onChange={canEdit ? (date) => handleDebouncedDateUpdate({ endDate: date }) : () => { }}
+                    placeholder="Set end date"
+                    className="w-full bg-card border-border h-8 text-xs"
+                    disabled={!canEdit}
+                  />
+                </div>
               </div>
 
               {/* Labels */}

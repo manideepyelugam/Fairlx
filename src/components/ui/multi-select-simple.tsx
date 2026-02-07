@@ -39,6 +39,7 @@ export function MultiSelect({
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
+  const buttonRef = React.useRef<HTMLButtonElement>(null)
 
   const handleUnselect = (item: string) => {
     onChange(selected.filter((i) => i !== item))
@@ -60,29 +61,30 @@ export function MultiSelect({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          ref={buttonRef}
           variant="outline"
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "w-full justify-between min-h-9",
-            selected.length === 0 && "text-muted-foreground",
+            "w-full justify-between min-h-9 h-auto py-1.5 px-3 pr-8 relative",
+            selected.length === 0 && "text-muted-foreground py-2",
             className
           )}
           disabled={disabled}
         >
-          <div className="flex gap-1 flex-wrap items-center">
+          <div className="flex gap-1 flex-wrap items-center flex-1 min-w-0 mr-2">
             {selected.length === 0 && placeholder}
             {selected.map((item) => {
               const option = options.find((o) => o.value === item)
               if (!option) return null
               return (
-                <Badge key={item} variant="secondary" className="mr-1 mb-1">
+                <Badge key={item} variant="secondary" className="flex items-center gap-1 px-2 py-0.5">
                   {option.icon && (
-                    <option.icon className="mr-1 h-3 w-3" />
+                    <option.icon className="h-3 w-3 shrink-0" />
                   )}
-                  {option.label}
+                  <span className="truncate max-w-[100px] text-xs">{option.label}</span>
                   <div
-                    className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer inline-flex items-center justify-center"
+                    className="ml-0.5 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer inline-flex items-center justify-center shrink-0"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         handleUnselect(item)
@@ -106,15 +108,20 @@ export function MultiSelect({
               )
             })}
           </div>
-          <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+          <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50 absolute right-2 top-1/2 -translate-y-1/2" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
-        <div className="border-b p-3">
+      <PopoverContent 
+        className="p-0" 
+        align="start"
+        style={{ width: buttonRef.current?.offsetWidth || 'var(--radix-popover-trigger-width)' }}
+      >
+        <div className="p-2">
           <Input
             placeholder="Search..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            className="h-8 text-sm"
           />
         </div>
         <ScrollArea className="max-h-64">
