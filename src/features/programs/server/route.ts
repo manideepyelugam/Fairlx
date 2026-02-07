@@ -145,7 +145,7 @@ const app = new Hono()
         userId: user.$id,
       });
 
-      if (!member || member.role !== MemberRole.ADMIN) {
+      if (!member || (member.role !== MemberRole.ADMIN && member.role !== MemberRole.OWNER)) {
         return c.json(
           { error: "Unauthorized. Only workspace admins can create programs." },
           403
@@ -216,7 +216,7 @@ const app = new Hono()
           userId: user.$id,
         });
 
-        if (!member || member.role !== MemberRole.ADMIN) {
+        if (!member || (member.role !== MemberRole.ADMIN && member.role !== MemberRole.OWNER)) {
           return c.json(
             { error: "Unauthorized. Only workspace admins can update programs." },
             403
@@ -279,7 +279,7 @@ const app = new Hono()
         userId: user.$id,
       });
 
-      if (!member || member.role !== MemberRole.ADMIN) {
+      if (!member || (member.role !== MemberRole.ADMIN && member.role !== MemberRole.OWNER)) {
         return c.json(
           { error: "Unauthorized. Only workspace admins can delete programs." },
           403

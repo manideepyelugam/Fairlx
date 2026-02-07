@@ -872,6 +872,24 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                             </div>
                           ) : (
                             <div className="divide-y divide-border">
+                              {/* Column Header Row */}
+                              <div className="px-4 py-2 bg-muted/50 border-b border-border">
+                                <div className="flex items-center gap-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-5" />
+                                    <div className="w-4" />
+                                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider w-4">Type</span>
+                                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider w-20">Key</span>
+                                  </div>
+                                  <span className="flex-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Title</span>
+                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[120px]">Status</span>
+                                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[90px]">Priority</span>
+                                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[70px]">SP</span>
+                                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[120px]">Assignee</span>
+                                  </div>
+                                </div>
+                              </div>
                               {sprintItems.map((item, index) => (
                                 <Draggable key={item.$id} draggableId={item.$id} index={index}>
                                   {(provided, snapshot) => (
@@ -1244,6 +1262,24 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                       </div>
                     ) : (
                       <div className="divide-y divide-gray-100">
+                        {/* Column Header Row */}
+                        <div className="px-4 py-2 bg-muted/50 border-b border-border">
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-5" />
+                              <div className="w-4" />
+                              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider w-4">Type</span>
+                              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider w-20">Key</span>
+                            </div>
+                            <span className="flex-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Title</span>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[120px]">Status</span>
+                              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[90px]">Priority</span>
+                              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[70px]">SP</span>
+                              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[120px]">Assignee</span>
+                            </div>
+                          </div>
+                        </div>
                         {backlogItems.map((item, index) => (
                           <Draggable key={item.$id} draggableId={item.$id} index={index}>
                             {(provided, snapshot) => (

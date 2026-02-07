@@ -1,4 +1,4 @@
-import { ExternalLink, PencilIcon, TrashIcon, FlagIcon } from "lucide-react";
+import { ExternalLink, TrashIcon, FlagIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { useConfirm } from "@/hooks/use-confirm";
@@ -13,7 +13,6 @@ import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 
 import { useDeleteTask } from "../api/use-delete-task";
 import { useUpdateTask } from "../api/use-update-task";
-import { useEditTaskModal } from "../hooks/use-edit-task-modal";
 import { usePermission } from "@/hooks/use-permission";
 import { PERMISSIONS } from "@/lib/permissions";
 import { useProjectPermissions } from "@/hooks/use-project-permissions";
@@ -39,7 +38,6 @@ export const TaskActions = ({
   const router = useRouter();
   const workspaceId = useWorkspaceId();
 
-  const { open } = useEditTaskModal();
   const { can } = usePermission();
   
   // Project-level permissions
@@ -78,8 +76,6 @@ export const TaskActions = ({
     router.push(`/workspaces/${workspaceId}/tasks/${id}`);
   };
 
-  // Removed unused onOpenProject handler
-
   const canEditTask = canEdit && (isWorkspaceAdmin || canEditTasksProject || can(PERMISSIONS.WORKITEM_UPDATE));
   const canDeleteTask = canDelete && (isWorkspaceAdmin || canDeleteTasksProject || can(PERMISSIONS.WORKITEM_DELETE));
 
@@ -98,23 +94,14 @@ export const TaskActions = ({
           </DropdownMenuItem>
           {canEditTask && (
             <DropdownMenuItem
-              onClick={() => {
-                open(id);
-              }}
+              onClick={onToggleFlag}
+              disabled={isUpdatingTask}
               className="font-medium p-[10px]"
             >
-              <PencilIcon className="size-4 mr-2 stroke-2" />
-              Edit Work Item
+              <FlagIcon className={`size-4 mr-2 stroke-2 ${flagged ? 'fill-red-500 text-red-500' : ''}`} />
+              {flagged ? 'Unflag Work Item' : 'Flag Work Item'}
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem
-            onClick={onToggleFlag}
-            disabled={isUpdatingTask}
-            className="font-medium p-[10px]"
-          >
-            <FlagIcon className={`size-4 mr-2 stroke-2 ${flagged ? 'fill-red-500 text-red-500' : ''}`} />
-            {flagged ? 'Unflag Work Item' : 'Flag Work Item'}
-          </DropdownMenuItem>
           {canDeleteTask && (
             <DropdownMenuItem
               onClick={onDelete}
