@@ -10,6 +10,7 @@ import { useGetProjectTeams } from "../api/use-get-project-teams";
 import { useDeleteProjectTeam } from "../api/use-delete-project-team";
 import { ProjectTeamCard } from "./project-team-card";
 import { CreateProjectTeamModal } from "./create-project-team-modal";
+import { EditProjectTeamModal } from "./edit-project-team-modal";
 import { AddProjectTeamMemberModal } from "./add-project-team-member-modal";
 import { TeamMembersModal } from "./team-members-modal";
 import { PopulatedProjectTeam } from "../types";
@@ -35,6 +36,7 @@ export function ProjectTeamsList({ projectId, canManage = false }: ProjectTeamsL
     const [deleteTeamId, setDeleteTeamId] = useState<string | null>(null);
     const [deleteTeamName, setDeleteTeamName] = useState("");
     const [viewMembersTeam, setViewMembersTeam] = useState<PopulatedProjectTeam | null>(null);
+    const [editTeam, setEditTeam] = useState<PopulatedProjectTeam | null>(null);
 
     const { data: teamsData, isLoading } = useGetProjectTeams({ projectId });
     const { mutate: deleteTeam, isPending: isDeleting } = useDeleteProjectTeam({ projectId });
@@ -104,6 +106,7 @@ export function ProjectTeamsList({ projectId, canManage = false }: ProjectTeamsL
                             team={team}
                             canManage={canManage}
                             onViewMembers={() => setViewMembersTeam(team)}
+                            onEdit={() => setEditTeam(team)}
                             onAddMember={() => setAddMemberTeamId(team.$id)}
                             onDelete={() => {
                                 setDeleteTeamId(team.$id);
@@ -120,6 +123,16 @@ export function ProjectTeamsList({ projectId, canManage = false }: ProjectTeamsL
                 open={isCreateOpen}
                 onOpenChange={setIsCreateOpen}
             />
+
+            {/* Edit Team Modal */}
+            {editTeam && (
+                <EditProjectTeamModal
+                    projectId={projectId}
+                    team={editTeam}
+                    open={!!editTeam}
+                    onOpenChange={(open) => !open && setEditTeam(null)}
+                />
+            )}
 
             {/* View Members Modal */}
             {viewMembersTeam && (
