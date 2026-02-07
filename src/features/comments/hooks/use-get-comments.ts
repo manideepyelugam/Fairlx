@@ -24,7 +24,11 @@ export const useGetComments = ({ taskId, workspaceId }: UseGetCommentsProps) => 
       return data;
     },
     enabled: !!taskId && !!workspaceId,
-    refetchInterval: 60000, // Refetch every 60 seconds (reduced from 30s to lower DB reads)
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    // REMOVED refetchInterval — comments should NOT auto-poll.
+    // Use Appwrite Realtime or manual refresh instead.
+    // Was doing 1 DB read every 60s for EVERY open task detail view.
+    refetchOnWindowFocus: false,
   });
 
   return query;

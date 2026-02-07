@@ -135,6 +135,75 @@ export async function getLifecycleState(): Promise<ResolvedLifecycle> {
     }
 }
 
+/**
+ * OPTIMIZED: Single resolver that returns BOTH legacy + new lifecycle state.
+ * This eliminates the duplicate resolveUserLifecycleState() call that was
+ * causing ~12 DB reads per lifecycle poll (now ~6).
+ * 
+ * Used by the /api/auth/lifecycle endpoint.
+ */
+export async function getLifecycleStateWithLegacy(): Promise<{
+    legacyState: AccountLifecycleState;
+    lifecycle: ResolvedLifecycle;
+}> {
+    try {
+        const { account, databases } = await createSessionClient();
+
+        let user = null;
+        try {
+            user = await account.get();
+        } catch {
+            // Not authenticated
+        }
+
+        // SINGLE call to the resolver — the key optimization
+        const lifecycle = await resolveUserLifecycleState(databases, user);
+        const legacyState = convertToLegacyState(lifecycle, user);
+
+        return { legacyState, lifecycle };
+    } catch {
+        const lifecycle: ResolvedLifecycle = {
+            state: LifecycleState.UNAUTHENTICATED,
+            userId: null,
+            accountType: null,
+            orgId: null,
+            orgName: null,
+            orgImageUrl: null,
+            orgRole: null,
+            orgMemberStatus: null,
+            workspaceId: null,
+            hasWorkspace: false,
+            mustResetPassword: false,
+            isEmailVerified: false,
+            billingStatus: null,
+            redirectTo: "/sign-in",
+            allowedPaths: ["/sign-in", "/sign-up", "/oauth"],
+            blockedPaths: ["*"],
+        };
+        return {
+            legacyState: {
+                isLoaded: true,
+                isLoading: false,
+                isAuthenticated: false,
+                hasUser: false,
+                isEmailVerified: false,
+                hasOrg: false,
+                hasWorkspace: false,
+                user: null,
+                accountType: null,
+                activeMember: null,
+                activeOrgId: null,
+                activeOrgName: null,
+                activeOrgImageUrl: null,
+                activeWorkspaceId: null,
+                mustResetPassword: false,
+                orgRole: null,
+            },
+            lifecycle,
+        };
+    }
+}
+
 // Legacy alias for backward compatibility during migration
 export const resolveAccountState = resolveAccountLifecycleState;
 
