@@ -24,6 +24,7 @@ export const verificationHelper = {
         databases,
         messaging,
         userId,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         userEmail,
         userName,
     }: CreateCustomVerificationParams) {

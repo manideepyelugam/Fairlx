@@ -48,8 +48,8 @@ export const useProjectPermissions = ({ projectId, workspaceId }: UseProjectPerm
             return json.data as ProjectPermissionResult;
         },
         enabled: !!projectId,
-        staleTime: 30000, // Cache for 30 seconds
-        refetchOnWindowFocus: true, // Refetch when user returns to tab
+        staleTime: 5 * 60 * 1000, // 5 minutes — permissions rarely change mid-session
+        refetchOnWindowFocus: false, // DISABLED — was causing reads on every alt-tab
     });
 
     const permissions = useMemo(() => data?.permissions || [], [data]);
