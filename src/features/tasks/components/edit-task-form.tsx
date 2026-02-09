@@ -65,8 +65,10 @@ export const EditTaskForm = ({
   const form = useForm<z.infer<typeof updateTaskSchema>>({
     resolver: zodResolver(updateTaskSchema),
     defaultValues: {
-      ...initialValues,
-      name: initialValues.name || initialValues.title,
+      name: initialValues.name || initialValues.title || "",
+      type: initialValues.type ?? undefined,
+      status: initialValues.status,
+      projectId: initialValues.projectId,
       dueDate: initialValues.dueDate
         ? new Date(initialValues.dueDate)
         : undefined,
@@ -75,6 +77,11 @@ export const EditTaskForm = ({
         : undefined,
       assigneeIds: initialValues.assigneeIds || (initialValues.assigneeId ? [initialValues.assigneeId] : []),
       assignedTeamIds: initialValues.assignedTeamIds || (initialValues.assignedTeamId ? [initialValues.assignedTeamId] : []),
+      description: initialValues.description ?? undefined,
+      estimatedHours: initialValues.estimatedHours ?? undefined,
+      storyPoints: initialValues.storyPoints ?? undefined,
+      priority: initialValues.priority ?? undefined,
+      labels: initialValues.labels ?? undefined,
       flagged: initialValues.flagged ?? false,
     },
   });
@@ -169,32 +176,34 @@ export const EditTaskForm = ({
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="dueDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Start Date</FormLabel>
-                    <FormControl>
-                      <DatePicker {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="endDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>End Date (Optional)</FormLabel>
-                    <FormControl>
-                      <DatePicker {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="dueDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Start Date</FormLabel>
+                      <FormControl>
+                        <DatePicker {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="endDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>End Date (Optional)</FormLabel>
+                      <FormControl>
+                        <DatePicker {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <FormField
                 control={form.control}
                 name="assigneeIds"

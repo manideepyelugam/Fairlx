@@ -294,6 +294,15 @@ export const DataKanban = ({
       if (!result.destination) return;
 
       const { source, destination } = result;
+      
+      // If dropped in the same position, do nothing
+      if (
+        source.droppableId === destination.droppableId &&
+        source.index === destination.index
+      ) {
+        return;
+      }
+
       const sourceStatus = source.droppableId as TaskStatus;
       const destStatus = destination.droppableId as TaskStatus;
 
@@ -451,7 +460,7 @@ export const DataKanban = ({
             return (
               <div
                 key={board}
-                className="flex-1 bg-muted/30 dark:bg-muted/10 rounded-xl min-w-[280px] max-w-[320px] ring-1 ring-border"
+                className="bg-muted/30 dark:bg-muted/10 rounded-xl min-w-[280px] w-[320px] ring-1 ring-border shrink-0"
               >
                 <KanbanColumnHeader
                   board={board}
