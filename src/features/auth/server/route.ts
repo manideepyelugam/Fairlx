@@ -137,7 +137,6 @@ const app = new Hono()
           databases,
           messaging,
           userId: user.$id,
-          userEmail: email,
           userName: name,
         });
       } catch (verifyError) {
@@ -620,7 +619,6 @@ const app = new Hono()
           databases,
           messaging,
           userId: user.$id,
-          userEmail: email,
           userName: user.name,
         });
       } catch (verifyError) {

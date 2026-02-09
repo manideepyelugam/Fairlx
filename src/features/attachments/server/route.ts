@@ -2,7 +2,6 @@ import { createAdminClient } from "@/lib/appwrite";
 import { DATABASE_ID, ATTACHMENTS_ID, ATTACHMENTS_BUCKET_ID, TASKS_ID } from "@/config";
 import { Attachment } from "../types";
 import { Query, ID } from "node-appwrite";
-// Removed unused imports
 import { Task } from "@/features/tasks/types";
 
 export const getAttachments = async (taskId: string, workspaceId: string): Promise<Attachment[]> => {

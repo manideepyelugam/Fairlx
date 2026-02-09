@@ -155,8 +155,8 @@ export function EditProjectTeamModal({
                                                     type="button"
                                                     onClick={() => field.onChange(color)}
                                                     className={`w-8 h-8 rounded-full border-2 transition-all ${field.value === color
-                                                            ? "border-primary scale-110"
-                                                            : "border-transparent"
+                                                        ? "border-primary scale-110"
+                                                        : "border-transparent"
                                                         }`}
                                                     style={{ backgroundColor: color }}
                                                     disabled={isPending}

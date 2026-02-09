@@ -1,13 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, X, GripVertical } from "lucide-react";
+import { Plus, GripVertical, MoreVertical, Edit2, Trash2 } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-// import { cn } from "@/lib/utils"; // Removed unused import
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { IconPicker } from "@/components/icon-picker";
+import { ColorPicker } from "@/components/color-picker";
+import * as LucideIcons from "lucide-react";
 
 interface WorkItemType {
     key: string;
@@ -21,32 +36,17 @@ interface WorkTypesSettingsProps {
     onChange: (types: WorkItemType[]) => void;
 }
 
-const AVAILABLE_ICONS = [
-    { value: "check-square", label: "Check Square" },
-    { value: "bookmark", label: "Bookmark" },
-    { value: "bug", label: "Bug" },
-    { value: "clipboard", label: "Clipboard" },
-    { value: "file-text", label: "File Text" },
-    { value: "target", label: "Target" },
-    { value: "zap", label: "Zap" },
-];
-
-const AVAILABLE_COLORS = [
-    { value: "#3b82f6", label: "Blue" },
-    { value: "#22c55e", label: "Green" },
-    { value: "#ef4444", label: "Red" },
-    { value: "#f59e0b", label: "Amber" },
-    { value: "#8b5cf6", label: "Violet" },
-    { value: "#ec4899", label: "Pink" },
-];
+// Basic icons for initial suggestions, but IconPicker allows searching all
 
 export const WorkTypesSettings = ({ types = [], onChange }: WorkTypesSettingsProps) => {
     const [newType, setNewType] = useState<WorkItemType>({
         key: "",
         label: "",
-        icon: "check-square",
+        icon: "CheckSquare",
         color: "#3b82f6"
     });
+
+    const [editingType, setEditingType] = useState<{ index: number; type: WorkItemType } | null>(null);
 
     const handleAdd = () => {
         if (!newType.label) return;
@@ -57,9 +57,17 @@ export const WorkTypesSettings = ({ types = [], onChange }: WorkTypesSettingsPro
         setNewType({
             key: "",
             label: "",
-            icon: "check-square",
+            icon: "CheckSquare",
             color: "#3b82f6"
         });
+    };
+
+    const handleUpdate = () => {
+        if (!editingType) return;
+        const newTypes = [...types];
+        newTypes[editingType.index] = editingType.type;
+        onChange(newTypes);
+        setEditingType(null);
     };
 
     const handleRemove = (index: number) => {
@@ -91,46 +99,23 @@ export const WorkTypesSettings = ({ types = [], onChange }: WorkTypesSettingsPro
                             placeholder="e.g. Feature, Bug, Task"
                         />
                     </div>
-                    <div className="w-40 space-y-2">
+                    <div className="w-60 space-y-2">
                         <Label className="text-xs">Icon</Label>
-                        <Select
-                            value={newType.icon}
-                            onValueChange={(val) => setNewType({ ...newType, icon: val })}
-                        >
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {AVAILABLE_ICONS.map(icon => (
-                                    <SelectItem key={icon.value} value={icon.value}>
-                                        {icon.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <div className="flex gap-2">
+                            <IconPicker
+                                value={newType.icon}
+                                onChange={(val) => setNewType({ ...newType, icon: val })}
+                            />
+                        </div>
                     </div>
-                    <div className="w-40 space-y-2">
+                    <div className="w-60 space-y-2">
                         <Label className="text-xs">Color</Label>
-                        <Select
+                        <ColorPicker
                             value={newType.color}
-                            onValueChange={(val) => setNewType({ ...newType, color: val })}
-                        >
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {AVAILABLE_COLORS.map(color => (
-                                    <SelectItem key={color.value} value={color.value}>
-                                        <div className="flex items-center gap-2">
-                                            <div className="size-3 rounded-full" style={{ backgroundColor: color.value }} />
-                                            {color.label}
-                                        </div>
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                            onChange={(val) => setNewType({ ...newType, color: val })}
+                        />
                     </div>
-                    <Button onClick={handleAdd} type="button">
+                    <Button onClick={handleAdd} type="button" className="h-10">
                         <Plus className="size-4 mr-2" />
                         Add
                     </Button>
@@ -158,21 +143,36 @@ export const WorkTypesSettings = ({ types = [], onChange }: WorkTypesSettingsPro
                                                     className="size-8 rounded-md flex items-center justify-center text-white"
                                                     style={{ backgroundColor: type.color }}
                                                 >
-                                                    {/* We'll implement dynamic icon rendering later if needed, for now simplified */}
-                                                    <div className="size-4 bg-current opacity-50" />
+                                                    {(() => {
+                                                        const icons = LucideIcons as unknown as Record<string, LucideIcons.LucideIcon>;
+                                                        const Icon = icons[type.icon] || LucideIcons.CheckSquare;
+                                                        return <Icon className="size-4" />;
+                                                    })()}
                                                 </div>
                                                 <div className="flex-1">
                                                     <p className="font-medium text-sm">{type.label}</p>
                                                     <p className="text-xs text-muted-foreground">{type.key}</p>
                                                 </div>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                    onClick={() => handleRemove(index)}
-                                                >
-                                                    <X className="size-4" />
-                                                </Button>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                            <MoreVertical className="size-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onClick={() => setEditingType({ index, type })}>
+                                                            <Edit2 className="size-4 mr-2" />
+                                                            Edit
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem
+                                                            className="text-destructive focus:text-destructive"
+                                                            onClick={() => handleRemove(index)}
+                                                        >
+                                                            <Trash2 className="size-4 mr-2" />
+                                                            Delete
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
                                             </div>
                                         )}
                                     </Draggable>
@@ -188,6 +188,61 @@ export const WorkTypesSettings = ({ types = [], onChange }: WorkTypesSettingsPro
                     </div>
                 )}
             </div>
+
+            <Dialog open={!!editingType} onOpenChange={(open) => !open && setEditingType(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Edit Work Item Type</DialogTitle>
+                        <DialogDescription>
+                            Change the name, icon, and color for this work item type.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {editingType && (
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label>Label</Label>
+                                <Input
+                                    value={editingType.type.label}
+                                    onChange={(e) => setEditingType({
+                                        ...editingType,
+                                        type: { ...editingType.type, label: e.target.value }
+                                    })}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Icon</Label>
+                                    <IconPicker
+                                        value={editingType.type.icon}
+                                        onChange={(val) => setEditingType({
+                                            ...editingType,
+                                            type: { ...editingType.type, icon: val }
+                                        })}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Color</Label>
+                                    <ColorPicker
+                                        value={editingType.type.color}
+                                        onChange={(val) => setEditingType({
+                                            ...editingType,
+                                            type: { ...editingType.type, color: val }
+                                        })}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setEditingType(null)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleUpdate}>
+                            Save Changes
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };
