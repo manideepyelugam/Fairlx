@@ -6,7 +6,6 @@ interface CreateCustomVerificationParams {
     databases: Databases;
     messaging: Messaging;
     userId: string;
-    userEmail: string;
     userName: string;
 }
 
@@ -24,8 +23,6 @@ export const verificationHelper = {
         databases,
         messaging,
         userId,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        userEmail,
         userName,
     }: CreateCustomVerificationParams) {
         // Generate a secure random token

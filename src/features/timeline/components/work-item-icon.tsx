@@ -1,3 +1,4 @@
+import * as LucideIcons from "lucide-react";
 import { Layers, FileText, CheckSquare, Bug, ArrowRight, Bookmark, Clipboard, Target, Zap } from "lucide-react";
 import { WorkItemType } from "@/features/sprints/types";
 import { Project } from "@/features/projects/types";
@@ -9,6 +10,15 @@ interface WorkItemIconProps {
 }
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string, style?: React.CSSProperties }>> = {
+  "CheckSquare": CheckSquare,
+  "Bookmark": Bookmark,
+  "Bug": Bug,
+  "Clipboard": Clipboard,
+  "FileText": FileText,
+  "Target": Target,
+  "Zap": Zap,
+  "Layers": Layers,
+  "ArrowRight": ArrowRight,
   "check-square": CheckSquare,
   "bookmark": Bookmark,
   "bug": Bug,
@@ -25,7 +35,8 @@ export function WorkItemIcon({ type, className = "h-4 w-4", project }: WorkItemI
   if (project?.customWorkItemTypes) {
     const customType = project.customWorkItemTypes.find((t: { key: string }) => t.key === type);
     if (customType) {
-      const IconComponent = ICON_MAP[customType.icon] || CheckSquare;
+      const icons = LucideIcons as unknown as Record<string, LucideIcons.LucideIcon | React.ComponentType<{ className?: string, style?: React.CSSProperties }>>;
+      const IconComponent = icons[customType.icon] || ICON_MAP[customType.icon] || CheckSquare;
       return <IconComponent className={className} style={{ color: customType.color }} />;
     }
   }
