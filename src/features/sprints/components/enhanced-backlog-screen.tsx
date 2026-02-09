@@ -873,7 +873,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                           ) : (
                             <div className="divide-y divide-border">
                               {/* Column Header Row */}
-                              <div className="px-4 py-2 bg-muted/50 border-b border-border">
+                              {/* <div className="px-4 py-2 bg-muted/50 border-b border-border">
                                 <div className="flex items-center gap-4">
                                   <div className="flex items-center gap-3">
                                     <div className="w-5" />
@@ -889,7 +889,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                     <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[120px]">Assignee</span>
                                   </div>
                                 </div>
-                              </div>
+                              </div> */}
                               {sprintItems.map((item, index) => (
                                 <Draggable key={item.$id} draggableId={item.$id} index={index}>
                                   {(provided, snapshot) => (
@@ -1191,13 +1191,22 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                             </div>
                           ) : (
                             canCreateWorkItems && (
-                              <button
-                                onClick={() => setIsCreatingInSprint(sprint.$id)}
-                                className="w-full px-4 py-3 text-left text-sm text-muted-foreground hover:bg-accent transition-colors flex items-center gap-2 border-t border-border"
-                              >
-                                <Plus className="size-4" />
-                                Create work item
-                              </button>
+                              <div className="flex items-center gap-0 border-t border-border">
+                                <button
+                                  onClick={() => setIsCreatingInSprint(sprint.$id)}
+                                  className="w-1/2 px-4 py-3 text-left text-sm text-muted-foreground hover:bg-accent transition-colors flex items-center gap-2 border-r border-border"
+                                >
+                                  <Plus className="size-4" />
+                                  Create work item
+                                </button>
+                                <button
+                                  onClick={openCreateTaskModal}
+                                  className="w-1/2 px-4 py-3 text-left text-sm text-muted-foreground hover:bg-accent transition-colors flex items-center gap-2"
+                                >
+                                  <Plus className="size-4" />
+                                  Create full work item
+                                </button>
+                              </div>
                             )
                           )}
 
@@ -1590,13 +1599,22 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                       </div>
                     ) : (
                       canCreateWorkItems && (
-                        <button
-                          onClick={() => setIsCreatingInBacklog(true)}
-                          className="w-full px-4 py-3 text-left text-sm text-muted-foreground hover:bg-muted transition-colors flex items-center gap-2 border-t border-border"
-                        >
-                          <Plus className="size-4" />
-                          Create work item
-                        </button>
+                        <div className="flex items-center gap-0 border-t border-border">
+                          <button
+                            onClick={() => setIsCreatingInBacklog(true)}
+                            className="w-1/2 px-4 py-3 text-left text-sm text-muted-foreground hover:bg-muted transition-colors flex items-center gap-2 border-r border-border"
+                          >
+                            <Plus className="size-4" />
+                            Create work item
+                          </button>
+                          <button
+                            onClick={openCreateTaskModal}
+                            className="w-1/2 px-4 py-3 text-left text-sm text-muted-foreground hover:bg-muted transition-colors flex items-center gap-2"
+                          >
+                            <Plus className="size-4" />
+                            Create full work item
+                          </button>
+                        </div>
                       )
                     )}
 
