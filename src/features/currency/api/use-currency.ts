@@ -18,8 +18,8 @@ export function useGetCurrencyRates() {
             const json = await response.json();
             return json.data;
         },
-        staleTime: 5 * 60 * 1000, // 5 minutes
-        refetchInterval: 10 * 60 * 1000, // Refetch every 10 minutes
+        staleTime: 30 * 60 * 1000, // 30 minutes — exchange rates don't change frequently
+        refetchInterval: 60 * 60 * 1000, // Refetch every 60 minutes (was 10 min)
     });
 }
 

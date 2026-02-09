@@ -41,8 +41,8 @@ export function useGetBillingStatus(options: UseGetBillingStatusOptions = {}) {
             return response.json() as Promise<BillingStatusResponse>;
         },
         enabled,
-        // Refetch every 5 minutes to keep status fresh
-        staleTime: 5 * 60 * 1000,
-        refetchInterval: 5 * 60 * 1000,
+        // Billing status almost never changes — 30 min is sufficient
+        staleTime: 30 * 60 * 1000, // 30 minutes
+        refetchInterval: 30 * 60 * 1000, // Refetch every 30 minutes (was 5 min)
     });
 }

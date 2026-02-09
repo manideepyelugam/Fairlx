@@ -52,13 +52,12 @@ import userAccess from "@/features/user-access/server/route";
 // Wallet & Billing Mode
 import wallet from "@/features/wallet/server/route";
 import billingMode from "@/features/wallet/server/billing-mode";
-// Global Traffic Metering
-import { trafficMeteringMiddleware } from "@/lib/traffic-metering-middleware";
+// Global Traffic Metering - NOW WITH BATCHING
+// Events are collected in memory and flushed every 60s (1 write instead of ~3600/hr)
+import { batchedTrafficMeteringMiddleware } from "@/lib/traffic-metering-batched";
 
-// Apply global traffic metering to ALL requests
-// WHY: Every HTTP request MUST generate a usage event for billing
 const app = new Hono()
-  .use("*", trafficMeteringMiddleware)
+  .use("*", batchedTrafficMeteringMiddleware) // RE-ENABLED with batching
   .basePath("/api");
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

@@ -66,9 +66,9 @@ export function useUserAccess() {
 
             return response.json();
         },
-        staleTime: 1 * 60 * 1000, // 1 minute - shorter for responsive permission updates
-        gcTime: 10 * 60 * 1000, // 10 minutes
-        refetchOnWindowFocus: true, // Auto-refresh when user returns to tab
+        staleTime: 5 * 60 * 1000, // 5 minutes — permissions rarely change mid-session
+        gcTime: 15 * 60 * 1000, // 15 minutes
+        refetchOnWindowFocus: false, // DISABLED — was causing unnecessary reads on alt-tab
         refetchOnReconnect: true, // Auto-refresh on network reconnect
         enabled: true, // Always run, but behavior changes based on account type
     });

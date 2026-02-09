@@ -356,6 +356,14 @@ export const EnhancedDataKanban = ({
       const sourceColumnId = source.droppableId;
       const destColumnId = destination.droppableId;
 
+      // If dropped in the same position, do nothing
+      if (
+        sourceColumnId === destColumnId &&
+        source.index === destination.index
+      ) {
+        return;
+      }
+
       let updatesPayload: {
         $id: string;
         status: TaskStatus | string;
