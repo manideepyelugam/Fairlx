@@ -127,11 +127,11 @@ export const Tools = () => {
   };
 
   return (
-    <div className="flex flex-col px-3 py-4 border-t border-sidebar-border">
+    <div className="flex flex-col px-3 py-3 border-t border-sidebar-border">
       <div className="flex items-center justify-between">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-1 text-[13px] tracking-normal font-medium pl-2 text-sidebar-foreground/90 hover:text-sidebar-foreground"
+          className="flex items-center gap-1.5 text-[11px] tracking-wider uppercase font-semibold pl-2.5 text-sidebar-foreground/50 hover:text-sidebar-foreground/70 transition-colors"
         >
           {isExpanded ? (
             <ChevronDown className="size-3" />
@@ -142,8 +142,8 @@ export const Tools = () => {
         </button>
       </div>
 
-      <div className={`transition-all duration-1000 overflow-hidden ${isExpanded ? 'max-h-96' : 'max-h-0'}`}>
-        <div className="space-y-1 mt-2  pl-4 pt-2">
+      <div className={`transition-all duration-300 overflow-hidden ${isExpanded ? 'max-h-96' : 'max-h-0'}`}>
+        <div className="space-y-0.5 mt-2 pl-3">
           {visibleTools.map((tool) => {
             const isActive = isToolActive(tool);
             return (
@@ -151,13 +151,13 @@ export const Tools = () => {
                 key={tool.label}
                 onClick={() => handleToolClick(tool)}
                 className={cn(
-                  "flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer text-sm transition-colors w-full",
+                  "flex items-center gap-2.5 px-2.5 py-2 rounded-md cursor-pointer transition-colors w-full",
                   isActive
                     ? "bg-sidebar-accent text-sidebar-foreground"
-                    : "hover:bg-sidebar-accent text-sidebar-foreground/70"
+                    : "hover:bg-sidebar-accent/50 text-sidebar-foreground/70"
                 )}
               >
-                <span className={cn(isActive ? "text-primary" : "text-sidebar-foreground/70")}>
+                <span className={cn("flex-shrink-0", isActive ? "text-primary" : "text-sidebar-foreground/60")}>
                   {tool.icon}
                 </span>
                 <span className="truncate text-xs font-medium">{tool.label}</span>

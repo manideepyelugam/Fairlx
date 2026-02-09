@@ -88,7 +88,10 @@ const AttachmentItem = ({ attachment, workspaceId }: AttachmentItemProps) => {
       <Card className="hover:bg-gray-50 transition-colors">
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3 flex-1 min-w-0">
+            <button
+              onClick={isPreviewable ? handlePreview : handleDownload}
+              className="flex items-center space-x-3 flex-1 min-w-0 text-left cursor-pointer hover:opacity-80 transition-opacity"
+            >
               <div className="flex-shrink-0">
                 {getFileIcon(attachment.mimeType)}
               </div>
@@ -101,7 +104,7 @@ const AttachmentItem = ({ attachment, workspaceId }: AttachmentItemProps) => {
                   </Badge>
                 </div>
               </div>
-            </div>
+            </button>
             <div className="flex items-center space-x-2">
               {isPreviewable && (
                 <Button

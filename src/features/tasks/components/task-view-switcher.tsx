@@ -28,6 +28,7 @@ import EnhancedBacklogScreen from "@/features/sprints/components/enhanced-backlo
 import { ProjectSetupOverlay } from "@/features/sprints/components/project-setup-overlay";
 import { useGetWorkItems, useGetSprints, SprintStatus, WorkItemStatus, WorkItemPriority, PopulatedWorkItem, useBulkUpdateWorkItems } from "@/features/sprints";
 import { CompleteSprintModal } from "@/features/sprints/components/complete-sprint-modal";
+import { CreateWorkItemModal } from "@/features/sprints";
 
 
 import { useTaskFilters } from "../hooks/use-task-filters";
@@ -403,6 +404,7 @@ export const TaskViewSwitcher = ({
               Complete Sprint {setupState.activeSprint.name}
             </Button>
           )}
+      
         </div>
 
 
@@ -543,6 +545,7 @@ export const TaskViewSwitcher = ({
           />
         )
       }
+      <CreateWorkItemModal />
     </Tabs >
   );
 };

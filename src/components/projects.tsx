@@ -48,11 +48,11 @@ export const Projects = () => {
   };
 
   return (
-    <div className="flex flex-col px-3 py-2 border-t border-sidebar-border">
-      <div className="flex items-center justify-between ">
+    <div className="flex flex-col px-3 py-3 border-t border-sidebar-border">
+      <div className="flex items-center justify-between">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-1  text-[13px] tracking-normal font-medium pl-2 text-sidebar-foreground/80 hover:text-sidebar-foreground"
+          className="flex items-center gap-1.5 text-[11px] tracking-wider uppercase font-semibold pl-2.5 text-sidebar-foreground/50 hover:text-sidebar-foreground/70 transition-colors"
         >
           {isExpanded ? (
             <ChevronDown className="size-3" />

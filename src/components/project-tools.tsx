@@ -265,25 +265,18 @@ export const ProjectTools = () => {
   };
 
   return (
-    <div className="flex flex-col px-3 py-2 border-t border-sidebar-border">
+    <div className="flex flex-col px-3 py-3 border-t border-sidebar-border">
       {/* Project Header with Toggle */}
-      <div className="flex items-center mt-2  justify-between">
+      <div className="flex items-center justify-between">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-2 text-[13px] tracking-normal font-medium pl-2 text-sidebar-foreground/90 hover:text-sidebar-foreground w-full"
+          className="flex items-center gap-1.5 text-[11px] tracking-wider uppercase font-semibold pl-2.5 text-sidebar-foreground/50 hover:text-sidebar-foreground/70 transition-colors w-full"
         >
-          <span className="flex items-center gap-1">
-            {isExpanded ? (
-              <ChevronDown className="size-3" />
-            ) : (
-              <ChevronRight className="size-3" />
-            )}
-          </span>
-          {/* <ProjectAvatar
-            name={project.name}
-            image={project.imageUrl}
-            className="size-5"
-          /> */}
+          {isExpanded ? (
+            <ChevronDown className="size-3" />
+          ) : (
+            <ChevronRight className="size-3" />
+          )}
           <span className="truncate max-w-[170px]" title={project.name}>
             {project.name} Project Tools
           </span>
@@ -297,7 +290,7 @@ export const ProjectTools = () => {
           isExpanded ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
         )}
       >
-        <div className="space-y-0.5 mt-2 pl-4 pt-1">
+        <div className="space-y-0.5 mt-2 pl-3">
           {visibleTools.map((tool) => {
             const isActive = isToolActive(tool);
             return (
@@ -305,15 +298,15 @@ export const ProjectTools = () => {
                 key={tool.id}
                 onClick={() => handleToolClick(tool)}
                 className={cn(
-                  "flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer text-sm transition-colors w-full",
+                  "flex items-center gap-2.5 px-2.5 py-2 rounded-md cursor-pointer transition-colors w-full",
                   isActive
                     ? "bg-sidebar-accent text-sidebar-foreground font-medium"
                     : "hover:bg-sidebar-accent/50 text-sidebar-foreground/70"
                 )}
               >
                 <span className={cn(
-                  "transition-colors",
-                  isActive && "text-primary"
+                  "flex-shrink-0 transition-colors",
+                  isActive ? "text-primary" : "text-sidebar-foreground/60"
                 )}>
                   {tool.icon}
                 </span>

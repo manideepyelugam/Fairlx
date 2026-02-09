@@ -356,11 +356,8 @@ export const EnhancedDataKanban = ({
       const sourceColumnId = source.droppableId;
       const destColumnId = destination.droppableId;
 
-      // If dropped in the same position, do nothing
-      if (
-        sourceColumnId === destColumnId &&
-        source.index === destination.index
-      ) {
+      // Early return if no actual movement
+      if (sourceColumnId === destColumnId && source.index === destination.index) {
         return;
       }
 
@@ -370,10 +367,13 @@ export const EnhancedDataKanban = ({
         position: number;
       }[] = [];
 
+      // Store previous state for potential rollback
+      const previousTasks = tasks;
+
       setTasks((prevTasks) => {
         const newTasks = { ...prevTasks };
 
-        const sourceColumn = [...newTasks[sourceColumnId]];
+        const sourceColumn = [...(newTasks[sourceColumnId] || [])];
         const [movedTask] = sourceColumn.splice(source.index, 1);
 
         if (!movedTask) {
@@ -387,7 +387,7 @@ export const EnhancedDataKanban = ({
 
         newTasks[sourceColumnId] = sourceColumn;
 
-        const destColumn = [...newTasks[destColumnId]];
+        const destColumn = [...(newTasks[destColumnId] || [])];
         destColumn.splice(destination.index, 0, updatedMovedTask);
         newTasks[destColumnId] = destColumn;
 
@@ -432,10 +432,16 @@ export const EnhancedDataKanban = ({
 
       // Only call onChange if we have valid updates
       if (Array.isArray(updatesPayload) && updatesPayload.length > 0) {
-        onChange(updatesPayload);
+        try {
+          onChange(updatesPayload);
+        } catch (error) {
+          // Rollback on error
+          console.error('Failed to update task positions:', error);
+          setTasks(previousTasks);
+        }
       }
     },
-    [orderedColumns, onChange, updateColumnOrder, workspaceId, projectId]
+    [orderedColumns, onChange, updateColumnOrder, workspaceId, projectId, tasks]
   );
 
   // Derive body content states (keep hooks above regardless of state)
