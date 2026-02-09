@@ -3,8 +3,7 @@
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Users, Image as ImageIcon } from "lucide-react";
-import { useRef } from "react";
+import { Loader2, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -24,7 +23,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 import { useUpdateProjectTeam } from "../api/use-update-project-team";
 import { PopulatedProjectTeam } from "../types";
@@ -157,8 +155,8 @@ export function EditProjectTeamModal({
                                                     type="button"
                                                     onClick={() => field.onChange(color)}
                                                     className={`w-8 h-8 rounded-full border-2 transition-all ${field.value === color
-                                                            ? "border-primary scale-110"
-                                                            : "border-transparent"
+                                                        ? "border-primary scale-110"
+                                                        : "border-transparent"
                                                         }`}
                                                     style={{ backgroundColor: color }}
                                                     disabled={isPending}

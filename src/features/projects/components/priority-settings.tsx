@@ -1,12 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, X, GripVertical } from "lucide-react";
+import { Plus, GripVertical, MoreVertical, Edit2, Trash2 } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { ColorPicker } from "@/components/color-picker";
 
 interface Priority {
     key: string;
@@ -20,13 +34,7 @@ interface PrioritySettingsProps {
     onChange: (priorities: Priority[]) => void;
 }
 
-const AVAILABLE_COLORS = [
-    { value: "#3b82f6", label: "Blue" }, // Low
-    { value: "#22c55e", label: "Green" }, // Normal
-    { value: "#f59e0b", label: "Amber" }, // High
-    { value: "#ef4444", label: "Red" },   // Urgent
-    { value: "#71717a", label: "Gray" },
-];
+// Basic colors for initial suggestions now handled by ColorPicker
 
 export const PrioritySettings = ({ priorities = [], onChange }: PrioritySettingsProps) => {
     const [newPriority, setNewPriority] = useState<Priority>({
@@ -35,6 +43,8 @@ export const PrioritySettings = ({ priorities = [], onChange }: PrioritySettings
         color: "#22c55e",
         level: 1
     });
+
+    const [editingPriority, setEditingPriority] = useState<{ index: number; priority: Priority } | null>(null);
 
     const handleAdd = () => {
         if (!newPriority.label) return;
@@ -50,6 +60,14 @@ export const PrioritySettings = ({ priorities = [], onChange }: PrioritySettings
             color: "#22c55e",
             level: 1
         });
+    };
+
+    const handleUpdate = () => {
+        if (!editingPriority) return;
+        const newPriorities = [...priorities];
+        newPriorities[editingPriority.index] = editingPriority.priority;
+        onChange(newPriorities);
+        setEditingPriority(null);
     };
 
     const handleRemove = (index: number) => {
@@ -87,26 +105,12 @@ export const PrioritySettings = ({ priorities = [], onChange }: PrioritySettings
                             placeholder="e.g. Critical, Low"
                         />
                     </div>
-                    <div className="w-40 space-y-2">
+                    <div className="w-60 space-y-2">
                         <Label className="text-xs">Color</Label>
-                        <Select
+                        <ColorPicker
                             value={newPriority.color}
-                            onValueChange={(val) => setNewPriority({ ...newPriority, color: val })}
-                        >
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {AVAILABLE_COLORS.map(color => (
-                                    <SelectItem key={color.value} value={color.value}>
-                                        <div className="flex items-center gap-2">
-                                            <div className="size-3 rounded-full" style={{ backgroundColor: color.value }} />
-                                            {color.label}
-                                        </div>
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                            onChange={(val) => setNewPriority({ ...newPriority, color: val })}
+                        />
                     </div>
                     <Button onClick={handleAdd} type="button">
                         <Plus className="size-4 mr-2" />
@@ -140,14 +144,26 @@ export const PrioritySettings = ({ priorities = [], onChange }: PrioritySettings
                                                     <span className="font-medium text-sm mr-2">{item.label}</span>
                                                     <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">Level {item.level}</span>
                                                 </div>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                    onClick={() => handleRemove(index)}
-                                                >
-                                                    <X className="size-4" />
-                                                </Button>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                            <MoreVertical className="size-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onClick={() => setEditingPriority({ index, priority: item })}>
+                                                            <Edit2 className="size-4 mr-2" />
+                                                            Edit
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem
+                                                            className="text-destructive focus:text-destructive"
+                                                            onClick={() => handleRemove(index)}
+                                                        >
+                                                            <Trash2 className="size-4 mr-2" />
+                                                            Delete
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
                                             </div>
                                         )}
                                     </Draggable>
@@ -163,6 +179,49 @@ export const PrioritySettings = ({ priorities = [], onChange }: PrioritySettings
                     </div>
                 )}
             </div>
+
+            <Dialog open={!!editingPriority} onOpenChange={(open) => !open && setEditingPriority(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Edit Priority</DialogTitle>
+                        <DialogDescription>
+                            Change the name and color for this priority.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {editingPriority && (
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label>Label</Label>
+                                <Input
+                                    value={editingPriority.priority.label}
+                                    onChange={(e) => setEditingPriority({
+                                        ...editingPriority,
+                                        priority: { ...editingPriority.priority, label: e.target.value }
+                                    })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Color</Label>
+                                <ColorPicker
+                                    value={editingPriority.priority.color}
+                                    onChange={(val) => setEditingPriority({
+                                        ...editingPriority,
+                                        priority: { ...editingPriority.priority, color: val }
+                                    })}
+                                />
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setEditingPriority(null)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleUpdate}>
+                            Save Changes
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

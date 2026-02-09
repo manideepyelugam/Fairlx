@@ -2,9 +2,9 @@ import { createAdminClient } from "@/lib/appwrite";
 import { DATABASE_ID, COMMENTS_ID, TASKS_ID } from "@/config";
 import { Comment, PopulatedComment, CommentAuthor } from "../types";
 import { Query, ID } from "node-appwrite";
-import { dispatchWorkitemEvent, createCommentAddedEvent, createMentionEvent } from "@/lib/notifications";
+import { dispatchWorkitemEvent, createCommentAddedEvent } from "@/lib/notifications";
 import { Task } from "@/features/tasks/types";
-import { extractMentions, extractSnippet } from "@/lib/mentions";
+import { extractMentions } from "@/lib/mentions";
 
 // Get all comments for a task, optionally filtering by parentId
 export const getComments = async (
@@ -95,7 +95,6 @@ export const createComment = async (data: {
     );
     const authorName = data.authorName || "Someone";
     const mentionedUserIds = extractMentions(data.content);
-    const snippet = extractSnippet(data.content);
 
     // console.log("[Comments] Creating comment, content:", data.content.slice(0, 200));
     // console.log("[Comments] Extracted mentions:", mentionedUserIds);

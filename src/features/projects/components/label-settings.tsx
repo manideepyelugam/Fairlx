@@ -1,10 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, MoreVertical, Edit2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { ColorPicker } from "@/components/color-picker";
 
 interface CustomLabel {
     name: string;
@@ -17,6 +32,8 @@ interface LabelSettingsProps {
 }
 
 export const LabelSettings = ({ labels = [], onChange }: LabelSettingsProps) => {
+    const [editingLabel, setEditingLabel] = useState<{ index: number; label: CustomLabel } | null>(null);
+
     const [newLabel, setNewLabel] = useState<CustomLabel>({
         name: "",
         color: "#6b7280"
@@ -38,6 +55,14 @@ export const LabelSettings = ({ labels = [], onChange }: LabelSettingsProps) => 
         });
     };
 
+    const handleUpdate = () => {
+        if (!editingLabel) return;
+        const newLabels = [...labels];
+        newLabels[editingLabel.index] = editingLabel.label;
+        onChange(newLabels);
+        setEditingLabel(null);
+    };
+
     const handleRemove = (index: number) => {
         const newLabels = [...labels];
         newLabels.splice(index, 1);
@@ -57,16 +82,12 @@ export const LabelSettings = ({ labels = [], onChange }: LabelSettingsProps) => 
                             placeholder="e.g. Frontend, Backend, Design"
                         />
                     </div>
-                    <div className="w-20 space-y-2">
+                    <div className="w-60 space-y-2">
                         <Label className="text-xs">Color</Label>
-                        <div className="flex items-center gap-2">
-                            <Input
-                                type="color"
-                                value={newLabel.color}
-                                onChange={(e) => setNewLabel({ ...newLabel, color: e.target.value })}
-                                className="w-12 h-10 p-1 cursor-pointer"
-                            />
-                        </div>
+                        <ColorPicker
+                            value={newLabel.color}
+                            onChange={(val) => setNewLabel({ ...newLabel, color: val })}
+                        />
                     </div>
                     <Button onClick={handleAdd} type="button">
                         <Plus className="size-4 mr-2" />
@@ -85,14 +106,26 @@ export const LabelSettings = ({ labels = [], onChange }: LabelSettingsProps) => 
                             />
                             <span className="text-sm font-medium">{label.name}</span>
                         </div>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-7 opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => handleRemove(index)}
-                        >
-                            <X className="size-3.5" />
-                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreVertical className="size-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => setEditingLabel({ index, label })}>
+                                    <Edit2 className="size-4 mr-2" />
+                                    Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive"
+                                    onClick={() => handleRemove(index)}
+                                >
+                                    <Trash2 className="size-4 mr-2" />
+                                    Delete
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 ))}
             </div>
@@ -101,6 +134,49 @@ export const LabelSettings = ({ labels = [], onChange }: LabelSettingsProps) => 
                     No custom labels defined
                 </div>
             )}
+
+            <Dialog open={!!editingLabel} onOpenChange={(open) => !open && setEditingLabel(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Edit Label</DialogTitle>
+                        <DialogDescription>
+                            Change the name and color for this label.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {editingLabel && (
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label>Name</Label>
+                                <Input
+                                    value={editingLabel.label.name}
+                                    onChange={(e) => setEditingLabel({
+                                        ...editingLabel,
+                                        label: { ...editingLabel.label, name: e.target.value }
+                                    })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Color</Label>
+                                <ColorPicker
+                                    value={editingLabel.label.color}
+                                    onChange={(val) => setEditingLabel({
+                                        ...editingLabel,
+                                        label: { ...editingLabel.label, color: val }
+                                    })}
+                                />
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setEditingLabel(null)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleUpdate}>
+                            Save Changes
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

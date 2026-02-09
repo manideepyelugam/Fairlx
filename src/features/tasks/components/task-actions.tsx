@@ -41,13 +41,13 @@ export const TaskActions = ({
 
   const { open } = useEditTaskModal();
   const { can } = usePermission();
-  
+
   // Project-level permissions
   const {
     canEditTasksProject,
     canDeleteTasksProject,
   } = useProjectPermissions({ projectId, workspaceId });
-  
+
   // Check if user is workspace admin
   const { isAdmin } = useCurrentMember({ workspaceId });
   const isWorkspaceAdmin = isAdmin;
@@ -76,10 +76,6 @@ export const TaskActions = ({
 
   const onOpenTask = () => {
     router.push(`/workspaces/${workspaceId}/tasks/${id}`);
-  };
-
-  const onOpenProject = () => {
-    router.push(`/workspaces/${workspaceId}/projects/${projectId}`);
   };
 
   const canEditTask = canEdit && (isWorkspaceAdmin || canEditTasksProject || can(PERMISSIONS.WORKITEM_UPDATE));
