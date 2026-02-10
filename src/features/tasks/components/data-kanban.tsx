@@ -306,6 +306,11 @@ export const DataKanban = ({
       const sourceStatus = source.droppableId as TaskStatus;
       const destStatus = destination.droppableId as TaskStatus;
 
+      // Early return if no actual movement
+      if (sourceStatus === destStatus && source.index === destination.index) {
+        return;
+      }
+
       // Get the task being moved
       const movedTask = tasks[sourceStatus][source.index];
       if (!movedTask) {
@@ -355,11 +360,14 @@ export const DataKanban = ({
         position: number;
       }[] = [];
 
+      // Store previous state for potential rollback
+      const previousTasks = tasks;
+
       setTasks((prevTasks) => {
         const newTasks = { ...prevTasks };
 
         // Safely remove the task from the source column
-        const sourceColumn = [...newTasks[sourceStatus]];
+        const sourceColumn = [...(newTasks[sourceStatus] || [])];
         const [draggedTask] = sourceColumn.splice(source.index, 1);
 
         // If there's no moved task (shouldn't happen, but just in case), return the previous state
@@ -377,7 +385,7 @@ export const DataKanban = ({
         newTasks[sourceStatus] = sourceColumn;
 
         // Add the task to the destination column
-        const destColumn = [...newTasks[destStatus]];
+        const destColumn = [...(newTasks[destStatus] || [])];
         destColumn.splice(destination.index, 0, updatedMovedTask);
         newTasks[destStatus] = destColumn;
 
@@ -424,7 +432,14 @@ export const DataKanban = ({
         return newTasks;
       });
 
-      onChange(updatesPayload);
+      // Call onChange and handle errors with rollback
+      try {
+        onChange(updatesPayload);
+      } catch (error) {
+        console.error('Failed to update task positions:', error);
+        // Rollback to previous state on error
+        setTasks(previousTasks);
+      }
     },
     [onChange, project?.workflowId, statusKeyToIdMap, tasks, validateTransition]
   );
