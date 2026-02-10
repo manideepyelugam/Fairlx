@@ -1,5 +1,6 @@
-import { ExternalLink, TrashIcon, FlagIcon } from "lucide-react";
+import { ExternalLink, TrashIcon, FlagIcon, Share2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import { useConfirm } from "@/hooks/use-confirm";
 import {
@@ -76,6 +77,27 @@ export const TaskActions = ({
     router.push(`/workspaces/${workspaceId}/tasks/${id}`);
   };
 
+  const onShare = async () => {
+    const url = typeof window !== "undefined"
+      ? `${window.location.origin}/workspaces/${workspaceId}/tasks/${id}`
+      : `/workspaces/${workspaceId}/tasks/${id}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "Work Item", url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        toast.success("Link copied to clipboard");
+      }
+    } catch {
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success("Link copied to clipboard");
+      } catch {
+        toast.error("Failed to share");
+      }
+    }
+  };
+
   const canEditTask = canEdit && (isWorkspaceAdmin || canEditTasksProject || can(PERMISSIONS.WORKITEM_UPDATE));
   const canDeleteTask = canDelete && (isWorkspaceAdmin || canDeleteTasksProject || can(PERMISSIONS.WORKITEM_DELETE));
 
@@ -91,6 +113,13 @@ export const TaskActions = ({
           >
             <ExternalLink className="size-4 mr-2 stroke-2" />
             Work Item Details
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={onShare}
+            className="font-medium p-[10px]"
+          >
+            <Share2 className="size-4 mr-2 stroke-2" />
+            Share Work Item
           </DropdownMenuItem>
           {canEditTask && (
             <DropdownMenuItem

@@ -257,12 +257,48 @@ export async function resolveUserProjectAccess(
         }
 
         const membership = memberships.documents[0];
-        // Handle both patterns: inline role enum or roleId reference
-        // If role field is set, use it directly; otherwise default to MEMBER
-        const role = (membership.role as ProjectMemberRole) || ProjectMemberRole.MEMBER;
+        
+        // Handle BOTH patterns for role resolution:
+        // Pattern A: `role` field has ProjectMemberRole enum value ("PROJECT_OWNER", "PROJECT_ADMIN", etc.)
+        // Pattern B: `roleId` references a role document, `roleName` is denormalized ("OWNER", "ADMIN", etc.)
+        let role: ProjectMemberRole = ProjectMemberRole.MEMBER; // safe default
+        
+        // 1) Try the `role` enum field first
+        const rawRole = membership.role as string | undefined;
+        if (rawRole && Object.values(ProjectMemberRole).includes(rawRole as ProjectMemberRole)) {
+            role = rawRole as ProjectMemberRole;
+        }
+        // 2) Fallback: map `roleName` to ProjectMemberRole
+        else {
+            const roleName = (membership as unknown as { roleName?: string }).roleName;
+            if (roleName) {
+                const roleNameMap: Record<string, ProjectMemberRole> = {
+                    "OWNER": ProjectMemberRole.PROJECT_OWNER,
+                    "ADMIN": ProjectMemberRole.PROJECT_ADMIN,
+                    "MEMBER": ProjectMemberRole.MEMBER,
+                    "VIEWER": ProjectMemberRole.VIEWER,
+                };
+                role = roleNameMap[roleName.toUpperCase()] || ProjectMemberRole.MEMBER;
+            }
+        }
 
-        // 2. Get role-based permissions
-        const rolePermissions = ROLE_PERMISSIONS[role] || [];
+        // Get role-based permissions from the enum mapping
+        let rolePermissions: string[] = [...(ROLE_PERMISSIONS[role] || [])];
+        
+        // Also fetch permissions from the roleId-referenced role document (if it exists)
+        const roleId = (membership as unknown as { roleId?: string }).roleId;
+        if (roleId) {
+            try {
+                const { PROJECT_ROLES_ID } = await import("@/config");
+                const roleDoc = await databases.getDocument(DATABASE_ID, PROJECT_ROLES_ID, roleId);
+                const docPermissions = roleDoc.permissions as string[] | undefined;
+                if (docPermissions && Array.isArray(docPermissions)) {
+                    rolePermissions = [...new Set([...rolePermissions, ...docPermissions])];
+                }
+            } catch {
+                // Role document fetch failed - continue with enum-based permissions
+            }
+        }
 
         // 3. Get team memberships
         const teamMemberships = await databases.listDocuments<ProjectTeamMember>(
@@ -373,8 +409,8 @@ export function hasProjectPermission(
     access: ProjectAccessResult,
     permission: ProjectPermissionKey | string
 ): boolean {
-    // Owner always has access
-    if (access.isOwner) return true;
+    // Owner or Admin always has access
+    if (access.isOwner || access.isAdmin) return true;
 
     return access.permissions.includes(permission);
 }
