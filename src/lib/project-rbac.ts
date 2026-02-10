@@ -3,6 +3,7 @@ import { DATABASE_ID, PROJECT_MEMBERS_ID, PROJECT_ROLES_ID, MEMBERS_ID, PROJECT_
 import { ProjectMember, ProjectRole, ProjectPermissionResult } from "@/features/project-members/types";
 import { PROJECT_PERMISSIONS, DEFAULT_PROJECT_ROLES } from "./project-permissions";
 import { MemberRole } from "@/features/members/types";
+import { ROLE_PERMISSIONS } from "@/lib/permissions/resolveUserProjectAccess";
 
 /**
  * @deprecated This module is deprecated.
@@ -145,6 +146,60 @@ export async function getProjectPermissionResult(
     projectId: string
 ): Promise<ProjectPermissionResult> {
     try {
+        // --- Workspace Admin / Org Admin Override ---
+        // Check if user is a workspace admin or org admin and grant full permissions
+        try {
+            const { PROJECTS_ID, WORKSPACES_ID, ORGANIZATION_MEMBERS_ID } = await import("@/config");
+            const project = await databases.getDocument(DATABASE_ID, PROJECTS_ID, projectId);
+            const workspaceId = project.workspaceId;
+
+            // Check workspace admin
+            const isWsAdmin = await checkWorkspaceAdmin(databases, workspaceId, userId);
+            if (isWsAdmin) {
+                return {
+                    projectId,
+                    userId,
+                    permissions: Object.values(PROJECT_PERMISSIONS),
+                    roles: [{ roleId: "ws-admin", roleName: "Workspace Admin", teamId: "", teamName: "" }],
+                    isProjectAdmin: true,
+                };
+            }
+
+            // Check org admin
+            let organizationId: string | null = null;
+            try {
+                const workspace = await databases.getDocument(DATABASE_ID, WORKSPACES_ID, workspaceId);
+                organizationId = workspace.organizationId || null;
+            } catch { /* ignore */ }
+
+            if (organizationId) {
+                try {
+                    const orgMembers = await databases.listDocuments(
+                        DATABASE_ID,
+                        ORGANIZATION_MEMBERS_ID,
+                        [
+                            Query.equal("organizationId", organizationId),
+                            Query.equal("userId", userId),
+                            Query.equal("status", "ACTIVE"),
+                        ]
+                    );
+                    if (orgMembers.total > 0) {
+                        const orgRole = orgMembers.documents[0].role;
+                        if (["OWNER", "ADMIN", "MODERATOR"].includes(orgRole)) {
+                            return {
+                                projectId,
+                                userId,
+                                permissions: Object.values(PROJECT_PERMISSIONS),
+                                roles: [{ roleId: "org-admin", roleName: `Org ${orgRole}`, teamId: "", teamName: "" }],
+                                isProjectAdmin: true,
+                            };
+                        }
+                    }
+                } catch { /* ignore */ }
+            }
+        } catch { /* project fetch failed, continue with member-based resolution */ }
+
+        // --- Standard member-based resolution ---
         // Fetch all project memberships
         let memberships;
         try {
@@ -177,15 +232,22 @@ export async function getProjectPermissionResult(
             };
         }
 
-        // Collect role IDs
-        const roleIds = [...new Set(memberships.documents.map((m) => m.roleId))];
+        // Collect role IDs (filter out empty/undefined)
+        const roleIds = [...new Set(memberships.documents.map((m) => m.roleId).filter(Boolean))];
 
-        // Fetch roles
-        const roles = await databases.listDocuments<ProjectRole>(
-            DATABASE_ID,
-            PROJECT_ROLES_ID,
-            [Query.equal("$id", roleIds)]
-        );
+        // Fetch roles (only if there are valid roleIds)
+        let roles: { documents: ProjectRole[] } = { documents: [] };
+        if (roleIds.length > 0) {
+            try {
+                roles = await databases.listDocuments<ProjectRole>(
+                    DATABASE_ID,
+                    PROJECT_ROLES_ID,
+                    [Query.equal("$id", roleIds)]
+                );
+            } catch {
+                // Role fetch failed - continue with fallback
+            }
+        }
 
         // Build role-to-team mapping and collect role permissions
         const roleInfos: ProjectPermissionResult["roles"] = [];
@@ -202,6 +264,18 @@ export async function getProjectPermissionResult(
                 });
                 for (const permission of role.permissions || []) {
                     allPermissions.add(permission);
+                }
+            }
+
+            // Fallback: Also check the `role` field (PROJECT_OWNER, PROJECT_ADMIN, MEMBER, VIEWER)
+            // This handles cases where members have a direct role but no roleId
+            const memberRole = (membership as unknown as { role?: string }).role;
+            if (memberRole) {
+                const rolePerms = ROLE_PERMISSIONS[memberRole as keyof typeof ROLE_PERMISSIONS];
+                if (rolePerms) {
+                    for (const perm of rolePerms) {
+                        allPermissions.add(perm);
+                    }
                 }
             }
         }
@@ -259,8 +333,20 @@ export async function getProjectPermissionResult(
         }
 
         // Check if user is a project admin (has all permissions from default Project Admin role)
+        // Also check role field, roleName field, and role document name for OWNER/ADMIN
         const projectAdminPermissions = DEFAULT_PROJECT_ROLES.PROJECT_ADMIN.permissions;
-        const isProjectAdmin = projectAdminPermissions.every((p) => allPermissions.has(p));
+        const hasAdminPerms = projectAdminPermissions.every((p) => allPermissions.has(p));
+        const hasOwnerOrAdminRole = memberships.documents.some((m) => {
+            const mRole = (m as unknown as { role?: string }).role;
+            const mRoleName = (m as unknown as { roleName?: string }).roleName;
+            return mRole === "PROJECT_OWNER" || mRole === "PROJECT_ADMIN" ||
+                   mRoleName === "OWNER" || mRoleName === "ADMIN";
+        });
+        // Also check from role documents
+        const hasOwnerOrAdminRoleDoc = roleInfos.some(
+            (r) => r.roleName === "OWNER" || r.roleName === "ADMIN"
+        );
+        const isProjectAdmin = hasAdminPerms || hasOwnerOrAdminRole || hasOwnerOrAdminRoleDoc;
 
         return {
             projectId,

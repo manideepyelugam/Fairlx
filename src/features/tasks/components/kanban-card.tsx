@@ -59,10 +59,9 @@ export const KanbanCard = ({
         >
             <div className="flex p-4 flex-col items-start justify-between gap-x-2">
 
-                <div className="flex-1 flex w-full justify-between items-start">
-
+                {/* Row 1: Work Item Type + Priority + Actions */}
+                <div className="flex w-full justify-between items-center">
                     <div className="flex gap-2 items-center">
-
                         {task.type && (
                             <WorkItemIcon
                                 type={task.type}
@@ -70,7 +69,6 @@ export const KanbanCard = ({
                                 project={project}
                             />
                         )}
-
                         {task.priority && (
                             <PriorityBadge
                                 className="px-1"
@@ -78,25 +76,7 @@ export const KanbanCard = ({
                                 color={customPriority?.color}
                             />
                         )}
-
-                        {task.labels && task.labels.length > 0 && (
-                            <div className="flex  gap-1 ">
-                                {task.labels.slice(0, 2).map((label, index) => {
-                                    const customLabel = customLabels.find(l => l.name === label);
-                                    return (
-                                        <LabelBadge
-                                            key={index}
-                                            label={label}
-                                            color={customLabel?.color}
-                                        />
-                                    );
-                                })}
-
-                            </div>
-                        )}
-
                     </div>
-
 
                     <div className="flex items-center gap-1">
                         <TaskActions
@@ -112,8 +92,37 @@ export const KanbanCard = ({
                             />
                         </TaskActions>
                     </div>
-
                 </div>
+
+                {/* Row 2-3: Labels (max 2 rows with overflow +N) */}
+                {task.labels && task.labels.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2 max-h-[3.25rem] overflow-hidden items-start w-full">
+                        {(() => {
+                            const maxVisible = 4; // Show up to 4 labels across 2 rows
+                            const visibleLabels = task.labels.slice(0, maxVisible);
+                            const hiddenCount = task.labels.length - maxVisible;
+                            return (
+                                <>
+                                    {visibleLabels.map((label, index) => {
+                                        const customLabel = customLabels.find(l => l.name === label);
+                                        return (
+                                            <LabelBadge
+                                                key={index}
+                                                label={label}
+                                                color={customLabel?.color}
+                                            />
+                                        );
+                                    })}
+                                    {hiddenCount > 0 && (
+                                        <span className="text-[10px] text-muted-foreground bg-muted rounded-full px-1.5 py-0.5 border border-border whitespace-nowrap">
+                                            +{hiddenCount}
+                                        </span>
+                                    )}
+                                </>
+                            );
+                        })()}
+                    </div>
+                )}
 
                 <div className="flex items-start gap-2 mt-4 cursor-pointer">
                     {task.flagged && (
