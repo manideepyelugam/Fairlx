@@ -194,6 +194,11 @@ class NotificationDispatcher {
             recipients.add(event.metadata.mentionedUserId as string);
         }
 
+        // Add parent comment author for reply events
+        if (event.type === WorkitemEventType.WORKITEM_REPLY && event.metadata?.parentCommentAuthorId) {
+            recipients.add(event.metadata.parentCommentAuthorId as string);
+        }
+
         return Array.from(recipients);
     }
 
@@ -280,7 +285,7 @@ class NotificationDispatcher {
             const { databases } = await createAdminClient();
 
             // Map event type to supported database notification types
-            const supportedTypes = ["task_assigned", "task_updated", "task_completed", "task_deleted", "task_comment"];
+            const supportedTypes = ["task_assigned", "task_updated", "task_completed", "task_deleted", "task_comment", "task_mention", "task_reply"];
             const dbType = this.mapEventTypeToDbType(event.type);
             const finalType = supportedTypes.includes(dbType) ? dbType : "task_updated";
 
@@ -324,8 +329,11 @@ class NotificationDispatcher {
             case WorkitemEventType.WORKITEM_DELETED:
                 return "task_deleted";
             case WorkitemEventType.WORKITEM_COMMENT_ADDED:
-            case WorkitemEventType.WORKITEM_MENTION:
                 return "task_comment";
+            case WorkitemEventType.WORKITEM_MENTION:
+                return "task_mention";
+            case WorkitemEventType.WORKITEM_REPLY:
+                return "task_reply";
             default:
                 return "task_updated";
         }

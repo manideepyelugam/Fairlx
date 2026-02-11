@@ -100,6 +100,10 @@ export class EmailChannelHandler implements ChannelHandler {
                     return `💬 You were mentioned in: ${payload.title}`;
                 }
                 return `💬 New comment on: ${payload.title}`;
+            case WorkitemEventType.WORKITEM_MENTION:
+                return `@mention: ${payload.triggeredByName} mentioned you`;
+            case WorkitemEventType.WORKITEM_REPLY:
+                return `↩️ ${payload.triggeredByName} replied to your comment`;
             default:
                 return `Fairlx: ${payload.title}`;
         }
@@ -187,6 +191,24 @@ export class EmailChannelHandler implements ChannelHandler {
             );
         }
 
+        // Comment content for comment, mention, and reply notifications
+        if (metadata?.commentContent && (
+            type === WorkitemEventType.WORKITEM_COMMENT_ADDED ||
+            type === WorkitemEventType.WORKITEM_MENTION ||
+            type === WorkitemEventType.WORKITEM_REPLY
+        )) {
+            const commentText = (metadata.commentContent as string)
+                .replace(/\[([a-zA-Z0-9]+)\]/g, "") // Strip mention user IDs
+                .slice(0, 300);
+            content += createContentCard(
+                `<p style="margin: 0; font-size: ${typography.sizes.small}; color: ${colors.bodyText}; line-height: ${typography.lineHeight.relaxed}; font-family: ${typography.fontStack}; font-style: italic;">
+          "${commentText}"
+        </p>`,
+                type === WorkitemEventType.WORKITEM_MENTION ? colors.info : 
+                type === WorkitemEventType.WORKITEM_REPLY ? "#0ea5e9" : colors.success
+            );
+        }
+
         // CTA Button
         content += createPrimaryButton("View Task →", deepLinkUrl);
 
@@ -250,8 +272,22 @@ export class EmailChannelHandler implements ChannelHandler {
                 return {
                     emoji: "💬",
                     label: "New Comment",
+                    bgColor: colors.successLight,
+                    textColor: colors.successDark,
+                };
+            case WorkitemEventType.WORKITEM_MENTION:
+                return {
+                    emoji: "@",
+                    label: "You Were Mentioned",
                     bgColor: colors.infoLight,
                     textColor: colors.infoDark,
+                };
+            case WorkitemEventType.WORKITEM_REPLY:
+                return {
+                    emoji: "↩️",
+                    label: "Reply to Your Comment",
+                    bgColor: "#f0f9ff",
+                    textColor: "#0369a1",
                 };
             default:
                 return {

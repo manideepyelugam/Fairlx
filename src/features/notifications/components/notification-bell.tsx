@@ -10,8 +10,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useCurrent } from "@/features/auth/api/use-current";
@@ -26,8 +24,6 @@ export const NotificationBell = () => {
   const workspaceId = useWorkspaceId();
   const { data: currentUser } = useCurrent();
 
-  // Only fetch notifications when we have a valid workspaceId
-  // On org-level routes (like /organization), workspaceId will be undefined
   const hasWorkspace = Boolean(workspaceId);
 
   const { data: notifications, isLoading } = useGetNotifications({
@@ -50,7 +46,6 @@ export const NotificationBell = () => {
     userId: currentUser?.$id || "",
     enabled: hasWorkspace && Boolean(currentUser?.$id),
     onNewNotification: (notification) => {
-      // Show toast for new notifications
       toast(notification.title, {
         description: notification.summary,
         action: {
@@ -81,31 +76,28 @@ export const NotificationBell = () => {
           className="relative"
           aria-label="Notifications"
         >
-          <Bell className="h-5 w-5" />
+          <Bell className="h-[18px] w-[18px]" />
           {hasUnread && (
-            <Badge
-              variant="destructive"
-              className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-            >
-              {unreadCountValue > 9 ? "9+" : unreadCountValue}
-            </Badge>
+            <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-blue-500 text-white text-[10px] font-semibold leading-none">
+              {unreadCountValue > 99 ? "99+" : unreadCountValue}
+            </span>
           )}
         </Button>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
         align="end"
-        className="w-[380px] p-0"
+        className="w-[380px] p-0 rounded-xl shadow-lg border"
         sideOffset={8}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 pb-3">
-          <div>
-            <h3 className="font-semibold text-base">Notifications</h3>
+        <div className="flex items-center justify-between px-4 py-3 border-b">
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-sm">Notifications</h3>
             {hasUnread && (
-              <p className="text-xs text-muted-foreground">
-                {unreadCountValue} unread
-              </p>
+              <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-blue-500 text-white text-[11px] font-medium">
+                {unreadCountValue}
+              </span>
             )}
           </div>
 
@@ -115,7 +107,7 @@ export const NotificationBell = () => {
               variant="ghost"
               onClick={handleMarkAllAsRead}
               disabled={isMarkingAllAsRead}
-              className="h-8 text-xs"
+              className="h-7 text-xs text-muted-foreground hover:text-foreground"
             >
               {isMarkingAllAsRead ? (
                 <Loader2 className="h-3 w-3 animate-spin mr-1" />
@@ -127,36 +119,34 @@ export const NotificationBell = () => {
           )}
         </div>
 
-        <Separator />
-
         {/* Notifications List */}
-        <ScrollArea className="h-[400px]">
+        <ScrollArea className="max-h-[420px]">
           {!hasWorkspace ? (
-            <div className="flex flex-col items-center justify-center h-32 text-center px-4">
-              <Bell className="h-10 w-10 text-muted-foreground/50 mb-2" />
-              <p className="text-sm text-muted-foreground">
-                Select a workspace
-              </p>
-              <p className="text-xs text-muted-foreground">
+            <div className="flex flex-col items-center justify-center h-40 text-center px-4">
+              <div className="size-10 rounded-full bg-muted flex items-center justify-center mb-3">
+                <Bell className="h-5 w-5 text-muted-foreground/50" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">Select a workspace</p>
+              <p className="text-xs text-muted-foreground/60 mt-0.5">
                 Notifications are workspace-specific
               </p>
             </div>
           ) : isLoading ? (
-            <div className="flex items-center justify-center h-32">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <div className="flex items-center justify-center h-40">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
           ) : notificationsList.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-32 text-center px-4">
-              <Bell className="h-10 w-10 text-muted-foreground/50 mb-2" />
-              <p className="text-sm text-muted-foreground">
-                No notifications yet
-              </p>
-              <p className="text-xs text-muted-foreground">
-                You&apos;ll be notified when something happens
+            <div className="flex flex-col items-center justify-center h-40 text-center px-4">
+              <div className="size-10 rounded-full bg-muted flex items-center justify-center mb-3">
+                <Bell className="h-5 w-5 text-muted-foreground/50" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">All caught up</p>
+              <p className="text-xs text-muted-foreground/60 mt-0.5">
+                No new notifications
               </p>
             </div>
           ) : (
-            <div className="divide-y">
+            <div className="divide-y divide-border/50">
               {notificationsList.map((notification) => (
                 <NotificationItem
                   key={notification.$id}
@@ -170,21 +160,18 @@ export const NotificationBell = () => {
 
         {/* Footer */}
         {hasWorkspace && notificationsList.length > 0 && (
-          <>
-            <Separator />
-            <div className="p-2">
-              <Button
-                variant="ghost"
-                className="w-full text-xs"
-                size="sm"
-                asChild
-              >
-                <a href={`/workspaces/${workspaceId}/notifications`}>
-                  View all notifications
-                </a>
-              </Button>
-            </div>
-          </>
+          <div className="border-t px-4 py-2">
+            <Button
+              variant="ghost"
+              className="w-full text-xs text-muted-foreground hover:text-foreground h-8"
+              size="sm"
+              asChild
+            >
+              <a href={`/workspaces/${workspaceId}/notifications`}>
+                View all notifications
+              </a>
+            </Button>
+          </div>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

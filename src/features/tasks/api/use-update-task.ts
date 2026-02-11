@@ -29,7 +29,7 @@ export const useUpdateTask = () => {
       return await response.json();
     },
     onSuccess: ({ data }) => {
-      toast.success("Task updated.");
+      toast.success("Task updated successfully");
       queryClient.invalidateQueries({ queryKey: ["project-analytics"] });
       queryClient.invalidateQueries({ queryKey: ["workspace-analytics"] });
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
@@ -38,7 +38,7 @@ export const useUpdateTask = () => {
       queryClient.invalidateQueries({ queryKey: ["task", data.$id] });
     },
     onError: () => {
-      toast.error("Failed to update task.");
+      toast.error("Failed to update task");
     },
   });
 

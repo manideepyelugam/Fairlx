@@ -106,15 +106,16 @@ export const KanbanCard = ({
                                     {visibleLabels.map((label, index) => {
                                         const customLabel = customLabels.find(l => l.name === label);
                                         return (
-                                            <LabelBadge
-                                                key={index}
-                                                label={label}
-                                                color={customLabel?.color}
-                                            />
+                                            <div key={index} className="max-w-full">
+                                                <LabelBadge
+                                                    label={label}
+                                                    color={customLabel?.color}
+                                                />
+                                            </div>
                                         );
                                     })}
                                     {hiddenCount > 0 && (
-                                        <span className="text-[10px] text-muted-foreground bg-muted rounded-full px-1.5 py-0.5 border border-border whitespace-nowrap">
+                                        <span className="text-[10px] text-muted-foreground bg-muted rounded-full px-1.5 py-0.5 border border-border whitespace-nowrap flex-shrink-0">
                                             +{hiddenCount}
                                         </span>
                                     )}
