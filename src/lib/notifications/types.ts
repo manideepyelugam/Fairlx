@@ -109,6 +109,9 @@ export interface WorkitemEventMetadata {
     // Generic changes description
     changesDescription?: string;
 
+    // Recipient overrides
+    excludeUserIds?: string[];
+
     // Extensible
     [key: string]: unknown;
 }
