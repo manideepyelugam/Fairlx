@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Wallet, DollarSign, FileText, ExternalLink, Calendar, Loader2, CheckCircle2, AlertTriangle, Info, Plus } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ export function OrganizationBillingSettings({
     organizationName,
 }: OrganizationBillingSettingsProps) {
     const { data: organization, isLoading: isOrgLoading } = useGetOrganization({ orgId: organizationId });
+    const queryClient = useQueryClient();
     const { data: membersDoc } = useGetOrgMembers({ organizationId });
     const { data: invoicesDoc, isLoading: isInvoicesLoading } = useGetInvoices({
         organizationId,
@@ -148,8 +150,8 @@ export function OrganizationBillingSettings({
         }
 
         const amount = Number(topupAmount);
-        if (!amount || amount < 100) {
-            toast.error("Minimum top-up amount is ₹100");
+        if (!amount || amount < 1) {
+            toast.error("Minimum top-up amount is ₹1");
             return;
         }
 
@@ -227,10 +229,13 @@ export function OrganizationBillingSettings({
                         }
 
                         toast.success(`₹${amount} added to your wallet successfully!`);
-                        // Refresh billing data to get updated balance
-                        window.location.reload();
-                    } catch {
-                        toast.error("Payment recorded but verification failed. Please contact support.");
+                        // Refresh billing data to get updated balance (without full page reload)
+                        queryClient.invalidateQueries({ queryKey: ["billing-account"] });
+                        queryClient.invalidateQueries({ queryKey: ["billing-status"] });
+                        setTopupAmount("");
+                    } catch (verifyError) {
+                        const msg = verifyError instanceof Error ? verifyError.message : "Verification failed";
+                        toast.error(`Payment issue: ${msg}. Please contact support if credits were not added.`);
                     }
                     setIsAddingCredits(false);
                 },
@@ -531,7 +536,7 @@ export function OrganizationBillingSettings({
                                         <Input
                                             id="topup-amount"
                                             type="number"
-                                            min="100"
+                                            min="1"
                                             step="100"
                                             placeholder="500"
                                             value={topupAmount}
@@ -562,7 +567,7 @@ export function OrganizationBillingSettings({
 
                                 <Button
                                     onClick={handleAddCredits}
-                                    disabled={isAddingCredits || !isScriptLoaded || !topupAmount || Number(topupAmount) < 100 || !canManageBilling}
+                                    disabled={isAddingCredits || !isScriptLoaded || !topupAmount || Number(topupAmount) < 1 || !canManageBilling}
                                     className="w-full"
                                     size="lg"
                                 >
@@ -580,7 +585,7 @@ export function OrganizationBillingSettings({
                                 </Button>
 
                                 <p className="text-xs text-muted-foreground text-center">
-                                    Payments processed securely by Razorpay. Minimum ₹100.
+                                    Payments processed securely by Razorpay. Minimum ₹1.
                                 </p>
                             </div>
                         </div>

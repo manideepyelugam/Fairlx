@@ -148,7 +148,6 @@ export async function acquireProcessingLock(
                 eventType,
                 processedAt,
                 metadata: JSON.stringify(metadata || {}),
-                status: "LOCKED", // Indicate processing in progress
             };
         } else {
             // Fallback schema
