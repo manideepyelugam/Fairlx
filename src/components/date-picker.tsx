@@ -52,8 +52,10 @@ export const DatePicker = React.forwardRef<
           )}
           {...buttonProps}
         >
-          <CalendarIcon className="mr-2 size-4" />
-          {value ? format(value, "PPP") : <span>{placeholder}</span>}
+          <CalendarIcon className="mr-2 size-4 flex-shrink-0" />
+          <span className="truncate">
+            {value ? format(value, "PPP") : placeholder}
+          </span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0 z-[200]">

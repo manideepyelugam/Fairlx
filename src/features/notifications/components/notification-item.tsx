@@ -2,23 +2,24 @@
 
 import { formatDistanceToNow } from "date-fns";
 import {
-  Bell,
-  Check,
-  Trash2,
+  MessageSquare,
   CheckCircle2,
-  FileText,
-  Paperclip,
-  Calendar,
-  Flag,
+  UserPlus,
   ArrowRight,
-  User,
+  Flag,
+  Calendar,
+  Paperclip,
+  Trash2,
   AtSign,
+  Reply,
+  FileText,
+  Bell,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 import { PopulatedNotification, NotificationType, NotificationMetadata } from "../types";
@@ -30,92 +31,74 @@ interface NotificationItemProps {
   workspaceId: string;
 }
 
-const getNotificationStyle = (type: NotificationType) => {
-  switch (type) {
-    case NotificationType.TASK_ASSIGNED:
-      return {
-        icon: User,
-        color: "text-blue-600 dark:text-blue-400",
-        bgColor: "bg-blue-500/10 dark:bg-blue-500/20",
-        badge: "Assigned",
-        badgeVariant: "default" as const,
-      };
-    case NotificationType.TASK_STATUS_CHANGED:
-      return {
-        icon: ArrowRight,
-        color: "text-purple-600 dark:text-purple-400",
-        bgColor: "bg-purple-100 dark:bg-purple-950",
-        badge: "Status Changed",
-        badgeVariant: "secondary" as const,
-      };
-    case NotificationType.TASK_COMPLETED:
-      return {
-        icon: CheckCircle2,
-        color: "text-green-600 dark:text-green-400",
-        bgColor: "bg-green-100 dark:bg-green-950",
-        badge: "Completed",
-        badgeVariant: "default" as const,
-      };
-    case NotificationType.TASK_PRIORITY_CHANGED:
-      return {
-        icon: Flag,
-        color: "text-orange-600 dark:text-orange-400",
-        bgColor: "bg-orange-100 dark:bg-orange-950",
-        badge: "Priority",
-        badgeVariant: "secondary" as const,
-      };
-    case NotificationType.TASK_DUE_DATE_CHANGED:
-      return {
-        icon: Calendar,
-        color: "text-yellow-600 dark:text-yellow-400",
-        bgColor: "bg-yellow-100 dark:bg-yellow-950",
-        badge: "Due Date",
-        badgeVariant: "secondary" as const,
-      };
-    case NotificationType.TASK_ATTACHMENT_ADDED:
-      return {
-        icon: Paperclip,
-        color: "text-cyan-600 dark:text-cyan-400",
-        bgColor: "bg-cyan-100 dark:bg-cyan-950",
-        badge: "Attachment Added",
-        badgeVariant: "secondary" as const,
-      };
-    case NotificationType.TASK_ATTACHMENT_DELETED:
-      return {
-        icon: Trash2,
-        color: "text-red-600 dark:text-red-400",
-        bgColor: "bg-red-100 dark:bg-red-950",
-        badge: "Attachment Removed",
-        badgeVariant: "destructive" as const,
-      };
-    case NotificationType.TASK_MENTION:
-      return {
-        icon: AtSign,
-        color: "text-indigo-600 dark:text-indigo-400",
-        bgColor: "bg-indigo-500/10 dark:bg-indigo-500/20",
-        badge: "Mentioned",
-        badgeVariant: "default" as const,
-      };
-    case NotificationType.TASK_UPDATED:
-      return {
-        icon: FileText,
-        color: "text-gray-600 dark:text-gray-400",
-        bgColor: "bg-gray-100 dark:bg-gray-950",
-        badge: "Updated",
-        badgeVariant: "outline" as const,
-      };
-    default:
-      return {
-        icon: Bell,
-        color: "text-gray-600 dark:text-gray-400",
-        bgColor: "bg-gray-100 dark:bg-gray-950",
-        badge: "Notification",
-        badgeVariant: "outline" as const,
-      };
-  }
+// Clean icon config per type
+const getTypeConfig = (type: NotificationType) => {
+  const configs: Record<string, { icon: typeof Bell; accent: string; bg: string }> = {
+    [NotificationType.TASK_ASSIGNED]: {
+      icon: UserPlus,
+      accent: "text-blue-500",
+      bg: "bg-blue-50 dark:bg-blue-950/40",
+    },
+    [NotificationType.TASK_COMMENT]: {
+      icon: MessageSquare,
+      accent: "text-emerald-500",
+      bg: "bg-emerald-50 dark:bg-emerald-950/40",
+    },
+    [NotificationType.TASK_MENTION]: {
+      icon: AtSign,
+      accent: "text-violet-500",
+      bg: "bg-violet-50 dark:bg-violet-950/40",
+    },
+    [NotificationType.TASK_REPLY]: {
+      icon: Reply,
+      accent: "text-sky-500",
+      bg: "bg-sky-50 dark:bg-sky-950/40",
+    },
+    [NotificationType.TASK_COMPLETED]: {
+      icon: CheckCircle2,
+      accent: "text-green-500",
+      bg: "bg-green-50 dark:bg-green-950/40",
+    },
+    [NotificationType.TASK_STATUS_CHANGED]: {
+      icon: ArrowRight,
+      accent: "text-purple-500",
+      bg: "bg-purple-50 dark:bg-purple-950/40",
+    },
+    [NotificationType.TASK_PRIORITY_CHANGED]: {
+      icon: Flag,
+      accent: "text-orange-500",
+      bg: "bg-orange-50 dark:bg-orange-950/40",
+    },
+    [NotificationType.TASK_DUE_DATE_CHANGED]: {
+      icon: Calendar,
+      accent: "text-amber-500",
+      bg: "bg-amber-50 dark:bg-amber-950/40",
+    },
+    [NotificationType.TASK_ATTACHMENT_ADDED]: {
+      icon: Paperclip,
+      accent: "text-cyan-500",
+      bg: "bg-cyan-50 dark:bg-cyan-950/40",
+    },
+    [NotificationType.TASK_ATTACHMENT_DELETED]: {
+      icon: Trash2,
+      accent: "text-red-500",
+      bg: "bg-red-50 dark:bg-red-950/40",
+    },
+    [NotificationType.TASK_UPDATED]: {
+      icon: FileText,
+      accent: "text-slate-500",
+      bg: "bg-slate-50 dark:bg-slate-800/40",
+    },
+  };
+
+  return configs[type] || {
+    icon: Bell,
+    accent: "text-slate-500",
+    bg: "bg-slate-50 dark:bg-slate-800/40",
+  };
 };
 
-const formatMetadata = (metadata?: string): NotificationMetadata | null => {
+const parseMetadata = (metadata?: string): NotificationMetadata | null => {
   if (!metadata) return null;
   try {
     return JSON.parse(metadata);
@@ -124,83 +107,28 @@ const formatMetadata = (metadata?: string): NotificationMetadata | null => {
   }
 };
 
-const renderDetailedInfo = (type: NotificationType, metadata: NotificationMetadata | null) => {
+// Render compact inline detail for status/priority changes
+const renderInlineDetail = (type: NotificationType, metadata: NotificationMetadata | null) => {
   if (!metadata) return null;
 
-  switch (type) {
-    case NotificationType.TASK_STATUS_CHANGED:
-      if (metadata.oldStatus && metadata.newStatus) {
-        return (
-          <div className="flex items-center gap-2 text-xs mt-1">
-            <Badge variant="outline" className="text-xs">
-              {metadata.oldStatus}
-            </Badge>
-            <ArrowRight className="size-3 text-muted-foreground" />
-            <Badge variant="default" className="text-xs">
-              {metadata.newStatus}
-            </Badge>
-          </div>
-        );
-      }
-      break;
+  if (type === NotificationType.TASK_STATUS_CHANGED && metadata.oldStatus && metadata.newStatus) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+        <span className="line-through">{metadata.oldStatus.replace(/_/g, " ")}</span>
+        <ArrowRight className="size-3" />
+        <span className="font-medium text-foreground">{metadata.newStatus.replace(/_/g, " ")}</span>
+      </span>
+    );
+  }
 
-    case NotificationType.TASK_PRIORITY_CHANGED:
-      if (metadata.oldPriority && metadata.newPriority) {
-        return (
-          <div className="flex items-center gap-2 text-xs mt-1">
-            <span className="text-muted-foreground">Priority:</span>
-            <Badge variant="outline" className="text-xs">
-              {metadata.oldPriority}
-            </Badge>
-            <ArrowRight className="size-3 text-muted-foreground" />
-            <Badge variant="destructive" className="text-xs">
-              {metadata.newPriority}
-            </Badge>
-          </div>
-        );
-      }
-      break;
-
-    case NotificationType.TASK_DUE_DATE_CHANGED:
-      if (metadata.newDueDate) {
-        return (
-          <div className="flex items-center gap-2 text-xs mt-1 text-muted-foreground">
-            <Calendar className="size-3" />
-            <span>New due: {new Date(metadata.newDueDate).toLocaleDateString()}</span>
-          </div>
-        );
-      }
-      break;
-
-    case NotificationType.TASK_ATTACHMENT_ADDED:
-      if (metadata.attachmentName) {
-        return (
-          <div className="flex items-center gap-2 text-xs mt-1 text-muted-foreground">
-            <Paperclip className="size-3" />
-            <span className="truncate">{metadata.attachmentName}</span>
-            {metadata.attachmentSize && (
-              <span className="text-xs">
-                ({(metadata.attachmentSize / 1024).toFixed(1)} KB)
-              </span>
-            )}
-          </div>
-        );
-      }
-      break;
-
-    case NotificationType.TASK_UPDATED:
-      if (metadata.changes && metadata.changes.length > 0) {
-        return (
-          <div className="flex flex-wrap gap-1 mt-1">
-            {metadata.changes.map((change, i) => (
-              <Badge key={i} variant="outline" className="text-xs">
-                {change}
-              </Badge>
-            ))}
-          </div>
-        );
-      }
-      break;
+  if (type === NotificationType.TASK_PRIORITY_CHANGED && metadata.oldPriority && metadata.newPriority) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+        <span className="line-through">{metadata.oldPriority}</span>
+        <ArrowRight className="size-3" />
+        <span className="font-medium text-foreground">{metadata.newPriority}</span>
+      </span>
+    );
   }
 
   return null;
@@ -213,132 +141,109 @@ export const NotificationItem = ({
   const { mutate: markAsRead, isPending: isMarkingRead } = useMarkNotificationRead();
   const { mutate: deleteNotification, isPending: isDeleting } = useDeleteNotification();
 
-  const style = getNotificationStyle(notification.type);
-  const Icon = style.icon;
-  const metadata = formatMetadata(notification.metadata);
+  const config = getTypeConfig(notification.type);
+  const Icon = config.icon;
+  const metadata = parseMetadata(notification.metadata);
 
-  const handleMarkAsRead = (e: React.MouseEvent) => {
+  const handleDismiss = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!notification.read) {
       markAsRead({ param: { notificationId: notification.$id } });
+    } else {
+      deleteNotification({ param: { notificationId: notification.$id } });
     }
-  };
-
-  const handleDelete = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    deleteNotification({ param: { notificationId: notification.$id } });
   };
 
   const taskLink = notification.taskId
     ? `/workspaces/${workspaceId}/tasks/${notification.taskId}`
     : "#";
 
+  const timeAgo = formatDistanceToNow(new Date(notification.$createdAt), { addSuffix: true });
+  const userName = notification.triggeredByUser?.name || "Someone";
+  const userInitial = userName.charAt(0).toUpperCase();
+
+  // Check if this is a comment/mention/reply type with content
+  const hasCommentContent = metadata?.commentContent && (
+    notification.type === NotificationType.TASK_COMMENT ||
+    notification.type === NotificationType.TASK_MENTION ||
+    notification.type === NotificationType.TASK_REPLY
+  );
+
+  // Strip mention format markers: @Name[id] -> @Name
+  const commentPreview = metadata?.commentContent
+    ? metadata.commentContent.replace(/\[([a-zA-Z0-9]+)\]/g, "").slice(0, 140)
+    : null;
+
   return (
-    <Link href={taskLink}>
+    <Link href={taskLink} className="block">
       <div
         className={cn(
-          "relative flex items-start gap-3 p-4 hover:bg-accent/50 transition-all border-b group cursor-pointer",
-          !notification.read && "bg-blue-50/50 dark:bg-blue-950/20 border-l-2 border-l-blue-500"
+          "relative flex items-start gap-3 px-4 py-3 transition-colors group",
+          "hover:bg-muted/50",
+          !notification.read && "bg-blue-50/60 dark:bg-blue-950/15"
         )}
       >
-        {/* Icon with colored background */}
-        <div className={cn("flex-shrink-0 p-2 rounded-lg", style.bgColor)}>
-          <Icon className={cn("size-5", style.color)} />
+        {/* Unread dot */}
+        {!notification.read && (
+          <div className="absolute left-1 top-1/2 -translate-y-1/2 size-1.5 rounded-full bg-blue-500" />
+        )}
+
+        {/* User avatar with type icon overlay */}
+        <div className="relative flex-shrink-0">
+          <Avatar className="size-9">
+            <AvatarImage
+              src={notification.triggeredByUser?.profileImageUrl || undefined}
+              alt={userName}
+            />
+            <AvatarFallback className="text-xs font-medium bg-muted">
+              {userInitial}
+            </AvatarFallback>
+          </Avatar>
+          <div className={cn(
+            "absolute -bottom-0.5 -right-0.5 size-[18px] rounded-full flex items-center justify-center border-2 border-background",
+            config.bg
+          )}>
+            <Icon className={cn("size-2.5", config.accent)} />
+          </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 min-w-0 space-y-1">
-          {/* Header with badge */}
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant={style.badgeVariant} className="text-xs">
-                {style.badge}
-              </Badge>
-              {!notification.read && (
-                <div className="flex items-center gap-1">
-                  <div className="size-2 bg-blue-500 rounded-full animate-pulse" />
-                  <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
-                    New
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Title */}
-          <p className="font-semibold text-sm leading-tight">
-            {notification.title}
+        <div className="flex-1 min-w-0 space-y-0.5">
+          {/* Main message */}
+          <p className="text-[13px] leading-snug">
+            <span className="font-semibold text-foreground">{userName}</span>
+            {" "}
+            <span className="text-muted-foreground">{notification.message.replace(userName, "").trim()}</span>
           </p>
 
-          {/* Message */}
-          <p className="text-sm text-muted-foreground leading-snug line-clamp-2">
-            {notification.message}
-          </p>
-
-          {/* Detailed metadata */}
-          {renderDetailedInfo(notification.type, metadata)}
-
-          {/* Task name if available */}
-          {metadata?.taskName && (
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
-              <FileText className="size-3" />
-              <span className="truncate font-medium">{metadata.taskName}</span>
+          {/* Comment preview */}
+          {hasCommentContent && commentPreview && (
+            <div className="mt-1 px-2.5 py-1.5 rounded-md bg-muted/60 border-l-2 border-muted-foreground/20">
+              <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 italic">
+                &ldquo;{commentPreview}&rdquo;
+              </p>
             </div>
           )}
 
-          {/* Footer with user and time */}
-          <div className="flex items-center justify-between pt-1">
-            <div className="flex items-center gap-2">
-              {notification.triggeredByUser && (
-                <>
-                  <Avatar className="size-5 border">
-                    <AvatarImage
-                      src={notification.triggeredByUser.profileImageUrl || undefined}
-                      alt={notification.triggeredByUser.name}
-                    />
-                    <AvatarFallback className="text-xs">
-                      {notification.triggeredByUser.name?.charAt(0).toUpperCase() || "?"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-xs text-muted-foreground font-medium">
-                    {notification.triggeredByUser.name}
-                  </span>
-                </>
-              )}
-              <span className="text-xs text-muted-foreground">
-                • {formatDistanceToNow(new Date(notification.$createdAt), { addSuffix: true })}
-              </span>
-            </div>
+          {/* Inline status/priority detail */}
+          {renderInlineDetail(notification.type, metadata)}
 
-            {/* Action buttons (visible on hover) */}
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              {!notification.read && (
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="size-7"
-                  onClick={handleMarkAsRead}
-                  disabled={isMarkingRead}
-                  title="Mark as read"
-                >
-                  <Check className="size-3.5" />
-                </Button>
-              )}
-              <Button
-                size="icon"
-                variant="ghost"
-                className="size-7 text-destructive hover:text-destructive"
-                onClick={handleDelete}
-                disabled={isDeleting}
-                title="Delete notification"
-              >
-                <Trash2 className="size-3.5" />
-              </Button>
-            </div>
-          </div>
+          {/* Timestamp */}
+          <p className="text-[11px] text-muted-foreground/60">{timeAgo}</p>
         </div>
+
+        {/* Dismiss button - visible on hover */}
+        <Button
+          size="icon"
+          variant="ghost"
+          className="size-6 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+          onClick={handleDismiss}
+          disabled={isMarkingRead || isDeleting}
+          title={notification.read ? "Remove" : "Dismiss"}
+        >
+          <X className="size-3" />
+        </Button>
       </div>
     </Link>
   );

@@ -10,6 +10,7 @@ export enum NotificationType {
   TASK_DELETED = "task_deleted",
   TASK_COMMENT = "task_comment",
   TASK_MENTION = "task_mention",
+  TASK_REPLY = "task_reply",
   TASK_ATTACHMENT_ADDED = "task_attachment_added",
   TASK_ATTACHMENT_DELETED = "task_attachment_deleted",
 }
@@ -67,5 +68,9 @@ export type NotificationMetadata = {
   changes?: string[];
   previousAssignee?: string;
   newAssignee?: string;
+  commentContent?: string;
+  commentAuthor?: string;
+  parentCommentAuthor?: string;
+  mentionedNames?: string[];
   [key: string]: unknown;
 };

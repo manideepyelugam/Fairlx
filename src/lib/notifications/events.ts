@@ -1,6 +1,6 @@
 /**
  * Workitem Event Emitter
- * 
+ *
  * Helper functions to create and emit workitem events.
  * This is the single source of truth for event creation.
  */
@@ -126,14 +126,39 @@ export function createCommentAddedEvent(
     triggeredBy: string,
     triggeredByName: string,
     commentId: string,
-    mentionedUserIds?: string[]
+    mentionedUserIds?: string[],
+    commentContent?: string
 ): WorkitemEvent {
     return createWorkitemEvent({
         type: WorkitemEventType.WORKITEM_COMMENT_ADDED,
         workitem,
         triggeredBy,
         triggeredByName,
-        metadata: { commentId, mentionedUserIds },
+        metadata: { commentId, mentionedUserIds, commentContent },
+    });
+}
+
+export function createReplyEvent(
+    workitem: Task,
+    triggeredBy: string,
+    triggeredByName: string,
+    commentId: string,
+    parentCommentAuthorId: string,
+    parentCommentAuthorName: string,
+    replyContent?: string
+): WorkitemEvent {
+    return createWorkitemEvent({
+        type: WorkitemEventType.WORKITEM_REPLY,
+        workitem,
+        triggeredBy,
+        triggeredByName,
+        metadata: {
+            commentId,
+            parentCommentAuthorId,
+            parentCommentAuthorName,
+            replyContent,
+            commentContent: replyContent,
+        },
     });
 }
 
@@ -153,6 +178,7 @@ export function createMentionEvent(
             mentionedBy: triggeredBy,
             mentionedUserId,
             snippet: snippet.slice(0, 120),
+            commentContent: snippet.slice(0, 200),
         },
     });
 }
@@ -219,6 +245,8 @@ export function getNotificationTitle(event: WorkitemEvent): string {
             return "New Comment";
         case WorkitemEventType.WORKITEM_MENTION:
             return "You were mentioned";
+        case WorkitemEventType.WORKITEM_REPLY:
+            return "New Reply";
         case WorkitemEventType.WORKITEM_ATTACHMENT_ADDED:
             return "Attachment Added";
         case WorkitemEventType.WORKITEM_ATTACHMENT_DELETED:
@@ -255,6 +283,8 @@ export function getNotificationSummary(event: WorkitemEvent): string {
             return `${byName} commented on "${taskName}"`;
         case WorkitemEventType.WORKITEM_MENTION:
             return `${byName} mentioned you in "${taskName}"`;
+        case WorkitemEventType.WORKITEM_REPLY:
+            return `${byName} replied to your comment on "${taskName}"`;
         case WorkitemEventType.WORKITEM_ATTACHMENT_ADDED:
             return `${byName} added an attachment to "${taskName}"`;
         case WorkitemEventType.WORKITEM_ATTACHMENT_DELETED:
@@ -288,6 +318,7 @@ export function getDefaultChannelsForEvent(event: WorkitemEvent): ("socket" | "e
         case WorkitemEventType.WORKITEM_UPDATED:
         case WorkitemEventType.WORKITEM_COMMENT_ADDED:
         case WorkitemEventType.WORKITEM_MENTION:
+        case WorkitemEventType.WORKITEM_REPLY:
             channels.push("email");
             break;
 

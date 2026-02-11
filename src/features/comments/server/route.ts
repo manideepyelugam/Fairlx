@@ -2,9 +2,14 @@ import { createAdminClient } from "@/lib/appwrite";
 import { DATABASE_ID, COMMENTS_ID, TASKS_ID } from "@/config";
 import { Comment, PopulatedComment, CommentAuthor } from "../types";
 import { Query, ID } from "node-appwrite";
-import { dispatchWorkitemEvent, createCommentAddedEvent } from "@/lib/notifications";
+import {
+  dispatchWorkitemEvent,
+  createCommentAddedEvent,
+  createMentionEvent,
+} from "@/lib/notifications";
+import { createReplyEvent } from "@/lib/notifications/events";
 import { Task } from "@/features/tasks/types";
-import { extractMentions } from "@/lib/mentions";
+import { extractMentions, extractSnippet } from "@/lib/mentions";
 
 // Get all comments for a task, optionally filtering by parentId
 export const getComments = async (
@@ -86,7 +91,7 @@ export const createComment = async (data: {
     }
   );
 
-  // Emit comment added event and mention events (non-blocking)
+  // Emit comment added event, mention events, and reply events (non-blocking)
   try {
     const task = await databases.getDocument<Task>(
       DATABASE_ID,
@@ -95,23 +100,74 @@ export const createComment = async (data: {
     );
     const authorName = data.authorName || "Someone";
     const mentionedUserIds = extractMentions(data.content);
+    const snippet = extractSnippet(data.content, 200);
 
-    // console.log("[Comments] Creating comment, content:", data.content.slice(0, 200));
-    // console.log("[Comments] Extracted mentions:", mentionedUserIds);
-
-    // Dispatch comment added event with all mentioned users
-    // Note: mentionedUserIds are passed to the event, and the dispatcher
-    // handles creating notifications for mentioned users - no separate dispatch needed
+    // 1. Dispatch comment added event with comment content included
     const event = createCommentAddedEvent(
       task,
       data.authorId,
       authorName,
       comment.$id,
-      mentionedUserIds.length > 0 ? mentionedUserIds : undefined
+      mentionedUserIds.length > 0 ? mentionedUserIds : undefined,
+      snippet
     );
     dispatchWorkitemEvent(event).catch((err) => {
       console.error("[Comments] Failed to dispatch comment event:", err);
     });
+
+    // 2. Dispatch individual mention notifications for each mentioned user
+    for (const mentionedUserId of mentionedUserIds) {
+      if (mentionedUserId === data.authorId) continue; // Don't notify self
+      const mentionEvent = createMentionEvent(
+        task,
+        data.authorId,
+        authorName,
+        mentionedUserId,
+        snippet
+      );
+      dispatchWorkitemEvent(mentionEvent).catch((err) => {
+        console.error("[Comments] Failed to dispatch mention event:", err);
+      });
+    }
+
+    // 3. Dispatch reply notification if this is a reply to another comment
+    if (data.parentId) {
+      try {
+        const parentComment = await databases.getDocument(
+          DATABASE_ID,
+          COMMENTS_ID,
+          data.parentId
+        ) as Comment;
+
+        // Only notify if the parent author is not the same person replying
+        if (parentComment.authorId && parentComment.authorId !== data.authorId) {
+          // Resolve parent author name
+          let parentAuthorName = "Someone";
+          try {
+            const { users } = await createAdminClient();
+            const parentUser = await users.get(parentComment.authorId);
+            parentAuthorName = parentUser.name || parentUser.email || "Someone";
+          } catch {
+            // Use default name
+          }
+
+          const replyEvent = createReplyEvent(
+            task,
+            data.authorId,
+            authorName,
+            comment.$id,
+            parentComment.authorId,
+            parentAuthorName,
+            snippet
+          );
+          dispatchWorkitemEvent(replyEvent).catch((err) => {
+            console.error("[Comments] Failed to dispatch reply event:", err);
+          });
+        }
+      } catch (err) {
+        console.error("[Comments] Error dispatching reply notification:", err);
+      }
+    }
   } catch (err) {
     console.error("[Comments] Error dispatching notifications:", err);
     // Silently fail - notifications are non-critical
