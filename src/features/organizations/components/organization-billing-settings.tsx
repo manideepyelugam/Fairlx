@@ -148,8 +148,8 @@ export function OrganizationBillingSettings({
         }
 
         const amount = Number(topupAmount);
-        if (!amount || amount < 10) {
-            toast.error("Minimum top-up amount is ₹10");
+        if (!amount || amount < 1) {
+            toast.error("Minimum top-up amount is ₹1");
             return;
         }
 
@@ -532,7 +532,7 @@ export function OrganizationBillingSettings({
                                         <Input
                                             id="topup-amount"
                                             type="number"
-                                            min="10"
+                                            min="1"
                                             step="100"
                                             placeholder="500"
                                             value={topupAmount}
@@ -563,7 +563,7 @@ export function OrganizationBillingSettings({
 
                                 <Button
                                     onClick={handleAddCredits}
-                                    disabled={isAddingCredits || !isScriptLoaded || !topupAmount || Number(topupAmount) < 10 || !canManageBilling}
+                                    disabled={isAddingCredits || !isScriptLoaded || !topupAmount || Number(topupAmount) < 1 || !canManageBilling}
                                     className="w-full"
                                     size="lg"
                                 >
@@ -581,7 +581,7 @@ export function OrganizationBillingSettings({
                                 </Button>
 
                                 <p className="text-xs text-muted-foreground text-center">
-                                    Payments processed securely by Razorpay. Minimum ₹10.
+                                    Payments processed securely by Razorpay. Minimum ₹1.
                                 </p>
                             </div>
                         </div>

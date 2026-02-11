@@ -11,7 +11,7 @@ import { WalletTransactionType } from "./types";
  */
 export const createTopupOrderSchema = z.object({
     /** Amount in smallest currency unit (paise). Min ₹1, Max ₹1,00,000 */
-    amount: z.number().min(1000, "Minimum top-up is ₹10").max(100000000, "Maximum top-up is ₹10,00,000"),
+    amount: z.number().min(100, "Minimum top-up is ₹1").max(100000000, "Maximum top-up is ₹10,00,000"),
     /** Currency - defaults to INR on server */
     currency: z.string().optional(),
     /** Organization ID (for org wallets) */
