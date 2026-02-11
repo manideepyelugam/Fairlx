@@ -91,12 +91,12 @@ export const SPECIFIC_ERROR_MESSAGES: Record<string, ErrorMapping> = {
     "ACCOUNT_SUSPENDED": {
         title: "Account suspended",
         message: "Your account is suspended due to an unpaid invoice.",
-        action: "Update your payment method to restore access.",
+        action: "Add credits to your wallet to restore access.",
     },
     "BILLING_SUSPENDED": {
         title: "Account suspended",
         message: "Write access is temporarily restricted. Your data is safe.",
-        action: "Please update your payment method.",
+        action: "Please add credits to your wallet.",
     },
     "BILLING_DUE": {
         title: "Payment overdue",
@@ -115,7 +115,7 @@ export const SPECIFIC_ERROR_MESSAGES: Record<string, ErrorMapping> = {
     "Your account has been suspended": {
         title: "Account suspended",
         message: "Your account is suspended due to an unpaid invoice.",
-        action: "Update Payment",
+        action: "Add Credits",
     },
 
     // Access & Permissions

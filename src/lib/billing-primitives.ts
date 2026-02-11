@@ -191,7 +191,7 @@ export async function assertBillingActive(
     if (account.billingStatus === BillingStatus.SUSPENDED) {
         throw new BillingError(
             "BILLING_SUSPENDED",
-            "Your account has been suspended due to an unpaid invoice. Please update your payment method to restore access.",
+            "Your account has been suspended due to an unpaid invoice. Please add credits to your wallet to restore access.",
             { billingAccountId: account.$id, billingStatus: account.billingStatus }
         );
     }
@@ -229,7 +229,7 @@ export async function assertBillingNotSuspended(
     if (account.billingStatus === BillingStatus.SUSPENDED) {
         throw new BillingError(
             "BILLING_SUSPENDED",
-            "Your account has been suspended due to an unpaid invoice. Please update your payment method to restore access.",
+            "Your account has been suspended due to an unpaid invoice. Please add credits to your wallet to restore access.",
             { billingAccountId: account.$id, billingStatus: account.billingStatus }
         );
     }
@@ -572,7 +572,7 @@ export function getAccountWarningState(
     if (account.billingStatus === BillingStatus.SUSPENDED) {
         return {
             state: "SUSPENDED",
-            message: "Your account is suspended. Please update your payment method to restore access.",
+            message: "Your account is suspended. Please add credits to your wallet to restore access.",
         };
     }
 

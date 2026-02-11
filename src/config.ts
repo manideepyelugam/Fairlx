@@ -116,11 +116,10 @@ export const BILLING_GRACE_PERIOD_DAYS = parseInt(process.env.BILLING_GRACE_PERI
 export const BILLING_CURRENCY = process.env.BILLING_CURRENCY || "INR";
 
 // ===============================
-// eMandate Feature Flag
+// Wallet Security Configuration
 // ===============================
-// Set to "false" to temporarily disable eMandate creation
-// (e.g., pending company incorporation)
-export const ENABLE_EMANDATE = process.env.ENABLE_EMANDATE !== "false";
+/** Maximum daily top-up amount per wallet (paise). Default: ₹5,00,000 */
+export const WALLET_DAILY_TOPUP_LIMIT = parseInt(process.env.WALLET_DAILY_TOPUP_LIMIT || "50000000");
 
 // ===============================
 // Cron Job Security
@@ -133,5 +132,5 @@ export const CRON_SECRET = process.env.CRON_SECRET;
 // ===============================
 export const WALLETS_ID = process.env.NEXT_PUBLIC_APPWRITE_WALLETS_ID!;
 export const WALLET_TRANSACTIONS_ID = process.env.NEXT_PUBLIC_APPWRITE_WALLET_TRANSACTIONS_ID!;
-export const BILLING_SETTINGS_ID = process.env.NEXT_PUBLIC_APPWRITE_BILLING_SETTINGS_ID!;
+export const USAGE_DEDUCTIONS_ID = process.env.NEXT_PUBLIC_APPWRITE_USAGE_DEDUCTIONS_ID!;
 

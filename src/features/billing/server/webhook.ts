@@ -8,7 +8,7 @@ import {
     BILLING_ACCOUNTS_ID,
     BILLING_AUDIT_LOGS_ID,
     INVOICES_ID,
-    BILLING_GRACE_PERIOD_DAYS,
+    WALLETS_ID,
 } from "@/config";
 import { createAdminClient } from "@/lib/appwrite";
 import { verifyWebhookSignature } from "@/lib/razorpay";
@@ -16,7 +16,6 @@ import { isEventProcessed, markEventProcessed } from "@/lib/processed-events-reg
 
 import {
     BillingStatus,
-    MandateStatus,
     BillingAccount,
     BillingInvoice,
     BillingAuditEventType,
@@ -24,38 +23,35 @@ import {
     RazorpayWebhookEvent,
 } from "../types";
 
+import { Wallet } from "@/features/wallet/types";
+import { topUpWallet, refundToWallet } from "@/features/wallet/services/wallet-service";
+
 /**
- * Razorpay Webhook Handler
+ * Razorpay Webhook Handler (Wallet-Only)
  * 
- * CRITICAL: This handles all Razorpay webhook events for billing lifecycle.
+ * CRITICAL: This handles Razorpay webhook events for wallet top-ups.
  * 
  * Events Handled:
- * - payment.captured: Payment successful
- * - payment.failed: Payment failed
- * - token.confirmed: E-Mandate authorized
- * - token.rejected/cancelled: E-Mandate failed
- * - subscription.charged: Subscription charged successfully
- * - subscription.halted: Subscription halted (mandate failed)
- * - subscription.cancelled: Subscription cancelled
+ * - payment.captured: Payment successful → credit wallet
+ * - payment.authorized: Payment authorized → audit log only
+ * - payment.failed: Payment failed → audit log only
+ * - refund.processed: Refund successful → credit wallet
+ * - refund.failed: Refund failed → audit log only
+ * 
+ * REMOVED (wallet-only model):
+ * - subscription.* events (no subscriptions)
+ * - token.* events (no e-mandates)
  * 
  * SECURITY:
  * - All webhooks are signature-verified
  * - Event IDs are stored in DATABASE for persistent idempotency
  * - All events are audit-logged
  * 
- * CRITICAL INVARIANT: Webhooks may ONLY modify:
- * - Invoice status
- * - Billing account status (billingStatus, mandateStatus)
- * - Mandate/token information
- * 
- * Webhooks MUST NEVER:
+ * CRITICAL INVARIANT: Webhooks MUST NEVER:
  * - Touch usage_events
  * - Modify usage_aggregations
  * - Infer or calculate usage
  */
-
-// NOTE: Idempotency now handled by @/lib/processed-events-registry
-// Database-backed for persistence across restarts
 
 const app = new Hono()
     /**
@@ -85,7 +81,7 @@ const app = new Hono()
         }
 
         // Generate event ID from payload for idempotency
-        const eventId = `${event.event}-${event.created_at}-${event.payload?.payment?.entity?.id || event.payload?.subscription?.entity?.id || "unknown"}`;
+        const eventId = `${event.event}-${event.created_at}-${event.payload?.payment?.entity?.id || "unknown"}`;
 
         const { databases } = await createAdminClient();
 
@@ -109,18 +105,6 @@ const app = new Hono()
                     await handlePaymentFailed(databases, event, eventId);
                     break;
 
-                case "subscription.charged":
-                    await handleSubscriptionCharged(databases, event, eventId);
-                    break;
-
-                case "subscription.halted":
-                    await handleSubscriptionHalted(databases, event, eventId);
-                    break;
-
-                case "subscription.cancelled":
-                    await handleSubscriptionCancelled(databases, event, eventId);
-                    break;
-
                 case "refund.processed":
                     await handleRefundProcessed(databases, event, eventId);
                     break;
@@ -129,18 +113,8 @@ const app = new Hono()
                     await handleRefundFailed(databases, event, eventId);
                     break;
 
-                // E-Mandate events
-                case "token.confirmed":
-                    await handleTokenConfirmed(databases, event, eventId);
-                    break;
-
-                case "token.rejected":
-                case "token.cancelled":
-                    await handleTokenFailed(databases, event, eventId);
-                    break;
-
                 default:
-                    // Unhandled event type
+                    // Unhandled event type — ignore
                     break;
             }
 
@@ -154,10 +128,15 @@ const app = new Hono()
         }
     });
 
+// ============================================================================
+// PAYMENT HANDLERS
+// ============================================================================
+
 /**
  * Handle payment.captured event
  * 
- * Called when a payment is successfully captured.
+ * Called when a wallet top-up payment is successfully captured.
+ * Credits the user's wallet with the payment amount.
  */
 async function handlePaymentCaptured(
     databases: Awaited<ReturnType<typeof createAdminClient>>["databases"],
@@ -169,57 +148,98 @@ async function handlePaymentCaptured(
         return;
     }
 
-    // Get billing account from payment notes
+    // Check if this is a wallet top-up payment
+    const walletId = payment.notes?.fairlx_wallet_id;
     const billingAccountId = payment.notes?.fairlx_billing_account_id;
-    if (!billingAccountId) {
+
+    if (!walletId) {
+        // Not a wallet top-up, skip
         return;
     }
 
-    // Get billing account
-    const account = await databases.getDocument<BillingAccount>(
-        DATABASE_ID,
-        BILLING_ACCOUNTS_ID,
-        billingAccountId
-    );
+    // Credit the wallet (idempotent via payment ID)
+    const result = await topUpWallet(databases, walletId, payment.amount, {
+        idempotencyKey: `webhook_${payment.id}`,
+        paymentId: payment.id,
+        description: `Wallet top-up via Razorpay (${payment.method})`,
+    });
 
-    // Update account status if needed
-    const updates: Partial<BillingAccount> = {
-        lastPaymentAt: new Date().toISOString(),
-    };
+    if (result.success && result.error !== "already_processed") {
+        // Update billing account status if needed
+        if (billingAccountId) {
+            try {
+                const account = await databases.getDocument<BillingAccount>(
+                    DATABASE_ID,
+                    BILLING_ACCOUNTS_ID,
+                    billingAccountId
+                );
 
-    // If account was DUE or SUSPENDED, restore to ACTIVE
-    if (account.billingStatus !== BillingStatus.ACTIVE) {
-        updates.billingStatus = BillingStatus.ACTIVE;
-        updates.gracePeriodEnd = undefined;
-    }
+                const updates: Partial<BillingAccount> = {
+                    lastPaymentAt: new Date().toISOString(),
+                };
 
-    await databases.updateDocument(
-        DATABASE_ID,
-        BILLING_ACCOUNTS_ID,
-        billingAccountId,
-        updates
-    );
-
-    // Find and update associated invoice
-    const invoiceId = payment.notes?.fairlx_invoice_id;
-    if (invoiceId) {
-        const invoices = await databases.listDocuments<BillingInvoice>(
-            DATABASE_ID,
-            INVOICES_ID,
-            [Query.equal("invoiceId", invoiceId), Query.limit(1)]
-        );
-
-        if (invoices.total > 0) {
-            await databases.updateDocument(
-                DATABASE_ID,
-                INVOICES_ID,
-                invoices.documents[0].$id,
-                {
-                    status: InvoiceStatus.PAID,
-                    razorpayPaymentId: payment.id,
-                    paidAt: new Date().toISOString(),
+                // If account was DUE or SUSPENDED, restore to ACTIVE
+                if (account.billingStatus !== BillingStatus.ACTIVE) {
+                    updates.billingStatus = BillingStatus.ACTIVE;
+                    updates.gracePeriodEnd = undefined;
                 }
-            );
+
+                await databases.updateDocument(
+                    DATABASE_ID,
+                    BILLING_ACCOUNTS_ID,
+                    billingAccountId,
+                    updates
+                );
+
+                // If account was restored from suspension, log that
+                if (account.billingStatus === BillingStatus.SUSPENDED) {
+                    await databases.createDocument(
+                        DATABASE_ID,
+                        BILLING_AUDIT_LOGS_ID,
+                        ID.unique(),
+                        {
+                            billingAccountId,
+                            eventType: BillingAuditEventType.ACCOUNT_RESTORED,
+                            razorpayEventId: eventId,
+                            metadata: JSON.stringify({
+                                previousStatus: BillingStatus.SUSPENDED,
+                                paymentId: payment.id,
+                                walletTopupAmount: payment.amount,
+                            }),
+                        }
+                    );
+                }
+            } catch {
+                // Don't fail the webhook if billing account update fails
+            }
+        }
+
+        // Find and update associated invoice (if top-up was for a specific invoice)
+        const invoiceId = payment.notes?.fairlx_invoice_id;
+        if (invoiceId) {
+            try {
+                const invoices = await databases.listDocuments<BillingInvoice>(
+                    DATABASE_ID,
+                    INVOICES_ID,
+                    [Query.equal("invoiceId", invoiceId), Query.limit(1)]
+                );
+
+                if (invoices.total > 0) {
+                    await databases.updateDocument(
+                        DATABASE_ID,
+                        INVOICES_ID,
+                        invoices.documents[0].$id,
+                        {
+                            status: InvoiceStatus.PAID,
+                            razorpayPaymentId: payment.id,
+                            walletTransactionId: result.transaction?.$id,
+                            paidAt: new Date().toISOString(),
+                        }
+                    );
+                }
+            } catch {
+                // Don't fail the webhook if invoice update fails
+            }
         }
     }
 
@@ -229,282 +249,16 @@ async function handlePaymentCaptured(
         BILLING_AUDIT_LOGS_ID,
         ID.unique(),
         {
-            billingAccountId,
-            eventType: BillingAuditEventType.PAYMENT_SUCCEEDED,
+            billingAccountId: billingAccountId || null,
+            eventType: BillingAuditEventType.WALLET_TOPUP,
             razorpayEventId: eventId,
             metadata: JSON.stringify({
                 paymentId: payment.id,
                 amount: payment.amount,
                 currency: payment.currency,
                 method: payment.method,
-            }),
-        }
-    );
-
-    // If account was restored from suspension, log that too
-    if (account.billingStatus === BillingStatus.SUSPENDED) {
-        await databases.createDocument(
-            DATABASE_ID,
-            BILLING_AUDIT_LOGS_ID,
-            ID.unique(),
-            {
-                billingAccountId,
-                eventType: BillingAuditEventType.ACCOUNT_RESTORED,
-                razorpayEventId: eventId,
-                metadata: JSON.stringify({
-                    previousStatus: BillingStatus.SUSPENDED,
-                    paymentId: payment.id,
-                }),
-            }
-        );
-    }
-}
-
-/**
- * Handle payment.failed event
- * 
- * Called when a payment attempt fails.
- * Starts grace period if not already started.
- */
-async function handlePaymentFailed(
-    databases: Awaited<ReturnType<typeof createAdminClient>>["databases"],
-    event: RazorpayWebhookEvent,
-    eventId: string
-) {
-    const payment = event.payload.payment?.entity;
-    if (!payment) {
-        return;
-    }
-
-    const billingAccountId = payment.notes?.fairlx_billing_account_id;
-    if (!billingAccountId) {
-        return;
-    }
-
-    // Get billing account
-    const account = await databases.getDocument<BillingAccount>(
-        DATABASE_ID,
-        BILLING_ACCOUNTS_ID,
-        billingAccountId
-    );
-
-    // Calculate grace period end
-    const gracePeriodEnd = new Date();
-    gracePeriodEnd.setDate(gracePeriodEnd.getDate() + BILLING_GRACE_PERIOD_DAYS);
-
-    // Update account to DUE status with grace period
-    const updates: Partial<BillingAccount> = {
-        lastPaymentFailedAt: new Date().toISOString(),
-    };
-
-    // Only set DUE status and grace period if not already set
-    if (account.billingStatus === BillingStatus.ACTIVE) {
-        updates.billingStatus = BillingStatus.DUE;
-        updates.gracePeriodEnd = gracePeriodEnd.toISOString();
-    }
-
-    await databases.updateDocument(
-        DATABASE_ID,
-        BILLING_ACCOUNTS_ID,
-        billingAccountId,
-        updates
-    );
-
-    // Find and update associated invoice
-    const invoiceId = payment.notes?.fairlx_invoice_id;
-    if (invoiceId) {
-        const invoices = await databases.listDocuments<BillingInvoice>(
-            DATABASE_ID,
-            INVOICES_ID,
-            [Query.equal("invoiceId", invoiceId), Query.limit(1)]
-        );
-
-        if (invoices.total > 0) {
-            await databases.updateDocument(
-                DATABASE_ID,
-                INVOICES_ID,
-                invoices.documents[0].$id,
-                {
-                    status: InvoiceStatus.FAILED,
-                    failureReason: payment.error_description || payment.error_code || "Payment failed",
-                    retryCount: invoices.documents[0].retryCount + 1,
-                }
-            );
-        }
-    }
-
-    // Log audit events
-    await databases.createDocument(
-        DATABASE_ID,
-        BILLING_AUDIT_LOGS_ID,
-        ID.unique(),
-        {
-            billingAccountId,
-            eventType: BillingAuditEventType.PAYMENT_FAILED,
-            razorpayEventId: eventId,
-            metadata: JSON.stringify({
-                paymentId: payment.id,
-                amount: payment.amount,
-                errorCode: payment.error_code,
-                errorDescription: payment.error_description,
-            }),
-        }
-    );
-
-    // If this started the grace period, log that too
-    if (account.billingStatus === BillingStatus.ACTIVE) {
-        await databases.createDocument(
-            DATABASE_ID,
-            BILLING_AUDIT_LOGS_ID,
-            ID.unique(),
-            {
-                billingAccountId,
-                eventType: BillingAuditEventType.GRACE_PERIOD_STARTED,
-                razorpayEventId: eventId,
-                metadata: JSON.stringify({
-                    gracePeriodEnd: gracePeriodEnd.toISOString(),
-                    daysRemaining: BILLING_GRACE_PERIOD_DAYS,
-                }),
-            }
-        );
-    }
-}
-
-/**
- * Handle subscription.charged event
- * 
- * Called when a subscription payment is successfully processed.
- */
-async function handleSubscriptionCharged(
-    databases: Awaited<ReturnType<typeof createAdminClient>>["databases"],
-    event: RazorpayWebhookEvent,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _eventId: string
-) {
-    const subscription = event.payload.subscription?.entity;
-    if (!subscription) {
-        return;
-    }
-
-    const billingAccountId = subscription.notes?.fairlx_billing_account_id;
-    if (!billingAccountId) {
-        return;
-    }
-
-    // Update billing cycle dates
-    const cycleStart = new Date(subscription.current_start * 1000);
-    const cycleEnd = new Date(subscription.current_end * 1000);
-
-    await databases.updateDocument(
-        DATABASE_ID,
-        BILLING_ACCOUNTS_ID,
-        billingAccountId,
-        {
-            billingCycleStart: cycleStart.toISOString(),
-            billingCycleEnd: cycleEnd.toISOString(),
-            lastPaymentAt: new Date().toISOString(),
-            billingStatus: BillingStatus.ACTIVE,
-            gracePeriodEnd: null,
-        }
-    );
-}
-
-/**
- * Handle subscription.halted event
- * 
- * Called when a subscription is halted due to failed payments.
- */
-async function handleSubscriptionHalted(
-    databases: Awaited<ReturnType<typeof createAdminClient>>["databases"],
-    event: RazorpayWebhookEvent,
-    eventId: string
-) {
-    const subscription = event.payload.subscription?.entity;
-    if (!subscription) {
-        return;
-    }
-
-    const billingAccountId = subscription.notes?.fairlx_billing_account_id;
-    if (!billingAccountId) {
-        return;
-    }
-
-    // Get billing account to check current state
-    const account = await databases.getDocument<BillingAccount>(
-        DATABASE_ID,
-        BILLING_ACCOUNTS_ID,
-        billingAccountId
-    );
-
-    // If grace period has expired, suspend the account
-    if (account.gracePeriodEnd) {
-        const gracePeriodEnd = new Date(account.gracePeriodEnd);
-        const now = new Date();
-
-        if (now > gracePeriodEnd) {
-            await databases.updateDocument(
-                DATABASE_ID,
-                BILLING_ACCOUNTS_ID,
-                billingAccountId,
-                { billingStatus: BillingStatus.SUSPENDED }
-            );
-
-            await databases.createDocument(
-                DATABASE_ID,
-                BILLING_AUDIT_LOGS_ID,
-                ID.unique(),
-                {
-                    billingAccountId,
-                    eventType: BillingAuditEventType.ACCOUNT_SUSPENDED,
-                    razorpayEventId: eventId,
-                    metadata: JSON.stringify({
-                        reason: "Grace period expired - subscription halted",
-                        gracePeriodEnd: account.gracePeriodEnd,
-                    }),
-                }
-            );
-        }
-    }
-}
-
-/**
- * Handle subscription.cancelled event
- * 
- * Called when a subscription is cancelled.
- */
-async function handleSubscriptionCancelled(
-    databases: Awaited<ReturnType<typeof createAdminClient>>["databases"],
-    event: RazorpayWebhookEvent,
-    eventId: string
-) {
-    const subscription = event.payload.subscription?.entity;
-    if (!subscription) {
-        return;
-    }
-
-    const billingAccountId = subscription.notes?.fairlx_billing_account_id;
-    if (!billingAccountId) {
-        return;
-    }
-
-    // Clear subscription ID from billing account
-    await databases.updateDocument(
-        DATABASE_ID,
-        BILLING_ACCOUNTS_ID,
-        billingAccountId,
-        { razorpaySubscriptionId: null }
-    );
-
-    await databases.createDocument(
-        DATABASE_ID,
-        BILLING_AUDIT_LOGS_ID,
-        ID.unique(),
-        {
-            billingAccountId,
-            eventType: BillingAuditEventType.SUBSCRIPTION_CANCELLED,
-            razorpayEventId: eventId,
-            metadata: JSON.stringify({
-                subscriptionId: subscription.id,
+                walletId,
+                walletCredited: result.success && result.error !== "already_processed",
             }),
         }
     );
@@ -514,7 +268,7 @@ async function handleSubscriptionCancelled(
  * Handle payment.authorized event
  * 
  * Called when a payment is authorized (before capture).
- * Used for tracking and audit purposes.
+ * Audit log only — no wallet changes.
  */
 async function handlePaymentAuthorized(
     databases: Awaited<ReturnType<typeof createAdminClient>>["databases"],
@@ -528,7 +282,6 @@ async function handlePaymentAuthorized(
 
     const billingAccountId = payment.notes?.fairlx_billing_account_id;
     if (!billingAccountId) {
-        // Not a Fairlx payment, skip
         return;
     }
 
@@ -551,9 +304,51 @@ async function handlePaymentAuthorized(
 }
 
 /**
+ * Handle payment.failed event
+ * 
+ * Called when a payment attempt fails.
+ * Audit log only — no grace period or mandate logic.
+ */
+async function handlePaymentFailed(
+    databases: Awaited<ReturnType<typeof createAdminClient>>["databases"],
+    event: RazorpayWebhookEvent,
+    eventId: string
+) {
+    const payment = event.payload.payment?.entity;
+    if (!payment) {
+        return;
+    }
+
+    const billingAccountId = payment.notes?.fairlx_billing_account_id;
+
+    // Log audit event
+    await databases.createDocument(
+        DATABASE_ID,
+        BILLING_AUDIT_LOGS_ID,
+        ID.unique(),
+        {
+            billingAccountId: billingAccountId || null,
+            eventType: BillingAuditEventType.PAYMENT_FAILED,
+            razorpayEventId: eventId,
+            metadata: JSON.stringify({
+                paymentId: payment.id,
+                amount: payment.amount,
+                errorCode: payment.error_code,
+                errorDescription: payment.error_description,
+            }),
+        }
+    );
+}
+
+// ============================================================================
+// REFUND HANDLERS
+// ============================================================================
+
+/**
  * Handle refund.processed event
  * 
  * Called when a refund is successfully processed.
+ * Credits the wallet with the refunded amount.
  */
 async function handleRefundProcessed(
     databases: Awaited<ReturnType<typeof createAdminClient>>["databases"],
@@ -565,10 +360,45 @@ async function handleRefundProcessed(
         return;
     }
 
+    const walletId = refund.notes?.fairlx_wallet_id;
     const billingAccountId = refund.notes?.fairlx_billing_account_id;
-    if (!billingAccountId) {
-        // Not a Fairlx refund, skip
-        return;
+
+    // Credit wallet if we know which wallet to credit
+    if (walletId) {
+        await refundToWallet(databases, walletId, refund.amount, {
+            referenceId: refund.payment_id,
+            idempotencyKey: `refund_${refund.id}`,
+            reason: refund.notes?.reason || "Razorpay refund",
+        });
+    } else if (billingAccountId) {
+        // Try to find the wallet via billing account
+        try {
+            const account = await databases.getDocument<BillingAccount>(
+                DATABASE_ID,
+                BILLING_ACCOUNTS_ID,
+                billingAccountId
+            );
+
+            const walletQuery = account.organizationId
+                ? [Query.equal("organizationId", account.organizationId)]
+                : [Query.equal("userId", account.userId!)];
+
+            const wallets = await databases.listDocuments<Wallet>(
+                DATABASE_ID,
+                WALLETS_ID,
+                [...walletQuery, Query.limit(1)]
+            );
+
+            if (wallets.total > 0) {
+                await refundToWallet(databases, wallets.documents[0].$id, refund.amount, {
+                    referenceId: refund.payment_id,
+                    idempotencyKey: `refund_${refund.id}`,
+                    reason: refund.notes?.reason || "Razorpay refund",
+                });
+            }
+        } catch {
+            // Log but don't fail
+        }
     }
 
     // Log audit event
@@ -577,7 +407,7 @@ async function handleRefundProcessed(
         BILLING_AUDIT_LOGS_ID,
         ID.unique(),
         {
-            billingAccountId,
+            billingAccountId: billingAccountId || null,
             eventType: BillingAuditEventType.REFUND_PROCESSED,
             razorpayEventId: eventId,
             metadata: JSON.stringify({
@@ -593,7 +423,7 @@ async function handleRefundProcessed(
 /**
  * Handle refund.failed event
  * 
- * Called when a refund fails.
+ * Called when a refund fails. Audit log only.
  */
 async function handleRefundFailed(
     databases: Awaited<ReturnType<typeof createAdminClient>>["databases"],
@@ -606,10 +436,6 @@ async function handleRefundFailed(
     }
 
     const billingAccountId = refund.notes?.fairlx_billing_account_id;
-    if (!billingAccountId) {
-        // Not a Fairlx refund, skip
-        return;
-    }
 
     // Log audit event
     await databases.createDocument(
@@ -617,159 +443,13 @@ async function handleRefundFailed(
         BILLING_AUDIT_LOGS_ID,
         ID.unique(),
         {
-            billingAccountId,
+            billingAccountId: billingAccountId || null,
             eventType: BillingAuditEventType.REFUND_FAILED,
             razorpayEventId: eventId,
             metadata: JSON.stringify({
                 refundId: refund.id,
                 paymentId: refund.payment_id,
                 amount: refund.amount,
-            }),
-        }
-    );
-}
-
-// ============================================================================
-// E-MANDATE TOKEN HANDLERS
-// ============================================================================
-
-/**
- * Handle token.confirmed webhook
- * 
- * Called when e-Mandate authorization is confirmed by the bank/NPCI.
- * Updates billing account with mandate status AUTHORIZED.
- */
-async function handleTokenConfirmed(
-    databases: Awaited<ReturnType<typeof createAdminClient>>["databases"],
-    event: RazorpayWebhookEvent,
-    eventId: string
-): Promise<void> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const token = (event.payload as any)?.token?.entity;
-    if (!token) {
-        return;
-    }
-
-    const customerId = token.customer_id;
-    if (!customerId) {
-        return;
-    }
-
-    // Find billing account by customer ID
-    const billingAccounts = await databases.listDocuments<BillingAccount>(
-        DATABASE_ID,
-        BILLING_ACCOUNTS_ID,
-        [
-            Query.equal("razorpayCustomerId", customerId),
-            Query.limit(1),
-        ]
-    );
-
-    if (billingAccounts.total === 0) {
-        return;
-    }
-
-    const account = billingAccounts.documents[0];
-
-    // Update billing account with mandate authorization
-    await databases.updateDocument(
-        DATABASE_ID,
-        BILLING_ACCOUNTS_ID,
-        account.$id,
-        {
-            razorpayTokenId: token.id,
-            razorpayMandateId: token.id,
-            mandateStatus: MandateStatus.AUTHORIZED,
-            paymentMethodType: token.method || "emandate",
-            paymentMethodBrand: token.bank || token.issuer || undefined,
-            paymentMethodLast4: token.last4 || undefined,
-        }
-    );
-
-    // Log audit event
-    await databases.createDocument(
-        DATABASE_ID,
-        BILLING_AUDIT_LOGS_ID,
-        ID.unique(),
-        {
-            billingAccountId: account.$id,
-            eventType: BillingAuditEventType.PAYMENT_METHOD_ADDED,
-            razorpayEventId: eventId,
-            metadata: JSON.stringify({
-                tokenId: token.id,
-                method: token.method,
-                bank: token.bank,
-                mandateStatus: MandateStatus.AUTHORIZED,
-            }),
-        }
-    );
-}
-
-/**
- * Handle token.rejected / token.cancelled webhook
- * 
- * Called when e-Mandate authorization fails or is cancelled.
- * Updates billing account with mandate status FAILED or CANCELLED.
- */
-async function handleTokenFailed(
-    databases: Awaited<ReturnType<typeof createAdminClient>>["databases"],
-    event: RazorpayWebhookEvent,
-    eventId: string
-): Promise<void> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const token = (event.payload as any)?.token?.entity;
-    if (!token) {
-        return;
-    }
-
-    const customerId = token.customer_id;
-    if (!customerId) {
-        return;
-    }
-
-    // Find billing account by customer ID
-    const billingAccounts = await databases.listDocuments<BillingAccount>(
-        DATABASE_ID,
-        BILLING_ACCOUNTS_ID,
-        [
-            Query.equal("razorpayCustomerId", customerId),
-            Query.limit(1),
-        ]
-    );
-
-    if (billingAccounts.total === 0) {
-        return;
-    }
-
-    const account = billingAccounts.documents[0];
-
-    const newStatus = event.event === "token.cancelled"
-        ? MandateStatus.CANCELLED
-        : MandateStatus.FAILED;
-
-    // Update billing account with failed/cancelled status
-    await databases.updateDocument(
-        DATABASE_ID,
-        BILLING_ACCOUNTS_ID,
-        account.$id,
-        {
-            mandateStatus: newStatus,
-        }
-    );
-
-    // Log audit event
-    await databases.createDocument(
-        DATABASE_ID,
-        BILLING_AUDIT_LOGS_ID,
-        ID.unique(),
-        {
-            billingAccountId: account.$id,
-            eventType: BillingAuditEventType.PAYMENT_METHOD_REMOVED,
-            razorpayEventId: eventId,
-            metadata: JSON.stringify({
-                tokenId: token.id,
-                reason: token.error_description || event.event,
-                mandateStatus: newStatus,
             }),
         }
     );

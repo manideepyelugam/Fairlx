@@ -11,29 +11,33 @@ import { Models } from "node-appwrite";
  * USAGE: Funds deducted for billing usage
  * REFUND: Funds returned (e.g., service credit)
  * ADJUSTMENT: Manual adjustment by admin
+ * HOLD: Funds reserved for pending async operations
+ * RELEASE: Reserved funds returned to available balance
  */
 export enum WalletTransactionType {
     TOPUP = "TOPUP",
     USAGE = "USAGE",
     REFUND = "REFUND",
     ADJUSTMENT = "ADJUSTMENT",
+    HOLD = "HOLD",
+    RELEASE = "RELEASE",
 }
 
 // ===============================
-// Billing Mode Enum
+// Wallet Status
 // ===============================
 
 /**
- * BillingMode - determines how usage is charged
+ * WalletStatus - tracks wallet state
  * 
- * AUTOPAY: Always charge payment method (mandate/UPI/card)
- * PREPAID: Wallet only, block usage if insufficient balance
- * HYBRID: Wallet first, fallback to autopay if insufficient
+ * ACTIVE: Wallet is operational
+ * FROZEN: Wallet is temporarily frozen (admin action)
+ * CLOSED: Wallet is permanently closed
  */
-export enum BillingMode {
-    AUTOPAY = "autopay",
-    PREPAID = "prepaid",
-    HYBRID = "hybrid",
+export enum WalletStatus {
+    ACTIVE = "active",
+    FROZEN = "frozen",
+    CLOSED = "closed",
 }
 
 // ===============================
@@ -64,6 +68,12 @@ export type Wallet = Models.Document & {
 
     /** Balance reserved for pending transactions */
     lockedBalance: number;
+
+    /** Wallet status */
+    status: WalletStatus;
+
+    /** Optimistic locking version — incremented on every balance update */
+    version: number;
 
     /** Last top-up timestamp */
     lastTopupAt?: string;
@@ -106,6 +116,9 @@ export type WalletTransaction = Models.Document & {
     /** Idempotency key for replay protection */
     idempotencyKey?: string;
 
+    /** HMAC-SHA256 audit hash for tamper detection */
+    signature?: string;
+
     /** Additional metadata (JSON stringified) */
     metadata?: string;
 
@@ -114,29 +127,32 @@ export type WalletTransaction = Models.Document & {
 };
 
 /**
- * BillingSettings - User preferences for billing mode
+ * UsageDeduction - Record of a usage-based deduction from wallet
+ * 
+ * Links a wallet transaction to the specific service usage that triggered it.
  */
-export type BillingSetting = Models.Document & {
-    /** User ID (for PERSONAL accounts) */
-    userId?: string;
+export type UsageDeduction = Models.Document & {
+    /** Reference to WalletTransaction */
+    walletTransactionId: string;
 
-    /** Organization ID (for ORG accounts) */
+    /** Reference to Wallet */
+    walletId: string;
+
+    /** User or Organization ID that owns the wallet */
+    userId?: string;
     organizationId?: string;
 
-    /** Current billing mode */
-    billingMode: BillingMode;
+    /** Service type that generated the usage (e.g., "traffic", "storage", "compute", "ai") */
+    serviceType: string;
 
-    /** Enable auto top-up when balance is low */
-    autoTopupEnabled?: boolean;
+    /** Cost in smallest currency unit (paise) */
+    cost: number;
 
-    /** Balance threshold for auto top-up (in paise) */
-    autoTopupThreshold?: number;
+    /** Currency code */
+    currency: string;
 
-    /** Amount to add on auto top-up (in paise) */
-    autoTopupAmount?: number;
-
-    /** Minimum balance warning threshold (in paise) */
-    lowBalanceWarningThreshold?: number;
+    /** Additional metadata (JSON stringified) — e.g., GB used, compute units */
+    metadata?: string;
 };
 
 // ===============================
@@ -145,8 +161,9 @@ export type BillingSetting = Models.Document & {
 
 export type TopupWalletDto = {
     amount: number;
-    idempotencyKey: string;
-    paymentId?: string;
+    razorpayOrderId: string;
+    razorpayPaymentId: string;
+    razorpaySignature: string;
 };
 
 export type DeductWalletDto = {
@@ -161,9 +178,24 @@ export type WalletBalanceResponse = {
     lockedBalance: number;
     availableBalance: number;
     currency: string;
+    status: WalletStatus;
     lastTopupAt?: string;
 };
 
-export type SetBillingModeDto = {
-    billingMode: BillingMode;
+export type CreateTopupOrderDto = {
+    amount: number;
+};
+
+export type HoldWalletDto = {
+    amount: number;
+    referenceId: string;
+    idempotencyKey: string;
+    description?: string;
+};
+
+export type ReleaseHoldDto = {
+    amount: number;
+    referenceId: string;
+    idempotencyKey: string;
+    confirm?: boolean; // if true, commit hold as DEBIT instead of releasing
 };

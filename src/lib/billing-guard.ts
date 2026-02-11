@@ -267,7 +267,7 @@ export const billingGuard = createMiddleware<BillingGuardContext>(async (c, next
             return c.json(
                 {
                     error: "ACCOUNT_SUSPENDED",
-                    message: "Your account has been suspended due to an unpaid invoice. Please update your payment method to restore access.",
+                    message: "Your account has been suspended due to an unpaid invoice. Please add credits to your wallet to restore access.",
                     billingUrl: "/billing",
                     code: "BILLING_SUSPENDED",
                 },

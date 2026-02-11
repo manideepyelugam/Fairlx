@@ -1,24 +1,41 @@
 import { z } from "zod";
-import { WalletTransactionType, BillingMode } from "./types";
+import { WalletTransactionType } from "./types";
 
 // ===============================
 // Wallet Validation Schemas
 // ===============================
 
 /**
- * Schema for wallet top-up
- * Requires idempotency key to prevent duplicate top-ups
+ * Schema for creating a Razorpay top-up order
+ * This creates the order server-side; frontend opens Razorpay Checkout with it
  */
-export const topupWalletSchema = z.object({
+export const createTopupOrderSchema = z.object({
     /** Amount in smallest currency unit (paise). Min ₹1, Max ₹1,00,000 */
     amount: z.number().min(100, "Minimum top-up is ₹1").max(10000000, "Maximum top-up is ₹1,00,000"),
-    /** Unique key to prevent duplicate processing */
-    idempotencyKey: z.string().min(1).max(64),
-    /** Optional Razorpay payment ID for verification */
-    paymentId: z.string().optional(),
+    /** Currency - defaults to INR on server */
+    currency: z.string().optional(),
+    /** Organization ID (for org wallets) */
+    organizationId: z.string().optional(),
+    /** User ID (for personal wallets) */
+    userId: z.string().optional(),
 });
 
-export type TopupWalletInput = z.infer<typeof topupWalletSchema>;
+export type CreateTopupOrderInput = z.infer<typeof createTopupOrderSchema>;
+
+/**
+ * Schema for verifying a Razorpay top-up payment after checkout
+ * Requires Razorpay payment details + signature for verification
+ */
+export const verifyTopupSchema = z.object({
+    /** Razorpay Order ID */
+    razorpayOrderId: z.string().min(1),
+    /** Razorpay Payment ID */
+    razorpayPaymentId: z.string().min(1),
+    /** Razorpay Signature for verification */
+    razorpaySignature: z.string().min(1),
+});
+
+export type VerifyTopupInput = z.infer<typeof verifyTopupSchema>;
 
 /**
  * Schema for getting wallet balance
@@ -45,28 +62,53 @@ export const getTransactionsSchema = z.object({
 export type GetTransactionsInput = z.infer<typeof getTransactionsSchema>;
 
 /**
- * Schema for setting billing mode
+ * Schema for usage deduction from wallet (internal use)
+ * Used by billing system to deduct from wallet
  */
-export const setBillingModeSchema = z.object({
-    billingMode: z.nativeEnum(BillingMode),
-});
-
-export type SetBillingModeInput = z.infer<typeof setBillingModeSchema>;
-
-/**
- * Schema for consuming usage (internal use)
- * Used by billing cycle to deduct from wallet
- */
-export const consumeUsageSchema = z.object({
-    /** Amount to consume in smallest currency unit (paise) */
+export const deductUsageSchema = z.object({
+    /** Amount to deduct in smallest currency unit (paise) */
     amount: z.number().min(1),
-    /** Invoice ID for reference */
-    invoiceId: z.string().min(1),
+    /** Reference ID (invoice ID, usage event ID, etc.) */
+    referenceId: z.string().min(1),
     /** Idempotency key to prevent double-deduction */
     idempotencyKey: z.string().min(1).max(64),
+    /** Description for the deduction */
+    description: z.string().optional(),
 });
 
-export type ConsumeUsageInput = z.infer<typeof consumeUsageSchema>;
+export type DeductUsageInput = z.infer<typeof deductUsageSchema>;
+
+/**
+ * Schema for holding funds in wallet (async jobs)
+ */
+export const holdWalletSchema = z.object({
+    /** Amount to hold in smallest currency unit (paise) */
+    amount: z.number().min(1),
+    /** Reference ID for the hold */
+    referenceId: z.string().min(1),
+    /** Idempotency key */
+    idempotencyKey: z.string().min(1).max(64),
+    /** Description */
+    description: z.string().optional(),
+});
+
+export type HoldWalletInput = z.infer<typeof holdWalletSchema>;
+
+/**
+ * Schema for releasing a hold on wallet funds
+ */
+export const releaseHoldSchema = z.object({
+    /** Amount to release */
+    amount: z.number().min(1),
+    /** Reference ID matching the original hold */
+    referenceId: z.string().min(1),
+    /** Idempotency key */
+    idempotencyKey: z.string().min(1).max(64),
+    /** If true, commit the hold as a DEBIT instead of releasing back to balance */
+    confirm: z.boolean().default(false),
+});
+
+export type ReleaseHoldInput = z.infer<typeof releaseHoldSchema>;
 
 /**
  * Schema for wallet refund (internal use)
