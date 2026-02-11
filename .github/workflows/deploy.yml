@@ -6,6 +6,10 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -107,6 +111,8 @@ jobs:
           NEXT_PUBLIC_APPWRITE_BILLING_SETTINGS_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_BILLING_SETTINGS_ID }}
           WALLET_SIG_SECRET: ${{ secrets.WALLET_SIG_SECRET }}
           WALLET_DAILY_TOPUP_LIMIT: ${{ secrets.WALLET_DAILY_TOPUP_LIMIT }}
+          NEXT_PUBLIC_APPWRITE_LOGIN_TOKENS_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_LOGIN_TOKENS_ID }}
+          NEXT_PUBLIC_APPWRITE_PROCESSED_EVENTS_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_PROCESSED_EVENTS_ID }}
         run: npm run build
 
       - name: Transfer files to server
@@ -215,6 +221,8 @@ jobs:
             NEXT_PUBLIC_APPWRITE_BILLING_SETTINGS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_BILLING_SETTINGS_ID }}
             WALLET_SIG_SECRET=${{ secrets.WALLET_SIG_SECRET }}
             WALLET_DAILY_TOPUP_LIMIT=${{ secrets.WALLET_DAILY_TOPUP_LIMIT }}
+            NEXT_PUBLIC_APPWRITE_LOGIN_TOKENS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_LOGIN_TOKENS_ID }}
+            NEXT_PUBLIC_APPWRITE_PROCESSED_EVENTS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_PROCESSED_EVENTS_ID }}
             NEXT_PUBLIC_APPWRITE_VERIFICATION_TOKENS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_VERIFICATION_TOKENS_ID }}
             EOF
             
