@@ -7,7 +7,6 @@ import { zValidator } from "@hono/zod-validator";
 import {
     DATABASE_ID,
     BILLING_ACCOUNTS_ID,
-    WALLETS_ID,
     BILLING_CURRENCY,
     WALLET_DAILY_TOPUP_LIMIT,
 } from "@/config";
