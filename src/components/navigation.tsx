@@ -187,8 +187,9 @@ export const Navigation = ({
   });
 
   return (
-    <div className="p-3 border-sidebar-border flex-shrink-0">
-      <ul className="flex flex-col ">
+    <div className="px-3 pt-4 pb-2 flex-shrink-0">
+      <p className="text-[11px] font-semibold tracking-wider uppercase text-sidebar-foreground/50 pl-2.5 mb-2">Core Pages</p>
+      <ul className="flex flex-col gap-0.5">
         {visibleRoutes.map((item) => {
           // Determine the correct href based on route type
           let fullHref: string;
@@ -219,11 +220,11 @@ export const Navigation = ({
               <Link href={fullHref}>
                 <div
                   className={cn(
-                    "flex items-center gap-2.5 p-2.5 rounded-md font-medium hover:bg-sidebar-accent hover:text-sidebar-foreground transition text-sidebar-foreground/70",
+                    "flex items-center gap-2.5 px-2.5 py-2 rounded-md font-medium hover:bg-sidebar-accent hover:text-sidebar-foreground transition text-sidebar-foreground/70",
                     isActive && "bg-sidebar-accent shadow-sm hover:opacity-100 text-sidebar-foreground"
                   )}
                 >
-                  <Icon className={cn("size-5 ", isActive && "text-primary")} />
+                  <Icon className={cn("size-[17px]", isActive && "text-primary")} />
                   <p className="text-[12px] tracking-tight font-medium">
                     {item.label}
                   </p>

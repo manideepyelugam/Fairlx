@@ -121,17 +121,22 @@ const AttachmentItem = ({ attachment, workspaceId, onPreview }: AttachmentItemPr
     <>
       <ConfirmDialog />
       <div className="group flex items-center gap-2 px-2 py-1.5 hover:bg-accent rounded-md transition-colors">
-        <div className="flex-shrink-0">
-          {getFileIcon(attachment.mimeType)}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-normal text-foreground truncate leading-tight">
-            {attachment.name}
-          </p>
-          <p className="text-[11px] text-muted-foreground leading-tight">
-            {formatFileSize(attachment.size)} · {getFileExtension(attachment.name)}
-          </p>
-        </div>
+        <button
+          onClick={isPreviewable ? handlePreview : handleDownload}
+          className="flex items-center gap-2 flex-1 min-w-0 text-left cursor-pointer hover:opacity-80 transition-opacity"
+        >
+          <div className="flex-shrink-0">
+            {getFileIcon(attachment.mimeType)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-normal text-foreground truncate leading-tight">
+              {attachment.name}
+            </p>
+            <p className="text-[11px] text-muted-foreground leading-tight">
+              {formatFileSize(attachment.size)} · {getFileExtension(attachment.name)}
+            </p>
+          </div>
+        </button>
         <div className="flex items-center opactiy-100">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

@@ -18,15 +18,15 @@ const badgeVariants = cva(
           "border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80",
         outline: "text-foreground",
         [TaskStatus.TODO]:
-          "border-transparent bg-gray-400 text-primary hover:bg-gray-400/80",
+          "border-transparent bg-gray-400 text-gray-900 dark:bg-gray-500 dark:text-gray-50 hover:bg-gray-400/80 dark:hover:bg-gray-500/80",
         [TaskStatus.ASSIGNED]:
-          "border-transparent bg-red-400 text-primary hover:bg-red-400/80",
+          "border-transparent bg-red-400 text-red-900 dark:bg-red-500 dark:text-red-50 hover:bg-red-400/80 dark:hover:bg-red-500/80",
         [TaskStatus.IN_PROGRESS]:
-          "border-transparent bg-yellow-400 text-primary hover:bg-yellow-400/80",
+          "border-transparent bg-yellow-400 text-yellow-900 dark:bg-yellow-500 dark:text-yellow-50 hover:bg-yellow-400/80 dark:hover:bg-yellow-500/80",
         [TaskStatus.IN_REVIEW]:
-          "border-transparent bg-blue-400 text-primary hover:bg-blue-400/80",
+          "border-transparent bg-blue-400 text-blue-900 dark:bg-blue-500 dark:text-blue-50 hover:bg-blue-400/80 dark:hover:bg-blue-500/80",
         [TaskStatus.DONE]:
-          "border-transparent bg-emerald-400 text-primary hover:bg-emerald-400/80",
+          "border-transparent bg-emerald-400 text-emerald-900 dark:bg-emerald-500 dark:text-emerald-50 hover:bg-emerald-400/80 dark:hover:bg-emerald-500/80",
       },
     },
     defaultVariants: {

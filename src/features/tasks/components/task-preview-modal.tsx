@@ -49,6 +49,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { WorkItemIcon } from "@/features/timeline/components/work-item-icon";
 import { Badge } from "@/components/ui/badge";
 import { RichTextEditor, setMentionMembers } from "@/components/editor";
+import { LabelSelector } from "./label-management";
 
 // Default work item type labels
 const typeLabels: Record<string, string> = {
@@ -488,7 +489,21 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
               </div>
 
               {/* Labels */}
-              {/* If we want to support labels, we need LabelSelector. Skipping for now to keep it simpler unless requested, as it requires complex project label fetching */}
+              <div>
+                <label className="text-xs text-muted-foreground mb-1.5 block">Labels</label>
+                <LabelSelector
+                  selectedLabels={task.labels || []}
+                  onLabelsChange={canEdit ? (labels) => handleUpdate({ labels }) : () => {}}
+                  availableLabels={[
+                    ...(project?.customLabels?.map((l: { name: string }) => l.name) || []),
+                    "Bug", "Feature", "Improvement", "Documentation", "Design", "Research",
+                    "Frontend", "Backend",
+                  ].filter((v, i, a) => a.indexOf(v) === i)}
+                  placeholder="Add label..."
+                  className="h-8 text-xs w-full"
+                  disabled={!canEdit}
+                />
+              </div>
 
               {/* Time Estimate */}
               <div>
