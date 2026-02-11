@@ -268,7 +268,7 @@ const app = new Hono()
 
       try {
         // Get counts only (fast queries)
-        const [projects, members, milestones] = await Promise.all([
+        const [projects, members, milestones, completedMilestones] = await Promise.all([
           databases.listDocuments<Project>(
             DATABASE_ID,
             PROJECTS_ID,
@@ -284,6 +284,15 @@ const app = new Hono()
             PROGRAM_MILESTONES_ID,
             [Query.equal("programId", programId), Query.limit(1)]
           ),
+          databases.listDocuments<ProgramMilestone>(
+            DATABASE_ID,
+            PROGRAM_MILESTONES_ID,
+            [
+              Query.equal("programId", programId),
+              Query.equal("status", MilestoneStatus.COMPLETED),
+              Query.limit(1),
+            ]
+          ),
         ]);
 
         return c.json({
@@ -291,6 +300,7 @@ const app = new Hono()
             projectCount: projects.total,
             memberCount: members.total,
             milestoneCount: milestones.total,
+            completedMilestoneCount: completedMilestones.total,
           },
         });
       } catch {
