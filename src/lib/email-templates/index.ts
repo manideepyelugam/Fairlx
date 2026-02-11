@@ -10,6 +10,7 @@ export { taskDueDateChangedTemplate } from "./task-due-date-changed";
 export { workitemDueSoonTemplate } from "./workitem-due-soon";
 export { workitemOverdueTemplate } from "./workitem-overdue";
 export { workitemMentionTemplate } from "./workitem-mention";
+export { commentReplyTemplate } from "./comment-reply";
 
 // Auth & Organization email templates
 export { welcomeEmailTemplate } from "./welcome-email";

@@ -1,6 +1,6 @@
 /**
  * Workitem Notification System
- * 
+ *
  * Event-driven notification system with SMTP (email) and WebSocket (real-time) channels.
  * 
  * Architecture:
@@ -43,6 +43,7 @@ export {
     createDueDateChangedEvent,
     createCommentAddedEvent,
     createMentionEvent,
+    createReplyEvent,
     createAttachmentAddedEvent,
     createAttachmentDeletedEvent,
     getNotificationTitle,

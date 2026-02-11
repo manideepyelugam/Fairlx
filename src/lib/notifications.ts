@@ -378,7 +378,7 @@ export async function notifyTaskAssignees({
     }
 
     // Map notification types to supported database enum values
-    const supportedTypes = ["task_assigned", "task_updated", "task_completed", "task_deleted", "task_comment"];
+    const supportedTypes = ["task_assigned", "task_updated", "task_completed", "task_deleted", "task_comment", "task_mention", "task_reply"];
     const dbNotificationType = supportedTypes.includes(notificationType) ? notificationType : "task_updated";
 
     // Fetch member documents to get actual user IDs
@@ -504,7 +504,7 @@ export async function notifyWorkspaceAdmins({
     }
 
     // Map notification types to supported database enum values
-    const supportedTypes = ["task_assigned", "task_updated", "task_completed", "task_deleted", "task_comment"];
+    const supportedTypes = ["task_assigned", "task_updated", "task_completed", "task_deleted", "task_comment", "task_mention", "task_reply"];
     const dbNotificationType = supportedTypes.includes(notificationType) ? notificationType : "task_updated";
 
     // Create notifications for admin members

@@ -33,18 +33,18 @@ export const LabelBadge = ({
   return (
     <Badge
       variant={variant}
-      className={cn("text-xs rounded-full  border", className, !color && defaultClasses)}
+      className={cn("text-xs rounded-full border max-w-full", className, !color && defaultClasses)}
       style={color ? {
         backgroundColor: `${color}1A`, // 10% opacity
         color: color,
         borderColor: `${color}33` // 20% opacity
       } : undefined}
     >
-      <p className="text-[11px]">{label}</p>
+      <p className="text-[11px] truncate">{label}</p>
       {onRemove && (
         <button
           onClick={onRemove}
-          className="ml-1  rounded-full"
+          className="ml-1 rounded-full flex-shrink-0"
         >
           <X className="h-3 w-3" />
         </button>

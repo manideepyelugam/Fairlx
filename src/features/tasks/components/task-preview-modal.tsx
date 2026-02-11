@@ -74,7 +74,7 @@ interface TaskPreviewContentProps {
 }
 
 const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPreview, onDelete, canEdit = false, canDelete = false }: TaskPreviewContentProps) => {
-  const { mutate: updateTask } = useUpdateTask();
+  const { mutate: updateTask, isPending: isUpdating } = useUpdateTask();
   const { data: members } = useGetMembers({ workspaceId });
   const { data: project } = useGetProject({ projectId: task.projectId });
   const { data: user } = useCurrent();
@@ -278,8 +278,12 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
             placeholder="Status"
             disabled={!canEdit}
           />
-          <span className="text-xs text-muted-foreground font-mono">{task.key}</span>
-        </div>
+          <span className="text-xs text-muted-foreground font-mono">{task.key}</span>          {(isUpdating || isSavingDescription) && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground ml-2">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span>Saving...</span>
+            </div>
+          )}        </div>
 
         <div className="flex items-center gap-1">
           <IconHelp content="Copy task URL" side="bottom">
@@ -466,23 +470,23 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
 
               {/* Dates - side by side */}
               <div className="grid grid-cols-2 gap-2">
-                <div>
+                <div className="min-w-0">
                   <label className="text-[10px] text-muted-foreground mb-1 block font-medium">Start Date</label>
                   <DatePicker
                     value={task.dueDate ? new Date(task.dueDate) : undefined}
                     onChange={canEdit ? (date) => handleDebouncedDateUpdate({ dueDate: date }) : () => { }}
                     placeholder="Set start date"
-                    className="w-full bg-card border-border h-8 text-xs"
+                    className="w-full bg-card border-border h-8 text-xs overflow-hidden"
                     disabled={!canEdit}
                   />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="text-[10px] text-muted-foreground mb-1 block font-medium">End Date</label>
                   <DatePicker
                     value={task.endDate ? new Date(task.endDate) : undefined}
                     onChange={canEdit ? (date) => handleDebouncedDateUpdate({ endDate: date }) : () => { }}
                     placeholder="Set end date"
-                    className="w-full bg-card border-border h-8 text-xs"
+                    className="w-full bg-card border-border h-8 text-xs overflow-hidden"
                     disabled={!canEdit}
                   />
                 </div>
