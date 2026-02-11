@@ -15,6 +15,8 @@ interface BillingAccountResponse {
     daysUntilSuspension?: number;
     currency: string;
     walletBalance?: number;
+    walletLockedBalance?: number;
+    availableBalance?: number;
     walletCurrency?: string;
 }
 

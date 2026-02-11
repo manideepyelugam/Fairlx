@@ -98,9 +98,7 @@ const app = new Hono()
         zValidator("json", createTopupOrderSchema),
         async (c) => {
             const user = c.get("user");
-            const { amount } = c.req.valid("json");
-
-            const organizationId = c.req.query("organizationId");
+            const { amount, organizationId } = c.req.valid("json");
 
             const { databases } = await createAdminClient();
 

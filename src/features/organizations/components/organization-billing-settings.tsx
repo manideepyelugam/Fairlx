@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Wallet, DollarSign, FileText, ExternalLink, Calendar, Loader2, CheckCircle2, AlertTriangle, Info, Plus } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ export function OrganizationBillingSettings({
     organizationName,
 }: OrganizationBillingSettingsProps) {
     const { data: organization, isLoading: isOrgLoading } = useGetOrganization({ orgId: organizationId });
+    const queryClient = useQueryClient();
     const { data: membersDoc } = useGetOrgMembers({ organizationId });
     const { data: invoicesDoc, isLoading: isInvoicesLoading } = useGetInvoices({
         organizationId,
@@ -227,8 +229,10 @@ export function OrganizationBillingSettings({
                         }
 
                         toast.success(`₹${amount} added to your wallet successfully!`);
-                        // Refresh billing data to get updated balance
-                        window.location.reload();
+                        // Refresh billing data to get updated balance (without full page reload)
+                        queryClient.invalidateQueries({ queryKey: ["billing-account"] });
+                        queryClient.invalidateQueries({ queryKey: ["billing-status"] });
+                        setTopupAmount("");
                     } catch (verifyError) {
                         const msg = verifyError instanceof Error ? verifyError.message : "Verification failed";
                         toast.error(`Payment issue: ${msg}. Please contact support if credits were not added.`);
