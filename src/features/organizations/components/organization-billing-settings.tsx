@@ -562,7 +562,7 @@ export function OrganizationBillingSettings({
 
                                 <Button
                                     onClick={handleAddCredits}
-                                    disabled={isAddingCredits || !isScriptLoaded || !topupAmount || Number(topupAmount) < 100 || !canManageBilling}
+                                    disabled={isAddingCredits || !isScriptLoaded || !topupAmount || Number(topupAmount) < 10 || !canManageBilling}
                                     className="w-full"
                                     size="lg"
                                 >
