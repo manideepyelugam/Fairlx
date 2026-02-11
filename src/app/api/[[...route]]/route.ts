@@ -49,9 +49,7 @@ import departments from "@/features/departments/server/route";
 import orgPermissions from "@/features/org-permissions/server/route";
 // User Access (permission-driven navigation)
 import userAccess from "@/features/user-access/server/route";
-// Wallet & Billing Mode
 import wallet from "@/features/wallet/server/route";
-import billingMode from "@/features/wallet/server/billing-mode";
 // Global Traffic Metering - NOW WITH BATCHING
 // Events are collected in memory and flushed every 60s (1 write instead of ~3600/hr)
 import { batchedTrafficMeteringMiddleware } from "@/lib/traffic-metering-batched";
@@ -111,9 +109,7 @@ const routes = app
   .route("/cron", cron)
   // User Access (permission-driven navigation)
   .route("/user-access", userAccess)
-  // Wallet & Prepaid Billing
-  .route("/wallet", wallet)
-  .route("/billing-mode", billingMode);
+  .route("/wallet", wallet);
 
 export const GET = handle(app);
 export const POST = handle(app);

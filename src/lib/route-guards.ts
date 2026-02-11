@@ -276,7 +276,7 @@ export const mutationGuard = createMiddleware<RouteGuardContext>(async (c, next)
     } catch (error) {
         if (error instanceof BillingError) {
             return c.json({
-                error: "Your account is suspended due to an unpaid invoice. Please update your payment method to restore access.",
+                error: "Your account is suspended due to an unpaid invoice. Please add credits to your wallet to restore access.",
                 code: error.code,
                 billingUrl: "/billing",
             }, 403);
