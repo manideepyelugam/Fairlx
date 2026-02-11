@@ -71,7 +71,7 @@ export function BillingWarningBanner({
                     <div className="flex items-center gap-2">
                         <Button asChild size="sm" variant="outline" className="border-amber-500/50 text-amber-600 hover:bg-amber-500/10">
                             <Link href={billingUrl}>
-                                Update Payment Method
+                                Add Credits
                             </Link>
                         </Button>
                         <Button

@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, CreditCard, Mail, Phone, ExternalLink, Eye, Download } from "lucide-react";
+import { AlertCircle, Wallet, Mail, Phone, ExternalLink, Eye, Download } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -159,8 +159,8 @@ export function SuspensionScreen({
                                             Export data
                                         </li>
                                         <li className="flex items-center gap-2">
-                                            <CreditCard className="h-3 w-3 text-green-500" />
-                                            Update payment
+                                            <Wallet className="h-3 w-3 text-green-500" />
+                                            Add credits
                                         </li>
                                         <li className="flex items-center gap-2">
                                             <Mail className="h-3 w-3 text-green-500" />
@@ -175,7 +175,7 @@ export function SuspensionScreen({
                         <div className="rounded-lg border border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950/30 p-4">
                             <p className="text-sm text-green-700 dark:text-green-400">
                                 <strong>Your data is safe.</strong> All your projects, tasks, and files are preserved.
-                                Once you update your payment method and pay the outstanding balance, full access will be restored immediately.
+                                Once you add credits to your wallet and pay the outstanding balance, full access will be restored immediately.
                             </p>
                         </div>
 
@@ -183,8 +183,8 @@ export function SuspensionScreen({
                         <div className="flex flex-col gap-3">
                             <Button asChild size="lg" className="w-full">
                                 <Link href={billingUrl}>
-                                    <CreditCard className="mr-2 h-5 w-5" />
-                                    Update Payment Method
+                                    <Wallet className="mr-2 h-5 w-5" />
+                                    Add Credits to Wallet
                                 </Link>
                             </Button>
 

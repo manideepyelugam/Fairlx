@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { CreditCard, DollarSign, FileText, ExternalLink, Calendar, Loader2, CheckCircle2, AlertTriangle, Info, Smartphone } from "lucide-react";
+import { Wallet, DollarSign, FileText, ExternalLink, Calendar, Loader2, CheckCircle2, AlertTriangle, Info, Plus } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,11 +24,9 @@ import { useGetInvoices } from "@/features/usage/api";
 import {
     useGetBillingAccount,
     useGetBillingStatus,
-    useGetCheckoutOptions,
-    useUpdatePaymentMethod,
     useSetupBilling
 } from "@/features/billing/api";
-import { BillingStatus, BillingAccountType, RazorpayCheckoutOptions } from "@/features/billing/types";
+import { BillingStatus, BillingAccountType } from "@/features/billing/types";
 import { BillingWarningBanner } from "@/features/billing/components/billing-warning-banner";
 import { useCurrentUserOrgPermissions } from "@/features/org-permissions/api/use-current-user-permissions";
 import { OrgPermissionKey } from "@/features/org-permissions/types";
@@ -66,27 +64,14 @@ export function OrganizationBillingSettings({
         organizationId,
         enabled: !!organizationId
     });
-    const [billingPhone, setBillingPhone] = useState("");
-    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"upi" | "debitcard" | undefined>(undefined);
-
-    // Checkout options - requires phone for e-Mandate
-    // Note: We call the API directly in handleAddPaymentMethod for fresh params
-    useGetCheckoutOptions({
-        organizationId,
-        phone: billingPhone,
-        paymentMethod: selectedPaymentMethod,
-        enabled: false // Only fetch when needed
-    });
-
-    const { mutateAsync: updatePaymentMethod } = useUpdatePaymentMethod();
     const { mutateAsync: setupBilling } = useSetupBilling();
 
     const [billingEmailValue, setBillingEmailValue] = useState("");
     const [alternativeEmailValue, setAlternativeEmailValue] = useState("");
     const [isSaving, setIsSaving] = useState(false);
-    const [isAddingPayment, setIsAddingPayment] = useState(false);
+    const [isAddingCredits, setIsAddingCredits] = useState(false);
     const [isScriptLoaded, setIsScriptLoaded] = useState(false);
-    const [showPhoneInput, setShowPhoneInput] = useState(false);
+    const [topupAmount, setTopupAmount] = useState("");
 
     // Sync state with organization data
     useEffect(() => {
@@ -106,15 +91,13 @@ export function OrganizationBillingSettings({
 
     // Billing account data
     const billingAccount = billingAccountData?.data;
-    const hasPaymentMethod = billingAccountData?.hasPaymentMethod || false;
 
     const invoices = invoicesDoc?.documents || [];
     const isLoading = isOrgLoading || isBillingLoading;
 
-    // Payment method display
-    const paymentMethodDisplay = billingAccount?.paymentMethodBrand
-        ? `${billingAccount.paymentMethodBrand} ending in ${billingAccount.paymentMethodLast4}`
-        : billingAccount?.paymentMethodType || "Card";
+    // Wallet balance from billing account data
+    const walletBalance = billingAccountData?.walletBalance ?? 0;
+    const walletCurrency = billingAccountData?.walletCurrency ?? "INR";
 
     // Handler for save billing settings - must be defined before any conditional returns
     const handleSaveBillingSettings = useCallback(async () => {
@@ -157,17 +140,16 @@ export function OrganizationBillingSettings({
         });
     }, [organizationId, billingEmailValue, alternativeEmailValue, ownerEmail, updateOrganization]);
 
-    // Handler for add/update payment method - must be defined before any conditional returns
-    const handleAddPaymentMethod = useCallback(async (paymentMethodOverride?: "upi" | "debitcard") => {
+    // Handler for adding credits to wallet
+    const handleAddCredits = useCallback(async () => {
         if (!organizationId) {
             toast.error("Organization ID is required");
             return;
         }
 
-        // Phone is REQUIRED for Razorpay e-Mandate recurring payments
-        if (!billingPhone || billingPhone.length < 10) {
-            setShowPhoneInput(true);
-            toast.error("Please enter a valid phone number for auto-debit setup");
+        const amount = Number(topupAmount);
+        if (!amount || amount < 100) {
+            toast.error("Minimum top-up amount is ₹100");
             return;
         }
 
@@ -176,15 +158,7 @@ export function OrganizationBillingSettings({
             return;
         }
 
-        // Use the override if provided, otherwise fall back to state
-        const methodToUse = paymentMethodOverride || selectedPaymentMethod;
-
-        // Update state for UI display
-        if (paymentMethodOverride) {
-            setSelectedPaymentMethod(paymentMethodOverride);
-        }
-
-        setIsAddingPayment(true);
+        setIsAddingCredits(true);
 
         try {
             // First ensure billing account exists
@@ -196,84 +170,73 @@ export function OrganizationBillingSettings({
                             organizationId,
                             billingEmail: billingEmailValue || organization?.email || ownerEmail || "",
                             contactName: organization?.name || "Organization Admin",
-                            contactPhone: billingPhone, // Required for e-Mandate
                         }
                     });
                 } catch {
                     toast.error("Failed to initialize billing account. Please contact support.");
-                    setIsAddingPayment(false);
+                    setIsAddingCredits(false);
                     return;
                 }
             }
 
-            // Fetch checkout options directly with the correct payment method
-            // Build params for the API call
-            const params: {
-                phone: string;
-                organizationId?: string;
-                paymentMethod?: "upi" | "debitcard" | "netbanking";
-            } = {
-                phone: billingPhone,
-            };
-            if (organizationId) params.organizationId = organizationId;
-            if (methodToUse) params.paymentMethod = methodToUse;
-
-            // Call the API directly instead of using refetch to ensure fresh params
-            const response = await client.api.billing["checkout-options"].$get({
-                query: params,
+            // Create a Razorpay order for wallet top-up
+            const orderResponse = await client.api.wallet["create-order"].$post({
+                json: {
+                    amount: amount * 100, // Convert rupees to paise
+                    currency: "INR",
+                    organizationId,
+                },
             });
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error((errorData as { error?: string }).error || "Failed to get checkout options");
+            if (!orderResponse.ok) {
+                const errorData = await orderResponse.json().catch(() => ({}));
+                throw new Error((errorData as { error?: string }).error || "Failed to create order");
             }
 
-            const checkoutResult = await response.json() as { data: RazorpayCheckoutOptions };
-            const checkoutOptions = checkoutResult.data;
+            const orderResult = await orderResponse.json() as { data: { orderId: string; key: string; amount: number; currency: string } };
+            const orderData = orderResult.data;
 
-            if (!checkoutOptions) {
-                toast.error("Failed to initialize payment configuration. Please try again.");
-                setIsAddingPayment(false);
-                return;
-            }
-
-            // Open Razorpay checkout
-            // Open Razorpay checkout
+            // Open Razorpay checkout for one-time payment
             const razorpayOptions: RazorpayCheckoutConfig = {
-                key: checkoutOptions.key,
-                subscription_id: checkoutOptions.subscriptionId,
-                order_id: checkoutOptions.orderId, // Required for e-Mandate
-                recurring: checkoutOptions.recurring, // Required for e-Mandate
-                // CRITICAL: method restriction tells Razorpay which payment UI to show
-                // This fixes the bug where UPI AutoPay was opening Card modal
-                method: checkoutOptions.method,
-                name: checkoutOptions.name,
-                description: checkoutOptions.description,
+                key: orderData.key,
+                order_id: orderData.orderId,
+                amount: orderData.amount,
+                currency: orderData.currency,
+                name: "Fairlx",
+                description: `Add ₹${amount} to Wallet`,
                 prefill: {
-                    name: checkoutOptions.prefill.name,
-                    email: checkoutOptions.prefill.email,
-                    contact: checkoutOptions.prefill.contact,
+                    email: billingEmailValue || organization?.email || ownerEmail || "",
                 },
                 theme: {
-                    color: checkoutOptions.theme.color,
+                    color: "#3B82F6",
                 },
                 handler: async (response: RazorpayResponse) => {
-                    // Payment completed - update payment method
+                    // Verify the payment and credit the wallet
                     try {
-                        await updatePaymentMethod({
-                            razorpayPaymentId: response.razorpay_payment_id,
-                            razorpaySubscriptionId: response.razorpay_subscription_id,
-                            razorpaySignature: response.razorpay_signature,
+                        const verifyResponse = await client.api.wallet["verify-topup"].$post({
+                            json: {
+                                razorpayOrderId: response.razorpay_order_id || "",
+                                razorpayPaymentId: response.razorpay_payment_id,
+                                razorpaySignature: response.razorpay_signature,
+                            },
                         });
-                        // Success toast is handled by the mutation
+
+                        if (!verifyResponse.ok) {
+                            const errorData = await verifyResponse.json().catch(() => ({}));
+                            throw new Error((errorData as { error?: string }).error || "Verification failed");
+                        }
+
+                        toast.success(`₹${amount} added to your wallet successfully!`);
+                        // Refresh billing data to get updated balance
+                        window.location.reload();
                     } catch {
-                        toast.error("Payment recorded but failed to update. Please contact support.");
+                        toast.error("Payment recorded but verification failed. Please contact support.");
                     }
-                    setIsAddingPayment(false);
+                    setIsAddingCredits(false);
                 },
                 modal: {
                     ondismiss: () => {
-                        setIsAddingPayment(false);
+                        setIsAddingCredits(false);
                     },
                 },
             };
@@ -282,9 +245,9 @@ export function OrganizationBillingSettings({
             razorpay.open();
         } catch {
             toast.error("Failed to initialize payment. Please try again.");
-            setIsAddingPayment(false);
+            setIsAddingCredits(false);
         }
-    }, [organizationId, isScriptLoaded, updatePaymentMethod, billingAccountData?.data, billingEmailValue, organization?.email, organization?.name, ownerEmail, setupBilling, billingPhone, selectedPaymentMethod]);
+    }, [organizationId, isScriptLoaded, billingAccountData?.data, billingEmailValue, organization?.email, organization?.name, ownerEmail, setupBilling, topupAmount]);
 
     if (isLoading) {
         return (
@@ -497,158 +460,130 @@ export function OrganizationBillingSettings({
                     </CardContent>
                 </Card>
 
-                {/* Payment Method */}
+                {/* Wallet Balance & Add Credits */}
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <CreditCard className="h-5 w-5" />
-                            Payment Method
+                            <Wallet className="h-5 w-5" />
+                            Wallet Balance
                         </CardTitle>
                         <CardDescription>
-                            Manage your organization&apos;s payment method for auto-billing
+                            Manage your organization&apos;s Fairlx wallet for usage billing
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {/* Auto-debit explanation */}
+                        {/* Wallet explanation */}
                         <Alert>
                             <Info className="h-4 w-4" />
                             <AlertDescription>
-                                <strong>How auto-billing works:</strong> Your payment method will be charged automatically
-                                at the end of each billing cycle based on your usage. We never store your card details directly.
+                                <strong>How wallet billing works:</strong> Usage costs are deducted from your wallet balance.
+                                Add credits anytime via UPI, Card, or Net Banking. No recurring mandates needed.
                             </AlertDescription>
                         </Alert>
 
-                        {hasPaymentMethod ? (
+                        {/* Current Balance */}
+                        <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/50">
+                            <div className="flex items-center gap-3">
+                                <div className={cn(
+                                    "p-2 rounded-full",
+                                    walletBalance > 0
+                                        ? "bg-green-100 dark:bg-green-900/30"
+                                        : "bg-orange-100 dark:bg-orange-900/30"
+                                )}>
+                                    {walletBalance > 0 ? (
+                                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                    ) : (
+                                        <AlertTriangle className="h-5 w-5 text-orange-600" />
+                                    )}
+                                </div>
+                                <div>
+                                    <div className="text-2xl font-bold">
+                                        {new Intl.NumberFormat("en-IN", {
+                                            style: "currency",
+                                            currency: walletCurrency,
+                                        }).format(walletBalance / 100)}
+                                    </div>
+                                    <div className="text-sm text-muted-foreground">
+                                        Available Balance
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Low balance warning */}
+                        {walletBalance < 10000 && (
+                            <Alert className="border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/30">
+                                <AlertTriangle className="h-4 w-4 text-orange-600" />
+                                <AlertDescription className="text-orange-700 dark:text-orange-400">
+                                    Your wallet balance is low. Add credits to avoid service interruptions.
+                                </AlertDescription>
+                            </Alert>
+                        )}
+
+                        {/* Add Credits Section */}
+                        <div className="border rounded-lg border-dashed p-6">
                             <div className="space-y-4">
-                                {/* Phone Input - Required for updating payment method */}
-                                {showPhoneInput && (
-                                    <div className="p-4 rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/30">
-                                        <Label htmlFor="update-billing-phone" className="text-sm font-medium mb-2 block">
-                                            Phone Number <span className="text-red-500">*</span>
+                                <div className="flex gap-2">
+                                    <div className="flex-1">
+                                        <Label htmlFor="topup-amount" className="text-sm font-medium mb-2 block">
+                                            Amount (₹)
                                         </Label>
                                         <Input
-                                            id="update-billing-phone"
-                                            type="tel"
-                                            placeholder="+91 9876543210"
-                                            value={billingPhone}
-                                            onChange={(e) => setBillingPhone(e.target.value)}
-                                            className={`${!billingPhone || billingPhone.length < 10 ? 'border-red-500' : ''}`}
-                                        />
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                            Required for auto-debit authorization
-                                        </p>
-                                    </div>
-                                )}
-
-                                <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/50">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/30">
-                                            <CheckCircle2 className="h-5 w-5 text-green-600" />
-                                        </div>
-                                        <div>
-                                            <div className="font-medium">{paymentMethodDisplay}</div>
-                                            <div className="text-sm text-muted-foreground">
-                                                {billingAccount?.lastPaymentAt
-                                                    ? `Last payment: ${format(new Date(billingAccount.lastPaymentAt), "PPP")}`
-                                                    : "Auto-billing enabled"
-                                                }
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <Button
-                                        variant={showPhoneInput && billingPhone && billingPhone.length >= 10 ? "primary" : "outline"}
-                                        size="sm"
-                                        onClick={() => handleAddPaymentMethod()}
-                                        disabled={isAddingPayment || !canManageBilling || (showPhoneInput && (!billingPhone || billingPhone.length < 10))}
-                                    >
-                                        {isAddingPayment ? (
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                        ) : showPhoneInput ? (
-                                            "Continue"
-                                        ) : (
-                                            "Update"
-                                        )}
-                                    </Button>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="border rounded-lg border-dashed p-6">
-                                {/* Phone Input - Required for e-Mandate */}
-                                <div className="mb-6">
-                                    <Label htmlFor="billing-phone" className="text-sm font-medium mb-2 block">
-                                        Phone Number <span className="text-red-500">*</span>
-                                    </Label>
-                                    <div className="flex gap-2">
-                                        <Input
-                                            id="billing-phone"
-                                            type="tel"
-                                            placeholder="+91 9876543210"
-                                            value={billingPhone}
-                                            onChange={(e) => setBillingPhone(e.target.value)}
-                                            className={`flex-1 ${showPhoneInput && (!billingPhone || billingPhone.length < 10) ? 'border-red-500' : ''}`}
+                                            id="topup-amount"
+                                            type="number"
+                                            min="100"
+                                            step="100"
+                                            placeholder="500"
+                                            value={topupAmount}
+                                            onChange={(e) => setTopupAmount(e.target.value)}
+                                            disabled={isAddingCredits || !canManageBilling}
                                         />
                                     </div>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        Required for auto-debit authorization (Razorpay mandate)
-                                    </p>
                                 </div>
 
-                                <div className="text-center py-4">
-                                    <p className="text-muted-foreground mb-4">
-                                        Choose your preferred auto-debit method
-                                    </p>
-
-                                    {/* Payment Method Selection Buttons */}
-                                    <div className="flex flex-col sm:flex-row gap-3 justify-center mb-4">
-                                        {/* UPI AutoPay Button */}
+                                {/* Quick top-up amounts */}
+                                <div className="flex flex-wrap gap-2">
+                                    {[500, 1000, 2000, 5000].map((amt) => (
                                         <Button
-                                            onClick={() => handleAddPaymentMethod("upi")}
-                                            disabled={isAddingPayment || !isScriptLoaded || !billingPhone || billingPhone.length < 10 || !canManageBilling}
-                                            size="lg"
-                                            variant={selectedPaymentMethod === "upi" ? "primary" : "outline"}
-                                            className="min-w-[180px]"
-                                        >
-                                            {isAddingPayment && selectedPaymentMethod === "upi" ? (
-                                                <>
-                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                    Setting up...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Smartphone className="mr-2 h-4 w-4" />
-                                                    UPI AutoPay
-                                                </>
+                                            key={amt}
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setTopupAmount(String(amt))}
+                                            disabled={isAddingCredits || !canManageBilling}
+                                            className={cn(
+                                                "text-xs",
+                                                topupAmount === String(amt) && "border-primary bg-primary/10"
                                             )}
-                                        </Button>
-
-                                        {/* Card Auto-Debit Button */}
-                                        <Button
-                                            onClick={() => handleAddPaymentMethod("debitcard")}
-                                            disabled={isAddingPayment || !isScriptLoaded || !billingPhone || billingPhone.length < 10 || !canManageBilling}
-                                            size="lg"
-                                            variant={selectedPaymentMethod === "debitcard" ? "primary" : "outline"}
-                                            className="min-w-[180px]"
                                         >
-                                            {isAddingPayment && selectedPaymentMethod === "debitcard" ? (
-                                                <>
-                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                    Setting up...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <CreditCard className="mr-2 h-4 w-4" />
-                                                    Card Auto-Debit
-                                                </>
-                                            )}
+                                            ₹{amt.toLocaleString("en-IN")}
                                         </Button>
-                                    </div>
-
-                                    <p className="text-xs text-muted-foreground mt-3">
-                                        Payments processed securely by Razorpay
-                                    </p>
+                                    ))}
                                 </div>
+
+                                <Button
+                                    onClick={handleAddCredits}
+                                    disabled={isAddingCredits || !isScriptLoaded || !topupAmount || Number(topupAmount) < 100 || !canManageBilling}
+                                    className="w-full"
+                                    size="lg"
+                                >
+                                    {isAddingCredits ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Processing...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Plus className="mr-2 h-4 w-4" />
+                                            Add ₹{topupAmount ? Number(topupAmount).toLocaleString("en-IN") : "0"} to Wallet
+                                        </>
+                                    )}
+                                </Button>
+
+                                <p className="text-xs text-muted-foreground text-center">
+                                    Payments processed securely by Razorpay. Minimum ₹100.
+                                </p>
                             </div>
-                        )}
+                        </div>
                     </CardContent>
                 </Card>
 

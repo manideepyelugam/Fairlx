@@ -18,13 +18,16 @@ import { createAdminClient } from "@/lib/appwrite";
 import {
     BillingStatus,
     BillingAccountType,
-    MandateStatus,
     BillingAccount,
     BillingInvoice,
     BillingAuditEventType,
     InvoiceStatus,
     UsageBreakdown,
 } from "../types";
+
+import { Wallet } from "@/features/wallet/types";
+import { deductFromWallet } from "@/features/wallet/services/wallet-service";
+import { WALLETS_ID } from "@/config";
 
 /**
  * Billing Service
@@ -285,19 +288,20 @@ export async function generateInvoice(
 /**
  * Process billing cycle for all active accounts
  * 
- * E-MANDATE POSTPAID BILLING FLOW:
+ * WALLET-ONLY BILLING FLOW:
  * 1. Find all accounts where billing cycle has ended
- * 2. Generate invoices for each (INVOICE FIRST - no charge yet)
+ * 2. Generate invoices for each
  * 3. Advance billing cycle dates
- * 4. Attempt auto-debit using saved mandate token
+ * 4. Attempt wallet deduction for invoice amount
+ * 5. If insufficient balance, start grace period
  * 
  * This should be called by a scheduled job at the end of each billing period.
  */
 export async function processBillingCycle(): Promise<{
     processed: number;
     invoices: string[];
-    paymentsAttempted: number;
-    paymentsFailed: number;
+    walletDeductions: number;
+    insufficientBalance: number;
     errors: string[];
 }> {
     const { databases } = await createAdminClient();
@@ -317,19 +321,18 @@ export async function processBillingCycle(): Promise<{
     const results = {
         processed: 0,
         invoices: [] as string[],
-        paymentsAttempted: 0,
-        paymentsFailed: 0,
+        walletDeductions: 0,
+        insufficientBalance: 0,
         errors: [] as string[],
     };
 
     for (const account of accounts.documents) {
         try {
             // 0. LOCK THE BILLING CYCLE FIRST
-            // CRITICAL: This prevents late usage events from modifying this period
             const { lockBillingCycle, unlockBillingCycle } = await import("@/lib/billing-primitives");
             await lockBillingCycle(databases, account.$id);
 
-            // 1. GENERATE INVOICE FIRST (postpaid billing - invoice before charge)
+            // 1. GENERATE INVOICE
             const invoice = await generateInvoice(account.$id);
             results.invoices.push(invoice.invoiceId);
 
@@ -349,75 +352,54 @@ export async function processBillingCycle(): Promise<{
                 }
             );
 
-            // 3. UNLOCK for new cycle (new usage can now be recorded)
+            // 3. UNLOCK for new cycle
             await unlockBillingCycle(databases, account.$id);
 
-            // 4. ATTEMPT AUTO-DEBIT using mandate (if authorized and eMandate is enabled)
-            // Import feature flag to check if eMandate is enabled
-            const { ENABLE_EMANDATE } = await import("@/config");
+            // 4. ATTEMPT WALLET DEDUCTION for invoice amount
+            if (invoice.totalCost > 0) {
+                // Find wallet for this account
+                const walletQuery = account.type === BillingAccountType.ORG
+                    ? [Query.equal("organizationId", account.organizationId!)]
+                    : [Query.equal("userId", account.userId!)];
 
-            // Check if mandate is valid for auto-debit:
-            // - Must have token ID
-            // - Must be AUTHORIZED status (not SUSPENDED, FAILED, CANCELLED)
-            // - eMandate must be enabled OR payment method is UPI/Card (not netbanking)
-            const isMandateAuthorized = account.razorpayTokenId &&
-                account.mandateStatus === MandateStatus.AUTHORIZED;
-            const isNetbankingMandate = account.paymentMethodType === "netbanking" ||
-                account.paymentMethodType === "emandate";
-            const canAutoDebit = isMandateAuthorized &&
-                (ENABLE_EMANDATE || !isNetbankingMandate);
-
-            if (canAutoDebit) {
-                try {
-                    results.paymentsAttempted++;
-
-                    // Import dynamically to avoid circular dependencies
-                    const { createRecurringPayment } = await import("@/lib/razorpay");
-
-                    await createRecurringPayment({
-                        customerId: account.razorpayCustomerId,
-                        tokenId: account.razorpayTokenId!,
-                        amount: invoice.amount,
-                        invoiceId: invoice.invoiceId,
-                        description: `Fairlx Invoice ${invoice.invoiceId}`,
-                        notes: {
-                            fairlx_billing_account_id: account.$id,
-                            fairlx_invoice_id: invoice.invoiceId,
-                        },
-                    });
-                } catch {
-                    results.paymentsFailed++;
-
-                    // Start grace period on payment failure
-                    await startGracePeriod(databases, account.$id);
-                }
-            } else if (account.mandateStatus === MandateStatus.SUSPENDED) {
-                // Mandate is suspended - start grace period
-                await startGracePeriod(databases, account.$id);
-            } else if (!ENABLE_EMANDATE && isNetbankingMandate) {
-                // eMandate disabled and this is a netbanking mandate - start grace period
-
-                // Log audit event for eMandate suspension
-                await databases.createDocument(
+                const wallets = await databases.listDocuments<Wallet>(
                     DATABASE_ID,
-                    BILLING_AUDIT_LOGS_ID,
-                    ID.unique(),
-                    {
-                        billingAccountId: account.$id,
-                        eventType: BillingAuditEventType.EMANDATE_SUSPENDED,
-                        metadata: JSON.stringify({
-                            reason: "ENABLE_EMANDATE feature flag is disabled",
-                            paymentMethodType: account.paymentMethodType,
-                            mandateStatus: account.mandateStatus,
-                            timestamp: new Date().toISOString(),
-                        }),
-                    }
+                    WALLETS_ID,
+                    [...walletQuery, Query.limit(1)]
                 );
 
-                await startGracePeriod(databases, account.$id);
-            } else {
-                // No mandate authorized - start grace period immediately
-                await startGracePeriod(databases, account.$id);
+                if (wallets.total > 0) {
+                    const walletId = wallets.documents[0].$id;
+                    const deductResult = await deductFromWallet(databases, walletId, invoice.totalCost, {
+                        referenceId: invoice.invoiceId,
+                        idempotencyKey: `invoice_deduction_${invoice.$id}`,
+                        description: `Invoice ${invoice.invoiceId} - billing cycle deduction`,
+                    });
+
+                    if (deductResult.success) {
+                        results.walletDeductions++;
+
+                        // Mark invoice as paid
+                        await databases.updateDocument(
+                            DATABASE_ID,
+                            INVOICES_ID,
+                            invoice.$id,
+                            {
+                                status: InvoiceStatus.PAID,
+                                walletTransactionId: deductResult.transaction?.$id,
+                                paidAt: new Date().toISOString(),
+                            }
+                        );
+                    } else {
+                        // Insufficient wallet balance → grace period
+                        results.insufficientBalance++;
+                        await startGracePeriod(databases, account.$id);
+                    }
+                } else {
+                    // No wallet found → grace period
+                    results.insufficientBalance++;
+                    await startGracePeriod(databases, account.$id);
+                }
             }
 
             results.processed++;

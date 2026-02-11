@@ -7,8 +7,8 @@ import { Models } from "node-appwrite";
 /**
  * BillingStatus - tracks account billing state
  * 
- * ACTIVE: Payments current, full access to all features
- * DUE: Payment failed, in grace period (14 days) - full access with warnings
+ * ACTIVE: Wallet has funds, full access to all features
+ * DUE: Wallet balance insufficient, in grace period (14 days) - full access with warnings
  * SUSPENDED: Grace period expired, restricted to billing pages only
  */
 export enum BillingStatus {
@@ -33,27 +33,6 @@ export enum BillingAccountType {
 }
 
 // ===============================
-// Mandate Status Enum
-// ===============================
-
-/**
- * MandateStatus - tracks e-Mandate authorization state
- * 
- * PENDING: Mandate authorization started but not completed
- * AUTHORIZED: Mandate successfully authorized, ready for auto-debit
- * FAILED: Mandate authorization failed
- * CANCELLED: Mandate was cancelled by user or expired
- * SUSPENDED: Mandate temporarily suspended (e.g., pending company incorporation)
- */
-export enum MandateStatus {
-    PENDING = "PENDING",
-    AUTHORIZED = "AUTHORIZED",
-    FAILED = "FAILED",
-    CANCELLED = "CANCELLED",
-    SUSPENDED = "SUSPENDED",
-}
-
-// ===============================
 // Billing Audit Event Types
 // ===============================
 
@@ -63,20 +42,22 @@ export enum MandateStatus {
  * Used for compliance, debugging, and customer support.
  */
 export enum BillingAuditEventType {
-    // Payment Method Events
-    PAYMENT_METHOD_ADDED = "PAYMENT_METHOD_ADDED",
-    PAYMENT_METHOD_UPDATED = "PAYMENT_METHOD_UPDATED",
-    PAYMENT_METHOD_REMOVED = "PAYMENT_METHOD_REMOVED",
+    // Wallet Events
+    WALLET_TOPUP = "WALLET_TOPUP",
+    WALLET_DEDUCTION = "WALLET_DEDUCTION",
+    WALLET_REFUND = "WALLET_REFUND",
+    WALLET_HOLD = "WALLET_HOLD",
+    WALLET_RELEASE = "WALLET_RELEASE",
 
     // Invoice Events
     INVOICE_GENERATED = "INVOICE_GENERATED",
     INVOICE_FINALIZED = "INVOICE_FINALIZED",
 
-    // Payment Events
+    // Payment Events (Razorpay one-time)
     PAYMENT_ATTEMPTED = "PAYMENT_ATTEMPTED",
     PAYMENT_SUCCEEDED = "PAYMENT_SUCCEEDED",
     PAYMENT_FAILED = "PAYMENT_FAILED",
-    PAYMENT_RETRY_SCHEDULED = "PAYMENT_RETRY_SCHEDULED",
+    PAYMENT_AUTHORIZED = "PAYMENT_AUTHORIZED",
 
     // Grace Period Events
     GRACE_PERIOD_STARTED = "GRACE_PERIOD_STARTED",
@@ -87,19 +68,8 @@ export enum BillingAuditEventType {
     ACCOUNT_SUSPENDED = "ACCOUNT_SUSPENDED",
     ACCOUNT_RESTORED = "ACCOUNT_RESTORED",
 
-    // eMandate Events
-    EMANDATE_SUSPENDED = "EMANDATE_SUSPENDED",
-
-    // Subscription Events
-    SUBSCRIPTION_CREATED = "SUBSCRIPTION_CREATED",
-    SUBSCRIPTION_UPDATED = "SUBSCRIPTION_UPDATED",
-    SUBSCRIPTION_CANCELLED = "SUBSCRIPTION_CANCELLED",
-
     // Billing Account Events
     BILLING_ACCOUNT_CREATED = "BILLING_ACCOUNT_CREATED",
-
-    // Payment Events
-    PAYMENT_AUTHORIZED = "PAYMENT_AUTHORIZED",
 
     // Refund Events
     REFUND_PROCESSED = "REFUND_PROCESSED",
@@ -118,8 +88,8 @@ export enum BillingAuditEventType {
 export enum InvoiceStatus {
     DRAFT = "DRAFT",       // Being generated, not yet finalized
     DUE = "DUE",           // Finalized, awaiting payment
-    PAID = "PAID",         // Successfully paid
-    FAILED = "FAILED",     // Payment attempt failed
+    PAID = "PAID",         // Successfully paid (wallet deduction or Razorpay)
+    FAILED = "FAILED",     // Wallet deduction failed (insufficient balance)
 }
 
 // ===============================
@@ -129,11 +99,12 @@ export enum InvoiceStatus {
 /**
  * BillingAccount - Core billing entity
  * 
- * Links either a userId (PERSONAL) or organizationId (ORG) to Razorpay.
- * Tracks billing status, cycle dates, and payment method info.
+ * Links either a userId (PERSONAL) or organizationId (ORG) to billing.
+ * Tracks billing status and cycle dates.
+ * 
+ * WALLET-ONLY: All payments flow through the wallet. No mandates, no subscriptions.
  * 
  * INVARIANT: Each user/org has exactly one BillingAccount.
- * WHY: Single source of truth for billing state.
  */
 export type BillingAccount = Models.Document & {
     /** Account type: PERSONAL or ORG */
@@ -145,20 +116,8 @@ export type BillingAccount = Models.Document & {
     /** Organization ID (required for ORG accounts) */
     organizationId?: string;
 
-    /** Razorpay Customer ID */
+    /** Razorpay Customer ID (used for one-time top-up orders) */
     razorpayCustomerId: string;
-
-    /** Razorpay Token ID (saved mandate for auto-debit) */
-    razorpayTokenId?: string;
-
-    /** Razorpay Mandate ID (reference for the mandate) */
-    razorpayMandateId?: string;
-
-    /** Maximum auto-debit amount authorized (in paise) */
-    mandateMaxAmount?: number;
-
-    /** Mandate authorization status */
-    mandateStatus?: MandateStatus;
 
     /** Current billing status */
     billingStatus: BillingStatus;
@@ -169,7 +128,7 @@ export type BillingAccount = Models.Document & {
     /** Current billing cycle end (ISO datetime) */
     billingCycleEnd: string;
 
-    /** Grace period end date (set when payment fails) */
+    /** Grace period end date (set when wallet balance is insufficient) */
     gracePeriodEnd?: string;
 
     /** Last successful payment timestamp */
@@ -177,15 +136,6 @@ export type BillingAccount = Models.Document & {
 
     /** Last failed payment timestamp */
     lastPaymentFailedAt?: string;
-
-    /** Last 4 digits of payment method (for display) */
-    paymentMethodLast4?: string;
-
-    /** Type of payment method (card, upi, netbanking, etc.) */
-    paymentMethodType?: string;
-
-    /** Payment method brand (visa, mastercard, etc.) */
-    paymentMethodBrand?: string;
 
     /** Email for billing notifications */
     billingEmail?: string;
@@ -199,22 +149,12 @@ export type BillingAccount = Models.Document & {
 
     /** When the cycle was locked */
     billingCycleLockedAt?: string;
-
-    // ============================================================================
-    // MANDATE SUSPENSION (for eMandate temporary disable)
-    // ============================================================================
-
-    /** Reason for mandate suspension (e.g., "pending_company_incorporation") */
-    mandateSuspendedReason?: string;
-
-    /** When mandate was suspended (ISO datetime) */
-    mandateSuspendedAt?: string;
 };
 
 /**
- * BillingInvoice - Enhanced invoice with Razorpay integration
+ * BillingInvoice - Enhanced invoice with wallet deduction tracking
  * 
- * CRITICAL: Invoice is persisted BEFORE charging.
+ * CRITICAL: Invoice is persisted BEFORE deducting from wallet.
  * WHY: Ensures we never lose track of what was billed.
  */
 export type BillingInvoice = Models.Document & {
@@ -251,16 +191,16 @@ export type BillingInvoice = Models.Document & {
     /** Due date (ISO datetime) */
     dueDate: string;
 
-    /** Razorpay Payment ID (when paid) */
+    /** Razorpay Payment ID (for top-up payments) */
     razorpayPaymentId?: string;
 
-    /** Razorpay Invoice ID */
-    razorpayInvoiceId?: string;
+    /** Wallet Transaction ID (when paid via wallet) */
+    walletTransactionId?: string;
 
-    /** Failure reason (when payment fails) */
+    /** Failure reason (when deduction fails) */
     failureReason?: string;
 
-    /** Number of payment retry attempts */
+    /** Number of deduction retry attempts */
     retryCount: number;
 
     /** Timestamp when paid */
@@ -335,7 +275,7 @@ export type BillingAuditLog = Models.Document & {
 // ===============================
 
 /**
- * SetupBillingDto - Create billing account with payment method
+ * SetupBillingDto - Create billing account (wallet-only)
  */
 export type SetupBillingDto = {
     /** Account type */
@@ -357,28 +297,6 @@ export type SetupBillingDto = {
     contactPhone?: string;
 };
 
-/**
- * UpdatePaymentMethodDto - Update payment method via Razorpay
- */
-export type UpdatePaymentMethodDto = {
-    /** Razorpay Payment ID from checkout */
-    razorpayPaymentId: string;
-
-    /** Razorpay Subscription ID */
-    razorpaySubscriptionId?: string;
-
-    /** Razorpay Signature for verification */
-    razorpaySignature: string;
-};
-
-/**
- * RetryPaymentDto - Retry a failed payment
- */
-export type RetryPaymentDto = {
-    /** Invoice ID to retry */
-    invoiceId: string;
-};
-
 // ===============================
 // Response Types
 // ===============================
@@ -388,7 +306,7 @@ export type RetryPaymentDto = {
  */
 export type BillingAccountResponse = {
     account: BillingAccount;
-    hasPaymentMethod: boolean;
+    walletBalance: number;
     nextBillingDate: string;
     estimatedAmount: number;
     currency: string;
@@ -396,16 +314,15 @@ export type BillingAccountResponse = {
 };
 
 /**
- * RazorpayCheckoutOptions - Options for frontend checkout
+ * RazorpayCheckoutOptions - Options for frontend Razorpay Checkout (one-time top-up)
  */
 export type RazorpayCheckoutOptions = {
     key: string;
-    subscriptionId?: string;
-    orderId?: string;
-    /** Restrict checkout to specific payment method (Razorpay uses 'card' not 'debitcard') */
-    method?: "card" | "upi" | "netbanking";
+    orderId: string;
     name: string;
     description: string;
+    amount: number;
+    currency: string;
     prefill: {
         name: string;
         email: string;
@@ -414,9 +331,6 @@ export type RazorpayCheckoutOptions = {
     theme: {
         color: string;
     };
-    notifyUrl?: string;
-    recurring?: boolean;
-    subscription_card_change?: boolean;
 };
 
 // ===============================
@@ -435,9 +349,6 @@ export type RazorpayWebhookEvent = {
         payment?: {
             entity: RazorpayPaymentEntity;
         };
-        subscription?: {
-            entity: RazorpaySubscriptionEntity;
-        };
         refund?: {
             entity: RazorpayRefundEntity;
         };
@@ -452,6 +363,7 @@ export type RazorpayPaymentEntity = {
     currency: string;
     status: "captured" | "failed" | "authorized";
     method: string;
+    order_id?: string;
     card?: {
         last4: string;
         network: string;
@@ -460,16 +372,6 @@ export type RazorpayPaymentEntity = {
     error_description?: string;
     notes?: Record<string, string>;
     created_at: number;
-};
-
-export type RazorpaySubscriptionEntity = {
-    id: string;
-    entity: "subscription";
-    plan_id: string;
-    status: "created" | "authenticated" | "active" | "paused" | "halted" | "cancelled" | "completed";
-    current_start: number;
-    current_end: number;
-    notes?: Record<string, string>;
 };
 
 export type RazorpayRefundEntity = {
@@ -492,11 +394,8 @@ export type RazorpayRefundEntity = {
 /** Grace period duration in days */
 export const GRACE_PERIOD_DAYS = 14;
 
-/** Reminder email schedule (days after payment failure) */
+/** Reminder email schedule (days after insufficient balance) */
 export const REMINDER_SCHEDULE_DAYS = [1, 7, 13];
-
-/** Maximum payment retry attempts */
-export const MAX_RETRY_ATTEMPTS = 3;
 
 /** Supported currencies */
 export const SUPPORTED_CURRENCIES = ["INR", "USD"] as const;

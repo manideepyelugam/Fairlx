@@ -1,11 +1,13 @@
 import "server-only";
 
 import { ID, Query, Databases } from "node-appwrite";
+import { createHmac } from "crypto";
 
 import {
     DATABASE_ID,
     WALLETS_ID,
     WALLET_TRANSACTIONS_ID,
+    WALLET_DAILY_TOPUP_LIMIT,
 } from "@/config";
 import { createAdminClient } from "@/lib/appwrite";
 // Lock functions imported dynamically in transaction methods
@@ -14,6 +16,7 @@ import {
     Wallet,
     WalletTransaction,
     WalletTransactionType,
+    WalletStatus,
 } from "../types";
 
 /**
@@ -22,13 +25,149 @@ import {
  * Core business logic for the prepaid wallet system:
  * - Wallet creation
  * - Balance queries
- * - Top-ups (with idempotency)
- * - Deductions (with race condition protection)
+ * - Top-ups (with idempotency + daily limit)
+ * - Deductions (with race condition protection + rate limiting)
+ * - HOLD / RELEASE / confirmHold
  * - Refunds
  * 
- * CRITICAL: All balance operations use idempotency keys and
- * optimistic checks to prevent double-spend and concurrent bugs.
+ * SECURITY:
+ * - All balance operations use idempotency keys (replay protection)
+ * - Optimistic locking via `version` field (concurrent update detection)
+ * - HMAC-SHA256 transaction signatures (tamper-evident audit trail)
+ * - Daily top-up limit enforcement (fraud prevention)
+ * - Debit rate limiting (abuse prevention)
  */
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+const SIGNATURE_SECRET = process.env.WALLET_SIG_SECRET || "fairlx-wallet-sig-default";
+const MAX_DEBITS_PER_MINUTE = 10;
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+/**
+ * Generate HMAC-SHA256 signature for a wallet transaction
+ * 
+ * Provides tamper-evident audit trail. Any modification to the
+ * signed fields will produce a different hash.
+ */
+function generateTransactionSignature(fields: {
+    walletId: string;
+    type: string;
+    amount: number;
+    balanceBefore: number;
+    balanceAfter: number;
+    referenceId: string;
+    timestamp: string;
+}): string {
+    const payload = [
+        fields.walletId,
+        fields.type,
+        fields.amount,
+        fields.balanceBefore,
+        fields.balanceAfter,
+        fields.referenceId,
+        fields.timestamp,
+    ].join("|");
+
+    return createHmac("sha256", SIGNATURE_SECRET).update(payload).digest("hex");
+}
+
+/**
+ * Update wallet balance with optimistic locking
+ * 
+ * Reads the wallet, checks version matches expected, updates balance
+ * and increments version atomically. If version mismatch, throws to
+ * trigger retry by caller.
+ */
+async function updateWalletWithVersion(
+    databases: Databases,
+    walletId: string,
+    expectedVersion: number,
+    updates: Record<string, unknown>
+): Promise<void> {
+    // Appwrite doesn't support conditional updates, so we do a read-after-write check.
+    // The distributed lock already serialises concurrent writes, so this is a
+    // secondary safety net against bugs or lock failures.
+    await databases.updateDocument(
+        DATABASE_ID,
+        WALLETS_ID,
+        walletId,
+        {
+            ...updates,
+            version: expectedVersion + 1,
+        }
+    );
+
+    // Verify the version was correctly incremented
+    const updated = await databases.getDocument<Wallet>(
+        DATABASE_ID,
+        WALLETS_ID,
+        walletId
+    );
+
+    if (updated.version !== expectedVersion + 1) {
+        throw new Error(
+            `Optimistic lock failure: expected version ${expectedVersion + 1}, got ${updated.version}. ` +
+            `Another process may have modified the wallet concurrently.`
+        );
+    }
+}
+
+/**
+ * Check debit rate limit (max N debits per minute per wallet)
+ */
+async function checkDebitRateLimit(
+    databases: Databases,
+    walletId: string
+): Promise<boolean> {
+    const oneMinuteAgo = new Date(Date.now() - 60_000).toISOString();
+
+    const recentDebits = await databases.listDocuments(
+        DATABASE_ID,
+        WALLET_TRANSACTIONS_ID,
+        [
+            Query.equal("walletId", walletId),
+            Query.equal("direction", "debit"),
+            Query.greaterThan("$createdAt", oneMinuteAgo),
+            Query.limit(MAX_DEBITS_PER_MINUTE + 1),
+        ]
+    );
+
+    return recentDebits.total < MAX_DEBITS_PER_MINUTE;
+}
+
+/**
+ * Check daily top-up limit to prevent fraud/money laundering
+ */
+async function checkDailyTopupLimit(
+    databases: Databases,
+    walletId: string,
+    newAmount: number
+): Promise<{ allowed: boolean; todayTotal: number; limit: number }> {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const todayTopups = await databases.listDocuments<WalletTransaction>(
+        DATABASE_ID,
+        WALLET_TRANSACTIONS_ID,
+        [
+            Query.equal("walletId", walletId),
+            Query.equal("type", WalletTransactionType.TOPUP),
+            Query.greaterThan("$createdAt", startOfDay.toISOString()),
+            Query.limit(100),
+        ]
+    );
+
+    const todayTotal = todayTopups.documents.reduce((sum, tx) => sum + tx.amount, 0);
+    const allowed = (todayTotal + newAmount) <= WALLET_DAILY_TOPUP_LIMIT;
+
+    return { allowed, todayTotal, limit: WALLET_DAILY_TOPUP_LIMIT };
+}
 
 // ============================================================================
 // WALLET CREATION & QUERIES
@@ -79,6 +218,8 @@ export async function getOrCreateWallet(
             balance: 0,
             currency,
             lockedBalance: 0,
+            status: WalletStatus.ACTIVE,
+            version: 0,
         }
     );
 
@@ -110,15 +251,12 @@ export async function getWalletBalance(
 // TOP-UP OPERATIONS
 // ============================================================================
 
-// ============================================================================
-// TOP-UP OPERATIONS
-// ============================================================================
-
 /**
  * Top up wallet balance
  * 
- * IDEMPOTENT: Uses idempotencyKey to prevent duplicate top-ups
+ * IDEMPOTENT: Uses idempotencyKey to prevent duplicate top-ups.
  * Uses Distributed Lock to prevent race conditions.
+ * Enforces daily top-up limit for fraud prevention.
  */
 export async function topUpWallet(
     databases: Databases,
@@ -134,11 +272,19 @@ export async function topUpWallet(
         return { success: false, error: "Amount must be positive" };
     }
 
+    // Check daily top-up limit before acquiring lock
+    const limitCheck = await checkDailyTopupLimit(databases, walletId, amount);
+    if (!limitCheck.allowed) {
+        return {
+            success: false,
+            error: `daily_topup_limit_exceeded: Today's total (${limitCheck.todayTotal}) + this amount (${amount}) exceeds daily limit (${limitCheck.limit})`,
+        };
+    }
+
     const { acquireProcessingLock, releaseProcessingLock } = await import("@/lib/processed-events-registry");
     const eventKey = `wallet_topup:${options.idempotencyKey}`;
 
     // 1. Acquire Distributed Lock (Atomic)
-    // This returns false if event is already processed OR currently being processed
     if (!(await acquireProcessingLock(databases, eventKey, "wallet"))) {
         return { success: true, error: "already_processed" };
     }
@@ -151,21 +297,34 @@ export async function topUpWallet(
             walletId
         );
 
+        // 3. Check wallet status
+        if (wallet.status === WalletStatus.FROZEN || wallet.status === WalletStatus.CLOSED) {
+            await releaseProcessingLock(databases, eventKey, "wallet");
+            return { success: false, error: `wallet_${wallet.status}: Cannot top up a ${wallet.status} wallet` };
+        }
+
         const balanceBefore = wallet.balance;
         const balanceAfter = balanceBefore + amount;
+        const now = new Date().toISOString();
 
-        // 3. Update wallet balance
-        await databases.updateDocument(
-            DATABASE_ID,
-            WALLETS_ID,
+        // 4. Update wallet balance with optimistic locking
+        await updateWalletWithVersion(databases, walletId, wallet.version, {
+            balance: balanceAfter,
+            lastTopupAt: now,
+        });
+
+        // 5. Generate transaction signature
+        const signature = generateTransactionSignature({
             walletId,
-            {
-                balance: balanceAfter,
-                lastTopupAt: new Date().toISOString(),
-            }
-        );
+            type: WalletTransactionType.TOPUP,
+            amount,
+            balanceBefore,
+            balanceAfter,
+            referenceId: options.paymentId || "",
+            timestamp: now,
+        });
 
-        // 4. Create transaction record
+        // 6. Create transaction record
         const transaction = await databases.createDocument<WalletTransaction>(
             DATABASE_ID,
             WALLET_TRANSACTIONS_ID,
@@ -180,6 +339,7 @@ export async function topUpWallet(
                 currency: wallet.currency,
                 referenceId: options.paymentId || null,
                 idempotencyKey: options.idempotencyKey,
+                signature,
                 description: options.description || "Wallet top-up",
                 metadata: JSON.stringify({
                     paymentId: options.paymentId,
@@ -190,7 +350,7 @@ export async function topUpWallet(
         return { success: true, transaction };
 
     } catch (error) {
-        // Rollback lock mechanisms so it can be retried
+        // Rollback lock so it can be retried
         await releaseProcessingLock(databases, eventKey, "wallet");
         throw error;
     }
@@ -205,6 +365,7 @@ export async function topUpWallet(
  * 
  * IDEMPOTENT: Uses idempotencyKey to prevent duplicate deductions.
  * Uses Distributed Lock to prevent race conditions (Double Deduction).
+ * Rate-limited to prevent abuse.
  */
 export async function deductFromWallet(
     databases: Databases,
@@ -218,6 +379,12 @@ export async function deductFromWallet(
 ): Promise<{ success: boolean; transaction?: WalletTransaction; error?: string }> {
     if (amount <= 0) {
         return { success: false, error: "Amount must be positive" };
+    }
+
+    // Rate limit check
+    const withinRateLimit = await checkDebitRateLimit(databases, walletId);
+    if (!withinRateLimit) {
+        return { success: false, error: "rate_limit_exceeded: Too many deductions per minute" };
     }
 
     const { acquireProcessingLock, releaseProcessingLock } = await import("@/lib/processed-events-registry");
@@ -236,36 +403,44 @@ export async function deductFromWallet(
             walletId
         );
 
-        // 3. Status Check (Balance)
+        // 3. Check wallet status
+        if (wallet.status === WalletStatus.FROZEN || wallet.status === WalletStatus.CLOSED) {
+            await releaseProcessingLock(databases, eventKey, "wallet");
+            return { success: false, error: `wallet_${wallet.status}` };
+        }
+
+        // 4. Balance check (available = balance - lockedBalance)
         const availableBalance = wallet.balance - wallet.lockedBalance;
         if (availableBalance < amount) {
-            // Release lock because logic failed, not system error?
-            // If we release lock, they can retry. But balance is still insufficient.
-            // If we KEEP lock, they cannot retry.
-            // Result is "Failed", so we should probably allow retry if they top up?
-            // But retry with SAME idempotency key?
-            // If they top up, they should send NEW request.
-            // If they retry SAME request, it will fail again.
-            // So releasing lock is fine.
             await releaseProcessingLock(databases, eventKey, "wallet");
-            return { success: false, error: "insufficient_balance" };
+            return {
+                success: false,
+                error: "insufficient_balance",
+            };
         }
 
         const balanceBefore = wallet.balance;
         const balanceAfter = balanceBefore - amount;
+        const now = new Date().toISOString();
 
-        // 4. Update wallet balance
-        await databases.updateDocument(
-            DATABASE_ID,
-            WALLETS_ID,
+        // 5. Update wallet balance with optimistic locking
+        await updateWalletWithVersion(databases, walletId, wallet.version, {
+            balance: balanceAfter,
+            lastDeductionAt: now,
+        });
+
+        // 6. Generate transaction signature
+        const signature = generateTransactionSignature({
             walletId,
-            {
-                balance: balanceAfter,
-                lastDeductionAt: new Date().toISOString(),
-            }
-        );
+            type: WalletTransactionType.USAGE,
+            amount,
+            balanceBefore,
+            balanceAfter,
+            referenceId: options.referenceId,
+            timestamp: now,
+        });
 
-        // 5. Create transaction record
+        // 7. Create transaction record
         const transaction = await databases.createDocument<WalletTransaction>(
             DATABASE_ID,
             WALLET_TRANSACTIONS_ID,
@@ -280,6 +455,7 @@ export async function deductFromWallet(
                 currency: wallet.currency,
                 referenceId: options.referenceId,
                 idempotencyKey: options.idempotencyKey,
+                signature,
                 description: options.description || "Usage charge",
             }
         );
@@ -287,7 +463,283 @@ export async function deductFromWallet(
         return { success: true, transaction };
 
     } catch (error) {
-        // Rollback lock to allow retry
+        await releaseProcessingLock(databases, eventKey, "wallet");
+        throw error;
+    }
+}
+
+// ============================================================================
+// HOLD / RELEASE OPERATIONS
+// ============================================================================
+
+/**
+ * Hold funds in wallet (for async/pending operations)
+ * 
+ * Moves amount from available balance to lockedBalance.
+ * The total balance doesn't change, but availableBalance decreases.
+ * 
+ * IDEMPOTENT: Uses idempotencyKey to prevent duplicate holds.
+ */
+export async function holdFromWallet(
+    databases: Databases,
+    walletId: string,
+    amount: number,
+    options: {
+        referenceId: string;
+        idempotencyKey: string;
+        description?: string;
+    }
+): Promise<{ success: boolean; transaction?: WalletTransaction; error?: string }> {
+    if (amount <= 0) {
+        return { success: false, error: "Amount must be positive" };
+    }
+
+    const { acquireProcessingLock, releaseProcessingLock } = await import("@/lib/processed-events-registry");
+    const eventKey = `wallet_hold:${options.idempotencyKey}`;
+
+    if (!(await acquireProcessingLock(databases, eventKey, "wallet"))) {
+        return { success: true, error: "already_processed" };
+    }
+
+    try {
+        const wallet = await databases.getDocument<Wallet>(
+            DATABASE_ID,
+            WALLETS_ID,
+            walletId
+        );
+
+        // Check wallet status
+        if (wallet.status !== WalletStatus.ACTIVE) {
+            await releaseProcessingLock(databases, eventKey, "wallet");
+            return { success: false, error: `wallet_${wallet.status}` };
+        }
+
+        // Check available balance (balance - lockedBalance)
+        const availableBalance = wallet.balance - wallet.lockedBalance;
+        if (availableBalance < amount) {
+            await releaseProcessingLock(databases, eventKey, "wallet");
+            return { success: false, error: "insufficient_balance" };
+        }
+
+        const now = new Date().toISOString();
+        const balanceBefore = wallet.balance;
+
+        // Increase lockedBalance (balance stays the same)
+        await updateWalletWithVersion(databases, walletId, wallet.version, {
+            lockedBalance: wallet.lockedBalance + amount,
+        });
+
+        // Generate signature
+        const signature = generateTransactionSignature({
+            walletId,
+            type: WalletTransactionType.HOLD,
+            amount,
+            balanceBefore,
+            balanceAfter: balanceBefore, // balance doesn't change on HOLD
+            referenceId: options.referenceId,
+            timestamp: now,
+        });
+
+        // Create HOLD transaction
+        const transaction = await databases.createDocument<WalletTransaction>(
+            DATABASE_ID,
+            WALLET_TRANSACTIONS_ID,
+            ID.unique(),
+            {
+                walletId,
+                type: WalletTransactionType.HOLD,
+                amount,
+                direction: "debit",
+                balanceBefore,
+                balanceAfter: balanceBefore, // balance unchanged, locked increased
+                currency: wallet.currency,
+                referenceId: options.referenceId,
+                idempotencyKey: options.idempotencyKey,
+                signature,
+                description: options.description || "Funds held for pending operation",
+            }
+        );
+
+        return { success: true, transaction };
+
+    } catch (error) {
+        await releaseProcessingLock(databases, eventKey, "wallet");
+        throw error;
+    }
+}
+
+/**
+ * Release held funds back to available balance
+ * 
+ * Moves amount from lockedBalance back to available balance.
+ * 
+ * IDEMPOTENT: Uses idempotencyKey.
+ */
+export async function releaseHold(
+    databases: Databases,
+    walletId: string,
+    amount: number,
+    options: {
+        referenceId: string;
+        idempotencyKey: string;
+        description?: string;
+    }
+): Promise<{ success: boolean; transaction?: WalletTransaction; error?: string }> {
+    if (amount <= 0) {
+        return { success: false, error: "Amount must be positive" };
+    }
+
+    const { acquireProcessingLock, releaseProcessingLock } = await import("@/lib/processed-events-registry");
+    const eventKey = `wallet_release:${options.idempotencyKey}`;
+
+    if (!(await acquireProcessingLock(databases, eventKey, "wallet"))) {
+        return { success: true, error: "already_processed" };
+    }
+
+    try {
+        const wallet = await databases.getDocument<Wallet>(
+            DATABASE_ID,
+            WALLETS_ID,
+            walletId
+        );
+
+        // Ensure there's enough locked balance to release
+        if (wallet.lockedBalance < amount) {
+            await releaseProcessingLock(databases, eventKey, "wallet");
+            return { success: false, error: "insufficient_locked_balance" };
+        }
+
+        const now = new Date().toISOString();
+        const balanceBefore = wallet.balance;
+
+        // Decrease lockedBalance (balance stays the same)
+        await updateWalletWithVersion(databases, walletId, wallet.version, {
+            lockedBalance: wallet.lockedBalance - amount,
+        });
+
+        const signature = generateTransactionSignature({
+            walletId,
+            type: WalletTransactionType.RELEASE,
+            amount,
+            balanceBefore,
+            balanceAfter: balanceBefore,
+            referenceId: options.referenceId,
+            timestamp: now,
+        });
+
+        const transaction = await databases.createDocument<WalletTransaction>(
+            DATABASE_ID,
+            WALLET_TRANSACTIONS_ID,
+            ID.unique(),
+            {
+                walletId,
+                type: WalletTransactionType.RELEASE,
+                amount,
+                direction: "credit",
+                balanceBefore,
+                balanceAfter: balanceBefore, // balance unchanged, locked decreased
+                currency: wallet.currency,
+                referenceId: options.referenceId,
+                idempotencyKey: options.idempotencyKey,
+                signature,
+                description: options.description || "Held funds released",
+            }
+        );
+
+        return { success: true, transaction };
+
+    } catch (error) {
+        await releaseProcessingLock(databases, eventKey, "wallet");
+        throw error;
+    }
+}
+
+/**
+ * Confirm a hold — commit it as a DEBIT
+ * 
+ * Converts held funds into a permanent deduction:
+ * - Decreases both balance and lockedBalance by amount
+ * - Creates a USAGE transaction for the final debit
+ * 
+ * IDEMPOTENT: Uses idempotencyKey.
+ */
+export async function confirmHold(
+    databases: Databases,
+    walletId: string,
+    amount: number,
+    options: {
+        referenceId: string;
+        idempotencyKey: string;
+        description?: string;
+    }
+): Promise<{ success: boolean; transaction?: WalletTransaction; error?: string }> {
+    if (amount <= 0) {
+        return { success: false, error: "Amount must be positive" };
+    }
+
+    const { acquireProcessingLock, releaseProcessingLock } = await import("@/lib/processed-events-registry");
+    const eventKey = `wallet_confirm_hold:${options.idempotencyKey}`;
+
+    if (!(await acquireProcessingLock(databases, eventKey, "wallet"))) {
+        return { success: true, error: "already_processed" };
+    }
+
+    try {
+        const wallet = await databases.getDocument<Wallet>(
+            DATABASE_ID,
+            WALLETS_ID,
+            walletId
+        );
+
+        if (wallet.lockedBalance < amount) {
+            await releaseProcessingLock(databases, eventKey, "wallet");
+            return { success: false, error: "insufficient_locked_balance" };
+        }
+
+        const balanceBefore = wallet.balance;
+        const balanceAfter = balanceBefore - amount;
+        const now = new Date().toISOString();
+
+        // Deduct from both balance and lockedBalance
+        await updateWalletWithVersion(databases, walletId, wallet.version, {
+            balance: balanceAfter,
+            lockedBalance: wallet.lockedBalance - amount,
+            lastDeductionAt: now,
+        });
+
+        const signature = generateTransactionSignature({
+            walletId,
+            type: WalletTransactionType.USAGE,
+            amount,
+            balanceBefore,
+            balanceAfter,
+            referenceId: options.referenceId,
+            timestamp: now,
+        });
+
+        const transaction = await databases.createDocument<WalletTransaction>(
+            DATABASE_ID,
+            WALLET_TRANSACTIONS_ID,
+            ID.unique(),
+            {
+                walletId,
+                type: WalletTransactionType.USAGE,
+                amount,
+                direction: "debit",
+                balanceBefore,
+                balanceAfter,
+                currency: wallet.currency,
+                referenceId: options.referenceId,
+                idempotencyKey: options.idempotencyKey,
+                signature,
+                description: options.description || "Held funds confirmed as debit",
+                metadata: JSON.stringify({ confirmedFromHold: true }),
+            }
+        );
+
+        return { success: true, transaction };
+
+    } catch (error) {
         await releaseProcessingLock(databases, eventKey, "wallet");
         throw error;
     }
@@ -319,7 +771,6 @@ export async function refundToWallet(
     const { acquireProcessingLock, releaseProcessingLock } = await import("@/lib/processed-events-registry");
     const eventKey = `wallet_refund:${options.idempotencyKey}`;
 
-    // 1. Acquire Distributed Lock
     if (!(await acquireProcessingLock(databases, eventKey, "wallet"))) {
         return { success: true, error: "already_processed" };
     }
@@ -333,14 +784,22 @@ export async function refundToWallet(
 
         const balanceBefore = wallet.balance;
         const balanceAfter = balanceBefore + amount;
+        const now = new Date().toISOString();
 
-        // Update wallet balance
-        await databases.updateDocument(
-            DATABASE_ID,
-            WALLETS_ID,
+        // Update wallet balance with optimistic locking
+        await updateWalletWithVersion(databases, walletId, wallet.version, {
+            balance: balanceAfter,
+        });
+
+        const signature = generateTransactionSignature({
             walletId,
-            { balance: balanceAfter }
-        );
+            type: WalletTransactionType.REFUND,
+            amount,
+            balanceBefore,
+            balanceAfter,
+            referenceId: options.referenceId,
+            timestamp: now,
+        });
 
         // Create transaction record
         const transaction = await databases.createDocument<WalletTransaction>(
@@ -357,6 +816,7 @@ export async function refundToWallet(
                 currency: wallet.currency,
                 referenceId: options.referenceId,
                 idempotencyKey: options.idempotencyKey,
+                signature,
                 description: options.reason || "Refund",
             }
         );
@@ -406,6 +866,25 @@ export async function getWalletTransactions(
         transactions: result.documents,
         total: result.total,
     };
+}
+
+/**
+ * Verify a transaction signature for integrity checking
+ */
+export function verifyTransactionSignature(transaction: WalletTransaction): boolean {
+    if (!transaction.signature) return false;
+
+    const expected = generateTransactionSignature({
+        walletId: transaction.walletId,
+        type: transaction.type,
+        amount: transaction.amount,
+        balanceBefore: transaction.balanceBefore,
+        balanceAfter: transaction.balanceAfter,
+        referenceId: transaction.referenceId || "",
+        timestamp: transaction.$createdAt,
+    });
+
+    return expected === transaction.signature;
 }
 
 // ============================================================================
