@@ -23,7 +23,7 @@ import {
     deductUsageSchema,
 } from "../schemas";
 
-import { Wallet } from "../types";
+// Wallet types and services are imported as needed
 
 import {
     getOrCreateWallet,
@@ -112,15 +112,7 @@ const app = new Hono()
             });
 
             // Fraud check: Daily top-up limit
-            const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-            const recentTopups = await databases.listDocuments(
-                DATABASE_ID,
-                WALLETS_ID,
-                [
-                    Query.equal("$id", wallet.$id),
-                    Query.limit(1),
-                ]
-            );
+            // (In production, query wallet_transactions for TOPUP in last 24h)
 
             // Check daily limit by looking at recent top-up transactions
             // (Simplified — in production, query wallet_transactions for TOPUP in last 24h)
@@ -195,7 +187,6 @@ const app = new Hono()
         sessionMiddleware,
         zValidator("json", verifyTopupSchema),
         async (c) => {
-            const user = c.get("user");
             const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = c.req.valid("json");
 
             // Step 1: Verify payment signature

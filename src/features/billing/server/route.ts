@@ -31,7 +31,6 @@ import {
 } from "../schemas";
 
 import { Wallet } from "@/features/wallet/types";
-import { WalletStatus } from "@/features/wallet/types";
 import { getOrCreateWallet } from "@/features/wallet/services/wallet-service";
 
 /**

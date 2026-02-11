@@ -26,7 +26,7 @@ import {
 } from "../types";
 
 import { Wallet } from "@/features/wallet/types";
-import { deductFromWallet, getOrCreateWallet } from "@/features/wallet/services/wallet-service";
+import { deductFromWallet } from "@/features/wallet/services/wallet-service";
 import { WALLETS_ID } from "@/config";
 
 /**
