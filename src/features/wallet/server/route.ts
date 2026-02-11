@@ -186,72 +186,78 @@ const app = new Hono()
         sessionMiddleware,
         zValidator("json", verifyTopupSchema),
         async (c) => {
-            const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = c.req.valid("json");
+            try {
+                const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = c.req.valid("json");
 
-            // Step 1: Verify payment signature
-            const isValid = verifyPaymentSignature(
-                razorpayOrderId,
-                razorpayPaymentId,
-                razorpaySignature
-            );
+                // Step 1: Verify payment signature
+                const isValid = verifyPaymentSignature(
+                    razorpayOrderId,
+                    razorpayPaymentId,
+                    razorpaySignature
+                );
 
-            if (!isValid) {
-                return c.json({ error: "Invalid payment signature" }, 400);
-            }
-
-            // Step 2: Get payment details from Razorpay
-            const { getPayment, capturePayment } = await import("@/lib/razorpay");
-            const payment = await getPayment(razorpayPaymentId);
-
-            // Accept both "captured" (auto-capture) and "authorized" (manual capture) states
-            if (payment.status === "authorized") {
-                // Auto-capture is async; capture explicitly if still authorized
-                try {
-                    await capturePayment(razorpayPaymentId, Number(payment.amount), payment.currency);
-                } catch (captureError) {
-                    // If capture fails with "already captured", that's fine — it was auto-captured
-                    const errMsg = String(captureError);
-                    if (!errMsg.includes("already been captured") && !errMsg.includes("already captured")) {
-                        console.error("[verify-topup] Capture failed:", captureError);
-                        return c.json({ error: "Payment capture failed" }, 400);
-                    }
+                if (!isValid) {
+                    return c.json({ error: "Invalid payment signature" }, 400);
                 }
-            } else if (payment.status !== "captured") {
-                return c.json({ error: `Payment not in valid state: ${payment.status}` }, 400);
+
+                // Step 2: Get payment details from Razorpay
+                const { getPayment, capturePayment } = await import("@/lib/razorpay");
+                const payment = await getPayment(razorpayPaymentId);
+
+                // Accept both "captured" (auto-capture) and "authorized" (manual capture) states
+                if (payment.status === "authorized") {
+                    // Auto-capture is async; capture explicitly if still authorized
+                    try {
+                        await capturePayment(razorpayPaymentId, Number(payment.amount), payment.currency);
+                    } catch (captureError) {
+                        // If capture fails with "already captured", that's fine — it was auto-captured
+                        const errMsg = String(captureError);
+                        if (!errMsg.includes("already been captured") && !errMsg.includes("already captured")) {
+                            console.error("[verify-topup] Capture failed:", captureError);
+                            return c.json({ error: "Payment capture failed" }, 400);
+                        }
+                    }
+                } else if (payment.status !== "captured") {
+                    return c.json({ error: `Payment not in valid state: ${payment.status}` }, 400);
+                }
+
+                // Step 3: Get wallet from payment notes
+                const walletId = (payment.notes as Record<string, string>)?.fairlx_wallet_id;
+                if (!walletId) {
+                    return c.json({ error: "Payment not linked to a wallet" }, 400);
+                }
+
+                const { databases } = await createAdminClient();
+
+                // Step 4: Credit wallet (idempotent via payment ID)
+                const result = await topUpWallet(databases, walletId, Number(payment.amount), {
+                    idempotencyKey: `razorpay_${razorpayPaymentId}`,
+                    paymentId: razorpayPaymentId,
+                    description: `Wallet top-up via Razorpay (${payment.method})`,
+                });
+
+                if (!result.success && result.error !== "already_processed") {
+                    return c.json({ error: result.error }, 400);
+                }
+
+                // Step 5: Return updated balance
+                const balance = await getWalletBalance(databases, walletId);
+
+                return c.json({
+                    data: {
+                        success: true,
+                        transaction: result.transaction,
+                        balance: balance.balance,
+                        availableBalance: balance.availableBalance,
+                        currency: balance.currency,
+                        alreadyProcessed: result.error === "already_processed",
+                    },
+                });
+            } catch (error) {
+                console.error("[verify-topup] Unhandled error:", error);
+                const message = error instanceof Error ? error.message : "Internal server error";
+                return c.json({ error: message }, 500);
             }
-
-            // Step 3: Get wallet from payment notes
-            const walletId = (payment.notes as Record<string, string>)?.fairlx_wallet_id;
-            if (!walletId) {
-                return c.json({ error: "Payment not linked to a wallet" }, 400);
-            }
-
-            const { databases } = await createAdminClient();
-
-            // Step 4: Credit wallet (idempotent via payment ID)
-            const result = await topUpWallet(databases, walletId, Number(payment.amount), {
-                idempotencyKey: `razorpay_${razorpayPaymentId}`,
-                paymentId: razorpayPaymentId,
-                description: `Wallet top-up via Razorpay (${payment.method})`,
-            });
-
-            if (!result.success && result.error !== "already_processed") {
-                return c.json({ error: result.error }, 400);
-            }
-
-            // Step 5: Return updated balance
-            const balance = await getWalletBalance(databases, walletId);
-
-            return c.json({
-                data: {
-                    success: true,
-                    transaction: result.transaction,
-                    balance: balance.balance,
-                    availableBalance: balance.availableBalance,
-                    currency: balance.currency,
-                    alreadyProcessed: result.error === "already_processed",
-                },
-            });
         }
     )
 
