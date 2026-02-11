@@ -332,7 +332,7 @@ export const EVENTS_NOTIFYING_REPORTER: WorkitemEventType[] = [
  * Determine which channels should be used for a given event type
  * This is the baseline before user preferences are applied
  */
-export function getDefaultChannelsForEvent(event: WorkitemEvent): ("socket" | "email")[] {
+export function getDefaultChannelsForEvent(_event: WorkitemEvent): ("socket" | "email")[] {
     const channels: ("socket" | "email")[] = ["socket"]; // Always include socket
 
     // For now, always include email for workitem events to ensure delivery
