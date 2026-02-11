@@ -200,11 +200,24 @@ const app = new Hono()
             }
 
             // Step 2: Get payment details from Razorpay
-            const { getPayment } = await import("@/lib/razorpay");
+            const { getPayment, capturePayment } = await import("@/lib/razorpay");
             const payment = await getPayment(razorpayPaymentId);
 
-            if (payment.status !== "captured") {
-                return c.json({ error: "Payment not captured" }, 400);
+            // Accept both "captured" (auto-capture) and "authorized" (manual capture) states
+            if (payment.status === "authorized") {
+                // Auto-capture is async; capture explicitly if still authorized
+                try {
+                    await capturePayment(razorpayPaymentId, Number(payment.amount), payment.currency);
+                } catch (captureError) {
+                    // If capture fails with "already captured", that's fine — it was auto-captured
+                    const errMsg = String(captureError);
+                    if (!errMsg.includes("already been captured") && !errMsg.includes("already captured")) {
+                        console.error("[verify-topup] Capture failed:", captureError);
+                        return c.json({ error: "Payment capture failed" }, 400);
+                    }
+                }
+            } else if (payment.status !== "captured") {
+                return c.json({ error: `Payment not in valid state: ${payment.status}` }, 400);
             }
 
             // Step 3: Get wallet from payment notes

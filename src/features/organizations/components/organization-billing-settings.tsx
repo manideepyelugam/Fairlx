@@ -229,8 +229,9 @@ export function OrganizationBillingSettings({
                         toast.success(`₹${amount} added to your wallet successfully!`);
                         // Refresh billing data to get updated balance
                         window.location.reload();
-                    } catch {
-                        toast.error("Payment recorded but verification failed. Please contact support.");
+                    } catch (verifyError) {
+                        const msg = verifyError instanceof Error ? verifyError.message : "Verification failed";
+                        toast.error(`Payment issue: ${msg}. Please contact support if credits were not added.`);
                     }
                     setIsAddingCredits(false);
                 },
