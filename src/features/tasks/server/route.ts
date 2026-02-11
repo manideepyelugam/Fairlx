@@ -740,11 +740,15 @@ const app = new Hono()
       }
 
       // Description @mention notifications
-      if (description) {
-        const mentionedUserIds = extractMentions(description);
-        const snippet = extractSnippet(description);
+      // Only notify if description changed and only for NEWLY added mentions
+      if (description !== undefined && description !== existingTask.description) {
+        const oldMentions = existingTask.description ? extractMentions(existingTask.description) : [];
+        const currentMentions = extractMentions(description || "");
+        const newMentions = currentMentions.filter(id => !oldMentions.includes(id));
 
-        for (const mentionedUserId of mentionedUserIds) {
+        const snippet = extractSnippet(description || "");
+
+        for (const mentionedUserId of newMentions) {
           // Skip self-mention
           if (mentionedUserId === user.$id) continue;
 

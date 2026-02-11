@@ -103,6 +103,7 @@ export const createComment = async (data: {
     const snippet = extractSnippet(data.content, 200);
 
     // 1. Dispatch comment added event with comment content included
+    // Exclude mentioned users from this general notification as they'll get specific mention events
     const event = createCommentAddedEvent(
       task,
       data.authorId,
@@ -111,6 +112,12 @@ export const createComment = async (data: {
       mentionedUserIds.length > 0 ? mentionedUserIds : undefined,
       snippet
     );
+
+    if (mentionedUserIds.length > 0) {
+      if (!event.metadata) event.metadata = {};
+      event.metadata.excludeUserIds = mentionedUserIds;
+    }
+
     dispatchWorkitemEvent(event).catch((err) => {
       console.error("[Comments] Failed to dispatch comment event:", err);
     });

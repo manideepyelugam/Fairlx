@@ -21,7 +21,13 @@ import {
     NotificationChannel,
     ChannelHandler,
 } from "./types";
-import { getNotificationTitle, getNotificationSummary, getDefaultChannelsForEvent } from "./events";
+import {
+    getNotificationTitle,
+    getNotificationSummary,
+    getDefaultChannelsForEvent,
+    EVENTS_NOTIFYING_ALL_ASSIGNEES,
+    EVENTS_NOTIFYING_REPORTER
+} from "./events";
 
 // =============================================================================
 // DISPATCHER CLASS
@@ -42,26 +48,18 @@ class NotificationDispatcher {
      */
     async dispatch(event: WorkitemEvent): Promise<void> {
         try {
-            // console.log("==========================================================");
-            // console.log("[Dispatcher] NOTIFICATION DISPATCH STARTED");
-            // console.log(`[Dispatcher] Event Type: ${event.type}`);
-            // console.log(`[Dispatcher] Workitem ID: ${event.workitemId}`);
-            // console.log(`[Dispatcher] Workspace ID: ${event.workspaceId}`);
-            // console.log(`[Dispatcher] Triggered By: ${event.triggeredBy}`);
-            // console.log(`[Dispatcher] Workitem AssigneeIds: ${JSON.stringify(event.workitem?.assigneeIds || [])}`);
-            // console.log("==========================================================");
-
             // 1. Resolve recipients
-            const recipientUserIds = await this.resolveRecipients(event);
-            // console.log(`[Dispatcher] Resolved ${recipientUserIds.length} recipients: ${JSON.stringify(recipientUserIds)}`);
+            const allRecipients = await this.resolveRecipients(event);
+
+            // 2. Apply exclusions from metadata
+            const excludedIds = new Set(event.metadata?.excludeUserIds || []);
+            const recipientUserIds = allRecipients.filter(id => !excludedIds.has(id));
 
             if (recipientUserIds.length === 0) {
-                // console.log("[Dispatcher] NO RECIPIENTS TO NOTIFY - SKIPPING");
-                // console.log("[Dispatcher] This means assigneeIds could not be resolved to user IDs");
                 return;
             }
 
-            // 2. Process each recipient
+            // 3. Process each recipient
             const deliveryPromises = recipientUserIds.map(async (userId) => {
                 try {
                     await this.processRecipient(userId, event);
@@ -71,10 +69,6 @@ class NotificationDispatcher {
             });
 
             await Promise.allSettled(deliveryPromises);
-
-            // console.log("==========================================================");
-            // console.log(`[Dispatcher] NOTIFICATION DISPATCH COMPLETED for event: ${event.type}`);
-            // console.log("==========================================================");
         } catch {
             // Don't throw - notifications should not break the main flow
         }
@@ -86,7 +80,6 @@ class NotificationDispatcher {
     private async processRecipient(userId: string, event: WorkitemEvent): Promise<void> {
         // Skip self-notifications
         if (userId === event.triggeredBy) {
-            // console.log(`[Dispatcher] Skipping self-notification for user: ${userId}`);
             return;
         }
 
@@ -95,13 +88,11 @@ class NotificationDispatcher {
 
         // Check if workitem is muted
         if (preferences.mutedWorkitems.includes(event.workitemId)) {
-            // console.log(`[Dispatcher] Workitem muted for user: ${userId}`);
             return;
         }
 
         // Check if project is muted
         if (event.workitem.projectId && preferences.mutedProjects.includes(event.workitem.projectId)) {
-            // console.log(`[Dispatcher] Project muted for user: ${userId}`);
             return;
         }
 
@@ -109,7 +100,6 @@ class NotificationDispatcher {
         const channels = this.determineChannels(event, preferences);
 
         if (channels.length === 0) {
-            // console.log(`[Dispatcher] No channels enabled for user: ${userId}`);
             return;
         }
 
@@ -125,7 +115,6 @@ class NotificationDispatcher {
             if (handler) {
                 try {
                     await handler.send(userId, payload);
-                    // console.log(`[Dispatcher] Sent via ${channelName} to user: ${userId}`);
                 } catch {
                     // Channel delivery failed - silently continue
                 }
@@ -142,46 +131,37 @@ class NotificationDispatcher {
         const recipients = new Set<string>();
         const { databases } = await createAdminClient();
 
-        // Get member documents for assignees to resolve user IDs
-        const assigneeIds = event.workitem.assigneeIds || [];
-        // console.log(`[Dispatcher:resolveRecipients] Looking up members for assigneeIds: ${JSON.stringify(assigneeIds)}`);
+        // 1. Add assignees only for relevant events
+        if (EVENTS_NOTIFYING_ALL_ASSIGNEES.includes(event.type)) {
+            const assigneeIds = event.workitem.assigneeIds || [];
 
-        if (assigneeIds.length > 0) {
-            try {
-                const members = await databases.listDocuments(
-                    DATABASE_ID,
-                    MEMBERS_ID,
-                    [Query.equal("$id", assigneeIds)]
-                );
-                // console.log(`[Dispatcher:resolveRecipients] Found ${members.documents.length} member documents`);
+            if (assigneeIds.length > 0) {
+                try {
+                    const members = await databases.listDocuments(
+                        DATABASE_ID,
+                        MEMBERS_ID,
+                        [Query.equal("$id", assigneeIds)]
+                    );
 
-                members.documents.forEach((member) => {
-                    // console.log(`[Dispatcher:resolveRecipients] Member ${member.$id} -> userId: ${member.userId}`);
-                    if (member.userId) {
-                        recipients.add(member.userId as string);
-                    }
-                });
-            } catch {
-                // Failed to resolve assignee members - continue
+                    members.documents.forEach((member) => {
+                        if (member.userId) {
+                            recipients.add(member.userId as string);
+                        }
+                    });
+                } catch {
+                    // Failed to resolve assignee members - continue
+                }
             }
-        } else {
-            // console.log("[Dispatcher:resolveRecipients] No assigneeIds in workitem");
         }
 
-        // Add reporter for certain events
-        if (
-            [
-                WorkitemEventType.WORKITEM_COMPLETED,
-                WorkitemEventType.WORKITEM_OVERDUE,
-                WorkitemEventType.WORKITEM_STATUS_CHANGED,
-            ].includes(event.type)
-        ) {
+        // 2. Add reporter for specific events
+        if (EVENTS_NOTIFYING_REPORTER.includes(event.type)) {
             if (event.workitem.reporterId) {
                 recipients.add(event.workitem.reporterId);
             }
         }
 
-        // Add mentioned users for comments
+        // 3. Add mentioned users for comments (metadata.mentionedUserIds)
         if (
             event.type === WorkitemEventType.WORKITEM_COMMENT_ADDED &&
             event.metadata?.mentionedUserIds
@@ -189,12 +169,12 @@ class NotificationDispatcher {
             (event.metadata.mentionedUserIds as string[]).forEach((id) => recipients.add(id));
         }
 
-        // Add mentioned user for direct mention events
+        // 4. Add mentioned user for direct mention events
         if (event.type === WorkitemEventType.WORKITEM_MENTION && event.metadata?.mentionedUserId) {
             recipients.add(event.metadata.mentionedUserId as string);
         }
 
-        // Add parent comment author for reply events
+        // 5. Add parent comment author for reply events
         if (event.type === WorkitemEventType.WORKITEM_REPLY && event.metadata?.parentCommentAuthorId) {
             recipients.add(event.metadata.parentCommentAuthorId as string);
         }

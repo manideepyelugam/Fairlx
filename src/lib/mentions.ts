@@ -24,11 +24,10 @@ export function extractMentions(text: string): string[] {
     const mentions: string[] = [];
 
     // Match TipTap mention format: <span data-type="mention" data-id="userId">
-    // or any element with data-id attribute in a mention context
-    const tiptapRegex = /data-id="([^"]+)"/g;
+    const tiptapRegex = /data-type="mention"\s+data-id="([^"]+)"|data-id="([^"]+)"\s+data-type="mention"/g;
     let match;
     while ((match = tiptapRegex.exec(text)) !== null) {
-        mentions.push(match[1]);
+        mentions.push(match[1] || match[2]);
     }
 
     // Match plain text @Name[userId] format used by MentionInput

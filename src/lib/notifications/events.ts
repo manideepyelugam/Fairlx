@@ -251,8 +251,10 @@ export function getNotificationTitle(event: WorkitemEvent): string {
             return "Attachment Added";
         case WorkitemEventType.WORKITEM_ATTACHMENT_DELETED:
             return "Attachment Removed";
-        default:
+        case WorkitemEventType.WORKITEM_UPDATED:
             return "Task Updated";
+        default:
+            return "Notification";
     }
 }
 
@@ -295,6 +297,34 @@ export function getNotificationSummary(event: WorkitemEvent): string {
 }
 
 // =============================================================================
+// SUBSCRIBER RESOLUTION HELPERS
+// =============================================================================
+
+/**
+ * Event types that should notify everyone assigned to the task
+ */
+export const EVENTS_NOTIFYING_ALL_ASSIGNEES: WorkitemEventType[] = [
+    WorkitemEventType.WORKITEM_ASSIGNED,
+    WorkitemEventType.WORKITEM_STATUS_CHANGED,
+    WorkitemEventType.WORKITEM_COMPLETED,
+    WorkitemEventType.WORKITEM_PRIORITY_CHANGED,
+    WorkitemEventType.WORKITEM_DUE_DATE_CHANGED,
+    WorkitemEventType.WORKITEM_COMMENT_ADDED, // For regular comments
+    WorkitemEventType.WORKITEM_ATTACHMENT_ADDED,
+    WorkitemEventType.WORKITEM_ATTACHMENT_DELETED,
+    WorkitemEventType.WORKITEM_UPDATED,
+];
+
+/**
+ * Event types that should notify the task reporter
+ */
+export const EVENTS_NOTIFYING_REPORTER: WorkitemEventType[] = [
+    WorkitemEventType.WORKITEM_STATUS_CHANGED,
+    WorkitemEventType.WORKITEM_COMPLETED,
+    WorkitemEventType.WORKITEM_OVERDUE,
+];
+
+// =============================================================================
 // CHANNEL DETERMINATION
 // =============================================================================
 
@@ -302,39 +332,11 @@ export function getNotificationSummary(event: WorkitemEvent): string {
  * Determine which channels should be used for a given event type
  * This is the baseline before user preferences are applied
  */
-export function getDefaultChannelsForEvent(event: WorkitemEvent): ("socket" | "email")[] {
+export function getDefaultChannelsForEvent(_event: WorkitemEvent): ("socket" | "email")[] {
     const channels: ("socket" | "email")[] = ["socket"]; // Always include socket
 
-    // Most workitem events should trigger email notifications
-    switch (event.type) {
-        // High-priority events - always email
-        case WorkitemEventType.WORKITEM_ASSIGNED:
-        case WorkitemEventType.WORKITEM_COMPLETED:
-        case WorkitemEventType.WORKITEM_OVERDUE:
-        case WorkitemEventType.WORKITEM_DUE_DATE_APPROACHING:
-        case WorkitemEventType.WORKITEM_STATUS_CHANGED:
-        case WorkitemEventType.WORKITEM_PRIORITY_CHANGED:
-        case WorkitemEventType.WORKITEM_DUE_DATE_CHANGED:
-        case WorkitemEventType.WORKITEM_UPDATED:
-        case WorkitemEventType.WORKITEM_COMMENT_ADDED:
-        case WorkitemEventType.WORKITEM_MENTION:
-        case WorkitemEventType.WORKITEM_REPLY:
-            channels.push("email");
-            break;
-
-        // Attachments - email notification
-        case WorkitemEventType.WORKITEM_ATTACHMENT_ADDED:
-        case WorkitemEventType.WORKITEM_ATTACHMENT_DELETED:
-            channels.push("email");
-            break;
-
-        // Created, deleted, unassigned - email notification
-        case WorkitemEventType.WORKITEM_CREATED:
-        case WorkitemEventType.WORKITEM_DELETED:
-        case WorkitemEventType.WORKITEM_UNASSIGNED:
-            channels.push("email");
-            break;
-    }
+    // For now, always include email for workitem events to ensure delivery
+    channels.push("email");
 
     return channels;
 }
