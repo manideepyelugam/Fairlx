@@ -1,6 +1,2 @@
-import { useParams } from "next/navigation";
-
-export const useProgramIdParam = () => {
-  const params = useParams();
-  return params.programId as string;
-};
+// Re-export useProgramId to avoid duplicate hooks
+export { useProgramId as useProgramIdParam } from "./use-program-id";

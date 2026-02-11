@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { MoreHorizontal, Plus, Search, Trash2, UserPlus, Users } from "lucide-react";
+import { useState, useMemo } from "react";
+import { MoreHorizontal, Plus, Search, Trash2, UserPlus, Users, Shield, Eye, Crown, Loader2, CheckCircle2 } from "lucide-react";
 
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -18,21 +19,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -48,9 +41,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { PopulatedProgramMember, ProgramMemberRole } from "../types";
-import { useGetProgramMembers, useAddProgramMember, useRemoveProgramMember, useUpdateProgramMemberRole } from "../api/index";
+import { useGetProgramMembers } from "../api/use-get-program-members";
+import { useAddProgramMember } from "../api/use-add-program-member";
+import { useRemoveProgramMember } from "../api/use-remove-program-member";
+import { useUpdateProgramMemberRole } from "../api/use-update-program-member";
+import { useGetMembers } from "@/features/members/api/use-get-members";
 
 interface ProgramMembersTableProps {
   programId: string;
@@ -58,264 +56,222 @@ interface ProgramMembersTableProps {
   canManageMembers?: boolean;
 }
 
-const roleColors: Record<ProgramMemberRole, string> = {
-  [ProgramMemberRole.LEAD]: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-  [ProgramMemberRole.ADMIN]: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  [ProgramMemberRole.MEMBER]: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200",
-  [ProgramMemberRole.VIEWER]: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
+const ROLE_CONFIG: Record<ProgramMemberRole, { label: string; icon: typeof Crown; badge: string }> = {
+  [ProgramMemberRole.LEAD]: { label: "Lead", icon: Crown, badge: "bg-purple-500/10 text-purple-600 border-purple-200 dark:border-purple-800 dark:text-purple-400" },
+  [ProgramMemberRole.ADMIN]: { label: "Admin", icon: Shield, badge: "bg-blue-500/10 text-blue-600 border-blue-200 dark:border-blue-800 dark:text-blue-400" },
+  [ProgramMemberRole.MEMBER]: { label: "Member", icon: Users, badge: "bg-slate-500/10 text-slate-600 border-slate-200 dark:border-slate-700 dark:text-slate-400" },
+  [ProgramMemberRole.VIEWER]: { label: "Viewer", icon: Eye, badge: "bg-gray-500/10 text-gray-500 border-gray-200 dark:border-gray-700 dark:text-gray-400" },
 };
 
-const roleLabels: Record<ProgramMemberRole, string> = {
-  [ProgramMemberRole.LEAD]: "Program Lead",
-  [ProgramMemberRole.ADMIN]: "Admin",
-  [ProgramMemberRole.MEMBER]: "Member",
-  [ProgramMemberRole.VIEWER]: "Viewer",
-};
-
-export function ProgramMembersTable({
-  programId,
-  workspaceId: _workspaceId,
-  canManageMembers = false,
-}: ProgramMembersTableProps) {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _ = _workspaceId; // Reserved for future use
-  const [searchQuery, setSearchQuery] = useState("");
+export function ProgramMembersTable({ programId, workspaceId, canManageMembers = false }: ProgramMembersTableProps) {
+  const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [addSearch, setAddSearch] = useState("");
+  const [addRole, setAddRole] = useState<ProgramMemberRole>(ProgramMemberRole.MEMBER);
   const [memberToRemove, setMemberToRemove] = useState<PopulatedProgramMember | null>(null);
 
   const { data: membersData, isLoading } = useGetProgramMembers({ programId });
-  const { mutate: _addMember, isPending: isAddingMember } = useAddProgramMember();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const __ = _addMember; // Reserved for future use in add member dialog
-  const { mutate: removeMember, isPending: isRemovingMember } = useRemoveProgramMember();
-  const { mutate: updateRole, isPending: isUpdatingRole } = useUpdateProgramMemberRole();
+  const { mutate: addMember, isPending: isAdding } = useAddProgramMember();
+  const { mutate: removeMember, isPending: isRemoving } = useRemoveProgramMember();
+  const { mutate: updateRole, isPending: isUpdating } = useUpdateProgramMemberRole();
+  const { data: workspaceMembers, isLoading: isLoadingWorkspace } = useGetMembers({ workspaceId, enabled: addOpen });
 
-  const members = membersData?.data?.documents ?? [];
+  const members = useMemo(() => membersData?.data?.documents ?? [], [membersData?.data?.documents]);
 
-  // Filter members based on search and role
-  const filteredMembers = members.filter((member: PopulatedProgramMember) => {
-    const matchesSearch = !searchQuery || 
-      member.member?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.member?.email?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesRole = roleFilter === "all" || member.role === roleFilter;
-    return matchesSearch && matchesRole;
+  // Existing member user IDs for filtering the add dialog
+  const existingUserIds = useMemo(() => new Set(members.map((m: PopulatedProgramMember) => m.user?.email ? m.userId : m.userId)), [members]);
+
+  // Available workspace members (not already in program)
+  const availableMembers = useMemo(() => {
+    const allWs = (workspaceMembers?.documents ?? []) as Array<{ $id: string; userId: string; name?: string; email?: string; role?: string }>;
+    const filtered = allWs.filter((wm) => !existingUserIds.has(wm.$id));
+    if (!addSearch) return filtered;
+    return filtered.filter((wm) =>
+      (wm.name || "").toLowerCase().includes(addSearch.toLowerCase()) ||
+      (wm.email || "").toLowerCase().includes(addSearch.toLowerCase())
+    );
+  }, [workspaceMembers, existingUserIds, addSearch]);
+
+  const filtered = members.filter((m: PopulatedProgramMember) => {
+    const matchSearch = !search || m.user?.name?.toLowerCase().includes(search.toLowerCase()) || m.user?.email?.toLowerCase().includes(search.toLowerCase());
+    const matchRole = roleFilter === "all" || m.role === roleFilter;
+    return matchSearch && matchRole;
   });
 
-  const handleRoleChange = (memberId: string, newRole: ProgramMemberRole) => {
-    updateRole({
-      programId,
-      memberId,
-      role: newRole,
-    });
-  };
-
-  const handleRemoveMember = () => {
+  const handleRole = (id: string, role: ProgramMemberRole) => updateRole({ programId, memberId: id, role });
+  const handleRemove = () => {
     if (!memberToRemove) return;
-    
-    removeMember(
-      { programId, memberId: memberToRemove.$id },
-      {
-        onSuccess: () => {
-          setMemberToRemove(null);
-        },
-      }
+    removeMember({ programId, memberId: memberToRemove.$id }, { onSuccess: () => setMemberToRemove(null) });
+  };
+  const handleAddMember = (userId: string) => {
+    addMember(
+      { programId, userId, role: addRole },
+      { onSuccess: () => { setAddSearch(""); setAddRole(ProgramMemberRole.MEMBER); setAddOpen(false); } }
     );
   };
+  const initials = (name?: string) => name ? name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) : "?";
 
-  const getInitials = (name?: string) => {
-    if (!name) return "?";
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
+  // Role counts
+  const roleCounts = members.reduce((acc: Record<string, number>, m: PopulatedProgramMember) => { acc[m.role] = (acc[m.role] || 0) + 1; return acc; }, {} as Record<string, number>);
 
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between gap-4">
-          <Skeleton className="h-10 w-[250px]" />
-          <Skeleton className="h-10 w-[150px]" />
-        </div>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Member</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Joined</TableHead>
-                <TableHead className="w-[50px]" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {[1, 2, 3].map((i) => (
-                <TableRow key={i}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Skeleton className="h-10 w-10 rounded-full" />
-                      <div className="space-y-2">
-                        <Skeleton className="h-4 w-[150px]" />
-                        <Skeleton className="h-3 w-[200px]" />
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-6 w-[80px]" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-[100px]" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-8 w-8" />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return <MembersSkeleton />;
 
   return (
-    <div className="space-y-4">
-      {/* Header with search and filters */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2 flex-1 w-full sm:w-auto">
-          <div className="relative flex-1 sm:max-w-[300px]">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search members..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <Select value={roleFilter} onValueChange={setRoleFilter}>
-            <SelectTrigger className="w-[130px]">
-              <SelectValue placeholder="Filter role" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Roles</SelectItem>
-              <SelectItem value="lead">Leads</SelectItem>
-              <SelectItem value="manager">Managers</SelectItem>
-              <SelectItem value="member">Members</SelectItem>
-              <SelectItem value="viewer">Viewers</SelectItem>
-            </SelectContent>
-          </Select>
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Program Members
+            <Badge variant="secondary" className="ml-1 tabular-nums">{members.length}</Badge>
+          </h2>
+          <p className="text-sm text-muted-foreground">People contributing to this program</p>
         </div>
-
         {canManageMembers && (
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <UserPlus className="mr-2 h-4 w-4" />
-                Add Member
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
+          <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) { setAddSearch(""); setAddRole(ProgramMemberRole.MEMBER); } }}>
+            <DialogTrigger asChild><Button size="sm" className="gap-2"><UserPlus className="h-4 w-4" />Add Member</Button></DialogTrigger>
+            <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>Add Program Member</DialogTitle>
-                <DialogDescription>
-                  Add a workspace member to this program. They will be able to view and contribute to program projects based on their role.
-                </DialogDescription>
+                <DialogDescription>Select a workspace member to add to this program. They&apos;ll gain access based on their assigned role.</DialogDescription>
               </DialogHeader>
-              {/* Add member form would go here - typically a member selector */}
-              <div className="py-4">
-                <p className="text-sm text-muted-foreground text-center">
-                  Member selector component to be integrated
-                </p>
+              <div className="space-y-4 py-2">
+                {/* Role selector */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Assign Role</label>
+                  <Select value={addRole} onValueChange={(v) => setAddRole(v as ProgramMemberRole)}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ProgramMemberRole.ADMIN}>Admin — Can manage projects & members</SelectItem>
+                      <SelectItem value={ProgramMemberRole.MEMBER}>Member — Can view and update items</SelectItem>
+                      <SelectItem value={ProgramMemberRole.VIEWER}>Viewer — Read-only access</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Search workspace members..." value={addSearch} onChange={(e) => setAddSearch(e.target.value)} className="pl-9" />
+                </div>
+                {/* Member list */}
+                {isLoadingWorkspace ? (
+                  <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+                ) : availableMembers.length === 0 ? (
+                  <div className="flex flex-col items-center py-8">
+                    <CheckCircle2 className="h-8 w-8 text-muted-foreground/40 mb-2" />
+                    <p className="text-sm text-muted-foreground">{addSearch ? "No members match your search" : "All workspace members are already in this program"}</p>
+                  </div>
+                ) : (
+                  <ScrollArea className="h-[260px]">
+                    <div className="space-y-1">
+                      {availableMembers.map((wm) => (
+                        <button
+                          key={wm.$id}
+                          onClick={() => handleAddMember(wm.$id)}
+                          disabled={isAdding}
+                          className="flex items-center gap-3 w-full p-3 rounded-lg hover:bg-accent transition-colors text-left disabled:opacity-50"
+                        >
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                              {initials(wm.name || wm.email)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{wm.name || "Unnamed"}</p>
+                            <p className="text-xs text-muted-foreground truncate">{wm.email}</p>
+                          </div>
+                          {isAdding && <Loader2 className="h-4 w-4 animate-spin shrink-0" />}
+                        </button>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button disabled={isAddingMember}>
-                  {isAddingMember ? "Adding..." : "Add Member"}
-                </Button>
-              </DialogFooter>
             </DialogContent>
           </Dialog>
         )}
       </div>
 
-      {/* Members count */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Users className="h-4 w-4" />
-        <span>
-          {filteredMembers.length} member{filteredMembers.length !== 1 ? "s" : ""}
-          {roleFilter !== "all" && ` (filtered)`}
-        </span>
-      </div>
-
-      {/* Members table */}
-      {filteredMembers.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-          <Users className="h-12 w-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-semibold">No members found</h3>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {searchQuery || roleFilter !== "all"
-              ? "Try adjusting your search or filters"
-              : "Add members to start collaborating on this program"}
-          </p>
-          {canManageMembers && !searchQuery && roleFilter === "all" && (
-            <Button
-              variant="outline"
-              className="mt-4"
-              onClick={() => setIsAddDialogOpen(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add First Member
-            </Button>
-          )}
+      {/* Role pills */}
+      {members.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {Object.entries(ROLE_CONFIG).map(([role, cfg]) => {
+            const count = roleCounts[role] || 0;
+            if (count === 0) return null;
+            const RoleIcon = cfg.icon;
+            return (
+              <Badge key={role} variant="outline" className={cn("gap-1 text-xs px-2 py-0.5", cfg.badge)}>
+                <RoleIcon className="h-3 w-3" />{cfg.label} <span className="font-bold tabular-nums">{count}</span>
+              </Badge>
+            );
+          })}
         </div>
+      )}
+
+      {/* Filters */}
+      {members.length > 0 && (
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Search members..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9" />
+          </div>
+          <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <SelectTrigger className="w-[120px] h-9"><SelectValue placeholder="Role" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Roles</SelectItem>
+              <SelectItem value={ProgramMemberRole.LEAD}>Leads</SelectItem>
+              <SelectItem value={ProgramMemberRole.ADMIN}>Admins</SelectItem>
+              <SelectItem value={ProgramMemberRole.MEMBER}>Members</SelectItem>
+              <SelectItem value={ProgramMemberRole.VIEWER}>Viewers</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {/* Members */}
+      {members.length === 0 ? (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mb-4"><Users className="h-7 w-7 text-muted-foreground" /></div>
+            <h3 className="text-lg font-semibold mb-1">No members yet</h3>
+            <p className="text-sm text-muted-foreground text-center max-w-sm mb-4">Add team members to start collaborating on this program.</p>
+            {canManageMembers && <Button size="sm" onClick={() => setAddOpen(true)} className="gap-2"><Plus className="h-4 w-4" />Add First Member</Button>}
+          </CardContent>
+        </Card>
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center py-10"><Search className="h-8 w-8 text-muted-foreground/40 mb-2" /><p className="text-sm text-muted-foreground">No members match your filters</p></div>
       ) : (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Member</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Joined</TableHead>
-                {canManageMembers && <TableHead className="w-[50px]" />}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredMembers.map((member: PopulatedProgramMember) => (
-                <TableRow key={member.$id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={member.member?.imageUrl} />
-                        <AvatarFallback className="bg-primary/10 text-primary">
-                          {getInitials(member.member?.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">
-                          {member.member?.name || "Unknown User"}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {member.member?.email || "No email"}
-                        </p>
+        <div className="grid gap-2">
+          {filtered.map((member: PopulatedProgramMember) => {
+            const cfg = ROLE_CONFIG[member.role as ProgramMemberRole] || ROLE_CONFIG[ProgramMemberRole.MEMBER];
+            const RoleIcon = cfg.icon;
+            const isLead = member.role === ProgramMemberRole.LEAD;
+
+            return (
+              <Card key={member.$id} className="group transition-all hover:shadow-sm">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-4">
+                    {/* Avatar */}
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={member.user?.profileImageUrl} />
+                      <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">{initials(member.user?.name)}</AvatarFallback>
+                    </Avatar>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold truncate">{member.user?.name || "Unknown"}</p>
+                        {isLead && <Crown className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
                       </div>
+                      <p className="text-sm text-muted-foreground truncate">{member.user?.email || "No email"}</p>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    {canManageMembers && member.role !== ProgramMemberRole.LEAD ? (
-                      <Select
-                        value={member.role}
-                        onValueChange={(value) =>
-                          handleRoleChange(member.$id, value as ProgramMemberRole)
-                        }
-                        disabled={isUpdatingRole}
-                      >
-                        <SelectTrigger className="w-[130px]">
-                          <SelectValue />
-                        </SelectTrigger>
+
+                    {/* Role */}
+                    {canManageMembers && !isLead ? (
+                      <Select value={member.role} onValueChange={(v) => handleRole(member.$id, v as ProgramMemberRole)} disabled={isUpdating}>
+                        <SelectTrigger className="w-[110px] h-8 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value={ProgramMemberRole.ADMIN}>Admin</SelectItem>
                           <SelectItem value={ProgramMemberRole.MEMBER}>Member</SelectItem>
@@ -323,81 +279,60 @@ export function ProgramMembersTable({
                         </SelectContent>
                       </Select>
                     ) : (
-                      <Badge
-                        variant="secondary"
-                        className={roleColors[member.role as ProgramMemberRole]}
-                      >
-                        {roleLabels[member.role as ProgramMemberRole] || member.role}
+                      <Badge variant="outline" className={cn("text-xs gap-1 px-2", cfg.badge)}>
+                        <RoleIcon className="h-3 w-3" />{cfg.label}
                       </Badge>
                     )}
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm text-muted-foreground">
-                      {new Date(member.joinedAt).toLocaleDateString(undefined, {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })}
+
+                    {/* Joined */}
+                    <span className="text-xs text-muted-foreground hidden sm:block tabular-nums w-24 text-right">
+                      {new Date(member.addedAt || member.$createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
                     </span>
-                  </TableCell>
-                  {canManageMembers && (
-                    <TableCell>
-                      {member.role !== ProgramMemberRole.LEAD && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => setMemberToRemove(member)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Remove from program
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+
+                    {/* Actions */}
+                    {canManageMembers && !isLead && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setMemberToRemove(member)} className="text-destructive"><Trash2 className="h-4 w-4 mr-2" />Remove</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
-      {/* Remove member confirmation dialog */}
-      <AlertDialog
-        open={!!memberToRemove}
-        onOpenChange={(open) => !open && setMemberToRemove(null)}
-      >
+      {/* Remove confirmation */}
+      <AlertDialog open={!!memberToRemove} onOpenChange={(o) => !o && setMemberToRemove(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remove Member</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to remove{" "}
-              <span className="font-medium">
-                {memberToRemove?.member?.name || "this member"}
-              </span>{" "}
-              from this program? They will lose access to program-specific features but
-              can still access their assigned projects.
+              Remove <span className="font-medium">{memberToRemove?.user?.name || "this member"}</span> from this program? They&apos;ll lose access to program features but can still access assigned projects.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isRemovingMember}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleRemoveMember}
-              disabled={isRemovingMember}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isRemovingMember ? "Removing..." : "Remove Member"}
-            </AlertDialogAction>
+            <AlertDialogCancel disabled={isRemoving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRemove} disabled={isRemoving} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{isRemoving ? "Removing..." : "Remove"}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+/* ─── Skeleton ────────────────────────────────────────────────────── */
+function MembersSkeleton() {
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between"><Skeleton className="h-6 w-40" /><Skeleton className="h-9 w-28" /></div>
+      <div className="flex gap-2"><Skeleton className="h-6 w-20" /><Skeleton className="h-6 w-20" /><Skeleton className="h-6 w-20" /></div>
+      <div className="flex gap-3"><Skeleton className="h-9 w-72" /><Skeleton className="h-9 w-28" /></div>
+      <div className="grid gap-2">{[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-16 rounded-xl" />)}</div>
     </div>
   );
 }

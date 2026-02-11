@@ -10,6 +10,7 @@ interface ProgramSummary {
   projectCount: number;
   memberCount: number;
   milestoneCount: number;
+  completedMilestoneCount: number;
 }
 
 interface GetProgramSummaryResponse {
