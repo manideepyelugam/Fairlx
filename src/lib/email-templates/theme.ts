@@ -105,8 +105,8 @@ export const branding = {
   name: "fairlx",
   tagline: "Enterprise Workspace Platform",
   websiteUrl: "https://fairlx.com",
-  supportEmail: "support@fairlx.com",
-  copyright: "© 2025 Stemlen. All rights reserved.",
+  supportEmail: "contact@fairlx.com",
+  copyright: "© 2026 Stemlen. All rights reserved.",
   footerMessage: "You received this email because you're part of a workspace on Fairlx",
 };
 
