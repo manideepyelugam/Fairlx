@@ -129,6 +129,9 @@ jobs:
           NEXT_PUBLIC_APPWRITE_WORK_ITEM_LINKS_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_WORK_ITEM_LINKS_ID }}
           NEXT_PUBLIC_APPWRITE_SAVED_VIEWS_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_SAVED_VIEWS_ID }}
           NEXT_PUBLIC_APPWRITE_SUBTASKS_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_SUBTASKS_ID }}
+          # Landing Page (Supabase)
+          LANDING_SUPABASE_URL: ${{ secrets.LANDING_SUPABASE_URL }}
+          LANDING_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.LANDING_SUPABASE_SERVICE_ROLE_KEY }}
         run: npm run build
 
       - name: Transfer files to server
@@ -244,6 +247,9 @@ jobs:
             NEXT_PUBLIC_APPWRITE_SAVED_VIEWS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_SAVED_VIEWS_ID }}
             NEXT_PUBLIC_APPWRITE_SUBTASKS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_SUBTASKS_ID }}
             NEXT_PUBLIC_APPWRITE_LOGIN_TOKENS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_LOGIN_TOKENS_ID }}
+            # Landing Page (Supabase)
+            LANDING_SUPABASE_URL=${{ secrets.LANDING_SUPABASE_URL }}
+            LANDING_SUPABASE_SERVICE_ROLE_KEY=${{ secrets.LANDING_SUPABASE_SERVICE_ROLE_KEY }}
             EOF
             
             # Ensure proper permissions
