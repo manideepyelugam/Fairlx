@@ -23,6 +23,9 @@ on:
           - send-reminders
           - evaluate-alerts
 
+# Note: All billing operations use USD as the primary currency.
+# Razorpay payments are processed in INR with live conversion rates.
+
 env:
   API_BASE_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
   CRON_SECRET: ${{ secrets.CRON_SECRET }}

@@ -79,7 +79,10 @@ jobs:
           NEXT_PUBLIC_APPWRITE_INVOICES_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_INVOICES_ID }}
           NEXT_PUBLIC_APPWRITE_PROCESSED_EVENTS_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_PROCESSED_EVENTS_ID }}
           NEXT_PUBLIC_APPWRITE_BILLING_SETTINGS_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_BILLING_SETTINGS_ID }}
-          # Razorpay
+          # Payment Processing & Currency
+          # Primary currency: USD (for display & wallet storage)
+          # Razorpay charges: INR (converted at checkout using live rates)
+          # EXCHANGE_RATE_API_KEY enables live USD→INR conversion
           RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
           RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
           RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
@@ -199,6 +202,7 @@ jobs:
             NEXT_PUBLIC_APPWRITE_INVOICES_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_INVOICES_ID }}
             NEXT_PUBLIC_APPWRITE_PROCESSED_EVENTS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_PROCESSED_EVENTS_ID }}
             NEXT_PUBLIC_APPWRITE_BILLING_SETTINGS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_BILLING_SETTINGS_ID }}
+            # Payment Processing & Currency (USD primary, INR for Razorpay with live conversion)
             RAZORPAY_KEY_ID=${{ secrets.RAZORPAY_KEY_ID }}
             RAZORPAY_KEY_SECRET=${{ secrets.RAZORPAY_KEY_SECRET }}
             RAZORPAY_WEBHOOK_SECRET=${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
