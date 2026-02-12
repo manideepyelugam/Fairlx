@@ -261,7 +261,7 @@ export function OrganizationBillingSettings({
             toast.error("Failed to initialize payment. Please try again.");
             setIsAddingCredits(false);
         }
-    }, [organizationId, isScriptLoaded, billingAccountData?.data, billingEmailValue, organization?.email, organization?.name, ownerEmail, setupBilling, topupAmount]);
+    }, [organizationId, isScriptLoaded, billingAccountData?.data, billingEmailValue, organization?.email, organization?.name, ownerEmail, setupBilling, topupAmount, queryClient]);
 
     if (isLoading) {
         return (
