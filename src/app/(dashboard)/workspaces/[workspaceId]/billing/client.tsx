@@ -11,6 +11,7 @@ import { useGetOrganizations } from "@/features/organizations/api/use-get-organi
 import { useGetUsageSummary } from "@/features/usage/api/use-get-usage-summary";
 import { useGetUsageEvents } from "@/features/usage/api/use-get-usage-events";
 import { WorkspaceUsageBreakdown } from "@/features/usage/components";
+import { RedeemCouponCard } from "@/features/github-rewards/components/RedeemCouponCard";
 
 export const BillingDashboardClient = () => {
     const params = useParams();
@@ -149,6 +150,8 @@ export const BillingDashboardClient = () => {
                 </Card>
             </div>
 
+            {/* GitHub Star Reward - Redeem Coupon */}
+            <RedeemCouponCard organizationId={isOrg ? primaryOrganizationId : undefined} />
             {/* Organization Workspaces Breakdown (ORG only) */}
             {isOrg && primaryOrganizationId && (
                 <WorkspaceUsageBreakdown

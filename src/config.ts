@@ -113,7 +113,7 @@ export const PROCESSED_EVENTS_ID = process.env.NEXT_PUBLIC_APPWRITE_PROCESSED_EV
 // Billing Configuration
 // ===============================
 export const BILLING_GRACE_PERIOD_DAYS = parseInt(process.env.BILLING_GRACE_PERIOD_DAYS || "14");
-export const BILLING_CURRENCY = process.env.BILLING_CURRENCY || "INR";
+export const BILLING_CURRENCY = process.env.BILLING_CURRENCY || "USD";
 
 // ===============================
 // Wallet Security Configuration
@@ -134,3 +134,8 @@ export const WALLETS_ID = process.env.NEXT_PUBLIC_APPWRITE_WALLETS_ID!;
 export const WALLET_TRANSACTIONS_ID = process.env.NEXT_PUBLIC_APPWRITE_WALLET_TRANSACTIONS_ID!;
 export const USAGE_DEDUCTIONS_ID = process.env.NEXT_PUBLIC_APPWRITE_USAGE_DEDUCTIONS_ID!;
 
+// ===============================
+// Landing Page Supabase (GitHub Star Rewards)
+// ===============================
+export const LANDING_SUPABASE_URL = process.env.LANDING_SUPABASE_URL!;
+export const LANDING_SUPABASE_SERVICE_ROLE_KEY = process.env.LANDING_SUPABASE_SERVICE_ROLE_KEY!;

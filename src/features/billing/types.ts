@@ -79,6 +79,10 @@ export enum BillingAuditEventType {
     WEBHOOK_RECEIVED = "WEBHOOK_RECEIVED",
     WEBHOOK_PROCESSED = "WEBHOOK_PROCESSED",
     WEBHOOK_FAILED = "WEBHOOK_FAILED",
+
+    // GitHub Star Reward Events
+    GITHUB_REWARD_REDEEMED = "GITHUB_REWARD_REDEEMED",
+    GITHUB_REWARD_FAILED = "GITHUB_REWARD_FAILED",
 }
 
 // ===============================

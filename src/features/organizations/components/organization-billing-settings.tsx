@@ -99,7 +99,7 @@ export function OrganizationBillingSettings({
 
     // Wallet balance from billing account data
     const walletBalance = billingAccountData?.walletBalance ?? 0;
-    const walletCurrency = billingAccountData?.walletCurrency ?? "INR";
+    const walletCurrency = billingAccountData?.walletCurrency ?? "USD";
 
     // Handler for save billing settings - must be defined before any conditional returns
     const handleSaveBillingSettings = useCallback(async () => {
@@ -151,7 +151,7 @@ export function OrganizationBillingSettings({
 
         const amount = Number(topupAmount);
         if (!amount || amount < 1) {
-            toast.error("Minimum top-up amount is ₹1");
+            toast.error("Minimum top-up amount is $1");
             return;
         }
 
@@ -184,8 +184,7 @@ export function OrganizationBillingSettings({
             // Create a Razorpay order for wallet top-up
             const orderResponse = await client.api.wallet["create-order"].$post({
                 json: {
-                    amount: amount * 100, // Convert rupees to paise
-                    currency: "INR",
+                    amount: amount * 100, // Convert dollars to cents
                     organizationId,
                 },
             });
@@ -195,17 +194,27 @@ export function OrganizationBillingSettings({
                 throw new Error((errorData as { error?: string }).error || "Failed to create order");
             }
 
-            const orderResult = await orderResponse.json() as { data: { orderId: string; key: string; amount: number; currency: string } };
+            const orderResult = await orderResponse.json() as {
+                data: {
+                    orderId: string;
+                    key: string;
+                    amount: number;
+                    currency: string;
+                    originalUsdCents: number;
+                    exchangeRate: number;
+                }
+            };
             const orderData = orderResult.data;
+            const inrAmount = (orderData.amount / 100).toFixed(2);
 
-            // Open Razorpay checkout for one-time payment
+            // Open Razorpay checkout for one-time payment (charges in INR)
             const razorpayOptions: RazorpayCheckoutConfig = {
                 key: orderData.key,
                 order_id: orderData.orderId,
                 amount: orderData.amount,
-                currency: orderData.currency,
+                currency: orderData.currency, // INR from backend
                 name: "Fairlx",
-                description: `Add ₹${amount} to Wallet`,
+                description: `Add $${amount} to Wallet (~₹${inrAmount})`,
                 prefill: {
                     email: billingEmailValue || organization?.email || ownerEmail || "",
                 },
@@ -228,7 +237,7 @@ export function OrganizationBillingSettings({
                             throw new Error((errorData as { error?: string }).error || "Verification failed");
                         }
 
-                        toast.success(`₹${amount} added to your wallet successfully!`);
+                        toast.success(`$${amount} added to your wallet successfully!`);
                         // Refresh billing data to get updated balance (without full page reload)
                         queryClient.invalidateQueries({ queryKey: ["billing-account"] });
                         queryClient.invalidateQueries({ queryKey: ["billing-status"] });
@@ -503,7 +512,7 @@ export function OrganizationBillingSettings({
                                 </div>
                                 <div>
                                     <div className="text-2xl font-bold">
-                                        {new Intl.NumberFormat("en-IN", {
+                                        {new Intl.NumberFormat("en-US", {
                                             style: "currency",
                                             currency: walletCurrency,
                                         }).format(walletBalance / 100)}
@@ -531,7 +540,7 @@ export function OrganizationBillingSettings({
                                 <div className="flex gap-2">
                                     <div className="flex-1">
                                         <Label htmlFor="topup-amount" className="text-sm font-medium mb-2 block">
-                                            Amount (₹)
+                                            Amount ($)
                                         </Label>
                                         <Input
                                             id="topup-amount"
@@ -548,7 +557,7 @@ export function OrganizationBillingSettings({
 
                                 {/* Quick top-up amounts */}
                                 <div className="flex flex-wrap gap-2">
-                                    {[500, 1000, 2000, 5000].map((amt) => (
+                                    {[5, 10, 25, 50].map((amt) => (
                                         <Button
                                             key={amt}
                                             variant="outline"
@@ -560,14 +569,14 @@ export function OrganizationBillingSettings({
                                                 topupAmount === String(amt) && "border-primary bg-primary/10"
                                             )}
                                         >
-                                            ₹{amt.toLocaleString("en-IN")}
+                                            ${amt}
                                         </Button>
                                     ))}
                                 </div>
 
                                 <Button
                                     onClick={handleAddCredits}
-                                    disabled={isAddingCredits || !isScriptLoaded || !topupAmount || Number(topupAmount) < 1 || !canManageBilling}
+                                    disabled={isAddingCredits || !topupAmount || Number(topupAmount) < 1 || !canManageBilling}
                                     className="w-full"
                                     size="lg"
                                 >
@@ -579,13 +588,13 @@ export function OrganizationBillingSettings({
                                     ) : (
                                         <>
                                             <Plus className="mr-2 h-4 w-4" />
-                                            Add ₹{topupAmount ? Number(topupAmount).toLocaleString("en-IN") : "0"} to Wallet
+                                            Add {topupAmount ? `$${Number(topupAmount)}` : "$0"} to Wallet
                                         </>
                                     )}
                                 </Button>
 
                                 <p className="text-xs text-muted-foreground text-center">
-                                    Payments processed securely by Razorpay. Minimum ₹1.
+                                    Payments processed securely by Razorpay. Minimum $1.
                                 </p>
                             </div>
                         </div>
@@ -645,9 +654,9 @@ export function OrganizationBillingSettings({
                                         <div className="flex items-center gap-3">
                                             <div className="text-right">
                                                 <div className="font-semibold">
-                                                    {new Intl.NumberFormat("en-IN", {
+                                                    {new Intl.NumberFormat("en-US", {
                                                         style: "currency",
-                                                        currency: "INR",
+                                                        currency: "USD",
                                                     }).format(invoice.totalCost)}
                                                 </div>
                                                 <Badge

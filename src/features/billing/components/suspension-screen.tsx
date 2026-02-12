@@ -28,7 +28,7 @@ export function SuspensionScreen({
     organizationId,
     organizationName,
     invoiceAmount,
-    currency = "INR",
+    currency = "USD",
     invoiceId,
     gracePeriodExpiredAt,
     suspendedAt,
