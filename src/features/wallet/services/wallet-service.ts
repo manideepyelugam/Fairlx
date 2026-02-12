@@ -190,7 +190,7 @@ export async function getOrCreateWallet(
         throw new Error("Either userId or organizationId is required");
     }
 
-    const currency = options.currency || "INR";
+    const currency = options.currency || "USD";
 
     // Query for existing wallet
     const queries = options.organizationId

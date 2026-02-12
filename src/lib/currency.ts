@@ -145,6 +145,14 @@ export async function convertUsdToInr(amountUsd: number): Promise<number> {
 }
 
 /**
+ * Convert INR amount to USD using live rate
+ */
+export async function convertInrToUsd(amountInr: number): Promise<number> {
+    const rate = await getUsdToInrRate();
+    return Math.round((amountInr / rate) * 100) / 100; // Round to 2 decimal places
+}
+
+/**
  * Convert amount from one currency to another
  */
 export async function convertCurrency(

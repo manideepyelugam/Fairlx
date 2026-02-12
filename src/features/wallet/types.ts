@@ -13,6 +13,7 @@ import { Models } from "node-appwrite";
  * ADJUSTMENT: Manual adjustment by admin
  * HOLD: Funds reserved for pending async operations
  * RELEASE: Reserved funds returned to available balance
+ * REWARD_CREDIT: Funds credited from promotional rewards (e.g., GitHub Star Reward)
  */
 export enum WalletTransactionType {
     TOPUP = "TOPUP",
@@ -21,6 +22,7 @@ export enum WalletTransactionType {
     ADJUSTMENT = "ADJUSTMENT",
     HOLD = "HOLD",
     RELEASE = "RELEASE",
+    REWARD_CREDIT = "REWARD_CREDIT",
 }
 
 // ===============================
@@ -48,7 +50,7 @@ export enum WalletStatus {
  * Wallet - User's prepaid balance
  * 
  * Each user/org has exactly one wallet.
- * Balance is stored in smallest currency unit (paise for INR).
+ * Balance is stored in smallest currency unit (cents for USD).
  * 
  * INVARIANT: balance >= 0 (never negative)
  * INVARIANT: lockedBalance <= balance
@@ -63,7 +65,7 @@ export type Wallet = Models.Document & {
     /** Available balance in smallest currency unit (paise) */
     balance: number;
 
-    /** Currency code (INR, USD) */
+    /** Currency code (USD) */
     currency: string;
 
     /** Balance reserved for pending transactions */

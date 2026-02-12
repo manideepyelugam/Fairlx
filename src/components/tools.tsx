@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
-import { ChevronDown, ChevronRight, Clock as ClockIcon, Activity, Shield, CreditCard, User } from "lucide-react";
+import { ChevronDown, ChevronRight, Clock as ClockIcon, Activity, Shield, CreditCard, User, Gift } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -63,6 +63,11 @@ export const Tools = () => {
       href: "/billing",
       icon: <CreditCard className="size-4" />,
       adminOnly: true,
+    },
+    {
+      label: "Rewards",
+      href: "/rewards",
+      icon: <Gift className="size-4" />,
     },
     {
       label: "WS Members",

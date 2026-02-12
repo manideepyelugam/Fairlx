@@ -7,7 +7,6 @@ import { zValidator } from "@hono/zod-validator";
 import {
     DATABASE_ID,
     BILLING_ACCOUNTS_ID,
-    BILLING_CURRENCY,
     WALLET_DAILY_TOPUP_LIMIT,
 } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
@@ -109,10 +108,6 @@ const app = new Hono()
             });
 
             // Fraud check: Daily top-up limit
-            // (In production, query wallet_transactions for TOPUP in last 24h)
-
-            // Check daily limit by looking at recent top-up transactions
-            // (Simplified — in production, query wallet_transactions for TOPUP in last 24h)
             if (amount > WALLET_DAILY_TOPUP_LIMIT) {
                 return c.json({
                     error: "Amount exceeds daily top-up limit",
@@ -140,17 +135,26 @@ const app = new Hono()
                 // No billing account found, still allow top-up
             }
 
-            // Create Razorpay order
+            // ── USD → INR Conversion ──
+            // Frontend sends amount in USD cents. Razorpay charges in INR paise.
+            // We convert using the live exchange rate and store metadata for reverse conversion.
+            const { getUsdToInrRate } = await import("@/lib/currency");
+            const exchangeRate = await getUsdToInrRate();
+            const amountInrPaise = Math.round(amount * exchangeRate); // USD cents × rate = INR paise
+
+            // Create Razorpay order in INR
             const receipt = `topup_${wallet.$id}_${Date.now()}`;
             const order = await createOrder({
-                amount,
-                currency: BILLING_CURRENCY,
+                amount: amountInrPaise,
+                currency: "INR",
                 receipt,
                 notes: {
                     fairlx_wallet_id: wallet.$id,
                     fairlx_billing_account_id: billingAccountId || "",
                     fairlx_user_id: user.$id,
                     fairlx_purpose: "wallet_topup",
+                    fairlx_usd_amount: String(amount), // Original USD cents
+                    fairlx_exchange_rate: String(exchangeRate), // Rate used
                 },
             });
 
@@ -161,6 +165,9 @@ const app = new Hono()
                     currency: order.currency,
                     key: getPublicKey(),
                     walletId: wallet.$id,
+                    // Send conversion info to frontend for display
+                    originalUsdCents: amount,
+                    exchangeRate,
                     prefill: {
                         name: user.name || "",
                         email: user.email,
@@ -227,18 +234,34 @@ const app = new Hono()
 
                 const { databases } = await createAdminClient();
 
-                // Step 4: Credit wallet (idempotent via payment ID)
-                const result = await topUpWallet(databases, walletId, Number(payment.amount), {
+                // Step 4: Determine USD amount to credit
+                // The payment was charged in INR. The original USD amount was
+                // stored in the order notes during create-order.
+                const notes = payment.notes as Record<string, string>;
+                let usdCentsToCredit: number;
+
+                if (notes?.fairlx_usd_amount) {
+                    // Use the exact USD amount from order creation
+                    usdCentsToCredit = Number(notes.fairlx_usd_amount);
+                } else {
+                    // Fallback: convert INR paise back to USD cents using live rate
+                    const { getUsdToInrRate } = await import("@/lib/currency");
+                    const rate = await getUsdToInrRate();
+                    usdCentsToCredit = Math.round(Number(payment.amount) / rate);
+                }
+
+                // Step 5: Credit wallet with USD cents (idempotent via payment ID)
+                const result = await topUpWallet(databases, walletId, usdCentsToCredit, {
                     idempotencyKey: `razorpay_${razorpayPaymentId}`,
                     paymentId: razorpayPaymentId,
-                    description: `Wallet top-up via Razorpay (${payment.method})`,
+                    description: `Wallet top-up via Razorpay (${payment.method}) — $${(usdCentsToCredit / 100).toFixed(2)} USD`,
                 });
 
                 if (!result.success && result.error !== "already_processed") {
                     return c.json({ error: result.error }, 400);
                 }
 
-                // Step 5: Return updated balance
+                // Step 6: Return updated balance
                 const balance = await getWalletBalance(databases, walletId);
 
                 return c.json({

@@ -50,6 +50,8 @@ import orgPermissions from "@/features/org-permissions/server/route";
 // User Access (permission-driven navigation)
 import userAccess from "@/features/user-access/server/route";
 import wallet from "@/features/wallet/server/route";
+// GitHub Star Rewards
+import githubRewards from "@/features/github-rewards/server/route";
 // Global Traffic Metering - NOW WITH BATCHING
 // Events are collected in memory and flushed every 60s (1 write instead of ~3600/hr)
 import { batchedTrafficMeteringMiddleware } from "@/lib/traffic-metering-batched";
@@ -109,7 +111,9 @@ const routes = app
   .route("/cron", cron)
   // User Access (permission-driven navigation)
   .route("/user-access", userAccess)
-  .route("/wallet", wallet);
+  .route("/wallet", wallet)
+  // GitHub Star Rewards
+  .route("/github-rewards", githubRewards);
 
 export const GET = handle(app);
 export const POST = handle(app);
