@@ -11,6 +11,12 @@ import { WorkflowInheritanceMode, Space } from "@/features/spaces/types";
 
 import { DATABASE_ID, IMAGES_BUCKET_ID, PROJECTS_ID, TASKS_ID, TIME_LOGS_ID, SPACES_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
+import {
+  dispatchWorkitemEvent,
+} from "@/lib/notifications";
+import {
+  createProjectUpdatedEvent,
+} from "@/lib/notifications/events";
 
 import { createProjectSchema, updateProjectSchema } from "../schemas";
 import { Project } from "../types";
@@ -79,9 +85,9 @@ const app = new Hono()
       // If project is being created within a space, check for workflow inheritance
       let inheritedWorkflowId: string | null = null;
       let workflowLocked = false;
-      
+
       const normalizedSpaceId = (spaceId === null || spaceId === "" || spaceId === "null" || spaceId === "undefined") ? null : spaceId;
-      
+
       if (normalizedSpaceId) {
         try {
           const space = await databases.getDocument<Space>(
@@ -89,11 +95,11 @@ const app = new Hono()
             SPACES_ID,
             normalizedSpaceId
           );
-          
+
           // Check if space has a default workflow and inheritance mode
           if (space.defaultWorkflowId) {
             const inheritanceMode = space.workflowInheritance || WorkflowInheritanceMode.SUGGEST;
-            
+
             if (inheritanceMode === WorkflowInheritanceMode.REQUIRE) {
               // Project MUST use space workflow
               inheritedWorkflowId = space.defaultWorkflowId;
@@ -337,12 +343,79 @@ const app = new Hono()
         updateData.customLabels = JSON.stringify(customLabels);
       }
 
-      const project = await databases.updateDocument(
+      const project = await databases.updateDocument<Project>(
         DATABASE_ID,
         PROJECTS_ID,
         projectId,
         updateData
       );
+
+      // Dispatch project update event (non-blocking)
+      const userName = user.name || user.email || "Someone";
+      const event = createProjectUpdatedEvent(project, user.$id, userName);
+      dispatchWorkitemEvent(event).catch(() => { });
+
+      return c.json({ data: transformProject(project) });
+    }
+  )
+  .post(
+    "/:projectId/copy-settings",
+    sessionMiddleware,
+    zValidator("json", z.object({ sourceProjectId: z.string() })),
+    async (c) => {
+      const databases = c.get("databases");
+      const user = c.get("user");
+      const { projectId } = c.req.param();
+      const { sourceProjectId } = c.req.valid("json");
+
+      const existingProject = await databases.getDocument<Project>(
+        DATABASE_ID,
+        PROJECTS_ID,
+        projectId
+      );
+
+      const member = await getMember({
+        databases,
+        workspaceId: existingProject.workspaceId,
+        userId: user.$id,
+      });
+
+      if (!member) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      // Project permission check: verify user can edit project settings
+      const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
+      const accessForEdit = await resolveUserProjectAccess(databases, user.$id, projectId);
+      if (!accessForEdit.hasAccess || !hasProjectPermission(accessForEdit, ProjectPermissionKey.EDIT_SETTINGS)) {
+        return c.json({ error: "Forbidden: No permission to edit project settings" }, 403);
+      }
+
+      // Get source project settings
+      const sourceProject = await databases.getDocument<Project>(
+        DATABASE_ID,
+        PROJECTS_ID,
+        sourceProjectId
+      );
+
+      // Update current project with source project settings
+      const project = await databases.updateDocument<Project>(
+        DATABASE_ID,
+        PROJECTS_ID,
+        projectId,
+        {
+          customWorkItemTypes: sourceProject.customWorkItemTypes,
+          customPriorities: sourceProject.customPriorities,
+          customLabels: sourceProject.customLabels,
+          workflowId: sourceProject.workflowId,
+          spaceId: sourceProject.spaceId,
+        }
+      );
+
+      // Notify project update (non-blocking)
+      const userName = user.name || user.email || "Someone";
+      const event = createProjectUpdatedEvent(project, user.$id, userName, "Copied settings from another project");
+      dispatchWorkitemEvent(event).catch(() => { });
 
       return c.json({ data: transformProject(project) });
     }
@@ -650,7 +723,7 @@ const app = new Hono()
           currentTeamIds.push(teamId);
         }
 
-        const updatedProject = await databases.updateDocument(
+        const updatedProject = await databases.updateDocument<Project>(
           DATABASE_ID,
           PROJECTS_ID,
           projectId,
@@ -658,6 +731,11 @@ const app = new Hono()
             assignedTeamIds: currentTeamIds,
           }
         );
+
+        // Notify project update (non-blocking)
+        const userName = user.name || user.email || "Someone";
+        const event = createProjectUpdatedEvent(updatedProject, user.$id, userName, `Assigned to team ${teamId}`);
+        dispatchWorkitemEvent(event).catch(() => { });
 
         return c.json({ data: transformProject(updatedProject) });
       } catch (error) {
@@ -728,7 +806,7 @@ const app = new Hono()
         const currentTeamIds = project.assignedTeamIds || [];
         const updatedTeamIds = currentTeamIds.filter((id) => id !== teamId);
 
-        const updatedProject = await databases.updateDocument(
+        const updatedProject = await databases.updateDocument<Project>(
           DATABASE_ID,
           PROJECTS_ID,
           projectId,
@@ -736,6 +814,11 @@ const app = new Hono()
             assignedTeamIds: updatedTeamIds,
           }
         );
+
+        // Notify project update (non-blocking)
+        const userName = user.name || user.email || "Someone";
+        const event = createProjectUpdatedEvent(updatedProject, user.$id, userName, `Unassigned from team ${teamId}`);
+        dispatchWorkitemEvent(event).catch(() => { });
 
         return c.json({ data: transformProject(updatedProject) });
       } catch (error) {
@@ -805,12 +888,17 @@ const app = new Hono()
         updateData.customLabels = JSON.stringify(transformedSourceProject.customLabels);
       }
 
-      const updatedProject = await databases.updateDocument(
+      const updatedProject = await databases.updateDocument<Project>(
         DATABASE_ID,
         PROJECTS_ID,
         projectId,
         updateData
       );
+
+      // Notify project update (non-blocking)
+      const userName = user.name || user.email || "Someone";
+      const event = createProjectUpdatedEvent(updatedProject, user.$id, userName, "Copied settings from another project");
+      dispatchWorkitemEvent(event).catch(() => { });
 
       return c.json({ data: transformProject(updatedProject) });
     }

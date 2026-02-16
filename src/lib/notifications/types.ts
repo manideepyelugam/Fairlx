@@ -39,13 +39,16 @@ export enum WorkitemEventType {
     WORKSPACE_MEMBER_ADDED = "WORKSPACE_MEMBER_ADDED",
     WORKSPACE_MEMBER_REMOVED = "WORKSPACE_MEMBER_REMOVED",
     WORKSPACE_ROLE_CHANGED = "WORKSPACE_ROLE_CHANGED",
+    PROJECT_UPDATED = "PROJECT_UPDATED",
+    PROJECT_MEMBER_ADDED = "PROJECT_MEMBER_ADDED",
+    PROJECT_MEMBER_REMOVED = "PROJECT_MEMBER_REMOVED",
 }
 
 // =============================================================================
 // NOTIFICATION CHANNEL TYPES
 // =============================================================================
 
-export type NotificationChannel = "socket" | "email";
+export type NotificationChannel = "socket" | "email" | "webhook";
 
 // =============================================================================
 // EVENT PAYLOAD
@@ -127,6 +130,8 @@ export interface NotificationPayload {
     type: WorkitemEventType;
     /** Workitem ID */
     workitemId: string;
+    /** Human-readable workitem key (e.g. PROJ-123) */
+    workitemKey?: string;
     /** Workspace ID */
     workspaceId: string;
     /** Notification title */
@@ -141,6 +146,8 @@ export interface NotificationPayload {
     timestamp: string;
     /** Deep link URL to the workitem */
     deepLinkUrl: string;
+    /** Project ID */
+    projectId?: string;
     /** Optional metadata */
     metadata?: WorkitemEventMetadata;
 }
@@ -177,6 +184,9 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: UserNotificationPreferences = {
 export interface ChannelHandler {
     /** Channel name */
     readonly name: NotificationChannel;
+
+    /** Whether this channel is project-wide (not tied to specific user recipients) */
+    readonly isProjectLevel?: boolean;
 
     /**
      * Send notification to a user

@@ -11,6 +11,13 @@ import { validateUserOrgMembershipForWorkspace } from "@/lib/invariants";
 
 import { getMember } from "../utils";
 import { Member, MemberRole, WorkspaceMemberRole, MemberStatus } from "../types";
+import {
+  dispatchWorkitemEvent,
+} from "@/lib/notifications";
+import {
+  createMemberAddedEvent,
+  createMemberRemovedEvent,
+} from "@/lib/notifications/events";
 
 const app = new Hono()
   .get(
@@ -152,6 +159,29 @@ const app = new Hono()
       deletedAt: new Date().toISOString(),
       deletedBy: user.$id,
     });
+
+    // Dispatch member removal event (non-blocking)
+    try {
+      const workspace = await databases.getDocument(DATABASE_ID, WORKSPACES_ID, memberToDelete.workspaceId);
+      const userName = user.name || user.email || "Someone";
+
+      // We need the target user info to get their name
+      const { users } = await createAdminClient();
+      const targetUser = await users.get(memberToDelete.userId);
+      const targetName = targetUser.name || targetUser.email || "Someone";
+
+      const event = createMemberRemovedEvent(
+        memberToDelete.workspaceId,
+        workspace.name,
+        user.$id,
+        userName,
+        memberToDelete.userId,
+        targetName
+      );
+      dispatchWorkitemEvent(event).catch(() => { });
+    } catch {
+      // Silent
+    }
 
     return c.json({ data: { $id: memberToDelete.$id } });
   })
@@ -342,30 +372,24 @@ const app = new Hono()
 
           // Notify about reactivation
           try {
-            const { databases: adminDb } = await createAdminClient();
+            const adminDb = databases; // Reuse existing
             const workspace = await adminDb.getDocument(DATABASE_ID, WORKSPACES_ID, workspaceId);
             const callerName = user.name || user.email || "Someone";
 
-            await adminDb.createDocument(
-              DATABASE_ID,
-              NOTIFICATIONS_ID,
-              ID.unique(),
-              {
-                userId,
-                type: "task_assigned",
-                title: "Re-added to Workspace",
-                message: `${callerName} added you back to workspace "${workspace.name}"`,
-                workspaceId,
-                triggeredBy: user.$id,
-                metadata: JSON.stringify({ eventType: "WORKSPACE_MEMBER_RESTORED", role }),
-                read: false,
-              },
-              [
-                `read("user:${userId}")`,
-                `update("user:${userId}")`,
-                `delete("user:${userId}")`
-              ]
+            const { users } = await createAdminClient();
+            const targetUser = await users.get(userId);
+            const targetName = targetUser.name || targetUser.email || "Someone";
+
+            const event = createMemberAddedEvent(
+              workspaceId,
+              workspace.name,
+              user.$id,
+              callerName,
+              userId,
+              targetName,
+              role
             );
+            dispatchWorkitemEvent(event).catch(() => { });
           } catch {
             // silent
           }
@@ -401,30 +425,24 @@ const app = new Hono()
 
       // Notify the new member about being added (non-blocking)
       try {
-        const { databases: adminDb } = await createAdminClient();
+        const adminDb = databases; // Reuse
         const workspace = await adminDb.getDocument(DATABASE_ID, WORKSPACES_ID, workspaceId);
         const callerName = user.name || user.email || "Someone";
 
-        await adminDb.createDocument(
-          DATABASE_ID,
-          NOTIFICATIONS_ID,
-          ID.unique(),
-          {
-            userId,
-            type: "task_assigned", // Using existing enum for DB compatibility
-            title: "Added to Workspace",
-            message: `${callerName} added you to workspace "${workspace.name}"`,
-            workspaceId,
-            triggeredBy: user.$id,
-            metadata: JSON.stringify({ eventType: "WORKSPACE_MEMBER_ADDED", role }),
-            read: false,
-          },
-          [
-            `read("user:${userId}")`,
-            `update("user:${userId}")`,
-            `delete("user:${userId}")`
-          ]
+        const { users } = await createAdminClient();
+        const targetUser = await users.get(userId);
+        const targetName = targetUser.name || targetUser.email || "Someone";
+
+        const event = createMemberAddedEvent(
+          workspaceId,
+          workspace.name,
+          user.$id,
+          callerName,
+          userId,
+          targetName,
+          role
         );
+        dispatchWorkitemEvent(event).catch(() => { });
       } catch {
         // Silent failure - notifications are non-critical
       }

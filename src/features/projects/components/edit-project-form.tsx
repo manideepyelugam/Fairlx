@@ -34,6 +34,7 @@ import { WorkTypesSettings } from "./work-types-settings";
 import { PrioritySettings } from "./priority-settings";
 import { LabelSettings } from "./label-settings";
 import { CopySettingsDialog } from "./copy-settings-dialog";
+import { WebhookSettings } from "@/features/webhooks/components/webhook-settings";
 
 interface EditProjectFormProps {
   onCancel?: () => void;
@@ -173,6 +174,7 @@ export const EditProjectForm = ({
                   <TabsTrigger value="types" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3">Work Types</TabsTrigger>
                   <TabsTrigger value="priorities" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3">Priorities</TabsTrigger>
                   <TabsTrigger value="labels" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3">Labels</TabsTrigger>
+                  <TabsTrigger value="webhooks" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3">Webhooks</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="general" className="space-y-6">
@@ -309,6 +311,9 @@ export const EditProjectForm = ({
                       />
                     )}
                   />
+                </TabsContent>
+                <TabsContent value="webhooks">
+                  <WebhookSettings projectId={initialValues.$id} />
                 </TabsContent>
               </Tabs>
 
