@@ -27,6 +27,10 @@ export type AccountLifecycleState = {
     mustResetPassword: boolean;
     /** User's role in the active organization (null for PERSONAL accounts) */
     orgRole: "OWNER" | "ADMIN" | "MODERATOR" | "MEMBER" | null;
+    /** If true, user must accept legal terms (overlay) */
+    mustAcceptLegal: boolean;
+    /** If true, user is blocked because org hasn't accepted legal terms */
+    legalBlocked: boolean;
 };
 
 // Legacy alias for backward compatibility during migration

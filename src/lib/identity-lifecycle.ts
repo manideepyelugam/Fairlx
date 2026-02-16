@@ -21,12 +21,6 @@ import { assertInvariant } from "@/lib/invariants";
  * 
  * ALL routing decisions MUST derive from this resolver.
  * This is the ONLY place that determines user lifecycle state.
- * 
- * INVARIANTS:
- * - State is computed server-side only
- * - No client-side state guessing
- * - Routing is derived, never hardcoded
- * - OWNER role has special handling
  */
 export enum LifecycleState {
     // Unauthenticated states
@@ -63,52 +57,23 @@ export enum LifecycleState {
 // ============================================================================
 
 export interface ResolvedLifecycle {
-    /** The computed lifecycle state */
     state: LifecycleState;
-
-    /** User ID (null if unauthenticated) */
     userId: string | null;
-
-    /** Account type from user prefs */
     accountType: "PERSONAL" | "ORG" | null;
-
-    /** Active organization ID */
     orgId: string | null;
-
-    /** Organization name for display */
     orgName: string | null;
-
-    /** Organization image URL for display */
     orgImageUrl: string | null;
-
-    /** User's role in the organization */
     orgRole: "OWNER" | "ADMIN" | "MODERATOR" | "MEMBER" | null;
-
-    /** Org member status */
     orgMemberStatus: OrgMemberStatus | null;
-
-    /** Active workspace ID */
     workspaceId: string | null;
-
-    /** Whether user has any workspace */
     hasWorkspace: boolean;
-
-    /** Whether user must reset password on first login */
     mustResetPassword: boolean;
-
-    /** Whether email is verified */
     isEmailVerified: boolean;
-
-    /** Billing status (ACTIVE, DUE, SUSPENDED) */
     billingStatus: BillingStatus | null;
-
-    /** Computed redirect target (null if no redirect needed) */
+    mustAcceptLegal: boolean;
+    legalBlocked: boolean;
     redirectTo: string | null;
-
-    /** Paths allowed in current state */
     allowedPaths: string[];
-
-    /** Paths blocked in current state */
     blockedPaths: string[];
 }
 
@@ -152,26 +117,17 @@ const BILLING_ROUTES = [
 // ROUTING DERIVATION
 // ============================================================================
 
-/**
- * Derive allowed/blocked paths and redirect target from lifecycle state.
- * 
- * This is the ONLY place routing rules are defined.
- * All UI and middleware should consume this.
- */
 export function getLifecycleRouting(state: LifecycleState): {
     redirectTo: string | null;
     allowedPaths: string[];
     blockedPaths: string[];
 } {
     switch (state) {
-        // ============================
-        // UNAUTHENTICATED STATES
-        // ============================
         case LifecycleState.UNAUTHENTICATED:
             return {
                 redirectTo: "/sign-in",
                 allowedPaths: [...PUBLIC_ROUTES],
-                blockedPaths: ["*"], // All protected routes blocked
+                blockedPaths: ["*"],
             };
 
         case LifecycleState.EMAIL_UNVERIFIED:
@@ -188,9 +144,6 @@ export function getLifecycleRouting(state: LifecycleState): {
                 blockedPaths: ["/workspaces", "/organization", "/welcome"],
             };
 
-        // ============================
-        // PERSONAL ACCOUNT STATES
-        // ============================
         case LifecycleState.PERSONAL_ONBOARDING:
             return {
                 redirectTo: "/onboarding",
@@ -201,13 +154,10 @@ export function getLifecycleRouting(state: LifecycleState): {
         case LifecycleState.PERSONAL_ACTIVE:
             return {
                 redirectTo: null,
-                allowedPaths: ["*"], // Full access except org routes
+                allowedPaths: ["*"],
                 blockedPaths: ["/onboarding", "/organization"],
             };
 
-        // ============================
-        // ORG OWNER STATES
-        // ============================
         case LifecycleState.ORG_OWNER_ONBOARDING:
             return {
                 redirectTo: "/onboarding",
@@ -217,7 +167,7 @@ export function getLifecycleRouting(state: LifecycleState): {
 
         case LifecycleState.ORG_OWNER_NO_WORKSPACE:
             return {
-                redirectTo: null, // Allow /welcome
+                redirectTo: null,
                 allowedPaths: ["/welcome", ...ORGANIZATION_ROUTES, ...PROFILE_ROUTES, ...BILLING_ROUTES],
                 blockedPaths: ["/onboarding", "/workspaces/*"],
             };
@@ -225,13 +175,10 @@ export function getLifecycleRouting(state: LifecycleState): {
         case LifecycleState.ORG_OWNER_ACTIVE:
             return {
                 redirectTo: null,
-                allowedPaths: ["*"], // Full access
+                allowedPaths: ["*"],
                 blockedPaths: ["/onboarding", "/welcome"],
             };
 
-        // ============================
-        // ORG ADMIN/MODERATOR STATES
-        // ============================
         case LifecycleState.ORG_ADMIN_NO_WORKSPACE:
             return {
                 redirectTo: "/welcome",
@@ -242,19 +189,15 @@ export function getLifecycleRouting(state: LifecycleState): {
         case LifecycleState.ORG_ADMIN_ACTIVE:
             return {
                 redirectTo: null,
-                allowedPaths: ["*"], // Access based on permissions
+                allowedPaths: ["*"],
                 blockedPaths: ["/onboarding", "/welcome"],
             };
 
-        // ============================
-        // ORG MEMBER STATES
-        // ============================
         case LifecycleState.ORG_MEMBER_PENDING:
             return {
                 redirectTo: "/welcome",
                 allowedPaths: ["/welcome", ...PROFILE_ROUTES, ...ORGANIZATION_ROUTES],
                 blockedPaths: ["/onboarding", "/workspaces/*"],
-                // NOTE: /organization access is controlled by department permissions
             };
 
         case LifecycleState.ORG_MEMBER_NO_WORKSPACE:
@@ -262,7 +205,6 @@ export function getLifecycleRouting(state: LifecycleState): {
                 redirectTo: "/welcome",
                 allowedPaths: ["/welcome", ...PROFILE_ROUTES, ...ORGANIZATION_ROUTES],
                 blockedPaths: ["/onboarding", "/workspaces/*"],
-                // NOTE: /organization access is controlled by department permissions
             };
 
         case LifecycleState.ORG_MEMBER_ACTIVE:
@@ -270,31 +212,26 @@ export function getLifecycleRouting(state: LifecycleState): {
                 redirectTo: null,
                 allowedPaths: ["/workspaces/*", ...PROFILE_ROUTES, ...ORGANIZATION_ROUTES],
                 blockedPaths: ["/onboarding", "/welcome"],
-                // NOTE: /organization access is controlled by department permissions,
-                // not lifecycle state. Members with proper permissions can access org routes.
             };
 
-        // ============================
-        // SPECIAL STATES
-        // ============================
         case LifecycleState.SUSPENDED:
             return {
-                redirectTo: null, // Allow billing access
+                redirectTo: null,
                 allowedPaths: [...BILLING_ROUTES, ...PROFILE_ROUTES],
                 blockedPaths: ["/workspaces/*", "/onboarding"],
             };
 
         case LifecycleState.DELETED:
             return {
-                redirectTo: "/sign-in", // Force logout
-                allowedPaths: [], // No paths allowed
+                redirectTo: "/sign-in",
+                allowedPaths: [],
                 blockedPaths: ["*"],
             };
 
         case LifecycleState.MUST_RESET_PASSWORD:
             return {
-                redirectTo: null, // Force overlay, not redirect
-                allowedPaths: [], // No navigation allowed
+                redirectTo: null,
+                allowedPaths: [],
                 blockedPaths: ["*"],
             };
 
@@ -311,24 +248,10 @@ export function getLifecycleRouting(state: LifecycleState): {
 // MAIN RESOLVER
 // ============================================================================
 
-/**
- * Resolve user's complete lifecycle state.
- * 
- * This is the SINGLE AUTHORITY for identity lifecycle decisions.
- * All routing, guards, and UI state should derive from this.
- * 
- * @param databases - Appwrite databases instance
- * @param user - Current user (null if unauthenticated)
- * @returns Complete ResolvedLifecycle object
- */
-
 async function resolveUserLifecycleStateInternal(
     databases: Databases,
     user: Models.User<Models.Preferences> | null
 ): Promise<ResolvedLifecycle> {
-    // =========================================
-    // STATE 1: UNAUTHENTICATED
-    // =========================================
     if (!user) {
         const routing = getLifecycleRouting(LifecycleState.UNAUTHENTICATED);
         return {
@@ -345,6 +268,8 @@ async function resolveUserLifecycleStateInternal(
             mustResetPassword: false,
             isEmailVerified: false,
             billingStatus: null,
+            mustAcceptLegal: false,
+            legalBlocked: false,
             ...routing,
         };
     }
@@ -354,9 +279,6 @@ async function resolveUserLifecycleStateInternal(
     const mustResetPassword = prefs.mustResetPassword === true;
     const isEmailVerified = user.emailVerification;
 
-    // =========================================
-    // STATE 2: MUST RESET PASSWORD (highest priority)
-    // =========================================
     if (mustResetPassword) {
         const routing = getLifecycleRouting(LifecycleState.MUST_RESET_PASSWORD);
         return {
@@ -373,13 +295,12 @@ async function resolveUserLifecycleStateInternal(
             mustResetPassword: true,
             isEmailVerified,
             billingStatus: null,
+            mustAcceptLegal: false,
+            legalBlocked: false,
             ...routing,
         };
     }
 
-    // =========================================
-    // STATE 3: EMAIL UNVERIFIED
-    // =========================================
     if (!isEmailVerified) {
         const routing = getLifecycleRouting(LifecycleState.EMAIL_UNVERIFIED);
         return {
@@ -396,13 +317,12 @@ async function resolveUserLifecycleStateInternal(
             mustResetPassword: false,
             isEmailVerified: false,
             billingStatus: null,
+            mustAcceptLegal: false,
+            legalBlocked: false,
             ...routing,
         };
     }
 
-    // =========================================
-    // STATE 4: ACCOUNT TYPE PENDING
-    // =========================================
     if (!accountType) {
         const routing = getLifecycleRouting(LifecycleState.ACCOUNT_TYPE_PENDING);
         return {
@@ -419,84 +339,59 @@ async function resolveUserLifecycleStateInternal(
             mustResetPassword: false,
             isEmailVerified: true,
             billingStatus: null,
+            mustAcceptLegal: false,
+            legalBlocked: false,
             ...routing,
         };
     }
 
-    // ===========================================
     // RESOLVE ORGANIZATION MEMBERSHIP
-    // ===========================================
     let orgId: string | null = prefs.primaryOrganizationId || null;
     let orgName: string | null = null;
     let orgImageUrl: string | null = null;
     let orgRole: "OWNER" | "ADMIN" | "MODERATOR" | "MEMBER" | null = null;
     let orgMemberStatus: OrgMemberStatus | null = null;
+    let orgLegalAccepted = false;
     let hasOrg = false;
 
     if (accountType === "ORG") {
-        // Try to find org membership
-        if (orgId) {
-            try {
-                const memberships = await databases.listDocuments(
-                    DATABASE_ID,
-                    ORGANIZATION_MEMBERS_ID,
-                    [
-                        Query.equal("organizationId", orgId),
-                        Query.equal("userId", user.$id),
-                    ]
-                );
+        try {
+            const memberships = await databases.listDocuments(
+                DATABASE_ID,
+                ORGANIZATION_MEMBERS_ID,
+                [Query.equal("userId", user.$id)]
+            );
 
-                if (memberships.total > 0) {
-                    hasOrg = true;
-                    orgRole = memberships.documents[0].role as typeof orgRole;
-                    orgMemberStatus = memberships.documents[0].status as OrgMemberStatus;
-                } else {
-                    orgId = null;
+            if (memberships.total > 0) {
+                const primaryMembership = memberships.documents.find(m => m.organizationId === orgId)
+                    || memberships.documents[0];
+
+                hasOrg = true;
+                orgId = primaryMembership.organizationId;
+                orgRole = primaryMembership.role as typeof orgRole;
+                orgMemberStatus = primaryMembership.status as OrgMemberStatus;
+
+                if (orgId) {
+                    const orgDoc = await databases.getDocument(DATABASE_ID, ORGANIZATIONS_ID, orgId);
+                    orgName = orgDoc.name || null;
+                    orgImageUrl = orgDoc.imageUrl || null;
+
+                    if (orgDoc.billingSettings) {
+                        try {
+                            const settings = JSON.parse(orgDoc.billingSettings);
+                            if (settings.legal?.currentVersion === "v1") {
+                                orgLegalAccepted = true;
+                            }
+                        } catch { }
+                    }
                 }
-            } catch {
-                orgId = null;
             }
-        }
-
-        // If no org from prefs, try to find ANY org
-        if (!hasOrg) {
-            try {
-                const anyMembership = await databases.listDocuments(
-                    DATABASE_ID,
-                    ORGANIZATION_MEMBERS_ID,
-                    [Query.equal("userId", user.$id), Query.limit(1)]
-                );
-
-                if (anyMembership.total > 0) {
-                    hasOrg = true;
-                    orgId = anyMembership.documents[0].organizationId;
-                    orgRole = anyMembership.documents[0].role as typeof orgRole;
-                    orgMemberStatus = anyMembership.documents[0].status as OrgMemberStatus;
-                }
-            } catch {
-                // No membership found
-            }
-        }
-
-        // Fetch org details for display
-        if (orgId) {
-            try {
-                const orgDoc = await databases.getDocument(
-                    DATABASE_ID,
-                    ORGANIZATIONS_ID,
-                    orgId
-                );
-                orgName = orgDoc.name || null;
-                orgImageUrl = orgDoc.imageUrl || null;
-            } catch {
-                // Org fetch may fail due to permissions - acceptable
-            }
+        } catch (error) {
+            orgLegalAccepted = false;
         }
     }
 
-    // ===========================================
     // RESOLVE WORKSPACE MEMBERSHIP
-    // ===========================================
     let hasWorkspace = false;
     let workspaceId: string | null = null;
 
@@ -511,13 +406,9 @@ async function resolveUserLifecycleStateInternal(
             hasWorkspace = true;
             workspaceId = workspaceMemberships.documents[0].workspaceId;
         }
-    } catch {
-        // No workspace membership
-    }
+    } catch { }
 
-    // ===========================================
     // CHECK BILLING STATUS
-    // ===========================================
     let billingStatus: BillingStatus | null = null;
 
     if (accountType === "ORG" && orgId) {
@@ -531,9 +422,7 @@ async function resolveUserLifecycleStateInternal(
             if (billingAccounts.total > 0) {
                 billingStatus = billingAccounts.documents[0].status as BillingStatus;
             }
-        } catch {
-            // Billing check may fail
-        }
+        } catch { }
     } else if (accountType === "PERSONAL") {
         try {
             const billingAccounts = await databases.listDocuments(
@@ -545,14 +434,27 @@ async function resolveUserLifecycleStateInternal(
             if (billingAccounts.total > 0) {
                 billingStatus = billingAccounts.documents[0].status as BillingStatus;
             }
-        } catch {
-            // Billing check may fail
+        } catch { }
+    }
+
+    // CHECK LEGAL STATUS
+    const CURRENT_LEGAL_VERSION = "v1";
+    let mustAcceptLegal = prefs.acceptedTermsVersion !== CURRENT_LEGAL_VERSION;
+    let legalBlocked = false;
+
+    if (accountType === "ORG" && hasOrg) {
+        const isManagement = orgRole === OrganizationRole.OWNER || orgRole === OrganizationRole.ADMIN;
+        if (isManagement) {
+            if (!orgLegalAccepted) mustAcceptLegal = true;
+        } else {
+            if (!orgLegalAccepted) {
+                legalBlocked = true;
+                mustAcceptLegal = false;
+            }
         }
     }
 
-    // ===========================================
     // CHECK SUSPENSION
-    // ===========================================
     if (billingStatus === BillingStatus.SUSPENDED) {
         const routing = getLifecycleRouting(LifecycleState.SUSPENDED);
         return {
@@ -569,15 +471,13 @@ async function resolveUserLifecycleStateInternal(
             mustResetPassword: false,
             isEmailVerified: true,
             billingStatus,
+            mustAcceptLegal: false,
+            legalBlocked: false,
             ...routing,
         };
     }
 
-    // ===========================================
     // DERIVE FINAL STATE
-    // ===========================================
-
-    // PERSONAL account logic
     if (accountType === "PERSONAL") {
         if (!hasWorkspace) {
             const routing = getLifecycleRouting(LifecycleState.PERSONAL_ONBOARDING);
@@ -595,6 +495,8 @@ async function resolveUserLifecycleStateInternal(
                 mustResetPassword: false,
                 isEmailVerified: true,
                 billingStatus,
+                mustAcceptLegal,
+                legalBlocked: false,
                 ...routing,
             };
         }
@@ -614,13 +516,13 @@ async function resolveUserLifecycleStateInternal(
             mustResetPassword: false,
             isEmailVerified: true,
             billingStatus,
+            mustAcceptLegal,
+            legalBlocked: false,
             ...routing,
         };
     }
 
-    // ORG account logic
     if (accountType === "ORG") {
-        // No org found - needs onboarding (only for OWNER creating org)
         if (!hasOrg) {
             const routing = getLifecycleRouting(LifecycleState.ORG_OWNER_ONBOARDING);
             return {
@@ -637,11 +539,12 @@ async function resolveUserLifecycleStateInternal(
                 mustResetPassword: false,
                 isEmailVerified: true,
                 billingStatus: null,
+                mustAcceptLegal,
+                legalBlocked,
                 ...routing,
             };
         }
 
-        // Check member status - INVITED means pending
         if (orgMemberStatus === OrgMemberStatus.INVITED) {
             const routing = getLifecycleRouting(LifecycleState.ORG_MEMBER_PENDING);
             return {
@@ -658,11 +561,12 @@ async function resolveUserLifecycleStateInternal(
                 mustResetPassword: false,
                 isEmailVerified: true,
                 billingStatus,
+                mustAcceptLegal,
+                legalBlocked,
                 ...routing,
             };
         }
 
-        // OWNER states
         if (orgRole === OrganizationRole.OWNER) {
             if (!hasWorkspace) {
                 const routing = getLifecycleRouting(LifecycleState.ORG_OWNER_NO_WORKSPACE);
@@ -680,6 +584,8 @@ async function resolveUserLifecycleStateInternal(
                     mustResetPassword: false,
                     isEmailVerified: true,
                     billingStatus,
+                    mustAcceptLegal,
+                    legalBlocked,
                     ...routing,
                 };
             }
@@ -699,11 +605,12 @@ async function resolveUserLifecycleStateInternal(
                 mustResetPassword: false,
                 isEmailVerified: true,
                 billingStatus,
+                mustAcceptLegal,
+                legalBlocked,
                 ...routing,
             };
         }
 
-        // ADMIN/MODERATOR states
         if (orgRole === OrganizationRole.ADMIN || orgRole === OrganizationRole.MODERATOR) {
             if (!hasWorkspace) {
                 const routing = getLifecycleRouting(LifecycleState.ORG_ADMIN_NO_WORKSPACE);
@@ -721,6 +628,8 @@ async function resolveUserLifecycleStateInternal(
                     mustResetPassword: false,
                     isEmailVerified: true,
                     billingStatus,
+                    mustAcceptLegal,
+                    legalBlocked,
                     ...routing,
                 };
             }
@@ -740,11 +649,12 @@ async function resolveUserLifecycleStateInternal(
                 mustResetPassword: false,
                 isEmailVerified: true,
                 billingStatus,
+                mustAcceptLegal,
+                legalBlocked,
                 ...routing,
             };
         }
 
-        // MEMBER states
         if (!hasWorkspace) {
             const routing = getLifecycleRouting(LifecycleState.ORG_MEMBER_NO_WORKSPACE);
             return {
@@ -761,6 +671,8 @@ async function resolveUserLifecycleStateInternal(
                 mustResetPassword: false,
                 isEmailVerified: true,
                 billingStatus,
+                mustAcceptLegal,
+                legalBlocked,
                 ...routing,
             };
         }
@@ -780,11 +692,12 @@ async function resolveUserLifecycleStateInternal(
             mustResetPassword: false,
             isEmailVerified: true,
             billingStatus,
+            mustAcceptLegal,
+            legalBlocked,
             ...routing,
         };
     }
 
-    // Fallback - should never reach here
     const routing = getLifecycleRouting(LifecycleState.UNAUTHENTICATED);
     return {
         state: LifecycleState.UNAUTHENTICATED,
@@ -800,6 +713,8 @@ async function resolveUserLifecycleStateInternal(
         mustResetPassword: false,
         isEmailVerified: true,
         billingStatus: null,
+        mustAcceptLegal: false,
+        legalBlocked: false,
         ...routing,
     };
 }
@@ -808,14 +723,10 @@ async function resolveUserLifecycleStateInternal(
 // HELPER FUNCTIONS
 // ============================================================================
 
-/**
- * Check if a path is allowed for a given lifecycle state
- */
 export function isPathAllowedForState(
     lifecycle: ResolvedLifecycle,
     path: string
 ): boolean {
-    // Check if path matches any allowed pattern
     for (const allowed of lifecycle.allowedPaths) {
         if (allowed === "*") return true;
         if (allowed.endsWith("/*")) {
@@ -825,7 +736,6 @@ export function isPathAllowedForState(
         if (path === allowed || path.startsWith(allowed + "/")) return true;
     }
 
-    // Check if path matches any blocked pattern
     for (const blocked of lifecycle.blockedPaths) {
         if (blocked === "*") return false;
         if (blocked.endsWith("/*")) {
@@ -835,13 +745,9 @@ export function isPathAllowedForState(
         if (path === blocked || path.startsWith(blocked + "/")) return false;
     }
 
-    // Default: allow if not explicitly blocked
     return true;
 }
 
-/**
- * Get the lifecycle state label for display
- */
 export function getLifecycleStateLabel(state: LifecycleState): string {
     const labels: Record<LifecycleState, string> = {
         [LifecycleState.UNAUTHENTICATED]: "Not signed in",
@@ -865,9 +771,6 @@ export function getLifecycleStateLabel(state: LifecycleState): string {
     return labels[state] || "Unknown";
 }
 
-/**
- * Check if state represents a fully active user
- */
 export function isActiveState(state: LifecycleState): boolean {
     return [
         LifecycleState.PERSONAL_ACTIVE,
@@ -877,9 +780,6 @@ export function isActiveState(state: LifecycleState): boolean {
     ].includes(state);
 }
 
-/**
- * Check if state requires onboarding
- */
 export function requiresOnboarding(state: LifecycleState): boolean {
     return [
         LifecycleState.ACCOUNT_TYPE_PENDING,
@@ -888,9 +788,6 @@ export function requiresOnboarding(state: LifecycleState): boolean {
     ].includes(state);
 }
 
-/**
- * Check if state is an org member waiting for access
- */
 export function isRestrictedOrgMember(state: LifecycleState): boolean {
     return [
         LifecycleState.ORG_MEMBER_PENDING,
@@ -905,10 +802,7 @@ export function isRestrictedOrgMember(state: LifecycleState): boolean {
 
 function validateLifecycleInvariant(lifecycle: ResolvedLifecycle) {
     const { state, accountType, orgId, hasWorkspace, orgRole } = lifecycle;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const _hasOrg = !!orgId; // Derived from orgId (for invariant documentation)
 
-    // 1. Account Type Consistency
     if (state.startsWith("PERSONAL_")) {
         assertInvariant(
             accountType === "PERSONAL",
@@ -927,7 +821,6 @@ function validateLifecycleInvariant(lifecycle: ResolvedLifecycle) {
         );
     }
 
-    // 2. Organization Consistency
     if (state === LifecycleState.ORG_OWNER_ACTIVE ||
         state === LifecycleState.ORG_OWNER_NO_WORKSPACE ||
         state === LifecycleState.ORG_ADMIN_ACTIVE ||
@@ -941,7 +834,6 @@ function validateLifecycleInvariant(lifecycle: ResolvedLifecycle) {
         );
     }
 
-    // 3. Workspace Consistency
     if (state.endsWith("_ACTIVE")) {
         assertInvariant(
             hasWorkspace,
@@ -960,7 +852,6 @@ function validateLifecycleInvariant(lifecycle: ResolvedLifecycle) {
         );
     }
 
-    // 4. Role Consistency
     if (state.startsWith("ORG_OWNER_")) {
         assertInvariant(
             orgRole === "OWNER",
@@ -971,19 +862,19 @@ function validateLifecycleInvariant(lifecycle: ResolvedLifecycle) {
     }
 }
 
-/**
- * Public Resolver Wrapper
- * Applies invariants to the internal resolution result.
- */
-export async function resolveUserLifecycleState(
+export function resolveUserLifecycleState(
     databases: Databases,
     user: Models.User<Models.Preferences> | null
 ): Promise<ResolvedLifecycle> {
-    const result = await resolveUserLifecycleStateInternal(databases, user);
+    const result = resolveUserLifecycleStateInternal(databases, user);
 
-    // Validate result consistency
-    // In dev: throws. In prod: logs error.
-    validateLifecycleInvariant(result);
+    if (result instanceof Promise) {
+        return result.then(res => {
+            validateLifecycleInvariant(res);
+            return res;
+        });
+    }
 
-    return result;
+    validateLifecycleInvariant(result as ResolvedLifecycle);
+    return Promise.resolve(result as ResolvedLifecycle);
 }

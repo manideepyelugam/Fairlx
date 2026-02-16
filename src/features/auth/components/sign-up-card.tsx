@@ -29,6 +29,7 @@ import { signUpWithGithub, signUpWithGoogle } from "@/lib/oauth";
 
 import { registerSchema } from "../schemas";
 import { useRegister } from "../api/use-register";
+import { LegalAcceptance } from "./legal-acceptance";
 
 interface SignUpCardProps {
   returnUrl?: string;
@@ -52,8 +53,14 @@ export const SignUpCard = ({ returnUrl }: SignUpCardProps) => {
       name: "",
       email: "",
       password: "",
+      acceptedTerms: false as unknown as true,
+      acceptedDPA: false as unknown as true,
     },
   });
+
+  const acceptedTerms = form.watch("acceptedTerms");
+  const acceptedDPA = form.watch("acceptedDPA");
+  const isValid = acceptedTerms && acceptedDPA;
 
   const onSubmit = (values: z.infer<typeof registerSchema>) => {
     mutate({ json: values });
@@ -64,15 +71,7 @@ export const SignUpCard = ({ returnUrl }: SignUpCardProps) => {
       <CardHeader className="flex items-center justify-center text-center p-7">
         <CardTitle className="text-2xl">Sign Up</CardTitle>
         <CardDescription>
-          By signing up, you agree to our{" "}
-          <Link href="/privacy">
-            <span className="text-blue-700">Privacy Policy</span>
-          </Link>{" "}
-          and{" "}
-          <Link href="/terms">
-            <span className="text-blue-700">Terms of Service</span>
-          </Link>
-          .
+          Join Fairlx today to start managing your projects with ease.
         </CardDescription>
       </CardHeader>
       <div className="px-7">
@@ -132,7 +131,16 @@ export const SignUpCard = ({ returnUrl }: SignUpCardProps) => {
                 </FormItem>
               )}
             />
-            <Button type="submit" disabled={isPending} size="lg" className="w-full">
+
+            <LegalAcceptance
+              acceptedTerms={acceptedTerms}
+              acceptedDPA={acceptedDPA}
+              onAcceptedTermsChange={(checked) => form.setValue("acceptedTerms", checked as true, { shouldValidate: true })}
+              onAcceptedDPAChange={(checked) => form.setValue("acceptedDPA", checked as true, { shouldValidate: true })}
+              disabled={isPending}
+            />
+
+            <Button type="submit" disabled={isPending || !isValid} size="lg" className="w-full">
               Sign Up
             </Button>
           </form>

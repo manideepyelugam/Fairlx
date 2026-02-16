@@ -40,6 +40,8 @@ const INITIAL_LIFECYCLE_STATE: AccountLifecycleState = {
     activeWorkspaceId: null,
     mustResetPassword: false,
     orgRole: null,
+    mustAcceptLegal: false,
+    legalBlocked: false,
 };
 
 /**
@@ -91,9 +93,9 @@ export const useGetAccountLifecycle = () => {
             const result = await response.json();
             return result as LifecycleQueryResult;
         },
-        staleTime: 1000 * 60 * 10, // 10 minutes — lifecycle rarely changes
-        refetchOnWindowFocus: false, // DISABLED — was triggering 6 DB reads on every alt-tab
-        refetchInterval: 5 * 60 * 1000, // Poll every 5 minutes (was 60s — way too aggressive)
+        staleTime: 1000 * 30, // 30 seconds - critical for security status
+        refetchOnWindowFocus: true, // Re-verify status when coming back to app
+        refetchInterval: 2 * 60 * 1000, // Poll every 2 minutes
         refetchIntervalInBackground: false, // Don't poll when tab is not focused
         retry: 1,
         // Disable query during SSR to prevent hydration mismatch
