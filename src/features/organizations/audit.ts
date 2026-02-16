@@ -57,6 +57,8 @@ export enum OrgAuditAction {
     FIRST_LOGIN_TOKEN_CREATED = "first_login_token_created",
     /** First-login magic link token used (single-use) */
     FIRST_LOGIN_TOKEN_USED = "first_login_token_used",
+    /** User accepted legal terms (signup) */
+    USER_ACCEPTED_LEGAL = "user_accepted_legal",
 }
 
 /**

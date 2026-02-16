@@ -6,6 +6,7 @@ import { useAccountLifecycle } from "@/components/account-lifecycle-provider";
 import { PUBLIC_ROUTES } from "@/features/auth/constants";
 import { Loader2 } from "lucide-react";
 import { ForcePasswordReset } from "@/features/auth/components/force-password-reset";
+import { LegalAcceptanceModal } from "@/features/auth/components/legal-acceptance-modal";
 
 interface LifecycleGuardProps {
     children: React.ReactNode;
@@ -119,9 +120,13 @@ export function LifecycleGuard({ children }: LifecycleGuardProps) {
         );
     }
 
-    // Special Component Interception: ForcePasswordReset
     if (lifecycleState.isAuthenticated && lifecycleState.mustResetPassword) {
         return <ForcePasswordReset onSuccess={() => refreshLifecycle()} />;
+    }
+
+    // Special Component Interception: Legal Acceptance
+    if (lifecycleState.isAuthenticated && (lifecycleState.mustAcceptLegal || lifecycleState.legalBlocked)) {
+        return <LegalAcceptanceModal />;
     }
 
     // If redirecting, show spinner (but with timeout protection)

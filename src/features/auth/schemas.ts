@@ -16,6 +16,12 @@ export const registerSchema = z.object({
   name: z.string().trim().min(1, "Name is required."),
   email: z.string().email(),
   password: z.string().min(8, "Password must be at least 8 characters."),
+  acceptedTerms: z.literal(true, {
+    errorMap: () => ({ message: "You must accept the Terms of Service" }),
+  }),
+  acceptedDPA: z.literal(true, {
+    errorMap: () => ({ message: "You must accept the Data Processing Agreement" }),
+  }),
 });
 
 
@@ -138,4 +144,14 @@ export const changePasswordSchema = z.object({
 
 export const firstLoginSchema = z.object({
   token: z.string().min(1, "Token is required."),
+});
+
+export const acceptLegalSchema = z.object({
+  acceptedTerms: z.literal(true, {
+    errorMap: () => ({ message: "You must accept the Terms of Service" }),
+  }),
+  acceptedDPA: z.literal(true, {
+    errorMap: () => ({ message: "You must accept the Data Processing Agreement" }),
+  }),
+  applyToOrg: z.boolean().optional().default(false),
 });

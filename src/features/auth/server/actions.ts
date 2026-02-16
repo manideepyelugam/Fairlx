@@ -53,6 +53,8 @@ export async function resolveAccountLifecycleState(): Promise<AccountLifecycleSt
             activeWorkspaceId: null,
             mustResetPassword: false,
             orgRole: null,
+            mustAcceptLegal: false,
+            legalBlocked: false,
         };
     }
 }
@@ -93,6 +95,8 @@ function convertToLegacyState(
         activeWorkspaceId: lifecycle.workspaceId,
         mustResetPassword: lifecycle.mustResetPassword,
         orgRole: lifecycle.orgRole,
+        mustAcceptLegal: lifecycle.mustAcceptLegal,
+        legalBlocked: lifecycle.legalBlocked,
     };
 }
 
@@ -128,6 +132,8 @@ export async function getLifecycleState(): Promise<ResolvedLifecycle> {
             mustResetPassword: false,
             isEmailVerified: false,
             billingStatus: null,
+            mustAcceptLegal: false,
+            legalBlocked: false,
             redirectTo: "/sign-in",
             allowedPaths: ["/sign-in", "/sign-up", "/oauth"],
             blockedPaths: ["*"],
@@ -176,6 +182,8 @@ export async function getLifecycleStateWithLegacy(): Promise<{
             mustResetPassword: false,
             isEmailVerified: false,
             billingStatus: null,
+            mustAcceptLegal: false,
+            legalBlocked: false,
             redirectTo: "/sign-in",
             allowedPaths: ["/sign-in", "/sign-up", "/oauth"],
             blockedPaths: ["*"],
@@ -198,6 +206,8 @@ export async function getLifecycleStateWithLegacy(): Promise<{
                 activeWorkspaceId: null,
                 mustResetPassword: false,
                 orgRole: null,
+                mustAcceptLegal: false,
+                legalBlocked: false,
             },
             lifecycle,
         };
@@ -206,4 +216,3 @@ export async function getLifecycleStateWithLegacy(): Promise<{
 
 // Legacy alias for backward compatibility during migration
 export const resolveAccountState = resolveAccountLifecycleState;
-

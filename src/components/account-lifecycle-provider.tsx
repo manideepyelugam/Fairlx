@@ -24,6 +24,8 @@ const INITIAL_STATE: AccountLifecycleState = {
     activeWorkspaceId: null,
     mustResetPassword: false,
     orgRole: null,
+    mustAcceptLegal: false,
+    legalBlocked: false,
 };
 
 const INITIAL_ROUTING: LifecycleRouting = {

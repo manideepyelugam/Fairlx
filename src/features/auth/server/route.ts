@@ -12,7 +12,8 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
   changePasswordSchema,
-  firstLoginSchema
+  firstLoginSchema,
+  acceptLegalSchema
 } from "../schemas";
 import { createAdminClient } from "@/lib/appwrite";
 import { ID, ImageFormat, Client, Account } from "node-appwrite";
@@ -100,7 +101,12 @@ const app = new Hono()
     }
   })
   .post("/register", zValidator("json", registerSchema), async (c) => {
-    const { name, email, password } = c.req.valid("json");
+    const { name, email, password, acceptedTerms, acceptedDPA } = c.req.valid("json");
+
+    // SECURITY: Backend enforcement (redundant with zod but mandatory)
+    if (acceptedTerms !== true || acceptedDPA !== true) {
+      return c.json({ error: "Terms and DPA acceptance required." }, 400);
+    }
 
     try {
       const { account } = await createAdminClient();
@@ -119,6 +125,10 @@ const app = new Hono()
 
       const userAccount = new Account(userClient);
 
+      const acceptedAt = new Date().toISOString();
+      const termsVersion = "v1";
+      const dpaVersion = "v1";
+
       // Set initial prefs - account type will be selected in onboarding (POST-AUTH)
       // WHY: Moving account type selection to onboarding allows:
       // - Same flow for email/password and OAuth users
@@ -126,7 +136,32 @@ const app = new Hono()
       await userAccount.updatePrefs({
         needsOnboarding: true,
         signupCompletedAt: null,
+        // Legal acceptance storage
+        acceptedTermsAt: acceptedAt,
+        acceptedDPAAt: acceptedAt,
+        acceptedTermsVersion: termsVersion,
+        acceptedDPAVersion: dpaVersion,
       });
+
+      // Mandatory Audit Logging
+      try {
+        const { databases } = await createAdminClient();
+        const { logOrgAudit, OrgAuditAction } = await import("@/features/organizations/audit");
+        await logOrgAudit({
+          databases,
+          organizationId: user.$id, // Use userId as placeholder orgId for signup audit
+          actorUserId: user.$id,
+          actionType: OrgAuditAction.USER_ACCEPTED_LEGAL,
+          metadata: {
+            acceptedAt,
+            termsVersion,
+            dpaVersion,
+            ip: c.req.header("x-forwarded-for") || "unknown",
+          },
+        });
+      } catch (auditError) {
+        console.error("Legal audit logging failed:", auditError);
+      }
 
       // Send branded verification email (with fallback to default)
       try {
@@ -186,6 +221,143 @@ const app = new Hono()
 
     return c.json({ success: true });
   })
+  /**
+   * POST /auth/accept-legal
+   * 
+   * Accept the latest legal terms (v1).
+   * Personal acceptance is always recorded in user.prefs.
+   * If applyToOrg is true and user is Owner/Admin, organization.billingSettings is updated.
+   */
+  .post(
+    "/accept-legal",
+    sessionMiddleware,
+    zValidator("json", acceptLegalSchema),
+    async (c) => {
+      const account = c.get("account");
+      const databases = c.get("databases");
+      const user = c.get("user");
+      const { applyToOrg } = c.req.valid("json");
+      const { Query } = await import("node-appwrite");
+
+      const CURRENT_LEGAL_VERSION = "v1";
+      const now = new Date().toISOString();
+
+      try {
+        // 1. Update User Preferences
+        const currentPrefs = user.prefs || {};
+        const legalHistory = Array.isArray(currentPrefs.legalHistory)
+          ? [...currentPrefs.legalHistory]
+          : [];
+
+        const acceptanceRecord = {
+          version: CURRENT_LEGAL_VERSION,
+          acceptedAt: now,
+          type: "PERSONAL",
+        };
+
+        // Add to history
+        legalHistory.push(acceptanceRecord);
+
+        const updatedPrefs = {
+          ...currentPrefs,
+          acceptedTermsVersion: CURRENT_LEGAL_VERSION,
+          acceptedTermsAt: now,
+          legalHistory,
+        };
+
+        await account.updatePrefs(updatedPrefs);
+
+        // 2. Handle Organization Level Acceptance
+        if (currentPrefs.primaryOrganizationId) {
+          const orgId = currentPrefs.primaryOrganizationId;
+
+          // Verify user is OWNER or ADMIN
+          const memberships = await databases.listDocuments(
+            DATABASE_ID,
+            ORGANIZATION_MEMBERS_ID,
+            [
+              Query.equal("organizationId", orgId),
+              Query.equal("userId", user.$id),
+            ]
+          );
+
+          if (memberships.total > 0) {
+            const role = memberships.documents[0].role;
+            const isManagement = role === OrganizationRole.OWNER || role === OrganizationRole.ADMIN;
+
+            // MANDATORY: Management MUST accept for Org
+            if (isManagement && !applyToOrg) {
+              return c.json({ error: "Organization compliance is mandatory for Administrators" }, 400);
+            }
+
+            if (isManagement && applyToOrg) {
+              // Update Organization Document
+              const orgDoc = await databases.getDocument(DATABASE_ID, ORGANIZATIONS_ID, orgId);
+              let billingSettings: any = {};
+              try {
+                billingSettings = orgDoc.billingSettings ? JSON.parse(orgDoc.billingSettings) : {};
+              } catch (e) {
+                billingSettings = {};
+              }
+
+              const updatedSettings = {
+                ...billingSettings,
+                legal: {
+                  currentVersion: CURRENT_LEGAL_VERSION,
+                  acceptedAt: now,
+                  acceptedBy: user.$id,
+                }
+              };
+
+              await databases.updateDocument(
+                DATABASE_ID,
+                ORGANIZATIONS_ID,
+                orgId,
+                {
+                  billingSettings: JSON.stringify(updatedSettings)
+                }
+              );
+
+              // Update preference to reflect org-level acceptance if applicable
+              // This is redundant but helps with quick checks
+              legalHistory.push({
+                version: CURRENT_LEGAL_VERSION,
+                acceptedAt: now,
+                type: "ORG",
+                orgId: orgId
+              });
+              await account.updatePrefs({
+                ...updatedPrefs,
+                legalHistory
+              });
+
+              // Log Audit Event
+              try {
+                const { logOrgAudit, OrgAuditAction } = await import("@/features/organizations/audit");
+                await logOrgAudit({
+                  databases,
+                  organizationId: orgId,
+                  actorUserId: user.$id,
+                  actionType: OrgAuditAction.USER_ACCEPTED_LEGAL,
+                  metadata: {
+                    version: CURRENT_LEGAL_VERSION,
+                    applyToOrg: true,
+                  },
+                });
+              } catch (auditError) {
+                console.error("Failed to log legal acceptance audit:", auditError);
+              }
+            }
+          }
+        }
+
+        return c.json({ success: true });
+      } catch (error: any) {
+        console.error("Legal acceptance failed:", error);
+        return c.json({ error: error.message || "Failed to accept legal terms" }, 500);
+      }
+    }
+  )
   /**
    * DELETE /auth/account
    * Permanently delete user account
