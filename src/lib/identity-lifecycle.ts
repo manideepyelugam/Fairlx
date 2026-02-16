@@ -386,7 +386,7 @@ async function resolveUserLifecycleStateInternal(
                     }
                 }
             }
-        } catch (error) {
+        } catch {
             orgLegalAccepted = false;
         }
     }
@@ -801,7 +801,7 @@ export function isRestrictedOrgMember(state: LifecycleState): boolean {
 // ============================================================================
 
 function validateLifecycleInvariant(lifecycle: ResolvedLifecycle) {
-    const { state, accountType, orgId, hasWorkspace, orgRole } = lifecycle;
+    const { state, accountType, hasWorkspace, orgRole } = lifecycle;
 
     if (state.startsWith("PERSONAL_")) {
         assertInvariant(

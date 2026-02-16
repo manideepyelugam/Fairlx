@@ -293,10 +293,10 @@ const app = new Hono()
             if (isManagement && applyToOrg) {
               // Update Organization Document
               const orgDoc = await databases.getDocument(DATABASE_ID, ORGANIZATIONS_ID, orgId);
-              let billingSettings: any = {};
+              let billingSettings: Record<string, unknown> = {};
               try {
                 billingSettings = orgDoc.billingSettings ? JSON.parse(orgDoc.billingSettings) : {};
-              } catch (e) {
+              } catch {
                 billingSettings = {};
               }
 
@@ -352,9 +352,10 @@ const app = new Hono()
         }
 
         return c.json({ success: true });
-      } catch (error: any) {
+      } catch (error) {
         console.error("Legal acceptance failed:", error);
-        return c.json({ error: error.message || "Failed to accept legal terms" }, 500);
+        const message = error instanceof Error ? error.message : "Failed to accept legal terms";
+        return c.json({ error: message }, 500);
       }
     }
   )
