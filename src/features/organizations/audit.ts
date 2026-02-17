@@ -59,6 +59,18 @@ export enum OrgAuditAction {
     FIRST_LOGIN_TOKEN_USED = "first_login_token_used",
     /** User accepted legal terms (signup) */
     USER_ACCEPTED_LEGAL = "user_accepted_legal",
+
+    // === TWO FACTOR AUTH AUDIT ACTIONS ===
+    /** 2FA enabled for account */
+    TWO_FACTOR_ENABLED = "two_factor_enabled",
+    /** 2FA disabled for account */
+    TWO_FACTOR_DISABLED = "two_factor_disabled",
+    /** 2FA verification successful */
+    TWO_FACTOR_VERIFIED = "two_factor_verified",
+    /** 2FA verification failed */
+    TWO_FACTOR_FAILED = "two_factor_failed",
+    /** Recovery code used for login */
+    RECOVERY_CODE_USED = "recovery_code_used",
 }
 
 /**

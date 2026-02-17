@@ -51,6 +51,7 @@ import orgPermissions from "@/features/org-permissions/server/route";
 // User Access (permission-driven navigation)
 import userAccess from "@/features/user-access/server/route";
 import wallet from "@/features/wallet/server/route";
+import twoFactorAuth from "@/features/twoFactorAuth/server/route";
 // GitHub Star Rewards
 import githubRewards from "@/features/github-rewards/server/route";
 // Global Traffic Metering - NOW WITH BATCHING
@@ -114,6 +115,7 @@ const routes = app
   // User Access (permission-driven navigation)
   .route("/user-access", userAccess)
   .route("/wallet", wallet)
+  .route("/two-factor-auth", twoFactorAuth)
   // GitHub Star Rewards
   .route("/github-rewards", githubRewards);
 

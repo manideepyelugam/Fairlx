@@ -137,6 +137,13 @@ export const WALLET_TRANSACTIONS_ID = process.env.NEXT_PUBLIC_APPWRITE_WALLET_TR
 export const USAGE_DEDUCTIONS_ID = process.env.NEXT_PUBLIC_APPWRITE_USAGE_DEDUCTIONS_ID!;
 
 // ===============================
+// Two-Factor Authentication (2FA)
+// ===============================
+export const USER_RECOVERY_CODES_ID = process.env.NEXT_PUBLIC_APPWRITE_USER_RECOVERY_CODES_ID || "user_recovery_codes";
+export const EMAIL_OTP_CODES_ID = process.env.NEXT_PUBLIC_APPWRITE_EMAIL_OTP_CODES_ID || "email_otp_codes";
+export const TWO_FACTOR_ENCRYPTION_SECRET = process.env.TWO_FACTOR_ENCRYPTION_SECRET!;
+
+// ===============================
 // Landing Page Supabase (GitHub Star Rewards)
 // ===============================
 export const LANDING_SUPABASE_URL = process.env.LANDING_SUPABASE_URL!;
