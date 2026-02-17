@@ -35,6 +35,11 @@ export const useLogin = (returnUrl?: string) => {
     },
     onSuccess: (data) => {
       if ('success' in data && data.success) {
+        if ('state' in data && data.state === "REQUIRE_2FA") {
+          // No toast or redirect here, handled by the UI
+          return;
+        }
+
         toast.success("Logged in.");
         queryClient.invalidateQueries({ queryKey: ["current"] });
 

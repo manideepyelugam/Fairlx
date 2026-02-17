@@ -8,10 +8,19 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 
 import { ChangePasswordModal } from "./change-password-modal";
-import { Models } from "node-appwrite";
-
+import { TwoFactorSettings } from "@/features/twoFactorAuth/components/two-factor-settings";
 interface ProfileClientProps {
-  initialData: Models.User<Models.Preferences>;
+  initialData: {
+    $id: string;
+    email: string;
+    registration?: string;
+    prefs?: {
+      twoFactorEnabled?: boolean;
+      twoFactorMethod?: string;
+      primaryOrganizationId?: string;
+      [key: string]: unknown;
+    };
+  };
 }
 
 export const ProfileClient = ({ initialData }: ProfileClientProps) => {
@@ -55,14 +64,14 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
 
             <Separator />
 
-            <div className="space-y-2">
-              <Label>Two-Factor Authentication</Label>
-              <p className="text-sm text-muted-foreground">
-                Add an extra layer of security to your account
-              </p>
-              <Button variant="outline" disabled>
-                Enable 2FA (Coming Soon)
-              </Button>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Two-Factor Authentication</Label>
+                <p className="text-sm text-muted-foreground">
+                  Add an extra layer of security to your account
+                </p>
+                <TwoFactorSettings user={initialData} />
+              </div>
             </div>
           </CardContent>
         </Card>

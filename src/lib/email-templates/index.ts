@@ -15,6 +15,7 @@ export { commentReplyTemplate } from "./comment-reply";
 // Auth & Organization email templates
 export { welcomeEmailTemplate } from "./welcome-email";
 export { verifyEmailTemplate } from "./verify-email";
+export { twoFactorOtpTemplate } from "./two-factor-otp";
 
 export * from "./base";
 // Theme exports - use specific imports from ./theme to avoid conflicts with base

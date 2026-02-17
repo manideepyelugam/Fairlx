@@ -82,6 +82,35 @@ const app = new Hono()
         }, 400);
       }
 
+      // 2FA Integration
+      if (user.prefs?.twoFactorEnabled) {
+        // Delete the session since 2FA is required. We'll create a new one after 2FA.
+        await tempAccount.deleteSession("current");
+
+        const { databases } = await createAdminClient();
+        const { DATABASE_ID, LOGIN_TOKENS_ID } = await import("@/config");
+        const crypto = await import("crypto");
+
+        const tempToken = crypto.randomBytes(32).toString("hex");
+        const tokenHash = crypto.createHash("sha256").update(tempToken).digest("hex");
+
+        await databases.createDocument(DATABASE_ID, LOGIN_TOKENS_ID, ID.unique(), {
+          userId: user.$id,
+          tokenHash,
+          purpose: "2FA_CHALLENGE",
+          orgId: "2FA", // Required attribute placeholder
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // 10 minutes
+        });
+
+
+        return c.json({
+          state: "REQUIRE_2FA",
+          tempToken,
+          method: user.prefs.twoFactorMethod === "BOTH" ? "TOTP" : user.prefs.twoFactorMethod,
+          methods: user.prefs.twoFactorMethod === "BOTH" ? ["TOTP", "EMAIL"] : [user.prefs.twoFactorMethod]
+        });
+      }
+
       // Email is verified, set the cookie
       setCookie(c, AUTH_COOKIE, session.secret, {
         path: "/",

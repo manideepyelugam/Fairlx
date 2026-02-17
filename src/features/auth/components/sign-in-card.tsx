@@ -6,6 +6,7 @@ import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa6";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { useState } from "react";
 
 import { DottedSeparator } from "@/components/dotted-separator";
 import { Button } from "@/components/ui/button";
@@ -23,12 +24,21 @@ import { signUpWithGithub, signUpWithGoogle } from "@/lib/oauth";
 
 import { loginSchema } from "../schemas";
 import { useLogin } from "../api/use-login";
+import { TwoFactorChallengeCard } from "@/features/twoFactorAuth/components/two-factor-challenge-card";
+import { TwoFactorMethod } from "@/features/twoFactorAuth/server/types";
 
 interface SignInCardProps {
   returnUrl?: string;
 }
 
 export const SignInCard = ({ returnUrl }: SignInCardProps) => {
+  const [twoFactorData, setTwoFactorData] = useState<{
+    tempToken: string;
+    method: TwoFactorMethod;
+    methods: TwoFactorMethod[];
+    email: string;
+  } | null>(null);
+
   const { mutate, isPending } = useLogin(returnUrl);
 
   const form = useForm<z.infer<typeof loginSchema>>({
@@ -40,8 +50,31 @@ export const SignInCard = ({ returnUrl }: SignInCardProps) => {
   });
 
   const onSubmit = (values: z.infer<typeof loginSchema>) => {
-    mutate({ json: values });
+    mutate({ json: values }, {
+      onSuccess: (data) => {
+        if ('state' in data && data.state === "REQUIRE_2FA") {
+          setTwoFactorData({
+            tempToken: data.tempToken as string,
+            method: data.method as TwoFactorMethod,
+            methods: data.methods as TwoFactorMethod[],
+            email: values.email,
+          });
+        }
+      }
+    });
   };
+
+  if (twoFactorData) {
+    return (
+      <TwoFactorChallengeCard
+        tempToken={twoFactorData.tempToken}
+        method={twoFactorData.method}
+        methods={twoFactorData.methods}
+        email={twoFactorData.email}
+        onCancel={() => setTwoFactorData(null)}
+      />
+    );
+  }
 
   return (
     <Card className="size-full md:w-[487px] border-none shadow-none">
