@@ -22,9 +22,9 @@ import { client } from "@/lib/rpc";
  * | Account Type | Org Role | Has Workspace | Route                    |
  * |--------------|----------|---------------|--------------------------|
  * | None         | -        | -             | /onboarding              |
- * | PERSONAL     | -        | No            | /onboarding/workspace    |
+ * | PERSONAL     | -        | No            | /onboarding              |
  * | PERSONAL     | -        | Yes           | /workspaces/:id          |
- * | ORG          | OWNER    | No            | /onboarding/organization |
+ * | ORG          | OWNER    | No            | /onboarding              |
  * | ORG          | OWNER    | Yes           | /workspaces/:id          |
  * | ORG          | !OWNER   | No            | /welcome (RESTRICTED)    |
  * | ORG          | !OWNER   | Yes           | /workspaces/:id          |
@@ -154,7 +154,7 @@ export default function AuthCallbackPage() {
                     if (state.defaultWorkspaceId) {
                         router.replace(`/workspaces/${state.defaultWorkspaceId}`);
                     } else {
-                        router.replace("/onboarding/workspace");
+                        router.replace("/onboarding");
                     }
                     return;
                 }
@@ -169,12 +169,8 @@ export default function AuthCallbackPage() {
 
                     // 3b. No workspace - check role
                     if (state.orgRole === "OWNER") {
-                        // OWNER without workspace → onboarding
-                        if (!state.orgSetupComplete) {
-                            router.replace("/onboarding/organization");
-                        } else {
-                            router.replace("/onboarding/workspace");
-                        }
+                        // OWNER without workspace → main onboarding flow
+                        router.replace("/onboarding");
                     } else {
                         // NON-OWNER without workspace → /welcome (RESTRICTED MODE)
                         // They will see the restricted welcome page

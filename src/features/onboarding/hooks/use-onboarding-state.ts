@@ -51,11 +51,11 @@ export function useOnboardingState(): OnboardingState {
         requiredRoute = "/verify-email-needed";
     } else if (accountType === "ORG" && !orgSetupComplete) {
         currentStep = OnboardingStep.ORG_SETUP;
-        requiredRoute = "/onboarding/organization";
+        requiredRoute = "/onboarding";
     } else if (accountType === "ORG" && !primaryOrganizationId) {
         // Edge case: verified but no org created yet
         currentStep = OnboardingStep.ORG_SETUP;
-        requiredRoute = "/onboarding/organization";
+        requiredRoute = "/onboarding";
     } else {
         currentStep = OnboardingStep.COMPLETED;
         requiredRoute = null;
