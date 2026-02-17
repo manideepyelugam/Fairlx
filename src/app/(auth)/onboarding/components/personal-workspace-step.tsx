@@ -8,7 +8,6 @@ import { z } from "zod";
 import { Folder, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -26,16 +25,6 @@ const workspaceSchema = z.object({
 
 type WorkspaceForm = z.infer<typeof workspaceSchema>;
 
-/**
- * Personal Account: Workspace Creation Step
- * 
- * Creates a workspace with:
- * - ownerType: "PERSONAL"
- * - ownerId: userId
- * 
- * INVARIANT: Personal accounts must have exactly one workspace.
- * Step advances only when workspace creation succeeds.
- */
 export function PersonalWorkspaceStep({
     onWorkspaceCreated
 }: PersonalWorkspaceStepProps) {
@@ -53,7 +42,6 @@ export function PersonalWorkspaceStep({
         setIsSubmitting(true);
 
         try {
-            // Create workspace via API
             const formData = new FormData();
             formData.append("name", values.name);
 
@@ -75,7 +63,6 @@ export function PersonalWorkspaceStep({
                 throw new Error("Workspace created but ID not returned");
             }
 
-            // Update prefs to mark account type and signup complete
             await fetch("/api/auth/update-prefs", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -88,13 +75,10 @@ export function PersonalWorkspaceStep({
                 credentials: "include",
             });
 
-            // Invalidate cache
             await queryClient.invalidateQueries({ queryKey: ["current"] });
             await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
 
             toast.success("Workspace created!");
-
-            // Advance step via callback (updates local state)
             onWorkspaceCreated(workspaceId);
         } catch (error) {
             toast.error(error instanceof Error ? error.message : "Failed to create workspace");
@@ -104,17 +88,19 @@ export function PersonalWorkspaceStep({
     };
 
     return (
-        <Card className="w-full max-w-lg">
-            <CardHeader className="text-center">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-                    <Folder className="h-7 w-7 text-primary" />
-                </div>
-                <CardTitle className="text-2xl">Create Your Workspace</CardTitle>
-                <CardDescription>
-                    A workspace is where your projects and tasks live.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
+        <div className="w-full">
+            
+
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
+                Create your workspace
+            </h1>
+            <p className="mt-4 text-muted-foreground text-xs sm:text-sm">
+                A workspace is where your projects and tasks live.
+                <br />
+                You can create more workspaces later.
+            </p>
+
+            <div className="mt-8">
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                         <FormField
@@ -122,12 +108,14 @@ export function PersonalWorkspaceStep({
                             name="name"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Workspace Name</FormLabel>
+                                    <FormLabel className="text-sm font-medium">Workspace Name</FormLabel>
                                     <FormControl>
                                         <Input
+                                            
                                             {...field}
                                             placeholder="My Workspace"
                                             disabled={isSubmitting}
+                                            className="h-10 text-xs"
                                         />
                                     </FormControl>
                                     <FormMessage />
@@ -137,8 +125,8 @@ export function PersonalWorkspaceStep({
 
                         <Button
                             type="submit"
-                            className="w-full"
-                            size="lg"
+                            size="sm"
+                            className="w-full h-10 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white"
                             disabled={isSubmitting}
                         >
                             {isSubmitting ? (
@@ -152,7 +140,7 @@ export function PersonalWorkspaceStep({
                         </Button>
                     </form>
                 </Form>
-            </CardContent>
-        </Card>
+            </div>
+        </div>
     );
 }

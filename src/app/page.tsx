@@ -16,8 +16,8 @@ export default async function Home() {
         // ORG accounts: Can access dashboard without workspaces
         redirect("/welcome");
       } else {
-        // PERSONAL accounts: Mandatory workspace creation
-        redirect("/onboarding/workspace");
+        // PERSONAL accounts or no account type: Go through main onboarding flow
+        redirect("/onboarding");
       }
     } else {
       // Get stored default workspace preference
