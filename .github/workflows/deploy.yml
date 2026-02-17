@@ -132,6 +132,10 @@ jobs:
           # Landing Page (Supabase)
           LANDING_SUPABASE_URL: ${{ secrets.LANDING_SUPABASE_URL }}
           LANDING_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.LANDING_SUPABASE_SERVICE_ROLE_KEY }}
+
+          # Webhooks
+          NEXT_PUBLIC_APPWRITE_PROJECT_WEBHOOKS_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_PROJECT_WEBHOOKS_ID }}
+          NEXT_PUBLIC_APPWRITE_PROJECT_WEBHOOK_DELIVERIES_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_PROJECT_WEBHOOK_DELIVERIES_ID }}
         run: npm run build
 
       - name: Transfer files to server
@@ -250,6 +254,9 @@ jobs:
             # Landing Page (Supabase)
             LANDING_SUPABASE_URL=${{ secrets.LANDING_SUPABASE_URL }}
             LANDING_SUPABASE_SERVICE_ROLE_KEY=${{ secrets.LANDING_SUPABASE_SERVICE_ROLE_KEY }}
+            # Webhooks
+            NEXT_PUBLIC_APPWRITE_PROJECT_WEBHOOKS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_PROJECT_WEBHOOKS_ID }}
+            NEXT_PUBLIC_APPWRITE_PROJECT_WEBHOOK_DELIVERIES_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_PROJECT_WEBHOOK_DELIVERIES_ID }}
             EOF
             
             # Ensure proper permissions
