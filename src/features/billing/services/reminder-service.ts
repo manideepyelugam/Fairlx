@@ -179,7 +179,7 @@ function getReminderEmailContent(
                 <span style="padding: 0 4px;">·</span>
                 <a href="https://fairlx.com/terms" style="color: ${primaryBlue}; text-decoration: none;">Terms</a>
               </p>
-              <p style="margin: 0; font-size: 12px; color: ${lightText}; font-family: ${fontStack};">© 2025 Stemlen. All rights reserved.</p>
+              <p style="margin: 0; font-size: 12px; color: ${lightText}; font-family: ${fontStack};">© 2026 Stemlen. All rights reserved.</p>
             </td>
           </tr>
           
