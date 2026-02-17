@@ -6,6 +6,7 @@
  */
 
 import { Task } from "@/features/tasks/types";
+import { Project } from "@/features/projects/types";
 import { WorkitemEvent, WorkitemEventType, WorkitemEventMetadata } from "./types";
 
 // =============================================================================
@@ -44,6 +45,19 @@ export function createWorkitemEvent({
 // =============================================================================
 // CONVENIENCE FUNCTIONS FOR COMMON EVENTS
 // =============================================================================
+
+export function createTaskCreatedEvent(
+    workitem: Task,
+    triggeredBy: string,
+    triggeredByName: string
+): WorkitemEvent {
+    return createWorkitemEvent({
+        type: WorkitemEventType.WORKITEM_CREATED,
+        workitem,
+        triggeredBy,
+        triggeredByName,
+    });
+}
 
 export function createAssignedEvent(
     workitem: Task,
@@ -89,6 +103,49 @@ export function createCompletedEvent(
     });
 }
 
+export function createDeletedEvent(
+    workitem: Task,
+    triggeredBy: string,
+    triggeredByName: string
+): WorkitemEvent {
+    return createWorkitemEvent({
+        type: WorkitemEventType.WORKITEM_DELETED,
+        workitem,
+        triggeredBy,
+        triggeredByName,
+    });
+}
+
+export function createUnassignedEvent(
+    workitem: Task,
+    triggeredBy: string,
+    triggeredByName: string,
+    removedAssigneeIds: string[]
+): WorkitemEvent {
+    return createWorkitemEvent({
+        type: WorkitemEventType.WORKITEM_UNASSIGNED,
+        workitem,
+        triggeredBy,
+        triggeredByName,
+        metadata: { removedAssigneeIds },
+    });
+}
+
+export function createTaskUpdatedEvent(
+    workitem: Task,
+    triggeredBy: string,
+    triggeredByName: string,
+    changesDescription?: string
+): WorkitemEvent {
+    return createWorkitemEvent({
+        type: WorkitemEventType.WORKITEM_UPDATED,
+        workitem,
+        triggeredBy,
+        triggeredByName,
+        metadata: { changesDescription },
+    });
+}
+
 export function createPriorityChangedEvent(
     workitem: Task,
     triggeredBy: string,
@@ -118,6 +175,86 @@ export function createDueDateChangedEvent(
         triggeredBy,
         triggeredByName,
         metadata: { oldDueDate, newDueDate },
+    });
+}
+
+export function createProjectUpdatedEvent(
+    project: Project,
+    triggeredBy: string,
+    triggeredByName: string,
+    changesDescription?: string
+): WorkitemEvent {
+    // We wrap the project in a Task-like structure for the dispatcher
+    // The WebhookChannelHandler will map it back to PROJECT_UPDATED
+    return createWorkitemEvent({
+        type: WorkitemEventType.PROJECT_UPDATED,
+        workitem: {
+            ...project,
+            projectId: project.$id, // Use own ID as projectId for broadcast
+            title: project.name, // Use project name as title
+        } as unknown as Task,
+        triggeredBy,
+        triggeredByName,
+        metadata: { changesDescription },
+    });
+}
+
+export function createMemberAddedEvent(
+    workspaceId: string,
+    workspaceName: string,
+    triggeredBy: string,
+    triggeredByName: string,
+    addedUserId: string,
+    addedUserName: string,
+    role: string
+): WorkitemEvent {
+    // Workaround: Mock task object for workspace events
+    const mockTask = {
+        $id: "workspace-event",
+        workspaceId,
+        projectId: "", // Workspace events don't have a single project
+        title: `Workspace: ${workspaceName}`,
+        name: `Workspace: ${workspaceName}`,
+    } as Task;
+
+    return createWorkitemEvent({
+        type: WorkitemEventType.WORKSPACE_MEMBER_ADDED,
+        workitem: mockTask,
+        triggeredBy,
+        triggeredByName,
+        metadata: {
+            addedUserId,
+            addedUserName,
+            newRole: role,
+        },
+    });
+}
+
+export function createMemberRemovedEvent(
+    workspaceId: string,
+    workspaceName: string,
+    triggeredBy: string,
+    triggeredByName: string,
+    removedUserId: string,
+    removedUserName: string
+): WorkitemEvent {
+    const mockTask = {
+        $id: "workspace-event",
+        workspaceId,
+        projectId: "", // Workspace events don't have a single project
+        title: `Workspace: ${workspaceName}`,
+        name: `Workspace: ${workspaceName}`,
+    } as Task;
+
+    return createWorkitemEvent({
+        type: WorkitemEventType.WORKSPACE_MEMBER_REMOVED,
+        workitem: mockTask,
+        triggeredBy,
+        triggeredByName,
+        metadata: {
+            removedUserId,
+            removedUserName,
+        },
     });
 }
 
@@ -328,15 +465,68 @@ export const EVENTS_NOTIFYING_REPORTER: WorkitemEventType[] = [
 // CHANNEL DETERMINATION
 // =============================================================================
 
+import { NotificationChannel } from "./types";
+
 /**
  * Determine which channels should be used for a given event type
  * This is the baseline before user preferences are applied
  */
-export function getDefaultChannelsForEvent(_event: WorkitemEvent): ("socket" | "email")[] {
-    const channels: ("socket" | "email")[] = ["socket"]; // Always include socket
+export function getDefaultChannelsForEvent(_event: WorkitemEvent): NotificationChannel[] {
+    const channels: NotificationChannel[] = ["socket"]; // Always include socket
 
     // For now, always include email for workitem events to ensure delivery
     channels.push("email");
 
+    // Include webhook channel for all project-level events
+    channels.push("webhook");
+
     return channels;
+}
+
+export function createProjectMemberAddedEvent(
+    project: Project,
+    triggeredBy: string,
+    triggeredByName: string,
+    addedUserId: string,
+    addedUserName: string,
+    roleName: string
+): WorkitemEvent {
+    return createWorkitemEvent({
+        type: WorkitemEventType.PROJECT_MEMBER_ADDED,
+        workitem: {
+            ...project,
+            projectId: project.$id,
+            title: project.name,
+        } as unknown as Task,
+        triggeredBy,
+        triggeredByName,
+        metadata: {
+            addedUserId,
+            addedUserName,
+            newRole: roleName,
+        },
+    });
+}
+
+export function createProjectMemberRemovedEvent(
+    project: Project,
+    triggeredBy: string,
+    triggeredByName: string,
+    removedUserId: string,
+    removedUserName: string
+): WorkitemEvent {
+    return createWorkitemEvent({
+        type: WorkitemEventType.PROJECT_MEMBER_REMOVED,
+        workitem: {
+            ...project,
+            projectId: project.$id,
+            title: project.name,
+        } as unknown as Task,
+        triggeredBy,
+        triggeredByName,
+        metadata: {
+            removedUserId,
+            removedUserName,
+        },
+    });
 }

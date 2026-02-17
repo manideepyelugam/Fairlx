@@ -165,7 +165,8 @@ const app = new Hono()
           attachmentId
         );
 
-        await deleteAttachment(attachmentId, workspaceId);
+        const userName = user.name || user.email || "Someone";
+        await deleteAttachment(attachmentId, workspaceId, user.$id, userName);
 
         // Log storage deletion for billing (negative delta)
         logStorageUsage({

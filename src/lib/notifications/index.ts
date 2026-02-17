@@ -36,11 +36,18 @@ export type {
 // Event creators
 export {
     createWorkitemEvent,
+    createTaskCreatedEvent,
     createAssignedEvent,
+    createUnassignedEvent,
     createStatusChangedEvent,
     createCompletedEvent,
+    createDeletedEvent,
     createPriorityChangedEvent,
     createDueDateChangedEvent,
+    createTaskUpdatedEvent,
+    createProjectUpdatedEvent,
+    createMemberAddedEvent,
+    createMemberRemovedEvent,
     createCommentAddedEvent,
     createMentionEvent,
     createReplyEvent,
@@ -68,9 +75,11 @@ export {
 
 import { dispatcher } from "./dispatcher";
 import { socketChannelHandler, emailChannelHandler } from "./channels";
+import { webhookChannelHandler } from "./channels/webhook-channel";
 
 // Register channel handlers with dispatcher
 dispatcher.registerChannel(socketChannelHandler);
 dispatcher.registerChannel(emailChannelHandler);
+dispatcher.registerChannel(webhookChannelHandler);
 
 // console.log("[Notifications] Channel handlers registered: socket, email");

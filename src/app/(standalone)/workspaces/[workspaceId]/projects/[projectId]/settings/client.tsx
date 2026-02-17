@@ -24,6 +24,7 @@ import {
   Tag,
   Flag,
   Layers,
+  Webhook,
 } from "lucide-react";
 import { GoHome } from "react-icons/go";
 
@@ -68,6 +69,7 @@ import { WorkTypesSettings } from "@/features/projects/components/work-types-set
 import { PrioritySettings } from "@/features/projects/components/priority-settings";
 import { LabelSettings } from "@/features/projects/components/label-settings";
 import { CopySettingsDialog } from "@/features/projects/components/copy-settings-dialog";
+import { WebhookSettings } from "@/features/webhooks/components/webhook-settings";
 import { useProjectPermissions } from "@/hooks/use-project-permissions";
 
 export const ProjectIdSettingsClient = () => {
@@ -179,6 +181,7 @@ export const ProjectIdSettingsClient = () => {
     { id: "types", label: "Work Types", icon: Layers },
     { id: "priorities", label: "Priorities", icon: Flag },
     { id: "labels", label: "Labels", icon: Tag },
+    { id: "webhooks", label: "Webhooks", icon: Webhook },
     ...((isAdmin || canDeleteProject) ? [{ id: "danger", label: "Danger Zone", icon: Shield, danger: true }] : []),
   ];
 
@@ -658,6 +661,21 @@ export const ProjectIdSettingsClient = () => {
                       </Button>
                     </form>
                   </Form>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Webhooks */}
+            {activeTab === "webhooks" && (
+              <Card>
+                <CardHeader className="mb-3">
+                  <CardTitle className="!text-[18px]">Webhooks</CardTitle>
+                  <CardDescription className="!text-xs font-normal">
+                    Configure external integrations to receive real-time project events.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <WebhookSettings projectId={projectId} />
                 </CardContent>
               </Card>
             )}

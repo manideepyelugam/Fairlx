@@ -10,6 +10,7 @@ import {
     PROJECT_ROLES_ID,
     PROJECT_TEAMS_ID,
     PROJECT_TEAM_MEMBERS_ID,
+    PROJECTS_ID,
 } from "@/config";
 import {
     getProjectPermissionResult,
@@ -17,6 +18,7 @@ import {
 } from "@/lib/project-rbac";
 import { PROJECT_PERMISSIONS } from "@/lib/project-permissions";
 import { ProjectMember, ProjectRole, PopulatedProjectMember } from "../types";
+import { Project } from "@/features/projects/types";
 import {
     createProjectMemberSchema,
     updateProjectMemberSchema,
@@ -26,6 +28,13 @@ import {
     updateProjectRoleSchema,
     getProjectRolesSchema,
 } from "../schemas";
+import {
+    dispatchWorkitemEvent,
+} from "@/lib/notifications";
+import {
+    createProjectMemberAddedEvent,
+    createProjectMemberRemovedEvent,
+} from "@/lib/notifications/events";
 
 const app = new Hono()
     /**
@@ -82,7 +91,7 @@ const app = new Hono()
                 memberships.documents.map(async (membership) => {
                     // Look up team membership from PROJECT_TEAM_MEMBERS collection
                     let team: { $id: string; name: string } = { $id: "", name: "No Team" };
-                    
+
                     // First check PROJECT_TEAM_MEMBERS_ID for actual team membership
                     const teamMemberships = await adminDb.listDocuments(
                         DATABASE_ID,
@@ -93,7 +102,7 @@ const app = new Hono()
                             Query.limit(1),
                         ]
                     ).catch(() => ({ documents: [], total: 0 }));
-                    
+
                     if (teamMemberships.total > 0) {
                         // User is in a team - get team info
                         const teamMember = teamMemberships.documents[0];
@@ -102,7 +111,7 @@ const app = new Hono()
                             PROJECT_TEAMS_ID,
                             teamMember.teamId as string
                         ).catch(() => null);
-                        
+
                         if (teamDoc) {
                             team = { $id: teamDoc.$id, name: teamDoc.name as string };
                         }
@@ -113,7 +122,7 @@ const app = new Hono()
                             PROJECT_TEAMS_ID,
                             membership.teamId
                         ).catch(() => null);
-                        
+
                         if (teamDoc) {
                             team = { $id: teamDoc.$id, name: teamDoc.name as string };
                         }
@@ -206,7 +215,7 @@ const app = new Hono()
                     // Look up team membership from PROJECT_TEAM_MEMBERS collection
                     // This is the source of truth for team assignments
                     let team: { $id: string; name: string } = { $id: "", name: "No Team" };
-                    
+
                     // First check PROJECT_TEAM_MEMBERS_ID for actual team membership
                     const teamMemberships = await adminDb.listDocuments(
                         DATABASE_ID,
@@ -217,7 +226,7 @@ const app = new Hono()
                             Query.limit(1),
                         ]
                     ).catch(() => ({ documents: [], total: 0 }));
-                    
+
                     if (teamMemberships.total > 0) {
                         // User is in a team - get team info
                         const teamMember = teamMemberships.documents[0];
@@ -226,7 +235,7 @@ const app = new Hono()
                             PROJECT_TEAMS_ID,
                             teamMember.teamId as string
                         ).catch(() => null);
-                        
+
                         if (teamDoc) {
                             team = { $id: teamDoc.$id, name: teamDoc.name as string };
                         }
@@ -237,7 +246,7 @@ const app = new Hono()
                             PROJECT_TEAMS_ID,
                             membership.teamId
                         ).catch(() => null);
-                        
+
                         if (teamDoc) {
                             team = { $id: teamDoc.$id, name: teamDoc.name as string };
                         }
@@ -365,6 +374,26 @@ const app = new Hono()
                 }
             );
 
+            // Notify of new project member (non-blocking)
+            const userName = user.name || user.email || "Someone";
+            try {
+                // Get project and user info for notification
+                const project = await adminDb.getDocument<Project>(DATABASE_ID, PROJECTS_ID, data.projectId);
+                const addedUser = await (await createAdminClient()).users.get(data.userId);
+
+                const event = createProjectMemberAddedEvent(
+                    project,
+                    user.$id,
+                    userName,
+                    data.userId,
+                    addedUser.name || addedUser.email,
+                    role.name
+                );
+                dispatchWorkitemEvent(event).catch(() => { });
+            } catch (err) {
+                console.error("[ProjectMembers] Notification failed:", err);
+            }
+
             return c.json({ data: membership }, 201);
         }
     )
@@ -428,6 +457,8 @@ const app = new Hono()
                 }
             );
 
+            // Notify of member update? (Optional, skipping for now as it maps to the same MEMBER_ADDED usually)
+
             return c.json({ data: updated });
         }
     )
@@ -482,6 +513,24 @@ const app = new Hono()
 
             // Delete the project membership
             await adminDb.deleteDocument(DATABASE_ID, PROJECT_MEMBERS_ID, memberId);
+
+            // Notify of member removal (non-blocking)
+            const userName = user.name || user.email || "Someone";
+            try {
+                const project = await adminDb.getDocument<Project>(DATABASE_ID, PROJECTS_ID, membership.projectId);
+                const removedUser = await (await createAdminClient()).users.get(membership.userId);
+
+                const event = createProjectMemberRemovedEvent(
+                    project,
+                    user.$id,
+                    userName,
+                    membership.userId,
+                    removedUser.name || removedUser.email
+                );
+                dispatchWorkitemEvent(event).catch(() => { });
+            } catch (err) {
+                console.error("[ProjectMembers] Remove notification failed:", err);
+            }
 
             return c.json({ data: { $id: memberId, removedFromTeams: teamMemberships.total } });
         }
@@ -601,7 +650,7 @@ const app = new Hono()
                 // Check permission using resolveUserProjectAccess for reliable permission checking
                 const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
                 const access = await resolveUserProjectAccess(adminDb, user.$id, role.projectId);
-                
+
                 if (!access.hasAccess || !hasProjectPermission(access, ProjectPermissionKey.MANAGE_PERMISSIONS)) {
                     return c.json({ error: "Forbidden: No permission to manage role permissions" }, 403);
                 }
@@ -651,7 +700,7 @@ const app = new Hono()
                 // Check permission using resolveUserProjectAccess
                 const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
                 const access = await resolveUserProjectAccess(adminDb, user.$id, role.projectId);
-                
+
                 if (!access.hasAccess || !hasProjectPermission(access, ProjectPermissionKey.MANAGE_PERMISSIONS)) {
                     return c.json({ error: "Forbidden: No permission to delete roles" }, 403);
                 }

@@ -48,10 +48,27 @@ class NotificationDispatcher {
      */
     async dispatch(event: WorkitemEvent): Promise<void> {
         try {
-            // 1. Resolve recipients
+            // 1. Handle Project-Level Channels (Broadcast)
+            // These channels are triggered once per event, regardless of user recipients.
+            const defaultChannels = getDefaultChannelsForEvent(event);
+            const projectLevelHandlers = Array.from(this.channelHandlers.values())
+                .filter(h => h.isProjectLevel && defaultChannels.includes(h.name));
+
+            if (projectLevelHandlers.length > 0) {
+                const payload = this.buildPayload(event);
+                const projectPromises = projectLevelHandlers.map(handler =>
+                    handler.send("", payload).catch(err => {
+                        console.error(`[NotificationDispatcher] Project channel ${handler.name} failed:`, err);
+                    })
+                );
+                // Non-blocking project broadcast
+                Promise.allSettled(projectPromises);
+            }
+
+            // 2. Resolve recipients
             const allRecipients = await this.resolveRecipients(event);
 
-            // 2. Apply exclusions from metadata
+            // 3. Apply exclusions from metadata
             const excludedIds = new Set(event.metadata?.excludeUserIds || []);
             const recipientUserIds = allRecipients.filter(id => !excludedIds.has(id));
 
@@ -59,7 +76,7 @@ class NotificationDispatcher {
                 return;
             }
 
-            // 3. Process each recipient
+            // 4. Process each recipient
             const deliveryPromises = recipientUserIds.map(async (userId) => {
                 try {
                     await this.processRecipient(userId, event);
@@ -69,7 +86,9 @@ class NotificationDispatcher {
             });
 
             await Promise.allSettled(deliveryPromises);
-        } catch {
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : "Unknown error";
+            console.error("[NotificationDispatcher] Dispatch caught error:", errorMessage);
             // Don't throw - notifications should not break the main flow
         }
     }
@@ -219,7 +238,7 @@ class NotificationDispatcher {
         const defaultChannels = getDefaultChannelsForEvent(event);
         const channels: NotificationChannel[] = [];
 
-        // Apply user preferences
+        // User-level channels (only socket and email for now)
         if (preferences.pushNotifications && defaultChannels.includes("socket")) {
             channels.push("socket");
         }
@@ -241,6 +260,7 @@ class NotificationDispatcher {
             id: ID.unique(),
             type: event.type,
             workitemId: event.workitemId,
+            workitemKey: event.workitem.key,
             workspaceId: event.workspaceId,
             title: getNotificationTitle(event),
             summary: getNotificationSummary(event),
@@ -248,6 +268,7 @@ class NotificationDispatcher {
             triggeredByName: event.triggeredByName,
             timestamp: new Date().toISOString(),
             deepLinkUrl: `${appUrl}/workspaces/${event.workspaceId}/tasks/${event.workitemId}`,
+            projectId: event.workitem.projectId,
             metadata: event.metadata,
         };
     }

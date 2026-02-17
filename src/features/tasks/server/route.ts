@@ -8,13 +8,18 @@ import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
 import {
   dispatchWorkitemEvent,
+} from "@/lib/notifications";
+import {
+  createTaskCreatedEvent,
   createAssignedEvent,
+  createUnassignedEvent,
   createStatusChangedEvent,
   createCompletedEvent,
+  createDeletedEvent,
   createPriorityChangedEvent,
   createDueDateChangedEvent,
   createMentionEvent,
-} from "@/lib/notifications";
+} from "@/lib/notifications/events";
 import { extractMentions, extractSnippet } from "@/lib/mentions";
 
 
@@ -197,9 +202,14 @@ const app = new Hono()
       // Delete the task
       await databases.deleteDocument(DATABASE_ID, TASKS_ID, taskId);
 
+      // Dispatch deletion event (non-blocking)
+      const userName = user.name || user.email || "Someone";
+      const event = createDeletedEvent(task, user.$id, userName);
+      dispatchWorkitemEvent(event).catch(() => { });
+
       return c.json({ data: { $id: task.$id } });
     } catch {
-      return c.json({ error: "Failed to delete task and related data" }, 500);
+      return c.json({ error: "Failed to delete task" }, 500);
     }
   })
   .get(
@@ -531,9 +541,14 @@ const app = new Hono()
         }
       ) as Task;
 
+      const userName = user.name || user.email || "Someone";
+
+      // Emit domain event for task creation (webhooks, etc.)
+      const createEvent = createTaskCreatedEvent(task, user.$id, userName);
+      dispatchWorkitemEvent(createEvent).catch(() => { });
+
       // Emit domain event for task assignment (non-blocking)
       if (assigneeIds && assigneeIds.length > 0) {
-        const userName = user.name || user.email || "Someone";
         const event = createAssignedEvent(task, user.$id, userName, assigneeIds);
         dispatchWorkitemEvent(event).catch(() => {
           // Silent failure for non-critical event dispatch
@@ -733,6 +748,16 @@ const app = new Hono()
         );
         if (addedAssignees.length > 0) {
           const event = createAssignedEvent(task, user.$id, userName, addedAssignees);
+          dispatchWorkitemEvent(event).catch(() => {
+            // Silent failure for non-critical event dispatch
+          });
+        }
+
+        const removedAssignees = oldAssigneeIds.filter(
+          (id: string) => !newAssigneeIds.includes(id)
+        );
+        if (removedAssignees.length > 0) {
+          const event = createUnassignedEvent(task, user.$id, userName, removedAssignees);
           dispatchWorkitemEvent(event).catch(() => {
             // Silent failure for non-critical event dispatch
           });

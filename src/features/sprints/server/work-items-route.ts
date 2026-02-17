@@ -12,12 +12,19 @@ import { Project } from "@/features/projects/types";
 import { logComputeUsage, getComputeUnits } from "@/lib/usage-metering";
 import {
   dispatchWorkitemEvent,
+} from "@/lib/notifications";
+import {
+  createTaskCreatedEvent,
   createAssignedEvent,
+  createUnassignedEvent,
   createStatusChangedEvent,
   createCompletedEvent,
   createPriorityChangedEvent,
+  createDueDateChangedEvent,
   createMentionEvent,
-} from "@/lib/notifications";
+  createDeletedEvent,
+  createTaskUpdatedEvent,
+} from "@/lib/notifications/events";
 import { Task } from "@/features/tasks/types";
 import { extractMentions, extractSnippet } from "@/lib/mentions";
 
@@ -641,15 +648,19 @@ const app = new Hono()
         metadata: { workItemId: workItem.$id, type: data.type },
       });
 
+      const userName = user.name || user.email || "Someone";
+
+      // Emit domain event for task creation (webhooks, etc.)
+      const taskLike = {
+        ...workItem,
+        title: workItem.title,
+        name: workItem.title,
+      } as unknown as Task;
+      const createEvent = createTaskCreatedEvent(taskLike, user.$id, userName);
+      dispatchWorkitemEvent(createEvent).catch(() => { });
+
       // Dispatch notification for work item assignment (non-blocking)
       if (data.assigneeIds && data.assigneeIds.length > 0) {
-        const userName = user.name || user.email || "Someone";
-        // Convert WorkItem to Task type for dispatcher compatibility
-        const taskLike = {
-          ...workItem,
-          title: workItem.title,
-          name: workItem.title,
-        } as unknown as Task;
         const event = createAssignedEvent(taskLike, user.$id, userName, data.assigneeIds);
         dispatchWorkitemEvent(event).catch(() => {
           console.debug("[WorkItemsRoute] Notification dispatch failed (non-blocking)");
@@ -739,6 +750,20 @@ const app = new Hono()
         dispatchWorkitemEvent(event).catch(() => { });
       }
 
+      // Due date change notification
+      const oldDueDateStr = workItem.dueDate ? String(workItem.dueDate) : undefined;
+      const newDueDateStr = updates.dueDate ? updates.dueDate.toISOString() : undefined;
+      if (updates.dueDate !== undefined && oldDueDateStr !== newDueDateStr) {
+        const event = createDueDateChangedEvent(
+          taskLike,
+          user.$id,
+          userName,
+          oldDueDateStr,
+          newDueDateStr
+        );
+        dispatchWorkitemEvent(event).catch(() => { });
+      }
+
       // Assignee change notification
       if (updates.assigneeIds) {
         const oldIds = workItem.assigneeIds || [];
@@ -746,6 +771,12 @@ const app = new Hono()
         const addedAssignees = newIds.filter((id: string) => !oldIds.includes(id));
         if (addedAssignees.length > 0) {
           const event = createAssignedEvent(taskLike, user.$id, userName, addedAssignees);
+          dispatchWorkitemEvent(event).catch(() => { });
+        }
+
+        const removedAssignees = oldIds.filter((id: string) => !newIds.includes(id));
+        if (removedAssignees.length > 0) {
+          const event = createUnassignedEvent(taskLike, user.$id, userName, removedAssignees);
           dispatchWorkitemEvent(event).catch(() => { });
         }
       }
@@ -768,6 +799,12 @@ const app = new Hono()
           );
           dispatchWorkitemEvent(mentionEvent).catch(() => { });
         }
+      }
+
+      // Generic update event if other fields changed
+      if (!updates.status && !updates.priority && !updates.assigneeIds) {
+        const event = createTaskUpdatedEvent(taskLike, user.$id, userName, "Work item details updated");
+        dispatchWorkitemEvent(event).catch(() => { });
       }
 
       return c.json({ data: updatedWorkItem });
@@ -822,6 +859,16 @@ const app = new Hono()
         jobType: 'task_delete',
         metadata: { workItemId, deletedChildren: children.total },
       });
+
+      // Dispatch deletion event (non-blocking)
+      const userName = user.name || user.email || "Someone";
+      const taskLike = {
+        ...workItem,
+        title: workItem.title,
+        name: workItem.title,
+      } as unknown as Task;
+      const deleteEvent = createDeletedEvent(taskLike, user.$id, userName);
+      dispatchWorkitemEvent(deleteEvent).catch(() => { });
 
       return c.json({ data: { $id: workItem.$id } });
     }
@@ -890,6 +937,12 @@ const app = new Hono()
 
       await Promise.all(workItemIds.map(deleteItem));
 
+      // We emit a single event for the whole workspace if we want to be efficient,
+      // but the webhook system is project-scoped.
+      // For now, we'll skip detailed individual notifications for bulk delete to avoid DB storms,
+      // but we should at least log it.
+      console.log(`[WorkItemsRoute] Bulk deleted ${workItemIds.length} items`);
+
       return c.json({ data: { count: workItemIds.length } });
     }
   )
@@ -929,6 +982,19 @@ const app = new Hono()
           })
         )
       );
+
+      // Notify of bulk move
+      if (updatedItems.length > 0) {
+        const userName = user.name || user.email || "Someone";
+        const firstItem = updatedItems[0] as unknown as Task;
+        const taskLike = {
+          ...firstItem,
+          title: firstItem.title || "Multiple items",
+          name: firstItem.title || "Multiple items",
+        } as unknown as Task;
+        const event = createTaskUpdatedEvent(taskLike, user.$id, userName, `Bulk moved ${updatedItems.length} items to sprint`);
+        dispatchWorkitemEvent(event).catch(() => { });
+      }
 
       return c.json({ data: updatedItems });
     }
@@ -972,6 +1038,16 @@ const app = new Hono()
         workItemId,
         updateData
       );
+
+      // Notify of update
+      const userName = user.name || user.email || "Someone";
+      const taskLike = {
+        ...updatedWorkItem,
+        title: updatedWorkItem.title,
+        name: updatedWorkItem.title,
+      } as unknown as Task;
+      const event = createTaskUpdatedEvent(taskLike, user.$id, userName, "Item reordered or moved");
+      dispatchWorkitemEvent(event).catch(() => { });
 
       return c.json({ data: updatedWorkItem });
     }
