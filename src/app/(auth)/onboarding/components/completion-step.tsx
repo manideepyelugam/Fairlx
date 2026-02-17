@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Loader2, ArrowRight } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CheckCircle2, Loader2, ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
 
 interface CompletionStepProps {
     accountType: "PERSONAL" | "ORG";
@@ -13,10 +13,7 @@ interface CompletionStepProps {
 }
 
 /**
- * Completion Step
- * 
- * Final step of onboarding - shows success message and enters the app.
- * Clears localStorage onboarding state on completion.
+ * Completion Step – Congrats screen with redirect.
  */
 export function CompletionStep({
     accountType,
@@ -45,55 +42,57 @@ export function CompletionStep({
     };
 
     return (
-        <Card className="w-full max-w-lg">
-            <CardHeader className="text-center">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
-                    <CheckCircle2 className="h-8 w-8 text-green-600" />
-                </div>
-                <CardTitle className="text-2xl">You&apos;re All Set! 🎉</CardTitle>
-                <CardDescription>
-                    {getMessage()}
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
-                    <p className="font-medium text-foreground mb-2">Quick tips:</p>
-                    <ul className="space-y-1 list-disc list-inside">
-                        {accountType === "PERSONAL" ? (
-                            <>
-                                <li>Create projects to organize your work</li>
-                                <li>Use the Kanban board or backlog view</li>
-                                <li>Track time on tasks for detailed reports</li>
-                            </>
-                        ) : (
-                            <>
-                                <li>Invite team members to collaborate</li>
-                                <li>Create workspaces for different teams</li>
-                                <li>Set up projects and assign tasks</li>
-                            </>
-                        )}
-                    </ul>
-                </div>
+        <div className="w-full text-center">
+            {/* Animated check icon */}
+            <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
+                className="mx-auto w-20 h-20 rounded-full bg-green-100 dark:bg-green-500/15 flex items-center justify-center mb-6"
+            >
+                <CheckCircle2 className="w-10 h-10 text-green-600 dark:text-green-400" />
+            </motion.div>
 
+            <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25, duration: 0.4 }}
+            >
+                <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground flex items-center justify-center gap-2">
+                    Congratulations!
+                </h1>
+                <p className="mt-3 text-muted-foreground text-sm">
+                    {getMessage()}
+                </p>
+            </motion.div>
+
+         
+
+            {/* CTA */}
+            <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.55, duration: 0.4 }}
+                className="mt-8"
+            >
                 <Button
-                    className="w-full"
-                    size="lg"
+                    className="w-full h-10 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white"
                     onClick={handleEnterApp}
                     disabled={isLoading}
                 >
                     {isLoading ? (
                         <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Loading...
+                            Redirecting...
                         </>
                     ) : (
                         <>
-                            Enter Fairlx
-                            <ArrowRight className="ml-2 h-4 w-4" />
+                            Go to your workspace
+                            <ArrowRight className="ml-2 h-5 w-5" />
                         </>
                     )}
                 </Button>
-            </CardContent>
-        </Card>
+            </motion.div>
+        </div>
     );
 }
