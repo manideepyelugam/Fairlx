@@ -8,7 +8,6 @@ import { z } from "zod";
 import { Building2, Loader2, AlertTriangle, Mail } from "lucide-react";
 import { toast } from "sonner";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -42,13 +41,6 @@ const ORGANIZATION_SIZES = [
     { value: "500+", label: "500+ employees" },
 ];
 
-/**
- * Organization Account: Organization Details Step
- * 
- * ENTERPRISE SECURITY: Blocks org creation if email is not verified.
- * Creates an organization with the user as OWNER.
- * Step advances only when organization creation succeeds.
- */
 export function OrgDetailsStep({
     onOrgCreated
 }: OrgDetailsStepProps) {
@@ -65,7 +57,6 @@ export function OrgDetailsStep({
         },
     });
 
-    // ENTERPRISE: Check email verification status
     const isEmailVerified = user?.emailVerification === true;
 
     const handleResendVerification = async () => {
@@ -93,7 +84,6 @@ export function OrgDetailsStep({
     };
 
     const onSubmit = async (values: OrganizationForm) => {
-        // ENTERPRISE: Double-check verification before submission
         if (!isEmailVerified) {
             toast.error("Please verify your email before creating an organization.");
             return;
@@ -102,7 +92,6 @@ export function OrgDetailsStep({
         setIsSubmitting(true);
 
         try {
-            // Create organization via API
             const formData = new FormData();
             formData.append("name", values.name);
 
@@ -123,7 +112,6 @@ export function OrgDetailsStep({
                 throw new Error("Organization created but ID not returned");
             }
 
-            // Update user prefs to mark org setup complete
             await fetch("/api/auth/update-prefs", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -136,12 +124,9 @@ export function OrgDetailsStep({
                 credentials: "include",
             });
 
-            // Invalidate cache
             await queryClient.invalidateQueries({ queryKey: ["current"] });
 
             toast.success("Organization created!");
-
-            // Advance step via callback
             onOrgCreated(organization.$id, values.name);
         } catch (error) {
             toast.error(error instanceof Error ? error.message : "Failed to create organization");
@@ -150,30 +135,32 @@ export function OrgDetailsStep({
         }
     };
 
-    // ENTERPRISE: Show verification required message if email not verified
+    // Email verification required
     if (!isEmailVerified) {
         return (
-            <Card className="w-full max-w-lg">
-                <CardHeader className="text-center">
-                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-900/20">
-                        <AlertTriangle className="h-7 w-7 text-yellow-600" />
-                    </div>
-                    <CardTitle className="text-2xl">Email Verification Required</CardTitle>
-                    <CardDescription>
-                        You must verify your email address before creating an organization.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
-                        <Mail className="h-5 w-5 text-muted-foreground" />
-                        <div className="flex-1">
-                            <p className="font-medium">{user?.email}</p>
-                            <p className="text-sm text-muted-foreground">Unverified</p>
+            <div className="w-full">
+                <div className="w-14 h-14 rounded-xl bg-yellow-100 dark:bg-yellow-500/15 flex items-center justify-center mb-6">
+                    <AlertTriangle className="w-7 h-7 text-yellow-600 dark:text-yellow-400" />
+                </div>
+
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                    Email verification required
+                </h1>
+                <p className="mt-2 text-muted-foreground text-sm sm:text-base">
+                    You must verify your email address before creating an organization.
+                </p>
+
+                <div className="mt-8 space-y-4">
+                    <div className="flex items-center gap-3 p-4 rounded-xl border border-border bg-muted/30">
+                        <Mail className="h-5 w-5 text-muted-foreground shrink-0" />
+                        <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{user?.email}</p>
+                            <p className="text-xs text-muted-foreground">Unverified</p>
                         </div>
                     </div>
 
                     <Button
-                        className="w-full"
+                        className="w-full h-12 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white"
                         onClick={handleResendVerification}
                         disabled={isResendingVerification}
                     >
@@ -193,23 +180,23 @@ export function OrgDetailsStep({
                     <p className="text-sm text-muted-foreground text-center">
                         After verifying your email, refresh this page to continue.
                     </p>
-                </CardContent>
-            </Card>
+                </div>
+            </div>
         );
     }
 
     return (
-        <Card className="w-full max-w-lg">
-            <CardHeader className="text-center">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-                    <Building2 className="h-7 w-7 text-primary" />
-                </div>
-                <CardTitle className="text-2xl">Set Up Your Organization</CardTitle>
-                <CardDescription>
-                    Create your organization to start collaborating with your team.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
+        <div className="w-full">
+        
+
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
+                Set up your organization
+            </h1>
+            <p className="mt-2 text-muted-foreground text-xs sm:text-sm">
+                Create your organization to start collaborating with your team.
+            </p>
+
+            <div className="mt-8">
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                         <FormField
@@ -217,12 +204,13 @@ export function OrgDetailsStep({
                             name="name"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Organization Name *</FormLabel>
+                                    <FormLabel className="text-xs font-medium">Organization Name *</FormLabel>
                                     <FormControl>
                                         <Input
                                             {...field}
                                             placeholder="Acme Corporation"
                                             disabled={isSubmitting}
+                                            className="h-10 text-xs"
                                         />
                                     </FormControl>
                                     <FormMessage />
@@ -235,14 +223,14 @@ export function OrgDetailsStep({
                             name="size"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Organization Size (optional)</FormLabel>
+                                    <FormLabel className="text-xs font-medium">Organization Size (optional)</FormLabel>
                                     <Select
                                         onValueChange={field.onChange}
                                         defaultValue={field.value}
                                         disabled={isSubmitting}
                                     >
                                         <FormControl>
-                                            <SelectTrigger>
+                                            <SelectTrigger className="h-10 text-xs">
                                                 <SelectValue placeholder="Select size" />
                                             </SelectTrigger>
                                         </FormControl>
@@ -261,8 +249,7 @@ export function OrgDetailsStep({
 
                         <Button
                             type="submit"
-                            className="w-full"
-                            size="lg"
+                            className="w-full h-10 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white"
                             disabled={isSubmitting}
                         >
                             {isSubmitting ? (
@@ -276,7 +263,7 @@ export function OrgDetailsStep({
                         </Button>
                     </form>
                 </Form>
-            </CardContent>
-        </Card>
+            </div>
+        </div>
     );
 }

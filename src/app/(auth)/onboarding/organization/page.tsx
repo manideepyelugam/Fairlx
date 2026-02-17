@@ -70,7 +70,7 @@ export default function OrganizationSetupPage() {
         // Redirect if already setup
         if (prefs.orgSetupComplete) {
             setIsRedirecting(true);
-            router.push("/onboarding/workspace");
+            router.push("/onboarding");
             return;
         }
     }, [isUserLoading, prefs.accountType, prefs.orgSetupComplete, router]);
@@ -120,8 +120,8 @@ export default function OrganizationSetupPage() {
                 description: "Your organization is ready.",
             });
 
-            // Redirect to workspace setup
-            router.push("/onboarding/workspace");
+            // Redirect to main onboarding flow
+            router.push("/onboarding");
         } catch (error) {
             toast.error(error instanceof Error ? error.message : "Failed to create organization");
         } finally {

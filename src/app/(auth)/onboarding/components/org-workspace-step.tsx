@@ -8,7 +8,6 @@ import { z } from "zod";
 import { Folder, Loader2, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -28,15 +27,6 @@ const workspaceSchema = z.object({
 
 type WorkspaceForm = z.infer<typeof workspaceSchema>;
 
-/**
- * Organization Account: Workspace Creation Step (Optional)
- * 
- * Creates a workspace with:
- * - ownerType: "ORG"
- * - ownerId: organizationId
- * 
- * User can skip this step (zero-workspace state is valid for orgs).
- */
 export function OrgWorkspaceStep({
     organizationName,
     onWorkspaceCreated,
@@ -57,7 +47,6 @@ export function OrgWorkspaceStep({
         setIsSubmitting(true);
 
         try {
-            // Create workspace via API
             const formData = new FormData();
             formData.append("name", values.name);
 
@@ -79,7 +68,6 @@ export function OrgWorkspaceStep({
                 throw new Error("Workspace created but ID not returned");
             }
 
-            // Update prefs to mark onboarding complete
             await fetch("/api/auth/update-prefs", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -91,12 +79,10 @@ export function OrgWorkspaceStep({
                 credentials: "include",
             });
 
-            // Invalidate cache
             await queryClient.invalidateQueries({ queryKey: ["current"] });
             await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
 
             toast.success("Workspace created!");
-
             onWorkspaceCreated(workspaceId);
         } catch (error) {
             toast.error(error instanceof Error ? error.message : "Failed to create workspace");
@@ -108,7 +94,6 @@ export function OrgWorkspaceStep({
     const handleSkip = async () => {
         setIsSubmitting(true);
         try {
-            // Update prefs to mark onboarding complete (no workspace)
             await fetch("/api/auth/update-prefs", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -121,10 +106,8 @@ export function OrgWorkspaceStep({
             });
 
             await queryClient.invalidateQueries({ queryKey: ["current"] });
-
             onSkip();
         } catch {
-            // Still continue even if prefs update fails
             onSkip();
         } finally {
             setIsSubmitting(false);
@@ -132,40 +115,34 @@ export function OrgWorkspaceStep({
     };
 
     return (
-        <Card className="w-full max-w-lg shadow-lg">
-            <CardHeader className="text-center">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/20">
-                    <Folder className="h-7 w-7 text-green-600" />
-                </div>
-                <div className="flex items-center justify-center gap-2">
-                    <CardTitle className="text-2xl">{organizationName} is Ready! 🎉</CardTitle>
-                </div>
-                <div className="flex justify-center mt-2">
-                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-muted text-muted-foreground">
-                        Optional Step
-                    </span>
-                </div>
-                <CardDescription className="mt-2">
-                    Create a workspace to organize your team&apos;s projects, or skip for now.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
+        <div className="w-full">
+            {/* Icon */}
+    
+  <span className="inline-block mb-3 ml-[-5px] text-[10px] font-medium px-2.5 py-1 rounded-full bg-muted text-muted-foreground">
+                Optional Step
+            </span>
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
+                {organizationName} is ready! 🎉
+            </h1>
+          
+            <p className="mt-2 text-muted-foreground text-xs sm:text-sm">
+                Create a workspace to organize your team&apos;s projects, or skip for now.
+            </p>
+
+            <div className="mt-8">
                 {!showForm ? (
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         <Button
-                            className="w-full"
-                            size="lg"
+                            className="w-full h-10 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white"
                             onClick={() => setShowForm(true)}
                             disabled={isSubmitting}
                         >
-                            <Folder className="mr-2 h-4 w-4" />
                             Create Workspace
                         </Button>
 
                         <Button
                             variant="ghost"
-                            className="w-full"
-                            size="lg"
+                            className="w-full h-10 text-xs"
                             onClick={handleSkip}
                             disabled={isSubmitting}
                         >
@@ -187,12 +164,13 @@ export function OrgWorkspaceStep({
                                 name="name"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Workspace Name</FormLabel>
+                                        <FormLabel className="text-sm font-medium">Workspace Name</FormLabel>
                                         <FormControl>
                                             <Input
                                                 {...field}
                                                 placeholder="Engineering, Marketing, etc."
                                                 disabled={isSubmitting}
+                                                className="h-12 text-base"
                                             />
                                         </FormControl>
                                         <FormMessage />
@@ -204,7 +182,7 @@ export function OrgWorkspaceStep({
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    className="flex-1"
+                                    className="flex-1 h-12"
                                     onClick={() => setShowForm(false)}
                                     disabled={isSubmitting}
                                 >
@@ -212,7 +190,7 @@ export function OrgWorkspaceStep({
                                 </Button>
                                 <Button
                                     type="submit"
-                                    className="flex-1"
+                                    className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white"
                                     disabled={isSubmitting}
                                 >
                                     {isSubmitting ? (
@@ -228,7 +206,7 @@ export function OrgWorkspaceStep({
                         </form>
                     </Form>
                 )}
-            </CardContent>
-        </Card>
+            </div>
+        </div>
     );
 }
