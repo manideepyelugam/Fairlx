@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -55,16 +56,32 @@ import { useUpdateOrgMemberRole } from "@/features/organizations/api/use-update-
 import { useRemoveOrgMember } from "@/features/organizations/api/use-remove-org-member";
 import { useDeleteOrganization } from "@/features/organizations/api/use-delete-organization";
 import { useCurrentOrgMember } from "@/features/organizations/api/use-current-org-member";
-import { OrganizationRole } from "@/features/organizations/types";
-import { OrganizationBillingSettings } from "@/features/organizations/components/organization-billing-settings";
-import { OrganizationAuditLogs } from "@/features/organizations/components/organization-audit-logs";
 import { useCreateOrgMember } from "@/features/organizations/api/use-create-org-member";
 import { useResendWelcomeEmail } from "@/features/organizations/api/use-resend-welcome-email";
-import { BulkMemberUpload } from "@/features/organizations/components/bulk-member-upload";
-import { DepartmentsList } from "@/features/departments/components/departments-list";
-import { OrganizationRewards } from "@/features/organizations/components/organization-rewards";
+import { OrganizationRole } from "@/features/organizations/types";
 import { useCurrentUserOrgPermissions } from "@/features/org-permissions/api/use-current-user-permissions";
 import { OrgPermissionKey } from "@/features/org-permissions/types";
+
+// Dynamically import heavy components
+const OrganizationBillingSettings = dynamic(() => import("@/features/organizations/components/organization-billing-settings").then(mod => mod.OrganizationBillingSettings), {
+    loading: () => <Skeleton className="h-[400px] w-full" />,
+});
+
+const OrganizationAuditLogs = dynamic(() => import("@/features/organizations/components/organization-audit-logs").then(mod => mod.OrganizationAuditLogs), {
+    loading: () => <Skeleton className="h-[400px] w-full" />,
+});
+
+const BulkMemberUpload = dynamic(() => import("@/features/organizations/components/bulk-member-upload").then(mod => mod.BulkMemberUpload), {
+    loading: () => <Skeleton className="h-9 w-24" />,
+});
+
+const DepartmentsList = dynamic(() => import("@/features/departments/components/departments-list").then(mod => mod.DepartmentsList), {
+    loading: () => <Skeleton className="h-[400px] w-full" />,
+});
+
+const OrganizationRewards = dynamic(() => import("@/features/organizations/components/organization-rewards").then(mod => mod.OrganizationRewards), {
+    loading: () => <Skeleton className="h-[400px] w-full" />,
+});
 
 
 export const OrganizationSettingsClient = () => {
@@ -532,7 +549,9 @@ export const OrganizationSettingsClient = () => {
                                 </div>
                                 {canManageMembers && primaryOrganizationId && (
                                     <div className="flex items-center gap-2">
-                                        <BulkMemberUpload organizationId={primaryOrganizationId} />
+                                        <Suspense fallback={<Skeleton className="h-9 w-24" />}>
+                                            <BulkMemberUpload organizationId={primaryOrganizationId} />
+                                        </Suspense>
                                         <Dialog open={addMemberOpen} onOpenChange={setAddMemberOpen}>
                                             <DialogTrigger asChild>
                                                 <Button size="sm" className="gap-1.5">
@@ -893,34 +912,36 @@ export const OrganizationSettingsClient = () => {
 
                 {/* ==================== BILLING TAB ==================== */}
                 <TabsContent value="billing" className="space-y-4 mt-6">
-                    <OrganizationBillingSettings
-                        organizationId={primaryOrganizationId || ""}
-                        organizationName={organization?.name || "Organization"}
-                    />
+                    <Suspense fallback={<Skeleton className="h-[400px] w-full" />}>
+                        <OrganizationBillingSettings
+                            organizationId={primaryOrganizationId || ""}
+                            organizationName={organization?.name || ""}
+                        />
+                    </Suspense>
                 </TabsContent>
 
                 {/* ==================== AUDIT TAB (OWNER ONLY) ==================== */}
                 <TabsContent value="audit" className="space-y-4 mt-6">
-                    {primaryOrganizationId && (
-                        <OrganizationAuditLogs organizationId={primaryOrganizationId} />
-                    )}
+                    <Suspense fallback={<Skeleton className="h-[400px] w-full" />}>
+                        <OrganizationAuditLogs organizationId={primaryOrganizationId || ""} />
+                    </Suspense>
                 </TabsContent>
 
                 {/* ==================== DEPARTMENTS TAB ==================== */}
                 <TabsContent value="departments" className="space-y-4 mt-6">
-                    {primaryOrganizationId && (
+                    <Suspense fallback={<Skeleton className="h-[400px] w-full" />}>
                         <DepartmentsList
-                            orgId={primaryOrganizationId}
+                            orgId={primaryOrganizationId || ""}
                             canManage={canManageDepartments}
                         />
-                    )}
+                    </Suspense>
                 </TabsContent>
 
                 {/* ==================== REWARDS TAB ==================== */}
                 <TabsContent value="rewards" className="space-y-4 mt-6">
-                    {primaryOrganizationId && (
-                        <OrganizationRewards organizationId={primaryOrganizationId} />
-                    )}
+                    <Suspense fallback={<Skeleton className="h-[400px] w-full" />}>
+                        <OrganizationRewards organizationId={primaryOrganizationId || ""} />
+                    </Suspense>
                 </TabsContent>
 
 

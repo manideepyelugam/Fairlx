@@ -13,7 +13,13 @@ import { ProjectPermissionKey } from "@/lib/permissions/types";
 import { useGetProject } from "@/features/projects/api/use-get-project";
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
-import { TaskViewSwitcher } from "@/features/tasks/components/task-view-switcher";
+import dynamic from "next/dynamic";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const TaskViewSwitcher = dynamic(() => import("@/features/tasks/components/task-view-switcher").then(mod => mod.TaskViewSwitcher), {
+  ssr: false,
+  loading: () => <Skeleton className="h-[400px] w-full" />
+});
 
 export const ProjectIdClient = () => {
   const projectId = useProjectId();
