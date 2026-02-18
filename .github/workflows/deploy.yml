@@ -161,6 +161,8 @@ jobs:
           username: deployer
           key: ${{ secrets.DO_SSH_PRIVATE_KEY }}
           port: 22
+          timeout: 30m
+          command_timeout: 30m
           script: |
             # Navigate to app directory
             cd /var/www/fairlx
