@@ -25,7 +25,7 @@ const app = new Hono()
             const { code, organizationId } = c.req.valid("json");
 
             try {
-                const result = await redeemCoupon(user.$id, { code, organizationId });
+                const result = await redeemCoupon(user.$id, user.name, { code, organizationId });
 
                 return c.json(result, 200);
             } catch (error) {

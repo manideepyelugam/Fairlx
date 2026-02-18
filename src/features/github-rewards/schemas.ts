@@ -20,6 +20,7 @@ export const redeemCouponSchema = z.object({
             (v) => /^FAIRLX-[A-Z0-9]{6,10}$/.test(v),
             "Invalid coupon code format. Expected: FAIRLX-XXXXXXXX"
         ),
+    workspaceId: z.string().optional(),
     organizationId: z.string().optional(),
 });
 

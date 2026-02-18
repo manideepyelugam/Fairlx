@@ -69,7 +69,8 @@ const MAX_FAILED_ATTEMPTS_PER_HOUR = 5;
  */
 export async function redeemCoupon(
     userId: string,
-    input: { code: string; organizationId?: string }
+    userName: string,
+    input: { code: string; workspaceId?: string; organizationId?: string }
 ): Promise<RedeemCouponResponse> {
     // ------------------------------------------------------------------
     // 1. VALIDATE INPUT
@@ -82,12 +83,19 @@ export async function redeemCoupon(
     }
 
     const { code } = parsed.data;
-    const organizationId = input.organizationId;
-    const { databases } = await createAdminClient();
+    const { databases, users } = await createAdminClient();
 
-    // Resolve wallet identity: org wallet or personal wallet
-    const walletOptions = organizationId
-        ? { organizationId }
+    // Get user preferences to determine account type and primary organization
+    const userDoc = await users.get(userId);
+    const userPrefs = (userDoc.prefs || {}) as { accountType?: string; primaryOrganizationId?: string };
+    const isOrgAccount = userPrefs.accountType === "ORG";
+    const primaryOrganizationId = userPrefs.primaryOrganizationId;
+
+    // Resolve wallet identity: 
+    // - If it's an ORG account, we use the primaryOrganizationId or the workspace's organizationId
+    // - If it's a PERSONAL account, we always use the userId (personal wallet)
+    const walletOptions = isOrgAccount && primaryOrganizationId
+        ? { organizationId: primaryOrganizationId }
         : { userId };
 
     // ------------------------------------------------------------------
@@ -241,7 +249,9 @@ export async function redeemCoupon(
         // ------------------------------------------------------------------
         await createRewardNotification(databases, {
             userId,
+            userName,
             creditAmount: freshCoupon.credit_amount,
+            workspaceId: input.workspaceId || input.organizationId || "system",
         });
 
         // ------------------------------------------------------------------

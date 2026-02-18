@@ -84,9 +84,9 @@ export const Tools = () => {
     // Use department-based permissions for org admin checks
     if (tool.orgAdminOnly && !canViewAudit) return false;
 
-    // For org accounts: Hide Admin Panel and Billing from sidebar
+    // For org accounts: Hide Admin Panel, Billing, and Rewards from sidebar
     // These are now accessible on the Organization settings page
-    if (hasOrg && (tool.label === "Admin Panel" || tool.label === "Billing")) {
+    if (hasOrg && (tool.label === "Admin Panel" || tool.label === "Billing" || tool.label === "Rewards")) {
       return false;
     }
     return true;

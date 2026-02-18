@@ -42,6 +42,7 @@ export enum WorkitemEventType {
     PROJECT_UPDATED = "PROJECT_UPDATED",
     PROJECT_MEMBER_ADDED = "PROJECT_MEMBER_ADDED",
     PROJECT_MEMBER_REMOVED = "PROJECT_MEMBER_REMOVED",
+    GITHUB_REWARD_REDEEMED = "GITHUB_REWARD_REDEEMED",
 }
 
 // =============================================================================

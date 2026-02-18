@@ -1,19 +1,52 @@
 "use client";
 
-import { Gift, Star, ExternalLink } from "lucide-react";
+import { useRouter, useParams } from "next/navigation";
+import { Gift, Star, ExternalLink, Building2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { RedeemCouponCard } from "@/features/github-rewards/components/RedeemCouponCard";
+
 import { useAccountType } from "@/features/organizations/hooks/use-account-type";
 
 export const RewardsPageClient = () => {
+    const router = useRouter();
+    const params = useParams();
+    const workspaceId = params.workspaceId as string;
     const { isOrg, primaryOrganizationId } = useAccountType();
+
+    if (isOrg) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 p-8">
+                <div className="p-4 rounded-full bg-orange-100 dark:bg-orange-950/20">
+                    <Gift className="size-12 text-orange-600" />
+                </div>
+                <div className="text-center space-y-2">
+                    <h2 className="text-xl font-semibold">Organization Rewards</h2>
+                    <p className="text-muted-foreground text-sm max-w-md">
+                        For organization accounts, rewards are managed at the organization level.
+                        Redeem coupons to credit your organization's shared wallet.
+                    </p>
+                </div>
+                <Button
+                    size="lg"
+                    className="gap-2 bg-orange-600 hover:bg-orange-700 text-white"
+                    onClick={() => router.push("/organization#rewards")}
+                >
+                    <Building2 className="size-4" />
+                    Go to Organization Rewards
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                    You can also find this under <b>Organization Settings &gt; Rewards</b>
+                </p>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col gap-6 p-6 max-w-3xl">
-            {/* Header */}
+            {/* Header ... */}
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold">Rewards</h1>
@@ -29,9 +62,12 @@ export const RewardsPageClient = () => {
             <Separator />
 
             {/* Redeem Coupon Card */}
-            <RedeemCouponCard organizationId={isOrg ? primaryOrganizationId : undefined} />
+            <RedeemCouponCard
+                workspaceId={workspaceId}
+                organizationId={undefined} // Personal account uses personal wallet (no orgId)
+            />
 
-            {/* How to Get a Coupon */}
+            {/* How to Get a Coupon ... rest of the content */}
             <Card>
                 <CardHeader>
                     <CardTitle className="text-base flex items-center gap-2">

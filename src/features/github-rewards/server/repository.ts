@@ -218,39 +218,32 @@ export async function isUserSuspended(
 // NOTIFICATION (APPWRITE — MAIN DB)
 // ============================================================================
 
+import { createRewardRedeemedEvent } from "@/lib/notifications/events";
+import { dispatchWorkitemEvent } from "@/lib/notifications/dispatcher";
+
 /**
  * Create a notification for the user about the reward credit.
  */
 export async function createRewardNotification(
-    databases: Databases,
+    _databases: Databases,
     params: {
         userId: string;
+        userName: string;
         creditAmount: number;
         workspaceId?: string;
     }
 ): Promise<void> {
     try {
-        await databases.createDocument(
-            DATABASE_ID,
-            NOTIFICATIONS_ID,
-            ID.unique(),
-            {
-                userId: params.userId,
-                type: "task_assigned", // reuse existing type since NotificationType is task-centric
-                title: "GitHub Star Reward Credited",
-                message: `$${params.creditAmount.toFixed(2)} has been credited to your wallet from GitHub Star Reward.`,
-                read: false,
-                taskId: "system", // system notification
-                workspaceId: params.workspaceId || "system",
-                triggeredBy: "system",
-                metadata: JSON.stringify({
-                    source: "GITHUB_STAR_REWARD",
-                    creditAmount: params.creditAmount,
-                }),
-            }
+        const event = createRewardRedeemedEvent(
+            params.userId,
+            params.userName,
+            params.creditAmount,
+            params.workspaceId
         );
+
+        await dispatchWorkitemEvent(event);
     } catch (error) {
         // Notification failure should not break the redemption flow
-        console.error("[github-rewards] Failed to create notification:", error);
+        console.error("[github-rewards] Failed to dispatch notification:", error);
     }
 }
