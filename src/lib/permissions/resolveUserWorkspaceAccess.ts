@@ -94,6 +94,8 @@ export async function resolveUserWorkspaceAccess(
         const organizationId = workspace.organizationId || null;
         const isPersonal = !organizationId;
 
+        // console.warn(`[resolveUserWorkspaceAccess] Debug: workspaceId=${workspaceId}, userId=${userId}, isPersonal=${isPersonal}, organizationId=${organizationId}`);
+
         // 2. Check Direct Membership
         const directMembers = await databases.listDocuments(
             DATABASE_ID,
@@ -104,10 +106,17 @@ export async function resolveUserWorkspaceAccess(
             ]
         );
 
+        // console.warn(`[resolveUserWorkspaceAccess] Debug: directMembers found=${directMembers.total}`);
+
         const rawMember = directMembers.total > 0 ? directMembers.documents[0] : null;
 
         // Soft-delete check: A DELETED member is effectively no member
         const directMember = (rawMember && rawMember.status !== "DELETED") ? rawMember : null;
+
+        if (rawMember && !directMember) {
+            // console.warn(`[resolveUserWorkspaceAccess] Debug: Member found but has status ${rawMember.status}`);
+        }
+
         const directRole = directMember ? (directMember.role as WorkspaceRole) : null;
 
         // 3. Resolve Org Access (if applicable)
@@ -122,6 +131,7 @@ export async function resolveUserWorkspaceAccess(
             hasDepartmentAccess = hasAnyOrgAccess(orgAccess);
             orgMemberId = orgAccess.orgMemberId;
             orgRole = orgAccess.role;
+            // console.warn(`[resolveUserWorkspaceAccess] Debug Org: isOrgOwner=${isOrgOwner}, hasDeptAccess=${hasDepartmentAccess}`);
         }
 
         // ============================================================

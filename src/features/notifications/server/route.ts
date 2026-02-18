@@ -138,6 +138,7 @@ const app = new Hono()
     });
 
     if (!member) {
+      console.warn(`[NotificationsAPI:UnreadCount] 401 Unauthorized: User ${user.$id} not in workspace ${workspaceId}`);
       return c.json({ error: "Unauthorized" }, 401);
     }
 

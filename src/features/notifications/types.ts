@@ -13,6 +13,7 @@ export enum NotificationType {
   TASK_REPLY = "task_reply",
   TASK_ATTACHMENT_ADDED = "task_attachment_added",
   TASK_ATTACHMENT_DELETED = "task_attachment_deleted",
+  REWARD_CREDITED = "reward_credited",
 }
 
 export type Notification = Models.Document & {

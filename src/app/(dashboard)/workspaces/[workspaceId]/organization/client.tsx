@@ -7,7 +7,8 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import {
     Building2, Users, Settings2, Shield, Trash2, Crown,
-    CreditCard, AlertTriangle, FileText, Loader2, Clock, Hash, UserPlus, Mail, BarChart3, ImageIcon
+    CreditCard, AlertTriangle, FileText, Loader2, Clock, Hash, UserPlus, Mail, BarChart3, ImageIcon,
+    Gift
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -61,6 +62,7 @@ import { useCreateOrgMember } from "@/features/organizations/api/use-create-org-
 import { useResendWelcomeEmail } from "@/features/organizations/api/use-resend-welcome-email";
 import { BulkMemberUpload } from "@/features/organizations/components/bulk-member-upload";
 import { DepartmentsList } from "@/features/departments/components/departments-list";
+import { OrganizationRewards } from "@/features/organizations/components/organization-rewards";
 import { useCurrentUserOrgPermissions } from "@/features/org-permissions/api/use-current-user-permissions";
 import { OrgPermissionKey } from "@/features/org-permissions/types";
 
@@ -368,6 +370,13 @@ export const OrganizationSettingsClient = () => {
                             Audit
                         </TabsTrigger>
                     )}
+                    <TabsTrigger
+                        value="rewards"
+                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5"
+                    >
+                        <Gift className="size-4 mr-2" />
+                        Rewards
+                    </TabsTrigger>
                 </TabsList>
 
                 {/* ==================== GENERAL TAB ==================== */}
@@ -904,6 +913,13 @@ export const OrganizationSettingsClient = () => {
                             orgId={primaryOrganizationId}
                             canManage={canManageDepartments}
                         />
+                    )}
+                </TabsContent>
+
+                {/* ==================== REWARDS TAB ==================== */}
+                <TabsContent value="rewards" className="space-y-4 mt-6">
+                    {primaryOrganizationId && (
+                        <OrganizationRewards organizationId={primaryOrganizationId} />
                     )}
                 </TabsContent>
 

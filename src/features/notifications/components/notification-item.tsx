@@ -15,6 +15,7 @@ import {
   FileText,
   Bell,
   X,
+  Gift,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -89,6 +90,11 @@ const getTypeConfig = (type: NotificationType) => {
       accent: "text-slate-500",
       bg: "bg-slate-50 dark:bg-slate-800/40",
     },
+    [NotificationType.REWARD_CREDITED]: {
+      icon: Gift,
+      accent: "text-orange-500",
+      bg: "bg-orange-50 dark:bg-orange-950/40",
+    },
   };
 
   return configs[type] || {
@@ -155,9 +161,11 @@ export const NotificationItem = ({
     }
   };
 
-  const taskLink = notification.taskId
-    ? `/workspaces/${workspaceId}/tasks/${notification.taskId}`
-    : "#";
+  const taskLink = notification.type === NotificationType.REWARD_CREDITED
+    ? `/workspaces/${workspaceId}/rewards`
+    : (notification.taskId && notification.taskId !== "reward-event")
+      ? `/workspaces/${workspaceId}/tasks/${notification.taskId}`
+      : "#";
 
   const timeAgo = formatDistanceToNow(new Date(notification.$createdAt), { addSuffix: true });
   const userName = notification.triggeredByUser?.name || "Someone";

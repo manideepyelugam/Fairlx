@@ -57,6 +57,7 @@ export class EmailChannelHandler implements ChannelHandler {
             const body = this.buildEmailBody(payload, projectName);
 
             // Send via Appwrite Messaging
+            console.log(`[EmailChannel] Sending email to user: ${userId} (${user.email}), Subject: ${subject}`);
             await messaging.createEmail(
                 ID.unique(),
                 subject,
@@ -71,8 +72,9 @@ export class EmailChannelHandler implements ChannelHandler {
                 true // HTML content
             );
 
-            // console.log(`[EmailChannel] Email sent to user: ${userId} (${user.email})`);
+            console.log(`[EmailChannel] Email sent successfully to user: ${userId}`);
         } catch (error) {
+            console.error(`[EmailChannel] Failed to send email to user: ${userId}:`, error);
             throw error;
         }
     }
@@ -104,6 +106,8 @@ export class EmailChannelHandler implements ChannelHandler {
                 return `@mention: ${payload.triggeredByName} mentioned you`;
             case WorkitemEventType.WORKITEM_REPLY:
                 return `↩️ ${payload.triggeredByName} replied to your comment`;
+            case WorkitemEventType.GITHUB_REWARD_REDEEMED:
+                return `🎁 Gift Credited: ${payload.title}`;
             default:
                 return `Fairlx: ${payload.title}`;
         }
@@ -204,13 +208,18 @@ export class EmailChannelHandler implements ChannelHandler {
                 `<p style="margin: 0; font-size: ${typography.sizes.small}; color: ${colors.bodyText}; line-height: ${typography.lineHeight.relaxed}; font-family: ${typography.fontStack}; font-style: italic;">
           "${commentText}"
         </p>`,
-                type === WorkitemEventType.WORKITEM_MENTION ? colors.info : 
-                type === WorkitemEventType.WORKITEM_REPLY ? "#0ea5e9" : colors.success
+                type === WorkitemEventType.WORKITEM_MENTION ? colors.info :
+                    type === WorkitemEventType.WORKITEM_REPLY ? "#0ea5e9" : colors.success
             );
         }
 
         // CTA Button
-        content += createPrimaryButton("View Task →", deepLinkUrl);
+        const buttonLabel = type === WorkitemEventType.GITHUB_REWARD_REDEEMED ? "View Wallet →" : "View Task →";
+        const buttonUrl = type === WorkitemEventType.GITHUB_REWARD_REDEEMED
+            ? `${process.env.NEXT_PUBLIC_APP_URL}/workspaces/${payload.workspaceId}/rewards`
+            : deepLinkUrl;
+
+        content += createPrimaryButton(buttonLabel, buttonUrl);
 
         // Triggered by
         content += `
@@ -288,6 +297,13 @@ export class EmailChannelHandler implements ChannelHandler {
                     label: "Reply to Your Comment",
                     bgColor: "#f0f9ff",
                     textColor: "#0369a1",
+                };
+            case WorkitemEventType.GITHUB_REWARD_REDEEMED:
+                return {
+                    emoji: "🎁",
+                    label: "Reward Credited",
+                    bgColor: "#fef3c7",
+                    textColor: "#92400e",
                 };
             default:
                 return {

@@ -198,6 +198,11 @@ class NotificationDispatcher {
             recipients.add(event.metadata.parentCommentAuthorId as string);
         }
 
+        // 6. Add target user for rewards
+        if (event.type === WorkitemEventType.GITHUB_REWARD_REDEEMED && event.metadata?.userId) {
+            recipients.add(event.metadata.userId as string);
+        }
+
         return Array.from(recipients);
     }
 
@@ -255,6 +260,9 @@ class NotificationDispatcher {
      */
     private buildPayload(event: WorkitemEvent): NotificationPayload {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
+        const deepLinkUrl = event.type === WorkitemEventType.GITHUB_REWARD_REDEEMED
+            ? `${appUrl}/workspaces/${event.workspaceId}/rewards`
+            : `${appUrl}/workspaces/${event.workspaceId}/tasks/${event.workitemId}`;
 
         return {
             id: ID.unique(),
@@ -267,7 +275,7 @@ class NotificationDispatcher {
             triggeredBy: event.triggeredBy,
             triggeredByName: event.triggeredByName,
             timestamp: new Date().toISOString(),
-            deepLinkUrl: `${appUrl}/workspaces/${event.workspaceId}/tasks/${event.workitemId}`,
+            deepLinkUrl: deepLinkUrl,
             projectId: event.workitem.projectId,
             metadata: event.metadata,
         };
@@ -286,7 +294,7 @@ class NotificationDispatcher {
             const { databases } = await createAdminClient();
 
             // Map event type to supported database notification types
-            const supportedTypes = ["task_assigned", "task_updated", "task_completed", "task_deleted", "task_comment", "task_mention", "task_reply"];
+            const supportedTypes = ["task_assigned", "task_updated", "task_completed", "task_deleted", "task_comment", "task_mention", "task_reply", "reward_credited"];
             const dbType = this.mapEventTypeToDbType(event.type);
             const finalType = supportedTypes.includes(dbType) ? dbType : "task_updated";
 
@@ -335,6 +343,8 @@ class NotificationDispatcher {
                 return "task_mention";
             case WorkitemEventType.WORKITEM_REPLY:
                 return "task_reply";
+            case WorkitemEventType.GITHUB_REWARD_REDEEMED:
+                return "reward_credited";
             default:
                 return "task_updated";
         }

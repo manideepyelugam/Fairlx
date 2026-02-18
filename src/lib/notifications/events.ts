@@ -352,6 +352,34 @@ export function createAttachmentDeletedEvent(
     });
 }
 
+export function createRewardRedeemedEvent(
+    userId: string,
+    userName: string,
+    creditAmount: number,
+    workspaceId: string = "system"
+): WorkitemEvent {
+    const mockTask = {
+        $id: "reward-event",
+        workspaceId,
+        projectId: "system",
+        title: "GitHub Star Reward",
+        name: "GitHub Star Reward",
+    } as Task;
+
+    return createWorkitemEvent({
+        type: WorkitemEventType.GITHUB_REWARD_REDEEMED,
+        workitem: mockTask,
+        triggeredBy: "system",
+        triggeredByName: "Fairlx System",
+        metadata: {
+            userId,
+            userName,
+            creditAmount,
+            source: "GITHUB_STAR_REWARD",
+        },
+    });
+}
+
 // =============================================================================
 // NOTIFICATION TITLE/MESSAGE GENERATORS
 // =============================================================================
@@ -390,6 +418,8 @@ export function getNotificationTitle(event: WorkitemEvent): string {
             return "Attachment Removed";
         case WorkitemEventType.WORKITEM_UPDATED:
             return "Task Updated";
+        case WorkitemEventType.GITHUB_REWARD_REDEEMED:
+            return "GitHub Star Reward Credited";
         default:
             return "Notification";
     }
@@ -428,6 +458,8 @@ export function getNotificationSummary(event: WorkitemEvent): string {
             return `${byName} added an attachment to "${taskName}"`;
         case WorkitemEventType.WORKITEM_ATTACHMENT_DELETED:
             return `${byName} removed an attachment from "${taskName}"`;
+        case WorkitemEventType.GITHUB_REWARD_REDEEMED:
+            return `$${Number(event.metadata?.creditAmount || 0).toFixed(2)} has been credited to your wallet from GitHub Star Reward.`;
         default:
             return `${byName} updated "${taskName}"`;
     }

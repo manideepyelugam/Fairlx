@@ -16,10 +16,11 @@ interface RedemptionResult {
 }
 
 interface RedeemCouponCardProps {
+    workspaceId: string;
     organizationId?: string;
 }
 
-export const RedeemCouponCard = ({ organizationId }: RedeemCouponCardProps) => {
+export const RedeemCouponCard = ({ workspaceId, organizationId }: RedeemCouponCardProps) => {
     const [code, setCode] = useState("");
     const [state, setState] = useState<RedemptionState>("idle");
     const [result, setResult] = useState<RedemptionResult | null>(null);
@@ -35,7 +36,7 @@ export const RedeemCouponCard = ({ organizationId }: RedeemCouponCardProps) => {
         setErrorMessage("");
 
         mutate(
-            { json: { code: trimmed, organizationId } },
+            { json: { code: trimmed, workspaceId, organizationId } },
             {
                 onSuccess: (data) => {
                     if ("creditedAmount" in data) {
