@@ -1,20 +1,24 @@
 'use client';
 import { usePathname } from "next/navigation";
-import { CreateProjectModal } from "@/features/projects/components/create-project-modal";
-import { CreateWorkspaceModal } from "@/features/workspaces/components/create-workspace-modal";
-import { CreateWorkItemModal } from "@/features/sprints/components/create-work-item-modal";
-import { CreateCustomColumnModalWrapper } from "@/features/custom-columns/components/create-custom-column-modal-wrapper";
-import { ManageColumnsModalWrapper } from "@/features/custom-columns/components/manage-columns-modal-wrapper";
-import { CreateProgramModal } from "@/features/programs/components/create-program-modal";
-import { EditProgramModal } from "@/features/programs/components/edit-program-modal";
-import { ProjectAIChatWrapper } from "@/features/project-docs/components";
-import { CreateSpaceModal } from "@/features/spaces/components";
-import { CreateWorkflowModal } from "@/features/workflows/components/create-workflow-modal";
-import { CreateLinkModal } from "@/features/work-item-links/components/create-link-modal";
-import { CreateTaskModal } from "@/features/tasks/components/create-task-modal";
-import { EditTaskModal } from "@/features/tasks/components/edit-task-modal";
-import { TaskDetailsModalWrapper } from "@/features/tasks/components/task-details-modal-wrapper";
-import { TaskPreviewModalWrapper } from "@/features/tasks/components/task-preview-modal";
+import { Suspense } from "react";
+import dynamic from "next/dynamic";
+
+// Dynamically import all modals to keep the main bundle light
+const CreateProjectModal = dynamic(() => import("@/features/projects/components/create-project-modal").then(mod => mod.CreateProjectModal), { ssr: false });
+const CreateWorkspaceModal = dynamic(() => import("@/features/workspaces/components/create-workspace-modal").then(mod => mod.CreateWorkspaceModal), { ssr: false });
+const CreateWorkItemModal = dynamic(() => import("@/features/sprints/components/create-work-item-modal").then(mod => mod.CreateWorkItemModal), { ssr: false });
+const CreateCustomColumnModalWrapper = dynamic(() => import("@/features/custom-columns/components/create-custom-column-modal-wrapper").then(mod => mod.CreateCustomColumnModalWrapper), { ssr: false });
+const ManageColumnsModalWrapper = dynamic(() => import("@/features/custom-columns/components/manage-columns-modal-wrapper").then(mod => mod.ManageColumnsModalWrapper), { ssr: false });
+const CreateProgramModal = dynamic(() => import("@/features/programs/components/create-program-modal").then(mod => mod.CreateProgramModal), { ssr: false });
+const EditProgramModal = dynamic(() => import("@/features/programs/components/edit-program-modal").then(mod => mod.EditProgramModal), { ssr: false });
+const ProjectAIChatWrapper = dynamic(() => import("@/features/project-docs/components").then(mod => mod.ProjectAIChatWrapper), { ssr: false });
+const CreateSpaceModal = dynamic(() => import("@/features/spaces/components").then(mod => mod.CreateSpaceModal), { ssr: false });
+const CreateWorkflowModal = dynamic(() => import("@/features/workflows/components/create-workflow-modal").then(mod => mod.CreateWorkflowModal), { ssr: false });
+const CreateLinkModal = dynamic(() => import("@/features/work-item-links/components/create-link-modal").then(mod => mod.CreateLinkModal), { ssr: false });
+const CreateTaskModal = dynamic(() => import("@/features/tasks/components/create-task-modal").then(mod => mod.CreateTaskModal), { ssr: false });
+const EditTaskModal = dynamic(() => import("@/features/tasks/components/edit-task-modal").then(mod => mod.EditTaskModal), { ssr: false });
+const TaskDetailsModalWrapper = dynamic(() => import("@/features/tasks/components/task-details-modal-wrapper").then(mod => mod.TaskDetailsModalWrapper), { ssr: false });
+const TaskPreviewModalWrapper = dynamic(() => import("@/features/tasks/components/task-preview-modal").then(mod => mod.TaskPreviewModalWrapper), { ssr: false });
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 
 import { Navbar } from "@/components/navbar";
@@ -45,24 +49,26 @@ const DashboardContent = ({ children }: DashboardLayoutProps) => {
 
   return (
     <div className={`min-h-screen ${isMainDashboard ? 'bg-background' : ''}`}>
-      <CreateWorkspaceModal />
-      <CreateProjectModal />
-      <CreateWorkItemModal />
-      <CreateTaskModal />
-      <EditTaskModal />
-      <TaskDetailsModalWrapper />
-      <TaskPreviewModalWrapper />
-      <CreateCustomColumnModalWrapper />
-      <ManageColumnsModalWrapper />
-      <CreateProgramModal />
-      <EditProgramModal />
-      {workspaceId && (
-        <>
-          <CreateSpaceModal />
-          <CreateWorkflowModal workspaceId={workspaceId} />
-          <CreateLinkModal workspaceId={workspaceId} />
-        </>
-      )}
+      <Suspense fallback={null}>
+        <CreateWorkspaceModal />
+        <CreateProjectModal />
+        <CreateWorkItemModal />
+        <CreateTaskModal />
+        <EditTaskModal />
+        <TaskDetailsModalWrapper />
+        <TaskPreviewModalWrapper />
+        <CreateCustomColumnModalWrapper />
+        <ManageColumnsModalWrapper />
+        <CreateProgramModal />
+        <EditProgramModal />
+        {workspaceId && (
+          <>
+            <CreateSpaceModal />
+            <CreateWorkflowModal workspaceId={workspaceId} />
+            <CreateLinkModal workspaceId={workspaceId} />
+          </>
+        )}
+      </Suspense>
 
       <div className="flex w-full h-screen">
         <div className="fixed left-0 top-0 hidden lg:block lg:w-[264px] h-full overflow-y-auto">
@@ -84,7 +90,9 @@ const DashboardContent = ({ children }: DashboardLayoutProps) => {
       </div>
 
       {/* Project AI Chat - floating button, only shows on project pages */}
-      <ProjectAIChatWrapper />
+      <Suspense fallback={null}>
+        <ProjectAIChatWrapper />
+      </Suspense>
     </div>
   );
 };

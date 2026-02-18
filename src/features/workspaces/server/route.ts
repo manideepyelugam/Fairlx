@@ -1,5 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import { endOfMonth, startOfMonth, subMonths } from "date-fns";
+import { endOfMonth, startOfMonth, subMonths, format } from "date-fns";
 import { Hono } from "hono";
 import { ID, Query } from "node-appwrite";
 import { z } from "zod";
@@ -516,138 +516,135 @@ const app = new Hono()
 
     const now = new Date();
     const thisMonthStart = startOfMonth(now);
-    const thisMonthEnd = endOfMonth(now);
     const lastMonthStart = startOfMonth(subMonths(now, 1));
-    const lastMonthEnd = endOfMonth(subMonths(now, 1));
 
-    const thisMonthTasks = await databases.listDocuments(
+    // Fetch ALL tasks for the workspace to perform rich aggregations
+    // Doing this on the server is much faster and avoids massive network transfer
+    const allTasks = await databases.listDocuments(
       DATABASE_ID,
       TASKS_ID,
       [
         Query.equal("workspaceId", workspaceId),
-        Query.greaterThanEqual("$createdAt", thisMonthStart.toISOString()),
-        Query.lessThanEqual("$createdAt", thisMonthEnd.toISOString()),
+        Query.limit(10000), // Sufficient for most workspaces
+        Query.select(["status", "priority", "dueDate", "assigneeIds", "$createdAt", "$updatedAt"])
       ]
     );
 
-    const lastMonthTasks = await databases.listDocuments(
+    const tasks = allTasks.documents;
+
+    // 1. Basic Counts (Monthly comparison)
+    const thisMonthTasks = tasks.filter(t => new Date(t.$createdAt) >= thisMonthStart);
+    const lastMonthTasks = tasks.filter(t => {
+      const createdDate = new Date(t.$createdAt);
+      return createdDate >= lastMonthStart && createdDate < thisMonthStart;
+    });
+
+    const taskCount = thisMonthTasks.length;
+    const taskDifference = taskCount - lastMonthTasks.length;
+
+    // 2. Assigned Tasks (Current User/Member)
+    const thisMonthAssignedTasks = thisMonthTasks.filter(t => t.assigneeIds?.includes(member.$id));
+    const lastMonthAssignedTasks = lastMonthTasks.filter(t => t.assigneeIds?.includes(member.$id));
+
+    const assignedTaskCount = thisMonthAssignedTasks.length;
+    const assignedTaskDifference = assignedTaskCount - lastMonthAssignedTasks.length;
+
+    // 3. Status Distribution
+    const completedTasks = tasks.filter(t => t.status === TaskStatus.DONE);
+
+    const thisMonthCompletedTasks = thisMonthTasks.filter(t => t.status === TaskStatus.DONE);
+    const lastMonthCompletedTasks = lastMonthTasks.filter(t => t.status === TaskStatus.DONE);
+    const completedTaskCount = thisMonthCompletedTasks.length;
+    const completedTaskDifference = completedTaskCount - lastMonthCompletedTasks.length;
+
+    const thisMonthIncompleteTasks = thisMonthTasks.filter(t => t.status !== TaskStatus.DONE);
+    const lastMonthIncompleteTasks = lastMonthTasks.filter(t => t.status !== TaskStatus.DONE);
+    const incompleteTaskCount = thisMonthIncompleteTasks.length;
+    const incompleteTaskDifference = incompleteTaskCount - lastMonthIncompleteTasks.length;
+
+    // 4. Overdue Tasks
+    const thisMonthOverdueTasks = thisMonthIncompleteTasks.filter(t => t.dueDate && new Date(t.dueDate) < now);
+    const lastMonthOverdueTasks = lastMonthIncompleteTasks.filter(t => t.dueDate && new Date(t.dueDate) < now);
+
+    const overdueTaskCount = thisMonthOverdueTasks.length;
+    const overdueTaskDifference = overdueTaskCount - lastMonthOverdueTasks.length;
+
+    // 5. Member Aggregations
+    const workspaceMembers = await databases.listDocuments(
       DATABASE_ID,
-      TASKS_ID,
-      [
-        Query.equal("workspaceId", workspaceId),
-        Query.greaterThanEqual("$createdAt", lastMonthStart.toISOString()),
-        Query.lessThanEqual("$createdAt", lastMonthEnd.toISOString()),
-      ]
+      MEMBERS_ID,
+      [Query.equal("workspaceId", workspaceId)]
     );
 
-    const taskCount = thisMonthTasks.total;
-    const taskDifference = taskCount - lastMonthTasks.total;
+    const memberDocs = workspaceMembers.documents;
 
-    const thisMonthAssignedTasks = await databases.listDocuments(
-      DATABASE_ID,
-      TASKS_ID,
-      [
-        Query.equal("workspaceId", workspaceId),
-        Query.contains("assigneeIds", member.$id),
-        Query.greaterThanEqual("$createdAt", thisMonthStart.toISOString()),
-        Query.lessThanEqual("$createdAt", thisMonthEnd.toISOString()),
-      ]
-    );
+    // Build a map of member stats to avoid O(N*M) nested filters
+    const memberStatsMap = new Map<string, { total: number; completed: number }>();
+    tasks.forEach(task => {
+      task.assigneeIds?.forEach((id: string) => {
+        const stats = memberStatsMap.get(id) || { total: 0, completed: 0 };
+        stats.total++;
+        if (task.status === TaskStatus.DONE) {
+          stats.completed++;
+        }
+        memberStatsMap.set(id, stats);
+      });
+    });
 
-    const lastMonthAssignedTasks = await databases.listDocuments(
-      DATABASE_ID,
-      TASKS_ID,
-      [
-        Query.equal("workspaceId", workspaceId),
-        Query.contains("assigneeIds", member.$id),
-        Query.greaterThanEqual("$createdAt", lastMonthStart.toISOString()),
-        Query.lessThanEqual("$createdAt", lastMonthEnd.toISOString()),
-      ]
-    );
+    const memberWorkload = memberDocs.map(m => {
+      const stats = memberStatsMap.get(m.$id) || { total: 0, completed: 0 };
+      return {
+        id: m.$id,
+        userId: m.userId,
+        tasks: stats.total,
+        completedTasks: stats.completed,
+      };
+    }).filter(m => m.tasks > 0).sort((a, b) => b.tasks - a.tasks).slice(0, 4);
 
-    const assignedTaskCount = thisMonthAssignedTasks.total;
-    const assignedTaskDifference =
-      assignedTaskCount - lastMonthAssignedTasks.total;
+    const contributionData = memberDocs.map(m => {
+      const stats = memberStatsMap.get(m.$id) || { total: 0, completed: 0 };
+      return {
+        id: m.$id,
+        userId: m.userId,
+        completed: stats.completed,
+        total: stats.total,
+      };
+    }).filter(m => m.total > 0).sort((a, b) => b.completed - a.completed).slice(0, 6);
 
-    const thisMonthIncompleteTasks = await databases.listDocuments(
-      DATABASE_ID,
-      TASKS_ID,
-      [
-        Query.equal("workspaceId", workspaceId),
-        Query.notEqual("status", TaskStatus.DONE),
-        Query.greaterThanEqual("$createdAt", thisMonthStart.toISOString()),
-        Query.lessThanEqual("$createdAt", thisMonthEnd.toISOString()),
-      ]
-    );
+    // 6. Rich Aggregations for Charts
+    const statusDistribution = [
+      { id: "completed", name: "Done", value: completedTasks.length, color: "#22c55e" },
+      { id: "in-progress", name: "In Progress", value: tasks.filter(t => t.status === "IN_PROGRESS" || t.status === "IN_REVIEW").length, color: "#2663ec" },
+      { id: "todo", name: "To Do", value: tasks.filter(t => t.status === "TODO" || t.status === "ASSIGNED").length, color: "#e5e7eb" },
+    ];
 
-    const lastMonthIncompleteTasks = await databases.listDocuments(
-      DATABASE_ID,
-      TASKS_ID,
-      [
-        Query.equal("workspaceId", workspaceId),
-        Query.notEqual("status", TaskStatus.DONE),
-        Query.greaterThanEqual("$createdAt", lastMonthStart.toISOString()),
-        Query.lessThanEqual("$createdAt", lastMonthEnd.toISOString()),
-      ]
-    );
+    const priorityDistribution = [
+      { name: "URGENT", count: tasks.filter(t => t.priority === "URGENT").length, fill: "#ef4444" },
+      { name: "HIGH", count: tasks.filter(t => t.priority === "HIGH").length, fill: "#f87171" },
+      { name: "MEDIUM", count: tasks.filter(t => t.priority === "MEDIUM").length, fill: "#eab308" },
+      { name: "LOW", count: tasks.filter(t => t.priority === "LOW").length, fill: "#22c55e" },
+    ];
 
-    const incompleteTaskCount = thisMonthIncompleteTasks.total;
-    const incompleteTaskDifference =
-      incompleteTaskCount - lastMonthIncompleteTasks.total;
+    // Monthly data for last 6 months
+    const monthlyData = [];
+    for (let i = 5; i >= 0; i--) {
+      const monthDate = subMonths(now, i);
+      const mStart = startOfMonth(monthDate);
+      const mEnd = endOfMonth(monthDate);
+      const mName = format(monthDate, "MMM");
 
-    const thisMonthCompletedTasks = await databases.listDocuments(
-      DATABASE_ID,
-      TASKS_ID,
-      [
-        Query.equal("workspaceId", workspaceId),
-        Query.equal("status", TaskStatus.DONE),
-        Query.greaterThanEqual("$createdAt", thisMonthStart.toISOString()),
-        Query.lessThanEqual("$createdAt", thisMonthEnd.toISOString()),
-      ]
-    );
+      const monthTasks = tasks.filter(t => {
+        const createdDate = new Date(t.$createdAt);
+        return createdDate >= mStart && createdDate <= mEnd;
+      });
+      const mCompleted = monthTasks.filter(t => t.status === TaskStatus.DONE).length;
 
-    const lastMonthCompletedTasks = await databases.listDocuments(
-      DATABASE_ID,
-      TASKS_ID,
-      [
-        Query.equal("workspaceId", workspaceId),
-        Query.equal("status", TaskStatus.DONE),
-        Query.greaterThanEqual("$createdAt", lastMonthStart.toISOString()),
-        Query.lessThanEqual("$createdAt", lastMonthEnd.toISOString()),
-      ]
-    );
-
-    const completedTaskCount = thisMonthCompletedTasks.total;
-    const completedTaskDifference =
-      completedTaskCount - lastMonthCompletedTasks.total;
-
-    const thisMonthOverdueTasks = await databases.listDocuments(
-      DATABASE_ID,
-      TASKS_ID,
-      [
-        Query.equal("workspaceId", workspaceId),
-        Query.notEqual("status", TaskStatus.DONE),
-        Query.lessThan("dueDate", now.toISOString()),
-        Query.greaterThanEqual("$createdAt", thisMonthStart.toISOString()),
-        Query.lessThanEqual("$createdAt", thisMonthEnd.toISOString()),
-      ]
-    );
-
-    const lastMonthOverdueTasks = await databases.listDocuments(
-      DATABASE_ID,
-      TASKS_ID,
-      [
-        Query.equal("workspaceId", workspaceId),
-        Query.notEqual("status", TaskStatus.DONE),
-        Query.lessThan("dueDate", now.toISOString()),
-        Query.greaterThanEqual("$createdAt", lastMonthStart.toISOString()),
-        Query.lessThanEqual("$createdAt", lastMonthEnd.toISOString()),
-      ]
-    );
-
-    const overdueTaskCount = thisMonthOverdueTasks.total;
-    const overdueTaskDifference =
-      overdueTaskCount - lastMonthOverdueTasks.total;
+      monthlyData.push({
+        name: mName,
+        total: monthTasks.length,
+        completed: mCompleted
+      });
+    }
 
     return c.json({
       data: {
@@ -661,6 +658,11 @@ const app = new Hono()
         incompleteTaskDifference,
         overdueTaskCount,
         overdueTaskDifference,
+        statusDistribution,
+        priorityDistribution,
+        monthlyData,
+        memberWorkload,
+        contributionData,
       },
     });
   });

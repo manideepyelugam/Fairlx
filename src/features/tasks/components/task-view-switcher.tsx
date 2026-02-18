@@ -2,7 +2,8 @@
 
 import { LoaderIcon } from "lucide-react";
 import { useQueryState } from "nuqs";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
+import dynamic from "next/dynamic";
 
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
@@ -15,21 +16,46 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import { cn } from "@/lib/utils";
 
-import { createColumns } from "./columns";
-import { DataCalendar } from "./data-calendar";
-import { DataFilters } from "./data-filters";
-import { DataTable } from "./data-table";
-// Use full EnhancedDataKanban so custom columns show up
-import { EnhancedDataKanban } from "@/features/custom-columns/components/enhanced-data-kanban";
-import { DataDashboard } from "./data-dashboard";
-import { TimelineView } from "@/features/timeline/components/timeline-view";
-import { MyBacklogView } from "@/features/personal-backlog/components/my-backlog-view";
-import EnhancedBacklogScreen from "@/features/sprints/components/enhanced-backlog-screen";
-import { ProjectSetupOverlay } from "@/features/sprints/components/project-setup-overlay";
-import { useGetWorkItems, useGetSprints, SprintStatus, WorkItemStatus, WorkItemPriority, PopulatedWorkItem, useBulkUpdateWorkItems } from "@/features/sprints";
-import { CompleteSprintModal } from "@/features/sprints/components/complete-sprint-modal";
-import { CreateWorkItemModal } from "@/features/sprints";
+import { ColumnDef } from "@tanstack/react-table";
 
+// Dynamically import heavy view components
+const DataTable = dynamic(() => import("./data-table").then(mod => mod.DataTable), {
+  loading: () => <div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>,
+}) as React.ComponentType<{ columns: ColumnDef<PopulatedTask, unknown>[]; data: PopulatedTask[] }>;
+
+const DataCalendar = dynamic(() => import("./data-calendar").then(mod => mod.DataCalendar), {
+  loading: () => <div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>,
+});
+
+const EnhancedDataKanban = dynamic(() => import("@/features/custom-columns/components/enhanced-data-kanban").then(mod => mod.EnhancedDataKanban), {
+  loading: () => <div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>,
+});
+
+const DataDashboard = dynamic(() => import("./data-dashboard").then(mod => mod.DataDashboard), {
+  loading: () => <div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>,
+});
+
+const TimelineView = dynamic(() => import("@/features/timeline/components/timeline-view").then(mod => mod.TimelineView), {
+  loading: () => <div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>,
+});
+
+const MyBacklogView = dynamic(() => import("@/features/personal-backlog/components/my-backlog-view").then(mod => mod.MyBacklogView), {
+  loading: () => <div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>,
+});
+
+const EnhancedBacklogScreen = dynamic(() => import("@/features/sprints/components/enhanced-backlog-screen"), {
+  loading: () => <div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>,
+});
+
+import { createColumns } from "./columns";
+import { DataFilters } from "./data-filters";
+import { ProjectSetupOverlay } from "@/features/sprints/components/project-setup-overlay";
+import { useGetWorkItems } from "@/features/sprints/api/use-get-work-items";
+import { useGetSprints } from "@/features/sprints/api/use-get-sprints";
+import { useBulkUpdateWorkItems } from "@/features/sprints/api/use-bulk-update-work-items";
+import { SprintStatus, WorkItemStatus, WorkItemPriority, PopulatedWorkItem } from "@/features/sprints/types";
+import { CompleteSprintModal } from "@/features/sprints/components/complete-sprint-modal";
+import { CreateWorkItemModal } from "@/features/sprints/components/create-work-item-modal";
 
 import { useTaskFilters } from "../hooks/use-task-filters";
 import { TaskStatus, TaskPriority, PopulatedTask } from "../types";
@@ -56,7 +82,7 @@ const SlidingTabsList = ({ className, children, ...props }: SlidingTabsListProps
       if (activeTab) {
         const listRect = list.getBoundingClientRect();
         const activeRect = activeTab.getBoundingClientRect();
-        
+
         setIndicatorStyle({
           width: activeRect.width,
           transform: `translateX(${activeRect.left - listRect.left}px)`,
@@ -244,14 +270,14 @@ export const TaskViewSwitcher = ({
 
   // Get effective project ID
   const effectiveProjectId = paramProjectId || projectId;
-  
+
   // Get project-level task permissions
-  const { 
-    canEditTasksProject, 
-    canDeleteTasksProject, 
+  const {
+    canEditTasksProject,
+    canDeleteTasksProject,
     canCreateTasksProject
   } = useProjectPermissions({ projectId: effectiveProjectId || null, workspaceId });
-  
+
   // Effective permissions: Admin OR has project-level permission
   const canEditTasks = isAdmin || canEditTasksProject;
   const canDeleteTasks = isAdmin || canDeleteTasksProject;
@@ -404,7 +430,7 @@ export const TaskViewSwitcher = ({
               Complete Sprint {setupState.activeSprint.name}
             </Button>
           )}
-      
+
         </div>
 
 
@@ -427,7 +453,9 @@ export const TaskViewSwitcher = ({
       ) : (
         <>
           <TabsContent value="dashboard" className="mt-0 p-4">
-            <DataDashboard tasks={filteredTasks?.documents} isLoading={isLoadingTasks} />
+            <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>}>
+              <DataDashboard tasks={filteredTasks?.documents} isLoading={isLoadingTasks} />
+            </Suspense>
           </TabsContent>
           <TabsContent value="table" className="mt-0 p-4">
             {effectiveProjectId && setupState.needsSetup ? (
@@ -439,16 +467,20 @@ export const TaskViewSwitcher = ({
                 hasActiveSprint={setupState.hasActiveSprint}
                 variant="table"
               >
+                <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>}>
+                  <DataTable
+                    columns={createColumns(canEditTasks, canDeleteTasks)}
+                    data={filteredTasks?.documents ?? []}
+                  />
+                </Suspense>
+              </ProjectSetupOverlay>
+            ) : (
+              <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>}>
                 <DataTable
                   columns={createColumns(canEditTasks, canDeleteTasks)}
                   data={filteredTasks?.documents ?? []}
                 />
-              </ProjectSetupOverlay>
-            ) : (
-              <DataTable
-                columns={createColumns(canEditTasks, canDeleteTasks)}
-                data={filteredTasks?.documents ?? []}
-              />
+              </Suspense>
             )}
           </TabsContent>
           <TabsContent value="kanban" className="mt-0 p-4">
@@ -461,6 +493,20 @@ export const TaskViewSwitcher = ({
                 hasActiveSprint={setupState.hasActiveSprint}
                 variant="kanban"
               >
+                <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>}>
+                  <EnhancedDataKanban
+                    data={kanbanTasks}
+                    onChange={onKanbanChange}
+                    canCreateTasks={canCreateTasks}
+                    canEditTasks={canEditTasks}
+                    canDeleteTasks={canDeleteTasks}
+                    members={members?.documents ?? []}
+                    projectId={paramProjectId || projectId || undefined}
+                  />
+                </Suspense>
+              </ProjectSetupOverlay>
+            ) : (
+              <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>}>
                 <EnhancedDataKanban
                   data={kanbanTasks}
                   onChange={onKanbanChange}
@@ -470,17 +516,7 @@ export const TaskViewSwitcher = ({
                   members={members?.documents ?? []}
                   projectId={paramProjectId || projectId || undefined}
                 />
-              </ProjectSetupOverlay>
-            ) : (
-              <EnhancedDataKanban
-                data={kanbanTasks}
-                onChange={onKanbanChange}
-                canCreateTasks={canCreateTasks}
-                canEditTasks={canEditTasks}
-                canDeleteTasks={canDeleteTasks}
-                members={members?.documents ?? []}
-                projectId={paramProjectId || projectId || undefined}
-              />
+              </Suspense>
             )}
           </TabsContent>
           <TabsContent value="calendar" className="mt-0 h-full p-4 pb-4">
@@ -493,10 +529,14 @@ export const TaskViewSwitcher = ({
                 hasActiveSprint={setupState.hasActiveSprint}
                 variant="calendar"
               >
-                <DataCalendar data={filteredTasks?.documents ?? []} />
+                <Suspense fallback={<div className="h-[200px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>}>
+                  <DataCalendar data={filteredTasks?.documents ?? []} />
+                </Suspense>
               </ProjectSetupOverlay>
             ) : (
-              <DataCalendar data={filteredTasks?.documents ?? []} />
+              <Suspense fallback={<div className="h-[200px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>}>
+                <DataCalendar data={filteredTasks?.documents ?? []} />
+              </Suspense>
             )}
           </TabsContent>
           <TabsContent value="timeline" className="mt-0 h-full">
@@ -509,26 +549,34 @@ export const TaskViewSwitcher = ({
                 hasActiveSprint={setupState.hasActiveSprint}
                 variant="timeline"
               >
+                <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>}>
+                  <TimelineView
+                    workspaceId={workspaceId}
+                    projectId={paramProjectId || projectId || undefined}
+                  />
+                </Suspense>
+              </ProjectSetupOverlay>
+            ) : (
+              <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>}>
                 <TimelineView
                   workspaceId={workspaceId}
                   projectId={paramProjectId || projectId || undefined}
                 />
-              </ProjectSetupOverlay>
-            ) : (
-              <TimelineView
-                workspaceId={workspaceId}
-                projectId={paramProjectId || projectId || undefined}
-              />
+              </Suspense>
             )}
           </TabsContent>
           {paramProjectId && (
             <TabsContent value="backlog" className="mt-0 h-full">
-              <EnhancedBacklogScreen workspaceId={workspaceId} projectId={paramProjectId} />
+              <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>}>
+                <EnhancedBacklogScreen workspaceId={workspaceId} projectId={paramProjectId} />
+              </Suspense>
             </TabsContent>
           )}
           {showMyTasksOnly && (
             <TabsContent value="my-backlog" className="mt-0 h-full">
-              <MyBacklogView workspaceId={workspaceId} />
+              <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>}>
+                <MyBacklogView workspaceId={workspaceId} />
+              </Suspense>
             </TabsContent>
           )}
         </>
