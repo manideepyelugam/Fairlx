@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Building2, Loader2, AlertTriangle, Mail } from "lucide-react";
+import { Loader2, AlertTriangle, Mail } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -187,7 +187,7 @@ export function OrgDetailsStep({
 
     return (
         <div className="w-full">
-        
+
 
             <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
                 Set up your organization

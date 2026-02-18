@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Loader2, ArrowRight, Sparkles } from "lucide-react";
+import { CheckCircle2, Loader2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 
@@ -66,7 +66,7 @@ export function CompletionStep({
                 </p>
             </motion.div>
 
-         
+
 
             {/* CTA */}
             <motion.div

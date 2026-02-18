@@ -14,7 +14,7 @@ export const RewardsPageClient = () => {
     const router = useRouter();
     const params = useParams();
     const workspaceId = params.workspaceId as string;
-    const { isOrg, primaryOrganizationId } = useAccountType();
+    const { isOrg } = useAccountType();
 
     if (isOrg) {
         return (
@@ -26,7 +26,7 @@ export const RewardsPageClient = () => {
                     <h2 className="text-xl font-semibold">Organization Rewards</h2>
                     <p className="text-muted-foreground text-sm max-w-md">
                         For organization accounts, rewards are managed at the organization level.
-                        Redeem coupons to credit your organization's shared wallet.
+                        Redeem coupons to credit your organization&apos;s shared wallet.
                     </p>
                 </div>
                 <Button

@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Folder, Loader2, ArrowRight } from "lucide-react";
+import { Loader2, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -117,14 +117,14 @@ export function OrgWorkspaceStep({
     return (
         <div className="w-full">
             {/* Icon */}
-    
-  <span className="inline-block mb-3 ml-[-5px] text-[10px] font-medium px-2.5 py-1 rounded-full bg-muted text-muted-foreground">
+
+            <span className="inline-block mb-3 ml-[-5px] text-[10px] font-medium px-2.5 py-1 rounded-full bg-muted text-muted-foreground">
                 Optional Step
             </span>
             <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
                 {organizationName} is ready! 🎉
             </h1>
-          
+
             <p className="mt-2 text-muted-foreground text-xs sm:text-sm">
                 Create a workspace to organize your team&apos;s projects, or skip for now.
             </p>

@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Folder, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -89,7 +89,7 @@ export function PersonalWorkspaceStep({
 
     return (
         <div className="w-full">
-            
+
 
             <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
                 Create your workspace
@@ -111,7 +111,7 @@ export function PersonalWorkspaceStep({
                                     <FormLabel className="text-sm font-medium">Workspace Name</FormLabel>
                                     <FormControl>
                                         <Input
-                                            
+
                                             {...field}
                                             placeholder="My Workspace"
                                             disabled={isSubmitting}
