@@ -151,7 +151,10 @@ export const BillingDashboardClient = () => {
             </div>
 
             {/* GitHub Star Reward - Redeem Coupon */}
-            <RedeemCouponCard organizationId={isOrg ? primaryOrganizationId : undefined} />
+            <RedeemCouponCard
+                workspaceId={workspaceId}
+                organizationId={isOrg ? primaryOrganizationId : undefined}
+            />
             {/* Organization Workspaces Breakdown (ORG only) */}
             {isOrg && primaryOrganizationId && (
                 <WorkspaceUsageBreakdown

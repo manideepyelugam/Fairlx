@@ -9,7 +9,6 @@ import {
     DATABASE_ID,
     BILLING_ACCOUNTS_ID,
     BILLING_AUDIT_LOGS_ID,
-    NOTIFICATIONS_ID,
 } from "@/config";
 
 import { BillingAccount, BillingStatus, BillingAuditEventType } from "@/features/billing/types";
