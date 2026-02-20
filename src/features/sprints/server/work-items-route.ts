@@ -229,6 +229,13 @@ const app = new Hono()
         query
       );
 
+      // Enforce numerical sorting by work item key (e.g. FAIR-2 before FAIR-10) to fix list shuffling.
+      workItems.documents.sort((a, b) => {
+        const numA = parseInt(a.key.split("-")[1] || "0", 10);
+        const numB = parseInt(b.key.split("-")[1] || "0", 10);
+        return numA - numB;
+      });
+
       // Populate assignees and related items
       // First, collect all unique assignee IDs from all work items
       const allAssigneeIds = new Set<string>();
