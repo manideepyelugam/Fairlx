@@ -42,10 +42,7 @@ import { AssigneeMultiSelect } from "./assignee-multi-select";
 import { CreateTaskAttachmentUpload } from "@/features/attachments/components/create-task-attachment-upload";
 
 import { useGetProject } from "@/features/projects/api/use-get-project";
-import { useGetProjectTeams } from "@/features/project-teams/api/use-get-project-teams";
 import { TypeSelector } from "./type-selector";
-import { TeamMultiSelect } from "./team-multi-select";
-
 interface EditTaskFormProps {
   onCancel?: () => void;
   projectOptions: { id: string; name: string; imageUrl: string }[];
@@ -76,7 +73,6 @@ export const EditTaskForm = ({
         ? new Date(initialValues.endDate)
         : undefined,
       assigneeIds: initialValues.assigneeIds || (initialValues.assigneeId ? [initialValues.assigneeId] : []),
-      assignedTeamIds: initialValues.assignedTeamIds || (initialValues.assignedTeamId ? [initialValues.assignedTeamId] : []),
       description: initialValues.description ?? undefined,
       estimatedHours: initialValues.estimatedHours ?? undefined,
       storyPoints: initialValues.storyPoints ?? undefined,
@@ -88,17 +84,6 @@ export const EditTaskForm = ({
 
   const selectedProjectId = form.watch("projectId");
   const { data: project } = useGetProject({ projectId: selectedProjectId });
-  const { data: projectTeams } = useGetProjectTeams({ projectId: selectedProjectId });
-
-  // Convert project teams to options
-  const teamOptions = useMemo(() => {
-    if (!projectTeams?.documents) return [];
-    return projectTeams.documents.map((team: { $id: string; name: string; color?: string }) => ({
-      id: team.$id,
-      name: team.name,
-      color: team.color,
-    }));
-  }, [projectTeams]);
 
   const customWorkItemTypes = useMemo(() => project?.customWorkItemTypes || [], [project]);
   const customPriorities = useMemo(() => project?.customPriorities || [], [project]);
@@ -222,25 +207,7 @@ export const EditTaskForm = ({
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="assignedTeamIds"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Assigned Teams (Optional)</FormLabel>
-                    <FormControl>
-                      <TeamMultiSelect
-                        teamOptions={teamOptions}
-                        selectedTeamIds={field.value || []}
-                        onTeamsChange={field.onChange}
-                        placeholder="Select teams..."
-                        disabled={teamOptions.length === 0}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+
               <FormField
                 control={form.control}
                 name="status"

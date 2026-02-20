@@ -28,7 +28,6 @@ export type Task = Models.Document & {
   assigneeId?: string;     // Deprecated: use assigneeIds instead
   assigneeIds: string[];   // Primary field for assignees
   assignedTeamId?: string; // Single team assignment
-  assignedTeamIds?: string[]; // Multiple team assignments
   projectId: string;
   spaceId?: string;        // Space reference
   sprintId?: string | null;
