@@ -15,7 +15,6 @@ const baseTaskSchema = z.object({
   endDate: z.coerce.date().optional(),
   assigneeIds: z.array(z.string().trim().min(1)).optional(),
   assignedTeamId: z.string().trim().optional(),
-  assignedTeamIds: z.array(z.string().trim().min(1)).optional(),
   description: z.string().nullable().optional(),
   estimatedHours: z
     .union([z.number().min(0), z.string(), z.undefined(), z.null()])
@@ -47,7 +46,6 @@ export const createTaskSchema = baseTaskSchema.refine(
 export const createTaskFormSchema = baseTaskSchema.omit({ workspaceId: true }).extend({
   assigneeIds: z.array(z.string().trim().min(1)).optional(),
   assignedTeamId: z.string().trim().optional(),
-  assignedTeamIds: z.array(z.string().trim().min(1)).optional(),
 }).refine(
   (data) => {
     if (data.endDate && data.dueDate) {

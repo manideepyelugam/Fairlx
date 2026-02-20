@@ -408,7 +408,7 @@ const app = new Hono()
     async (c) => {
       const user = c.get("user");
       const databases = c.get("databases");
-      const { name, type, status, workspaceId, projectId, dueDate, assigneeIds, assignedTeamIds, description, estimatedHours, priority, labels } =
+      const { name, type, status, workspaceId, projectId, dueDate, assigneeIds, description, estimatedHours, priority, labels } =
         c.req.valid("json");
 
       const member = await getMember({
@@ -529,7 +529,6 @@ const app = new Hono()
           projectId,
           dueDate: dueDate || null,
           assigneeIds: assigneeIds || [],
-          assignedTeamIds: assignedTeamIds || [],
           position: newPosition,
           description: description || null,
           estimatedHours: estimatedHours || null,
@@ -566,7 +565,7 @@ const app = new Hono()
       const user = c.get("user");
       const databases = c.get("databases");
       // Note: endDate is in schema but not in database - we ignore it
-      const { name, type, status, projectId, dueDate, assigneeIds, assignedTeamIds, description, estimatedHours, priority, labels, flagged, storyPoints } =
+      const { name, type, status, projectId, dueDate, assigneeIds, description, estimatedHours, priority, labels, flagged, storyPoints } =
         c.req.valid("json");
 
       const { taskId } = c.req.param();
@@ -659,11 +658,6 @@ const app = new Hono()
       // Handle assignees - always update if provided (even if empty array to clear assignees)
       if (assigneeIds !== undefined) {
         updateData.assigneeIds = assigneeIds;
-      }
-
-      // Handle team assignments - update if provided
-      if (assignedTeamIds !== undefined) {
-        updateData.assignedTeamIds = assignedTeamIds;
       }
 
       // Ensure we have at least some data to update

@@ -31,7 +31,6 @@ import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { Member } from "@/features/members/types";
 import { useGetProject } from "@/features/projects/api/use-get-project";
-import { useGetProjectTeams } from "@/features/project-teams/api/use-get-project-teams";
 import { useGetAllowedTransitions } from "@/features/workflows/api/use-get-allowed-transitions";
 import { useGetWorkflowStatuses } from "@/features/workflows/api/use-get-workflow-statuses";
 import { useUpdateTask } from "../api/use-update-task";
@@ -171,8 +170,6 @@ export const TaskDetailsSidebar = ({
   const { data: projectData } = useGetProject({ projectId: task.projectId });
   const workflowId = projectData?.workflowId;
 
-  // Get project teams
-  const { data: projectTeams } = useGetProjectTeams({ projectId: task.projectId });
 
   // Get workflow statuses to find the current status ID
   const { data: workflowStatusesData } = useGetWorkflowStatuses({
@@ -240,7 +237,6 @@ export const TaskDetailsSidebar = ({
   const [statusOpen, setStatusOpen] = useState(false);
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [assigneeOpen, setAssigneeOpen] = useState(false);
-  const [teamsOpen, setTeamsOpen] = useState(false);
   const [labelsOpen, setLabelsOpen] = useState(false);
   const [typeOpen, setTypeOpen] = useState(false);
   const [projectOpen, setProjectOpen] = useState(true);
@@ -249,7 +245,6 @@ export const TaskDetailsSidebar = ({
 
   const [statusSearch, setStatusSearch] = useState("");
   const [assigneeSearch, setAssigneeSearch] = useState("");
-  const [teamSearch, setTeamSearch] = useState("");
   const [labelSearch, setLabelSearch] = useState("");
   const [typeSearch, setTypeSearch] = useState("");
 
@@ -296,20 +291,7 @@ export const TaskDetailsSidebar = ({
     setAssigneeOpen(false);
   };
 
-  const handleTeamToggle = (teamId: string) => {
-    const currentTeamIds = task.assignedTeamIds || [];
-    let newTeamIds: string[];
-    
-    if (currentTeamIds.includes(teamId)) {
-      // Remove team
-      newTeamIds = currentTeamIds.filter((id: string) => id !== teamId);
-    } else {
-      // Add team
-      newTeamIds = [...currentTeamIds, teamId];
-    }
-    
-    handleUpdateTask({ assignedTeamIds: newTeamIds });
-  };
+
 
   const handleAddLabel = (label: string) => {
     const currentLabels = task.labels || [];
@@ -386,16 +368,7 @@ export const TaskDetailsSidebar = ({
     m.name?.toLowerCase().includes(assigneeSearch.toLowerCase())
   );
 
-  // Get filtered teams
-  const filteredTeams = useMemo(() => {
-    if (!projectTeams?.documents) return [];
-    return projectTeams.documents.filter((team: { name: string }) =>
-      team.name.toLowerCase().includes(teamSearch.toLowerCase())
-    );
-  }, [projectTeams, teamSearch]);
 
-  // Get currently assigned teams
-  const assignedTeamIds = task.assignedTeamIds || [];
 
   const filteredLabels = [...suggestedLabels, ...allLabels].filter(
     (l) =>
@@ -614,68 +587,6 @@ export const TaskDetailsSidebar = ({
               </PopoverContent>
             </Popover>
 
-            {/* Teams Assignment */}
-            <Popover open={teamsOpen} onOpenChange={setTeamsOpen}>
-              <PopoverTrigger asChild disabled={!canEdit}>
-                <button className="flex items-center gap-3 px-2 py-2 hover:bg-accent rounded-md w-full text-left">
-                  {assignedTeamIds.length > 0 ? (
-                    <>
-                      <div className="flex items-center justify-center size-5 rounded bg-indigo-500">
-                        <Users className="size-3 text-white" />
-                      </div>
-                      <span className="text-[13px] font-normal">
-                        {assignedTeamIds.length} team{assignedTeamIds.length !== 1 ? "s" : ""} assigned
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <Users className="size-4 text-gray-400" />
-                      <span className="text-[13px] font-normal text-gray-500">Assign teams...</span>
-                    </>
-                  )}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 p-0 bg-card border border-border text-foreground shadow-lg" align="start" side="left" sideOffset={8}>
-                <div className="p-2">
-                  <div className="flex items-center gap-2 px-2 border-gray-200 mb-4">
-                    <Input
-                      placeholder="Search teams..."
-                      value={teamSearch}
-                      onChange={(e) => setTeamSearch(e.target.value)}
-                      className="h-7 border-0 focus-visible:ring-0 p-0 text-xs bg-transparent text-gray-900 placeholder:text-gray-400"
-                    />
-                  </div>
-                  <div className="space-y-0.5 max-h-48 overflow-y-auto">
-                    {filteredTeams.length === 0 ? (
-                      <div className="px-2 py-3 text-xs text-gray-500 text-center">
-                        No teams in this project
-                      </div>
-                    ) : (
-                      filteredTeams.map((team: { $id: string; name: string; color?: string }) => (
-                        <button
-                          key={team.$id}
-                          onClick={() => handleTeamToggle(team.$id)}
-                          className="flex items-center justify-between w-full px-2 py-1.5 hover:bg-accent rounded text-sm"
-                        >
-                          <div className="flex items-center gap-2">
-                            <div 
-                              className="flex items-center justify-center size-5 rounded"
-                              style={{ backgroundColor: team.color || '#6366f1' }}
-                            >
-                              <Users className="size-3 text-white" />
-                            </div>
-                            <span className="text-xs tracking-normal">{team.name}</span>
-                          </div>
-                          {assignedTeamIds.includes(team.$id) && (
-                            <Check className="size-4 text-gray-600" />
-                          )}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
 
             {/* Work Item Type */}
             <Popover open={typeOpen} onOpenChange={setTypeOpen}>

@@ -62,15 +62,28 @@ async function generateWorkItemKey(
     .toUpperCase() || "PROJ";
 
   // Get all work items for this project to find the highest key number
-  const workItems = await databases.listDocuments<WorkItem>(
-    DATABASE_ID,
-    WORK_ITEMS_ID,
-    [
-      Query.equal("projectId", projectId),
-      Query.orderDesc("$createdAt"),
-      Query.limit(100), // Get more items to find the highest number
-    ]
-  );
+  let workItems;
+  try {
+    workItems = await databases.listDocuments<WorkItem>(
+      DATABASE_ID,
+      WORK_ITEMS_ID,
+      [
+        Query.equal("projectId", projectId),
+        Query.orderDesc("$createdAt"),
+        Query.limit(100), // Get more items to find the highest number
+      ]
+    );
+  } catch {
+    // Fallback if index on projectId, $createdAt doesn't exist
+    workItems = await databases.listDocuments<WorkItem>(
+      DATABASE_ID,
+      WORK_ITEMS_ID,
+      [
+        Query.equal("projectId", projectId),
+        Query.limit(100),
+      ]
+    );
+  }
 
   // Extract key numbers and find the highest one
   let highestNumber = 0;
@@ -583,14 +596,27 @@ const app = new Hono()
         queryFilters.push(Query.isNull("sprintId"));
       }
 
-      const workItems = await databases.listDocuments(
-        DATABASE_ID,
-        WORK_ITEMS_ID,
-        queryFilters
-      );
-
-      const highestPosition =
-        workItems.documents.length > 0 ? workItems.documents[0].position : 0;
+      let highestPosition = 0;
+      try {
+        const positionWorkItems = await databases.listDocuments(
+          DATABASE_ID,
+          WORK_ITEMS_ID,
+          queryFilters
+        );
+        highestPosition = positionWorkItems.documents.length > 0 ? positionWorkItems.documents[0].position : 0;
+      } catch {
+        // Fallback without unsupported index
+        const fallbackWorkItems = await databases.listDocuments(
+          DATABASE_ID,
+          WORK_ITEMS_ID,
+          [
+            Query.equal("projectId", data.projectId),
+            Query.limit(100)
+          ]
+        );
+        highestPosition = fallbackWorkItems.documents.length > 0 ?
+          Math.max(...fallbackWorkItems.documents.map(d => d.position || 0)) : 0;
+      }
 
       // Retry logic for work item creation in case of key conflicts
       let workItem: WorkItem | null = null;

@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Drawer, DrawerContent } from "@/components/ui/drawer";
+import { Drawer, DrawerContent, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 interface ResponsiveModalProps {
@@ -53,6 +53,12 @@ export const ResponsiveModal = ({ children, open, onOpenChange, showCloseButton 
   return (
     <Drawer open={open} onOpenChange={handleChange}>
       <DrawerContent>
+        <VisuallyHidden>
+          <DrawerTitle>Modal</DrawerTitle>
+        </VisuallyHidden>
+        <VisuallyHidden>
+          <DrawerDescription>Modal content</DrawerDescription>
+        </VisuallyHidden>
         <div className="overflow-y-auto hide-scrollbar max-h-[85vh]">{children}</div>
       </DrawerContent>
     </Drawer>
