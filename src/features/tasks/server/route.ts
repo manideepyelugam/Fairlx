@@ -6,6 +6,7 @@ import { z } from "zod";
 import { DATABASE_ID, MEMBERS_ID, PROJECTS_ID, TASKS_ID, TIME_LOGS_ID, COMMENTS_ID, WORKFLOW_TRANSITIONS_ID, PROJECT_TEAM_MEMBERS_ID, WORKFLOW_STATUSES_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
+import { batchGetUsers } from "@/lib/batch-users";
 import {
   dispatchWorkitemEvent,
 } from "@/lib/notifications";
@@ -337,7 +338,7 @@ const app = new Hono()
             COMMENTS_ID,
             [
               Query.equal("taskId", taskIds),
-              Query.limit(5000), // Get enough comments
+              Query.limit(500), // Reduced from 5000 — rarely need that many per batch
             ]
           );
 
@@ -351,25 +352,24 @@ const app = new Hono()
         }
       }
 
-      const assignees = (await Promise.all(
-        members.documents.map(async (member) => {
-          try {
-            const user = await users.get(member.userId);
-            const prefs = user.prefs as { profileImageUrl?: string | null } | undefined;
+      // OPTIMIZED: Batch-fetch all users in one call (was N+1 users.get per member)
+      const memberUserIds = members.documents.map(m => m.userId);
+      const userMap = await batchGetUsers(users, memberUserIds);
 
-            const result = {
-              ...member,
-              name: user.name || user.email,
-              email: user.email,
-              profileImageUrl: prefs?.profileImageUrl ?? null,
-            };
-            return result;
-          } catch {
-            // User not found - skip this member
-            return null;
-          }
+      const assignees = members.documents
+        .map((member) => {
+          const userData = userMap.get(member.userId);
+          if (!userData) return null;
+          const prefs = userData.prefs as { profileImageUrl?: string | null } | undefined;
+
+          return {
+            ...member,
+            name: userData.name || userData.email,
+            email: userData.email,
+            profileImageUrl: prefs?.profileImageUrl ?? null,
+          };
         })
-      )).filter((assignee): assignee is NonNullable<typeof assignee> => assignee !== null);
+        .filter((assignee): assignee is NonNullable<typeof assignee> => assignee !== null);
 
       const populatedTasks = tasks.documents.map((task) => {
         const project = projects.documents.find(

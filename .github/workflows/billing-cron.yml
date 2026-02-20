@@ -1,4 +1,4 @@
-name: Billing Cron Jobs
+name: Billing & Usage Cron Jobs
 
 on:
   schedule:
@@ -8,12 +8,14 @@ on:
     - cron: '0 1 * * *'
     # Send reminders - daily at 9 AM UTC
     - cron: '0 9 * * *'
+    # Aggregate daily usage - daily at 2 AM UTC
+    - cron: '0 2 * * *'
     # Evaluate usage alerts - hourly at the 30th minute
     - cron: '30 * * * *'
   workflow_dispatch:
     inputs:
       job:
-        description: 'Job to run (process-cycle, enforce-grace, send-reminders, evaluate-alerts)'
+        description: 'Job to run'
         required: true
         default: 'enforce-grace'
         type: choice
@@ -22,6 +24,7 @@ on:
           - enforce-grace
           - send-reminders
           - evaluate-alerts
+          - aggregate-daily
 
 # Note: All billing operations use USD as the primary currency.
 # Razorpay payments are processed in INR with live conversion rates.
@@ -48,6 +51,8 @@ jobs:
               echo "job=process-cycle" >> $GITHUB_OUTPUT
             elif [ "$HOUR" == "01" ]; then
               echo "job=enforce-grace" >> $GITHUB_OUTPUT
+            elif [ "$HOUR" == "02" ]; then
+              echo "job=aggregate-daily" >> $GITHUB_OUTPUT
             elif [ "$HOUR" == "09" ]; then
               echo "job=send-reminders" >> $GITHUB_OUTPUT
             elif [ "$(date -u +%M)" == "30" ]; then
@@ -136,6 +141,26 @@ jobs:
             exit 1
           fi
           echo "✅ Usage alerts evaluated successfully"
+
+      - name: Aggregate daily usage
+        if: steps.job.outputs.job == 'aggregate-daily'
+        run: |
+          echo "📊 Aggregating yesterday's usage events into daily summary..."
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            "$API_BASE_URL/api/cron/usage/aggregate-daily")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "Response: $body"
+          
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Failed with status $http_code"
+            exit 1
+          fi
+          echo "✅ Daily usage aggregated successfully"
 
       - name: Skip (no matching job)
         if: steps.job.outputs.job == 'none'

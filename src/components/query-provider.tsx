@@ -16,7 +16,7 @@ function makeQueryClient() {
         // At 1K+ users, aggressive refetching will exceed Appwrite plan limits.
         staleTime: 5 * 60 * 1000, // 5 minutes (was 2 min)
         refetchOnWindowFocus: false, // DISABLED globally — #1 cause of surprise reads
-        refetchOnMount: false, // Only refetch if data is stale
+        refetchOnMount: true, // Refetch if data is stale on mount (respects staleTime)
         refetchOnReconnect: true,
         gcTime: 15 * 60 * 1000, // 15 minutes (was 5 min)
         retry: 1, // Only 1 retry to avoid amplifying failed requests

@@ -4,6 +4,7 @@ import { zValidator } from "@hono/zod-validator";
 
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
+import { batchGetUsers } from "@/lib/batch-users";
 import {
     DATABASE_ID,
     PROJECT_MEMBERS_ID,
@@ -87,6 +88,10 @@ const app = new Hono()
             }
 
             // Populate with team and role info
+            // OPTIMIZED: Batch-fetch all users in one call (was N+1 users.get per member)
+            const memberUserIds = memberships.documents.map(m => m.userId);
+            const userMap = await batchGetUsers(users, memberUserIds);
+
             const populated: PopulatedProjectMember[] = await Promise.all(
                 memberships.documents.map(async (membership) => {
                     // Look up team membership from PROJECT_TEAM_MEMBERS collection
@@ -140,8 +145,8 @@ const app = new Hono()
                         color: undefined,
                     }));
 
-                    // Get user info
-                    const userInfo = await users.get(membership.userId).catch(() => null);
+                    // Get user info from batch map
+                    const userInfo = userMap.get(membership.userId);
 
                     return {
                         ...membership,
@@ -210,6 +215,10 @@ const app = new Hono()
             );
 
             // Populate members
+            // OPTIMIZED: Batch-fetch all users in one call (was N+1 users.get per member)
+            const memberUserIds = memberships.documents.map(m => m.userId);
+            const userMap = await batchGetUsers(users, memberUserIds);
+
             const populated: PopulatedProjectMember[] = await Promise.all(
                 memberships.documents.map(async (membership) => {
                     // Look up team membership from PROJECT_TEAM_MEMBERS collection
@@ -263,7 +272,7 @@ const app = new Hono()
                         color: undefined,
                     }));
 
-                    const userInfo = await users.get(membership.userId).catch(() => null);
+                    const userInfo = userMap.get(membership.userId);
 
                     return {
                         ...membership,

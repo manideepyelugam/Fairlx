@@ -6,7 +6,7 @@ import { z } from "zod";
 import { DATABASE_ID, WORK_ITEMS_ID, PROJECTS_ID, MEMBERS_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
-
+import { batchGetUsers } from "@/lib/batch-users";
 import { getMember } from "@/features/members/utils";
 import { Project } from "@/features/projects/types";
 import { logComputeUsage, getComputeUnits } from "@/lib/usage-metering";
@@ -220,8 +220,8 @@ const app = new Hono()
       }
 
       // Always set a limit - Appwrite defaults to 25 if not specified
-      // Use provided limit or default to 1000 to fetch all work items
-      query.push(Query.limit(limit || 10000));
+      // Use provided limit or default to 500 for reasonable performance
+      query.push(Query.limit(limit || 500));
 
       const workItems = await databases.listDocuments<WorkItem>(
         DATABASE_ID,
@@ -258,24 +258,24 @@ const app = new Hono()
         )
         : { documents: [] };
 
+      // OPTIMIZED: Batch-fetch all related users in one call (was N+1 users.get per member)
+      const memberUserIds = membersData.documents.map(m => m.userId);
+      const userMap = await batchGetUsers(users, memberUserIds);
+
       // Build a map of member ID -> user data for quick lookup
       const assigneeMap = new Map<string, { $id: string; name: string; email: string; profileImageUrl: string | null }>();
 
-      await Promise.all(
-        membersData.documents.map(async (member) => {
-          try {
-            const user = await users.get(member.userId);
-            assigneeMap.set(member.$id, {
-              $id: member.$id,
-              name: user.name || user.email,
-              email: user.email,
-              profileImageUrl: user.prefs?.profileImageUrl || null,
-            });
-          } catch {
-            // User not found - skip this member
-          }
-        })
-      );
+      membersData.documents.forEach((member) => {
+        const userData = userMap.get(member.userId);
+        if (userData) {
+          assigneeMap.set(member.$id, {
+            $id: member.$id,
+            name: userData.name || userData.email,
+            email: userData.email,
+            profileImageUrl: userData.prefs?.profileImageUrl || null,
+          });
+        }
+      });
 
       // ========================================
       // OPTIMIZED: Batch fetch all related data in bulk instead of per-item
@@ -348,7 +348,7 @@ const app = new Hono()
           const allChildren = await databases.listDocuments<WorkItem>(
             DATABASE_ID,
             WORK_ITEMS_ID,
-            [Query.equal("parentId", workItemIds), Query.limit(10000)]
+            [Query.equal("parentId", workItemIds), Query.limit(2000)]
           );
           // Count children per parent and optionally store children data
           allChildren.documents.forEach((child) => {

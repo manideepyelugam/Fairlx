@@ -345,7 +345,10 @@ async function resolveUserLifecycleStateInternal(
         };
     }
 
-    // RESOLVE ORGANIZATION MEMBERSHIP
+    // PERFORMANCE OPTIMIZED: Parallel query resolution
+    // Previously: 4 sequential queries (~5-6s total on remote Appwrite)
+    // Now: 2 rounds of parallel queries (~2-3s total)
+
     let orgId: string | null = prefs.primaryOrganizationId || null;
     let orgName: string | null = null;
     let orgImageUrl: string | null = null;
@@ -353,88 +356,72 @@ async function resolveUserLifecycleStateInternal(
     let orgMemberStatus: OrgMemberStatus | null = null;
     let orgLegalAccepted = false;
     let hasOrg = false;
+    let hasWorkspace = false;
+    let workspaceId: string | null = null;
+    let billingStatus: BillingStatus | null = null;
 
-    if (accountType === "ORG") {
-        try {
-            const memberships = await databases.listDocuments(
-                DATABASE_ID,
-                ORGANIZATION_MEMBERS_ID,
-                [Query.equal("userId", user.$id)]
-            );
+    // ROUND 1: Fetch org membership + workspace membership IN PARALLEL
+    // These two are completely independent of each other
+    const [orgMembershipResult, workspaceMembershipResult] = await Promise.all([
+        // Query 1: Org membership
+        accountType === "ORG"
+            ? databases.listDocuments(DATABASE_ID, ORGANIZATION_MEMBERS_ID, [Query.equal("userId", user.$id)]).catch(() => ({ documents: [] as Record<string, string>[], total: 0 }))
+            : Promise.resolve({ documents: [] as Record<string, string>[], total: 0 }),
+        // Query 2: Workspace membership
+        databases.listDocuments(DATABASE_ID, MEMBERS_ID, [Query.equal("userId", user.$id), Query.limit(1)]).catch(() => ({ documents: [], total: 0 })),
+    ]);
 
-            if (memberships.total > 0) {
-                const primaryMembership = memberships.documents.find(m => m.organizationId === orgId)
-                    || memberships.documents[0];
+    // Process workspace membership result
+    if (workspaceMembershipResult.total > 0) {
+        hasWorkspace = true;
+        workspaceId = workspaceMembershipResult.documents[0].workspaceId;
+    }
 
-                hasOrg = true;
-                orgId = primaryMembership.organizationId;
-                orgRole = primaryMembership.role as typeof orgRole;
-                orgMemberStatus = primaryMembership.status as OrgMemberStatus;
+    // Process org membership result
+    if (accountType === "ORG" && orgMembershipResult.total > 0) {
+        const primaryMembership = orgMembershipResult.documents.find(m => m.organizationId === orgId)
+            || orgMembershipResult.documents[0];
 
-                if (orgId) {
-                    const orgDoc = await databases.getDocument(DATABASE_ID, ORGANIZATIONS_ID, orgId);
-                    orgName = orgDoc.name || null;
-                    orgImageUrl = orgDoc.imageUrl || null;
+        hasOrg = true;
+        orgId = primaryMembership.organizationId;
+        orgRole = primaryMembership.role as typeof orgRole;
+        orgMemberStatus = primaryMembership.status as OrgMemberStatus;
+    }
 
-                    if (orgDoc.billingSettings) {
-                        try {
-                            const settings = JSON.parse(orgDoc.billingSettings);
-                            if (settings.legal?.currentVersion === "v1") {
-                                orgLegalAccepted = true;
-                            }
-                        } catch { }
-                    }
+    // ROUND 2: Fetch org doc + billing IN PARALLEL
+    // Both depend on orgId from Round 1, but are independent of each other
+    const orgDocPromise = (accountType === "ORG" && hasOrg && orgId)
+        ? databases.getDocument(DATABASE_ID, ORGANIZATIONS_ID, orgId).catch(() => null)
+        : Promise.resolve(null);
+
+    const billingPromise = (() => {
+        if (accountType === "ORG" && orgId) {
+            return databases.listDocuments(DATABASE_ID, BILLING_ACCOUNTS_ID, [Query.equal("organizationId", orgId), Query.limit(1)]).catch(() => ({ documents: [], total: 0 }));
+        } else if (accountType === "PERSONAL") {
+            return databases.listDocuments(DATABASE_ID, BILLING_ACCOUNTS_ID, [Query.equal("userId", user.$id), Query.limit(1)]).catch(() => ({ documents: [], total: 0 }));
+        }
+        return Promise.resolve({ documents: [] as { status?: string }[], total: 0 });
+    })();
+
+    const [orgDoc, billingResult] = await Promise.all([orgDocPromise, billingPromise]);
+
+    // Process org doc
+    if (orgDoc) {
+        orgName = orgDoc.name || null;
+        orgImageUrl = orgDoc.imageUrl || null;
+        if (orgDoc.billingSettings) {
+            try {
+                const settings = JSON.parse(orgDoc.billingSettings);
+                if (settings.legal?.currentVersion === "v1") {
+                    orgLegalAccepted = true;
                 }
-            }
-        } catch {
-            orgLegalAccepted = false;
+            } catch { }
         }
     }
 
-    // RESOLVE WORKSPACE MEMBERSHIP
-    let hasWorkspace = false;
-    let workspaceId: string | null = null;
-
-    try {
-        const workspaceMemberships = await databases.listDocuments(
-            DATABASE_ID,
-            MEMBERS_ID,
-            [Query.equal("userId", user.$id), Query.limit(1)]
-        );
-
-        if (workspaceMemberships.total > 0) {
-            hasWorkspace = true;
-            workspaceId = workspaceMemberships.documents[0].workspaceId;
-        }
-    } catch { }
-
-    // CHECK BILLING STATUS
-    let billingStatus: BillingStatus | null = null;
-
-    if (accountType === "ORG" && orgId) {
-        try {
-            const billingAccounts = await databases.listDocuments(
-                DATABASE_ID,
-                BILLING_ACCOUNTS_ID,
-                [Query.equal("organizationId", orgId), Query.limit(1)]
-            );
-
-            if (billingAccounts.total > 0) {
-                billingStatus = billingAccounts.documents[0].status as BillingStatus;
-            }
-        } catch { }
-    } else if (accountType === "PERSONAL") {
-        try {
-            const billingAccounts = await databases.listDocuments(
-                DATABASE_ID,
-                BILLING_ACCOUNTS_ID,
-                [Query.equal("userId", user.$id), Query.limit(1)]
-            );
-
-            if (billingAccounts.total > 0) {
-                billingStatus = billingAccounts.documents[0].status as BillingStatus;
-            }
-        } catch { }
+    // Process billing
+    if (billingResult.total > 0) {
+        billingStatus = billingResult.documents[0].status as BillingStatus;
     }
 
     // CHECK LEGAL STATUS

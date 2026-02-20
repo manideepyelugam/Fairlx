@@ -5,6 +5,7 @@ import { zValidator } from "@hono/zod-validator";
 
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
+import { batchGetUsers } from "@/lib/batch-users";
 import { DATABASE_ID, MEMBERS_ID, NOTIFICATIONS_ID, WORKSPACES_ID } from "@/config";
 import { getPermissions } from "@/lib/rbac";
 import { validateUserOrgMembershipForWorkspace } from "@/lib/invariants";
@@ -51,28 +52,29 @@ const app = new Hono()
         Query.equal("workspaceId", workspaceId),
       ]);
 
-      const populatedMembers = (await Promise.all(
-        members.documents.map(async (member) => {
-          try {
-            const user = await users.get(member.userId);
-            const prefs = user.prefs as { profileImageUrl?: string | null } | undefined;
+      // OPTIMIZED: Batch-fetch all users in one call (was N+1 users.get per member)
+      const userIds = members.documents.map(m => m.userId);
+      const userMap = await batchGetUsers(users, userIds);
 
-            return {
-              ...member,
-              name: user.name || user.email,
-              email: user.email,
-              profileImageUrl: prefs?.profileImageUrl ?? null,
-            };
-          } catch {
-            // Skip missing user
-            return null;
-          }
+      const populatedMembers = members.documents
+        .map((member) => {
+          const userData = userMap.get(member.userId);
+          if (!userData) return null;
+          const prefs = userData.prefs as { profileImageUrl?: string | null } | undefined;
+
+          return {
+            ...member,
+            name: userData.name || userData.email,
+            email: userData.email,
+            profileImageUrl: prefs?.profileImageUrl ?? null,
+          };
         })
-      )).filter((member): member is NonNullable<typeof member> => member !== null);
+        .filter((member): member is NonNullable<typeof member> => member !== null);
 
       return c.json({ data: { ...members, documents: populatedMembers } });
     }
   )
+
   .get(
     "/current",
     sessionMiddleware,

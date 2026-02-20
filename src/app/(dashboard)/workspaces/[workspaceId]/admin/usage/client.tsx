@@ -30,9 +30,7 @@ import { useGetOrganizations } from "@/features/organizations/api/use-get-organi
 import { useCurrentUserOrgPermissions } from "@/features/org-permissions/api/use-current-user-permissions";
 import { OrgPermissionKey } from "@/features/org-permissions/types";
 import {
-    useGetUsageEvents,
-    useGetUsageSummary,
-    useGetUsageAlerts,
+    useGetUsageDashboard,
     useExportUsage,
 } from "@/features/usage/api";
 import {
@@ -44,7 +42,7 @@ import {
     WorkspaceUsageBreakdown,
 } from "@/features/usage/components";
 import { BillingEntityBadge } from "@/components/billing-entity-badge";
-import { ResourceType, UsageSource } from "@/features/usage/types";
+import { ResourceType, UsageSource, UsageSummary } from "@/features/usage/types";
 // import { CurrencyRatePanel } from "@/features/currency/components/currency-rate-panel";
 import { CurrencySelector, useDisplayCurrency } from "@/features/currency/components/currency-selector";
 
@@ -118,29 +116,24 @@ export function UsageDashboardClient() {
     const fetchLimit = hasActiveFilters ? 500 : pageSize; // Fetch more when filtering
     const fetchOffset = hasActiveFilters ? 0 : page * pageSize; // Start from 0 when filtering
 
-    // Queries - now using correct context for org vs personal
+    // PERFORMANCE OPTIMIZED: Single combined API call instead of 3 separate ones
+    // This does auth/access check ONCE and fetches events + summary + alerts in parallel
     const {
-        data: eventsData,
-        isLoading: isEventsLoading,
-        refetch: refetchEvents,
-    } = useGetUsageEvents({
-        ...usageQueryParams,
-        // Note: We don't pass resourceType/source to API - all filtering is done client-side
-        // This enables true multi-select filtering without pagination issues
-        startDate: dateRange.from?.toISOString(),
-        endDate: dateRange.to?.toISOString(),
-        limit: fetchLimit,
-        offset: fetchOffset,
-    });
-
-    const { data: summaryData, isLoading: isSummaryLoading } = useGetUsageSummary({
+        data: dashboardData,
+        isLoading: isDashboardLoading,
+        refetch: refetchDashboard,
+    } = useGetUsageDashboard({
         ...usageQueryParams,
         period: currentPeriod,
+        startDate: dateRange.from?.toISOString(),
+        endDate: dateRange.to?.toISOString(),
+        eventsLimit: fetchLimit,
+        eventsOffset: fetchOffset,
     });
 
-    const { data: alertsData, isLoading: isAlertsLoading } = useGetUsageAlerts({
-        ...usageQueryParams,
-    });
+    const isEventsLoading = isDashboardLoading;
+    const isSummaryLoading = isDashboardLoading;
+    const isAlertsLoading = isDashboardLoading;
 
     const exportUsage = useExportUsage();
 
@@ -196,10 +189,10 @@ export function UsageDashboardClient() {
         );
     }
 
-    const events = eventsData?.data?.documents || [];
-    const totalEvents = eventsData?.data?.total || 0;
-    const summary = summaryData?.data || null;
-    const alerts = alertsData?.data?.documents || [];
+    const events = dashboardData?.data?.events?.documents || [];
+    const totalEvents = dashboardData?.data?.events?.total || 0;
+    const summary = (dashboardData?.data?.summary || null) as UsageSummary | null;
+    const alerts = dashboardData?.data?.alerts?.documents || [];
 
     return (
         <div>
@@ -324,7 +317,7 @@ export function UsageDashboardClient() {
                         <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => refetchEvents()}
+                            onClick={() => refetchDashboard()}
                             className="h-7 w-7 hover:bg-muted"
                         >
                             <RefreshCw className="h-4 w-4 text-muted-foreground" />
@@ -365,7 +358,7 @@ export function UsageDashboardClient() {
                         {isOrg && primaryOrganizationId && (
                             <WorkspaceUsageBreakdown
                                 organizationId={primaryOrganizationId}
-                                events={eventsData?.data?.documents || []}
+                                events={dashboardData?.data?.events?.documents || []}
                                 summary={summary}
                                 workspaces={workspacesData?.documents?.map((w) => ({ $id: w.$id, name: w.name })) || []}
                                 isLoading={isEventsLoading || isSummaryLoading}
