@@ -1,5 +1,7 @@
 "use client";
 
+import React, { useMemo } from "react";
+
 import { cn } from "@/lib/utils";
 import { Settings, FolderKanban, Calendar, Building2 } from "lucide-react";
 import Link from "next/link";
@@ -116,7 +118,7 @@ export interface NavigationProps {
   hasOrg?: boolean;
 }
 
-export const Navigation = ({
+const NavigationInner = ({
   allowedRouteKeys,
   hasWorkspaces = true,
   hasOrg = false,
@@ -130,28 +132,28 @@ export const Navigation = ({
   // Get user's default workspace preference
   const userPrefs = user?.prefs as { defaultWorkspaceId?: string } | undefined;
   const defaultWorkspaceId = userPrefs?.defaultWorkspaceId;
-  const workspaces = workspacesData?.documents || [];
 
   // Use props if provided, otherwise fall back to context
   const effectiveHasOrg = hasOrg || contextHasOrg;
 
   // Determine the workspace ID to use for navigation:
   // Priority: 1) URL workspace ID, 2) User's default workspace, 3) First workspace, 4) Active workspace from context
-  const selectedWorkspaceId = (() => {
+  const selectedWorkspaceId = useMemo(() => {
+    const wsList = workspacesData?.documents || [];
     if (urlWorkspaceId) return urlWorkspaceId;
 
     if (defaultWorkspaceId) {
       // Validate that default workspace exists
-      const defaultExists = workspaces.some(w => w.$id === defaultWorkspaceId);
+      const defaultExists = wsList.some(w => w.$id === defaultWorkspaceId);
       if (defaultExists) return defaultWorkspaceId;
     }
 
-    if (workspaces.length > 0) {
-      return workspaces[0].$id;
+    if (wsList.length > 0) {
+      return wsList[0].$id;
     }
 
     return activeWorkspaceId || "";
-  })();
+  }, [urlWorkspaceId, defaultWorkspaceId, workspacesData, activeWorkspaceId]);
 
   const projectId = useProjectId();
   const pathname = usePathname();
@@ -165,8 +167,8 @@ export const Navigation = ({
   // We do NOT implement client-side overrides for Owners here.
   // The server implementation of resolveUserAccess handles Owner permissions correctly.
 
-  // Filter routes based on allowed route keys (STRICT MODE - no fallback)
-  const visibleRoutes = routes.filter((route: RouteConfig) => {
+  // MEMOIZED: Filter routes based on allowed route keys (STRICT MODE - no fallback)
+  const visibleRoutes = useMemo(() => routes.filter((route: RouteConfig) => {
     // STRICT: Route must be in allowedRouteKeys to be visible
     // Empty or undefined allowedRouteKeys = no permission-gated routes
     if (allowedRouteKeys && allowedRouteKeys.length > 0) {
@@ -184,7 +186,7 @@ export const Navigation = ({
     if (route.orgRoute && !effectiveHasOrg) return false;
 
     return true;
-  });
+  }), [allowedRouteKeys, hasWorkspaceContext, effectiveHasOrg]);
 
   return (
     <div className="px-3 pt-4 pb-2 flex-shrink-0">
@@ -237,3 +239,5 @@ export const Navigation = ({
     </div>
   );
 };
+
+export const Navigation = React.memo(NavigationInner);

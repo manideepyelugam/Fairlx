@@ -4,6 +4,7 @@ import { zValidator } from "@hono/zod-validator";
 
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
+import { batchGetUsers } from "@/lib/batch-users";
 import {
     DATABASE_ID,
     PROJECT_TEAMS_ID,
@@ -129,26 +130,28 @@ const app = new Hono()
                 [Query.equal("teamId", teamId)]
             );
 
+            // OPTIMIZED: Batch-fetch all users in one call (was N+1 users.get per member)
+            const teamMemberUserIds = teamMembers.documents.map(tm => tm.userId);
+            const userMap = await batchGetUsers(users, teamMemberUserIds);
+
             // Populate member data
-            const populatedMembers: PopulatedProjectTeamMember[] = await Promise.all(
-                teamMembers.documents.map(async (tm) => {
-                    const userInfo = await users.get(tm.userId).catch(() => null);
-                    return {
-                        ...tm,
-                        user: {
-                            $id: tm.userId,
-                            name: userInfo?.name || "Unknown",
-                            email: userInfo?.email || "",
-                            profileImageUrl: userInfo?.prefs?.profileImageUrl,
-                        },
-                        team: {
-                            $id: team.$id,
-                            name: team.name,
-                            color: team.color,
-                        },
-                    };
-                })
-            );
+            const populatedMembers: PopulatedProjectTeamMember[] = teamMembers.documents.map((tm) => {
+                const userInfo = userMap.get(tm.userId);
+                return {
+                    ...tm,
+                    user: {
+                        $id: tm.userId,
+                        name: userInfo?.name || "Unknown",
+                        email: userInfo?.email || "",
+                        profileImageUrl: userInfo?.prefs?.profileImageUrl,
+                    },
+                    team: {
+                        $id: team.$id,
+                        name: team.name,
+                        color: team.color,
+                    },
+                };
+            });
 
             const result: PopulatedProjectTeam = {
                 ...team,
@@ -368,26 +371,28 @@ const app = new Hono()
                     [Query.equal("teamId", teamId)]
                 );
 
+                // OPTIMIZED: Batch-fetch all users in one call (was N+1 users.get per member)
+                const teamMemberUserIds = teamMembers.documents.map(tm => tm.userId);
+                const userMap = await batchGetUsers(users, teamMemberUserIds);
+
                 // Populate
-                const populated: PopulatedProjectTeamMember[] = await Promise.all(
-                    teamMembers.documents.map(async (tm) => {
-                        const userInfo = await users.get(tm.userId).catch(() => null);
-                        return {
-                            ...tm,
-                            user: {
-                                $id: tm.userId,
-                                name: userInfo?.name || "Unknown",
-                                email: userInfo?.email || "",
-                                profileImageUrl: userInfo?.prefs?.profileImageUrl,
-                            },
-                            team: {
-                                $id: team.$id,
-                                name: team.name,
-                                color: team.color,
-                            },
-                        };
-                    })
-                );
+                const populated: PopulatedProjectTeamMember[] = teamMembers.documents.map((tm) => {
+                    const userInfo = userMap.get(tm.userId);
+                    return {
+                        ...tm,
+                        user: {
+                            $id: tm.userId,
+                            name: userInfo?.name || "Unknown",
+                            email: userInfo?.email || "",
+                            profileImageUrl: userInfo?.prefs?.profileImageUrl,
+                        },
+                        team: {
+                            $id: team.$id,
+                            name: team.name,
+                            color: team.color,
+                        },
+                    };
+                });
 
                 return c.json({ data: { documents: populated, total: teamMembers.total } });
             } catch {
@@ -434,7 +439,7 @@ const app = new Hono()
                         Query.equal("status", ProjectMemberStatus.ACTIVE),
                     ]
                 );
-                
+
                 // Fallback: check without status filter for backward compatibility
                 if (projectMemberships.total === 0) {
                     projectMemberships = await adminDb.listDocuments<ProjectMember>(
@@ -446,7 +451,7 @@ const app = new Hono()
                         ]
                     );
                     // Filter out explicitly REMOVED members
-                    if (projectMemberships.total > 0 && 
+                    if (projectMemberships.total > 0 &&
                         projectMemberships.documents[0].status === ProjectMemberStatus.REMOVED) {
                         projectMemberships = { documents: [], total: 0 } as typeof projectMemberships;
                     }

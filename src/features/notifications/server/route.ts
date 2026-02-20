@@ -5,6 +5,7 @@ import { zValidator } from "@hono/zod-validator";
 import { DATABASE_ID, NOTIFICATIONS_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
+import { batchGetUsers } from "@/lib/batch-users";
 import { getMember } from "@/features/members/utils";
 
 import {
@@ -61,29 +62,22 @@ const app = new Hono()
         ...new Set(notifications.documents.map((n) => n.triggeredBy)),
       ];
 
-      // Fetch triggered by users
-      const triggeredByUsers = await Promise.all(
-        triggeredByIds.map(async (userId) => {
-          try {
-            const user = await users.get(userId);
-            const prefs = user.prefs as
-              | { profileImageUrl?: string | null }
-              | undefined;
-            return {
-              $id: user.$id,
-              name: user.name || user.email,
-              email: user.email,
-              profileImageUrl: prefs?.profileImageUrl ?? null,
-            };
-          } catch {
-            return null;
-          }
-        })
-      );
+      // OPTIMIZED: Batch-fetch all triggered-by users in one call (was N+1 users.get per user)
+      const userMap = await batchGetUsers(users, triggeredByIds);
 
-      const validTriggeredByUsers = triggeredByUsers.filter(
-        (u): u is NonNullable<typeof u> => u !== null
-      );
+      const validTriggeredByUsers = triggeredByIds
+        .map((userId) => {
+          const userData = userMap.get(userId);
+          if (!userData) return null;
+          const prefs = userData.prefs as { profileImageUrl?: string | null } | undefined;
+          return {
+            $id: userData.$id,
+            name: userData.name || userData.email,
+            email: userData.email,
+            profileImageUrl: prefs?.profileImageUrl ?? null,
+          };
+        })
+        .filter((u): u is NonNullable<typeof u> => u !== null);
 
       // Populate notifications
       const populatedNotifications: PopulatedNotification[] =

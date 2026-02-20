@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/appwrite";
+import { batchGetUsers } from "@/lib/batch-users";
 import { DATABASE_ID, COMMENTS_ID, TASKS_ID } from "@/config";
 import { Comment, PopulatedComment, CommentAuthor } from "../types";
 import { Query, ID } from "node-appwrite";
@@ -32,6 +33,7 @@ export const getComments = async (
 };
 
 // Get all comment authors from workspace members
+// OPTIMIZED: Uses batchGetUsers instead of individual users.get calls
 export const getCommentAuthors = async (
   authorIds: string[]
 ): Promise<Map<string, CommentAuthor>> => {
@@ -41,19 +43,19 @@ export const getCommentAuthors = async (
   // Get unique author IDs
   const uniqueAuthorIds = [...new Set(authorIds)];
 
-  // Fetch user information for each author
+  // Batch-fetch all users in one call (was N+1 users.get per author)
+  const userMap = await batchGetUsers(users, uniqueAuthorIds);
+
   for (const authorId of uniqueAuthorIds) {
-    try {
-      // First try to get user details from Appwrite users
-      const user = await users.get(authorId);
+    const userData = userMap.get(authorId);
+    if (userData) {
       authorsMap.set(authorId, {
-        $id: user.$id,
-        name: user.name || user.email || "Unknown",
-        email: user.email,
-        profileImageUrl: user.prefs?.profileImageUrl || null,
+        $id: userData.$id,
+        name: userData.name || userData.email || "Unknown",
+        email: userData.email,
+        profileImageUrl: userData.prefs?.profileImageUrl || null,
       });
-    } catch {
-      // If user not found, set a default
+    } else {
       authorsMap.set(authorId, {
         $id: authorId,
         name: "Unknown User",

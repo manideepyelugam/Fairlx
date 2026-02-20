@@ -518,17 +518,23 @@ const app = new Hono()
     const thisMonthStart = startOfMonth(now);
     const lastMonthStart = startOfMonth(subMonths(now, 1));
 
-    // Fetch ALL tasks for the workspace to perform rich aggregations
-    // Doing this on the server is much faster and avoids massive network transfer
-    const allTasks = await databases.listDocuments(
-      DATABASE_ID,
-      TASKS_ID,
-      [
-        Query.equal("workspaceId", workspaceId),
-        Query.limit(10000), // Sufficient for most workspaces
-        Query.select(["status", "priority", "dueDate", "assigneeIds", "$createdAt", "$updatedAt"])
-      ]
-    );
+    // PERFORMANCE OPTIMIZED: Fetch tasks and members IN PARALLEL (they are independent)
+    const [allTasks, workspaceMembers] = await Promise.all([
+      databases.listDocuments(
+        DATABASE_ID,
+        TASKS_ID,
+        [
+          Query.equal("workspaceId", workspaceId),
+          Query.limit(5000),
+          Query.select(["status", "priority", "dueDate", "assigneeIds", "$createdAt", "$updatedAt"])
+        ]
+      ),
+      databases.listDocuments(
+        DATABASE_ID,
+        MEMBERS_ID,
+        [Query.equal("workspaceId", workspaceId)]
+      ),
+    ]);
 
     const tasks = allTasks.documents;
 
@@ -570,12 +576,6 @@ const app = new Hono()
     const overdueTaskDifference = overdueTaskCount - lastMonthOverdueTasks.length;
 
     // 5. Member Aggregations
-    const workspaceMembers = await databases.listDocuments(
-      DATABASE_ID,
-      MEMBERS_ID,
-      [Query.equal("workspaceId", workspaceId)]
-    );
-
     const memberDocs = workspaceMembers.documents;
 
     // Build a map of member stats to avoid O(N*M) nested filters

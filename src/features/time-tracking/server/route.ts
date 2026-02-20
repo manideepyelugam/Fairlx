@@ -7,17 +7,18 @@ import { startOfWeek, endOfWeek, format, parseISO } from "date-fns";
 import { DATABASE_ID, MEMBERS_ID, PROJECTS_ID, TASKS_ID, TIME_LOGS_ID, CUSTOM_COLUMNS_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
+import { batchGetUsers } from "@/lib/batch-users";
 
 import { getMember } from "@/features/members/utils";
 import { Project } from "@/features/projects/types";
 import { Task, TaskStatus } from "@/features/tasks/types";
 import { CustomColumn } from "@/features/custom-columns/types";
 
-import { 
-  createTimeLogSchema, 
-  updateTimeLogSchema, 
-  timesheetQuerySchema, 
-  estimateVsActualQuerySchema 
+import {
+  createTimeLogSchema,
+  updateTimeLogSchema,
+  timesheetQuerySchema,
+  estimateVsActualQuerySchema
 } from "../schemas";
 import { TimeLog, TimeEntry, UserTimesheet, EstimateVsActual } from "../types";
 
@@ -120,7 +121,7 @@ const app = new Hono()
       const projectIds = timeLogs.documents.map((log) => log.projectId);
 
       const [tasks, projects, members] = await Promise.all([
-        taskIds.length > 0 
+        taskIds.length > 0
           ? databases.listDocuments<Task>(DATABASE_ID, TASKS_ID, [Query.contains("$id", taskIds)])
           : { documents: [] },
         projectIds.length > 0
@@ -131,16 +132,21 @@ const app = new Hono()
           : { documents: [] },
       ]);
 
-      const userDetails = await Promise.all(
-        members.documents.map(async (member) => {
-          const userDetail = await users.get(member.userId);
+      // OPTIMIZED: Batch-fetch all users in one call (was N+1 users.get per member)
+      const memberUserIds = members.documents.map(m => m.userId);
+      const userMap = await batchGetUsers(users, memberUserIds);
+
+      const userDetails = members.documents
+        .map((member) => {
+          const userData = userMap.get(member.userId);
+          if (!userData) return null;
           return {
             userId: member.userId,
-            name: userDetail.name || userDetail.email,
-            email: userDetail.email,
+            name: userData.name || userData.email,
+            email: userData.email,
           };
         })
-      );
+        .filter((u): u is NonNullable<typeof u> => u !== null);
 
       const populatedTimeLogs = timeLogs.documents.map((log) => {
         const task = tasks.documents.find((task) => task.$id === log.taskId);
@@ -239,7 +245,7 @@ const app = new Hono()
       }
 
       const updateData: Partial<TimeLog> = {};
-      
+
       if (date !== undefined) updateData.date = format(date, "yyyy-MM-dd");
       if (hours !== undefined) updateData.hours = hours;
       if (description !== undefined) updateData.description = description;
@@ -310,7 +316,7 @@ const app = new Hono()
       const projectIds = [...new Set(timeLogs.documents.map(log => log.projectId))];
 
       const [tasks, projects, members] = await Promise.all([
-        taskIds.length > 0 
+        taskIds.length > 0
           ? databases.listDocuments<Task>(DATABASE_ID, TASKS_ID, [Query.contains("$id", taskIds)])
           : { documents: [] },
         projectIds.length > 0
@@ -321,16 +327,21 @@ const app = new Hono()
           : { documents: [] },
       ]);
 
-      const userDetails = await Promise.all(
-        members.documents.map(async (member) => {
-          const userDetail = await users.get(member.userId);
+      // OPTIMIZED: Batch-fetch all users in one call (was N+1 users.get per member)
+      const memberUserIds = members.documents.map(m => m.userId);
+      const userMap = await batchGetUsers(users, memberUserIds);
+
+      const userDetails = members.documents
+        .map((member) => {
+          const userData = userMap.get(member.userId);
+          if (!userData) return null;
           return {
             userId: member.userId,
-            name: userDetail.name || userDetail.email,
-            email: userDetail.email,
+            name: userData.name || userData.email,
+            email: userData.email,
           };
         })
-      );
+        .filter((u): u is NonNullable<typeof u> => u !== null);
 
       // Group by user and week
       const userTimesheets: UserTimesheet[] = [];
@@ -368,7 +379,7 @@ const app = new Hono()
         const weekData = Object.entries(weeks).map(([weekStartStr, entries]) => {
           const weekStart = parseISO(weekStartStr);
           const weekEnd = endOfWeek(weekStart);
-          
+
           return {
             weekStart: format(weekStart, "yyyy-MM-dd"),
             weekEnd: format(weekEnd, "yyyy-MM-dd"),
@@ -414,7 +425,7 @@ const app = new Hono()
 
       // Get tasks query
       const taskQuery = [Query.equal("workspaceId", workspaceId)];
-      
+
       if (projectId) {
         taskQuery.push(Query.equal("projectId", projectId));
       }
@@ -427,7 +438,7 @@ const app = new Hono()
 
       // Get time logs for these tasks
       const taskIds = tasks.documents.map(task => task.$id);
-      
+
       if (taskIds.length === 0) {
         return c.json({ data: [] });
       }
@@ -472,7 +483,7 @@ const app = new Hono()
         if (Object.values(TaskStatus).includes(status as TaskStatus)) {
           return status;
         }
-        
+
         // Otherwise, look up in custom columns
         const customColumn = customColumns.documents.find(col => col.$id === status);
         return customColumn?.name || status;
@@ -485,7 +496,7 @@ const app = new Hono()
         const estimatedHours = task.estimatedHours || 0;
         const variance = actualHours - estimatedHours;
         const variancePercent = estimatedHours > 0 ? (variance / estimatedHours) * 100 : 0;
-        
+
         const project = projects.documents.find(p => p.$id === task.projectId);
 
         return {

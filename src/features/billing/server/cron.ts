@@ -213,6 +213,140 @@ const app = new Hono()
     })
 
     /**
+     * POST /cron/usage/aggregate-daily
+     * 
+     * Roll up yesterday's raw usage events into daily summary records.
+     * Then delete the processed raw events to keep the collection small.
+     * 
+     * WHY: The /summary endpoint was fetching 5,000+ raw events (~17s).
+     * With daily summaries, the dashboard fetches ~30 records (<1s).
+     * 
+     * Schedule: 0 2 * * * (daily at 2 AM UTC)
+     */
+    .post("/usage/aggregate-daily", async (c) => {
+        const authHeader = c.req.header("Authorization");
+
+        if (!verifyCronSecret(authHeader)) {
+            return c.json({ error: "Unauthorized" }, 401);
+        }
+
+        const startTime = Date.now();
+
+        try {
+            const { aggregateDailyUsage } = await import(
+                "@/features/usage/services/usage-aggregation-service"
+            );
+            const { createAdminClient } = await import("@/lib/appwrite");
+            const { databases: adminDb } = await createAdminClient();
+
+            // Aggregate yesterday's events by default
+            // Can pass ?date=YYYY-MM-DD query param for specific date
+            const targetDate = c.req.query("date") || undefined;
+            const results = await aggregateDailyUsage(adminDb, targetDate);
+
+            const duration = Date.now() - startTime;
+
+            return c.json({
+                success: true,
+                date: results.date,
+                workspacesProcessed: results.workspacesProcessed,
+                eventsProcessed: results.eventsProcessed,
+                eventsDeleted: results.eventsDeleted,
+                summariesCreated: results.summariesCreated,
+                errors: results.errors,
+                durationMs: duration,
+            });
+        } catch (error) {
+            return c.json({
+                success: false,
+                error: error instanceof Error ? error.message : "Unknown error",
+            }, 500);
+        }
+    })
+
+    /**
+     * POST /cron/usage/aggregate-all
+     * 
+     * BULK MIGRATION: Automatically aggregates ALL historic days.
+     * Finds the earliest un-aggregated event and works forward day by day.
+     * 
+     * Use this ONCE to migrate existing events to daily summaries.
+     * Safe to re-run (idempotent — skips dates already aggregated).
+     */
+    .post("/usage/aggregate-all", async (c) => {
+        const authHeader = c.req.header("Authorization");
+
+        if (!verifyCronSecret(authHeader)) {
+            return c.json({ error: "Unauthorized" }, 401);
+        }
+
+        const startTime = Date.now();
+
+        try {
+            const { aggregateDailyUsage } = await import(
+                "@/features/usage/services/usage-aggregation-service"
+            );
+            const { createAdminClient } = await import("@/lib/appwrite");
+            const { Query } = await import("node-appwrite");
+            const { DATABASE_ID, USAGE_EVENTS_ID } = await import("@/config");
+            const { databases: adminDb } = await createAdminClient();
+
+            // Find the earliest event timestamp
+            const earliest = await adminDb.listDocuments(
+                DATABASE_ID,
+                USAGE_EVENTS_ID,
+                [Query.orderAsc("timestamp"), Query.limit(1)]
+            );
+
+            if (earliest.total === 0) {
+                return c.json({
+                    success: true,
+                    message: "No events to aggregate",
+                    daysProcessed: 0,
+                    durationMs: Date.now() - startTime,
+                });
+            }
+
+            const firstDate = ((earliest.documents[0] as unknown) as { timestamp: string }).timestamp.split("T")[0];
+            const today = new Date().toISOString().split("T")[0];
+
+            // Work through each day from first event to yesterday
+            const allResults = [];
+            let currentDate = firstDate;
+
+            while (currentDate < today) {
+                const dayResult = await aggregateDailyUsage(adminDb, currentDate);
+                allResults.push(dayResult);
+
+                // Move to next day
+                const next = new Date(currentDate + "T00:00:00Z");
+                next.setUTCDate(next.getUTCDate() + 1);
+                currentDate = next.toISOString().split("T")[0];
+            }
+
+            const totalEvents = allResults.reduce((sum, r) => sum + r.eventsProcessed, 0);
+            const totalDeleted = allResults.reduce((sum, r) => sum + r.eventsDeleted, 0);
+            const totalSummaries = allResults.reduce((sum, r) => sum + r.summariesCreated, 0);
+            const allErrors = allResults.flatMap(r => r.errors);
+
+            return c.json({
+                success: true,
+                daysProcessed: allResults.length,
+                totalEventsProcessed: totalEvents,
+                totalEventsDeleted: totalDeleted,
+                totalSummariesCreated: totalSummaries,
+                errors: allErrors,
+                durationMs: Date.now() - startTime,
+            });
+        } catch (error) {
+            return c.json({
+                success: false,
+                error: error instanceof Error ? error.message : "Unknown error",
+            }, 500);
+        }
+    })
+
+    /**
      * GET /cron/health
      * 
      * Health check endpoint for monitoring.
@@ -225,6 +359,8 @@ const app = new Hono()
                 "POST /cron/billing/process-cycle",
                 "POST /cron/billing/enforce-grace",
                 "POST /cron/billing/send-reminders",
+                "POST /cron/usage/aggregate-daily",
+                "POST /cron/usage/aggregate-all",
             ],
         });
     });

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { DATABASE_ID, SPRINTS_ID, WORK_ITEMS_ID, MEMBERS_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
+import { batchGetUsers } from "@/lib/batch-users";
 import { can } from "@/lib/rbac";
 import { PERMISSIONS } from "@/lib/permissions";
 
@@ -173,21 +174,21 @@ const app = new Hono()
       // Build a map of member ID -> user data for quick lookup
       const assigneeMap = new Map<string, { $id: string; name: string; email: string; profileImageUrl: string | null }>();
 
-      await Promise.all(
-        membersData.documents.map(async (memberDoc) => {
-          try {
-            const userInfo = await users.get(memberDoc.userId);
-            assigneeMap.set(memberDoc.$id, {
-              $id: memberDoc.$id,
-              name: userInfo.name || userInfo.email,
-              email: userInfo.email,
-              profileImageUrl: userInfo.prefs?.profileImageUrl || null,
-            });
-          } catch {
-            // User not found - skip this member
-          }
-        })
-      );
+      // OPTIMIZED: Batch-fetch all users in one call (was N+1 users.get per member)
+      const memberUserIds = membersData.documents.map(m => m.userId);
+      const userMap = await batchGetUsers(users, memberUserIds);
+
+      membersData.documents.forEach((memberDoc) => {
+        const userInfo = userMap.get(memberDoc.userId);
+        if (userInfo) {
+          assigneeMap.set(memberDoc.$id, {
+            $id: memberDoc.$id,
+            name: userInfo.name || userInfo.email,
+            email: userInfo.email,
+            profileImageUrl: userInfo.prefs?.profileImageUrl || null,
+          });
+        }
+      });
 
       const populatedWorkItems = await Promise.all(
         workItems.documents.map(async (workItem) => {
@@ -378,7 +379,7 @@ const app = new Hono()
       // Project permission check for sprint editing
       const { resolveUserProjectAccess, hasProjectPermission, ProjectPermissionKey } = await import("@/lib/permissions/resolveUserProjectAccess");
       const access = await resolveUserProjectAccess(databases, user.$id, sprint.projectId);
-      
+
       if (!access.hasAccess) {
         return c.json({ error: "Forbidden: No access to this project" }, 403);
       }
