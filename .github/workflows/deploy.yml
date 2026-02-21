@@ -143,6 +143,13 @@ jobs:
           TWO_FACTOR_ENCRYPTION_SECRET: ${{ secrets.TWO_FACTOR_ENCRYPTION_SECRET }}
         run: npm run build
 
+      - name: Clean up before transfer
+        run: |
+          # Remove .git (not needed on server, causes permission errors)
+          rm -rf .git
+          # Remove node_modules (reinstalled via npm ci on server)
+          rm -rf node_modules
+
       - name: Transfer files to server
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -153,9 +160,6 @@ jobs:
           source: "."
           target: "/var/www/fairlx"
           overwrite: true
-          # Skip .git (causes permission errors, not needed on server)
-          # Skip node_modules (reinstalled via npm ci on server)
-          tar_exec: "tar --exclude='.git' --exclude='node_modules'"
 
       - name: Deploy to Digital Ocean
         uses: appleboy/ssh-action@v1.0.0
