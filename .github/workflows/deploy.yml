@@ -153,6 +153,9 @@ jobs:
           source: "."
           target: "/var/www/fairlx"
           overwrite: true
+          # Skip .git (causes permission errors, not needed on server)
+          # Skip node_modules (reinstalled via npm ci on server)
+          tar_exec: "tar --exclude='.git' --exclude='node_modules'"
 
       - name: Deploy to Digital Ocean
         uses: appleboy/ssh-action@v1.0.0
