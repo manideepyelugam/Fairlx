@@ -24,7 +24,7 @@ import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { Navbar } from "@/components/navbar";
 import { Sidebar } from "@/components/sidebar";
 import { ProfileSidebar } from "@/components/ProfileSidebar";
-import { useAccountLifecycle } from "@/components/account-lifecycle-provider";
+
 import { LifecycleGuard } from "@/components/lifecycle-guard";
 import { cn } from "@/lib/utils";
 
@@ -42,10 +42,6 @@ const DashboardContent = ({ children }: DashboardLayoutProps) => {
   const workspaceId = useWorkspaceId();
   const isTaskDetailPage = /^\/workspaces\/[^\/]+\/tasks\/[^\/]+$/.test(pathname || "");
   const isMainDashboard = /^\/workspaces\/[^\/]+$/.test(pathname || "");
-  const { isLoaded } = useAccountLifecycle();
-
-  // Don't render until lifecycle is loaded
-  if (!isLoaded) return null;
 
   return (
     <div className={`min-h-screen ${isMainDashboard ? 'bg-background' : ''}`}>

@@ -1,15 +1,5 @@
-import { redirect } from "next/navigation";
-
-import { getCurrent } from "@/features/auth/queries";
-
 import { ProgramsClient } from "./client";
 
-const ProgramsPage = async () => {
-  const user = await getCurrent();
-
-  if (!user) redirect("/sign-in");
-
-  return <ProgramsClient />;
-};
+const ProgramsPage = () => <ProgramsClient />;
 
 export default ProgramsPage;

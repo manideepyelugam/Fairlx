@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 
 import { client } from "@/lib/rpc";
 import { QUERY_CONFIG } from "@/lib/query-config";
@@ -58,6 +58,7 @@ export const useGetWorkItems = ({
     enabled: Boolean(workspaceId) && enabled,
     staleTime: QUERY_CONFIG.DYNAMIC.staleTime,
     gcTime: QUERY_CONFIG.DYNAMIC.gcTime,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       if (!workspaceId) {
         throw new Error("workspaceId is required to fetch work items.");

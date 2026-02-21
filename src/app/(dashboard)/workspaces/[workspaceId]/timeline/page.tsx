@@ -1,6 +1,4 @@
 import React, { Suspense } from "react";
-import { redirect } from "next/navigation";
-import { getCurrent } from "@/features/auth/queries";
 import { getTimelineData } from "@/features/timeline/server/get-timeline-data";
 import { processTimelineData } from "@/features/timeline/server/process-timeline-data";
 import { TimelineClient } from "@/features/timeline/components/timeline-client";
@@ -22,11 +20,6 @@ interface TimelinePageProps {
 export default async function TimelinePage({
   searchParams,
 }: TimelinePageProps) {
-  // Verify authentication on the server
-  const user = await getCurrent();
-  if (!user) {
-    redirect("/sign-in");
-  }
 
   const params = await searchParams;
   const { workspaceId, projectId } = params;

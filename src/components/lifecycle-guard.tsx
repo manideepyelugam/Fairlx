@@ -4,7 +4,6 @@ import React, { useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAccountLifecycle } from "@/components/account-lifecycle-provider";
 import { PUBLIC_ROUTES } from "@/features/auth/constants";
-import { Loader2 } from "lucide-react";
 import { ForcePasswordReset } from "@/features/auth/components/force-password-reset";
 import { LegalAcceptanceModal } from "@/features/auth/components/legal-acceptance-modal";
 
@@ -108,13 +107,49 @@ export function LifecycleGuard({ children }: LifecycleGuardProps) {
 
     }, [isLoaded, isPublicRoute, lifecycleState.isAuthenticated, lifecycleRouting, pathname, router]);
 
-    // ZERO-FLASH: Show loader while state is loading
+    // ZERO-FLASH: Show app-shell skeleton while state is loading
     if (!isLoaded) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-background">
-                <div className="text-center">
-                    <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-                    <p className="mt-4 text-sm text-muted-foreground">Loading...</p>
+            <div className="flex min-h-screen bg-background">
+                {/* Sidebar skeleton */}
+                <div className="hidden lg:flex w-[264px] flex-col border-r border-border bg-card animate-pulse">
+                    <div className="p-4 space-y-4">
+                        <div className="h-8 w-24 bg-muted rounded-md" />
+                        <div className="space-y-2 mt-6">
+                            {[...Array(6)].map((_, i) => (
+                                <div key={i} className="h-7 bg-muted/60 rounded-md" />
+                            ))}
+                        </div>
+                        <div className="h-px bg-border my-4" />
+                        <div className="space-y-2">
+                            {[...Array(3)].map((_, i) => (
+                                <div key={i} className="h-7 bg-muted/40 rounded-md" />
+                            ))}
+                        </div>
+                    </div>
+                </div>
+                {/* Main content skeleton */}
+                <div className="flex-1 animate-pulse p-6">
+                    <div className="flex items-center justify-between mb-8">
+                        <div className="h-7 w-48 bg-muted rounded-md" />
+                        <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 bg-muted rounded-full" />
+                            <div className="h-8 w-8 bg-muted rounded-full" />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                        {[...Array(4)].map((_, i) => (
+                            <div key={i} className="rounded-lg border border-border p-4">
+                                <div className="h-3 w-20 bg-muted/60 rounded mb-3" />
+                                <div className="h-6 w-16 bg-muted rounded" />
+                            </div>
+                        ))}
+                    </div>
+                    <div className="space-y-3">
+                        {[...Array(5)].map((_, i) => (
+                            <div key={i} className="h-12 bg-muted/30 rounded-lg border border-border" />
+                        ))}
+                    </div>
                 </div>
             </div>
         );
@@ -129,13 +164,27 @@ export function LifecycleGuard({ children }: LifecycleGuardProps) {
         return <LegalAcceptanceModal />;
     }
 
-    // If redirecting, show spinner (but with timeout protection)
+    // If redirecting, show same skeleton (prevents flash)
     if (redirectingRef.current) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-background">
-                <div className="text-center">
-                    <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-                    <p className="mt-4 text-sm text-muted-foreground">Redirecting...</p>
+            <div className="flex min-h-screen bg-background">
+                <div className="hidden lg:flex w-[264px] flex-col border-r border-border bg-card animate-pulse">
+                    <div className="p-4 space-y-4">
+                        <div className="h-8 w-24 bg-muted rounded-md" />
+                        <div className="space-y-2 mt-6">
+                            {[...Array(6)].map((_, i) => (
+                                <div key={i} className="h-7 bg-muted/60 rounded-md" />
+                            ))}
+                        </div>
+                    </div>
+                </div>
+                <div className="flex-1 animate-pulse p-6">
+                    <div className="h-7 w-48 bg-muted rounded-md mb-8" />
+                    <div className="space-y-3">
+                        {[...Array(5)].map((_, i) => (
+                            <div key={i} className="h-12 bg-muted/30 rounded-lg border border-border" />
+                        ))}
+                    </div>
                 </div>
             </div>
         );

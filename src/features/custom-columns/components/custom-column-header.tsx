@@ -1,16 +1,7 @@
 "use client";
 
 import * as React from "react";
-import * as Icons from "react-icons/ai";
-import * as BiIcons from "react-icons/bi";
-import * as BsIcons from "react-icons/bs";
-import * as FaIcons from "react-icons/fa";
-import * as FiIcons from "react-icons/fi";
-import * as HiIcons from "react-icons/hi";
-import * as IoIcons from "react-icons/io5";
-import * as MdIcons from "react-icons/md";
-import * as RiIcons from "react-icons/ri";
-import * as TbIcons from "react-icons/tb";
+import { resolveIconSync } from "@/lib/resolve-icon";
 import { PlusIcon, MoreHorizontalIcon, ArrowUpDown, Calendar } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -26,20 +17,6 @@ import { useCreateWorkItemModal } from "@/features/sprints/hooks/use-create-work
 import { useDeleteCustomColumn } from "../api/use-delete-custom-column";
 
 import { CustomColumn } from "../types";
-
-// Combine all icon sets
-const allIcons = {
-  ...Icons,
-  ...BiIcons,
-  ...BsIcons,
-  ...FaIcons,
-  ...FiIcons,
-  ...HiIcons,
-  ...IoIcons,
-  ...MdIcons,
-  ...RiIcons,
-  ...TbIcons,
-};
 
 interface CustomColumnHeaderProps {
   customColumn: CustomColumn;
@@ -68,7 +45,7 @@ export const CustomColumnHeader = ({
     "destructive"
   );
 
-  const IconComponent = allIcons[customColumn.icon as keyof typeof allIcons];
+  const IconComponent = resolveIconSync(customColumn.icon);
 
   const handleDelete = async () => {
     const ok = await confirm();

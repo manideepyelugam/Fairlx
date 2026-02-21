@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Flag,
   Users,
@@ -9,18 +9,8 @@ import {
   Bug,
   CheckSquare,
   ListTodo,
-  CircleIcon,
 } from "lucide-react";
-import * as Icons from "react-icons/ai";
-import * as BiIcons from "react-icons/bi";
-import * as BsIcons from "react-icons/bs";
-import * as FaIcons from "react-icons/fa";
-import * as FiIcons from "react-icons/fi";
-import * as HiIcons from "react-icons/hi";
-import * as IoIcons from "react-icons/io5";
-import * as MdIcons from "react-icons/md";
-import * as RiIcons from "react-icons/ri";
-import * as TbIcons from "react-icons/tb";
+import { resolveIconSync, preloadIcons } from "@/lib/resolve-icon";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -50,19 +40,6 @@ import {
 } from "../types";
 import { useGetCustomColumns } from "@/features/custom-columns/api/use-get-custom-columns";
 import { useGetProject } from "@/features/projects/api/use-get-project";
-
-const allIcons = {
-  ...Icons,
-  ...BiIcons,
-  ...BsIcons,
-  ...FaIcons,
-  ...FiIcons,
-  ...HiIcons,
-  ...IoIcons,
-  ...MdIcons,
-  ...RiIcons,
-  ...TbIcons,
-};
 
 interface WorkItemCardProps {
   workItem: PopulatedWorkItem;
@@ -115,7 +92,15 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails, 
     projectId: projectId || workItem.projectId,
   });
 
-  const customColumns = data?.documents || [];
+  const customColumns = useMemo(() => data?.documents || [], [data?.documents]);
+
+  // Preload icon packages for custom columns
+  useEffect(() => {
+    const iconNames = customColumns.map(c => c.icon).filter(Boolean);
+    if (iconNames.length > 0) {
+      preloadIcons(iconNames);
+    }
+  }, [customColumns]);
 
   // Get available work item types (custom + defaults)
   const defaultWorkItemTypes = [
@@ -253,11 +238,11 @@ export const WorkItemCard = ({ workItem, workspaceId, projectId, onViewDetails, 
                   <>
                     <SelectSeparator />
                     {customColumns.map((c) => {
-                      const Icon = allIcons[c.icon as keyof typeof allIcons];
+                      const ResolvedIcon = resolveIconSync(c.icon);
                       return (
                         <SelectItem key={c.$id} value={c.$id}>
                           <div className="flex items-center gap-2">
-                            {Icon ? <Icon style={{ color: c.color }} /> : <CircleIcon />}
+                            <ResolvedIcon style={{ color: c.color }} />
                             {c.name}
                           </div>
                         </SelectItem>

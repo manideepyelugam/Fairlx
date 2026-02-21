@@ -19,7 +19,8 @@ import { Button } from "@/components/ui/button";
 import { useTaskFilters } from "../hooks/use-task-filters";
 import { useGetCustomColumns } from "@/features/custom-columns/api/use-get-custom-columns";
 import { CustomColumn } from "@/features/custom-columns/types";
-import { allIcons, statusIconMap } from "@/features/custom-columns/components/status-selector";
+import { statusIconMap } from "@/features/custom-columns/components/status-selector";
+import { resolveIconSync } from "@/lib/resolve-icon";
 import { TaskStatus, TaskPriority } from "../types";
 import { PriorityIcon } from "./priority-selector";
 import { LabelFilter } from "./label-management";
@@ -155,7 +156,7 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly, disableManageC
               {customColumnOptions.map((col) => {
                 const raw = customColumnsData?.documents?.find((d) => d.$id === col.value);
                 const c = raw as unknown as CustomColumn | undefined;
-                const IconComp = c ? (allIcons[c.icon as keyof typeof allIcons] as React.ComponentType<React.SVGProps<SVGSVGElement>>) : null;
+                const IconComp = c ? resolveIconSync(c.icon) : null;
                 const icon = IconComp ? (
                   <IconComp className="size-[18px]" style={{ color: c?.color }} />
                 ) : (

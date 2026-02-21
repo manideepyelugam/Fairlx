@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 
 import { client } from "@/lib/rpc";
 
@@ -20,6 +20,7 @@ export const useGetSprints = ({
   const query = useQuery({
     queryKey: ["sprints", workspaceId, projectId, status],
     enabled: Boolean(workspaceId) && Boolean(projectId) && enabled,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       if (!workspaceId || !projectId) {
         throw new Error("workspaceId and projectId are required to fetch sprints.");
