@@ -147,8 +147,6 @@ jobs:
         run: |
           # Remove .git (not needed on server, causes permission errors)
           rm -rf .git
-          # Remove node_modules (reinstalled via npm ci on server)
-          rm -rf node_modules
 
       - name: Transfer files to server
         uses: appleboy/scp-action@v0.1.7
@@ -280,8 +278,8 @@ jobs:
             # Ensure proper permissions
             chmod 600 .env.local
             
-            # Install dependencies (keep tsx for running server.ts)
-            npm ci
+            # Quick dependency sync (node_modules already transferred via SCP)
+            npm install --prefer-offline --no-audit --no-fund
             
             # Create PM2 ecosystem config for Socket.IO server
             # Using tsx for production since it handles TypeScript and path aliases correctly
