@@ -219,7 +219,7 @@ const NavigationInner = ({
 
           return (
             <div key={item.routeKey}>
-              <Link href={fullHref}>
+              <Link href={fullHref} prefetch>
                 <div
                   className={cn(
                     "flex items-center gap-2.5 px-2.5 py-2 rounded-md font-medium hover:bg-sidebar-accent hover:text-sidebar-foreground transition text-sidebar-foreground/70",

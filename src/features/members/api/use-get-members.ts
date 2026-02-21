@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 
 import { client } from "@/lib/rpc";
 import { QUERY_CONFIG } from "@/lib/query-config";
@@ -13,6 +13,7 @@ export const useGetMembers = ({ workspaceId, enabled = true }: useGetMembersProp
     queryKey: ["members", workspaceId],
     staleTime: QUERY_CONFIG.SEMI_DYNAMIC.staleTime,
     gcTime: QUERY_CONFIG.SEMI_DYNAMIC.gcTime,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       const response = await client.api.members.$get({
         query: { workspaceId },

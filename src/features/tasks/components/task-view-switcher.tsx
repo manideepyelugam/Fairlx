@@ -20,31 +20,31 @@ import { ColumnDef } from "@tanstack/react-table";
 
 // Dynamically import heavy view components
 const DataTable = dynamic(() => import("./data-table").then(mod => mod.DataTable), {
-  loading: () => <div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>,
+  loading: () => <div className="h-[400px] animate-pulse p-4 space-y-3">{[...Array(6)].map((_, i) => <div key={i} className="h-10 bg-muted/40 rounded-lg" />)}</div>,
 }) as React.ComponentType<{ columns: ColumnDef<PopulatedTask, unknown>[]; data: PopulatedTask[] }>;
 
 const DataCalendar = dynamic(() => import("./data-calendar").then(mod => mod.DataCalendar), {
-  loading: () => <div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>,
+  loading: () => <div className="h-[400px] animate-pulse p-4 space-y-3">{[...Array(6)].map((_, i) => <div key={i} className="h-10 bg-muted/40 rounded-lg" />)}</div>,
 });
 
 const EnhancedDataKanban = dynamic(() => import("@/features/custom-columns/components/enhanced-data-kanban").then(mod => mod.EnhancedDataKanban), {
-  loading: () => <div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>,
+  loading: () => <div className="h-[400px] animate-pulse p-4 space-y-3">{[...Array(6)].map((_, i) => <div key={i} className="h-10 bg-muted/40 rounded-lg" />)}</div>,
 });
 
 const DataDashboard = dynamic(() => import("./data-dashboard").then(mod => mod.DataDashboard), {
-  loading: () => <div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>,
+  loading: () => <div className="h-[400px] animate-pulse p-4 space-y-3">{[...Array(6)].map((_, i) => <div key={i} className="h-10 bg-muted/40 rounded-lg" />)}</div>,
 });
 
 const TimelineView = dynamic(() => import("@/features/timeline/components/timeline-view").then(mod => mod.TimelineView), {
-  loading: () => <div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>,
+  loading: () => <div className="h-[400px] animate-pulse p-4 space-y-3">{[...Array(6)].map((_, i) => <div key={i} className="h-10 bg-muted/40 rounded-lg" />)}</div>,
 });
 
 const MyBacklogView = dynamic(() => import("@/features/personal-backlog/components/my-backlog-view").then(mod => mod.MyBacklogView), {
-  loading: () => <div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>,
+  loading: () => <div className="h-[400px] animate-pulse p-4 space-y-3">{[...Array(6)].map((_, i) => <div key={i} className="h-10 bg-muted/40 rounded-lg" />)}</div>,
 });
 
 const EnhancedBacklogScreen = dynamic(() => import("@/features/sprints/components/enhanced-backlog-screen"), {
-  loading: () => <div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>,
+  loading: () => <div className="h-[400px] animate-pulse p-4 space-y-3">{[...Array(6)].map((_, i) => <div key={i} className="h-10 bg-muted/40 rounded-lg" />)}</div>,
 });
 
 import { createColumns } from "./columns";

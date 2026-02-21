@@ -1,16 +1,7 @@
 "use client";
 
 import * as React from "react";
-import * as Icons from "react-icons/ai";
-import * as BiIcons from "react-icons/bi";
-import * as BsIcons from "react-icons/bs";
-import * as FaIcons from "react-icons/fa";
-import * as FiIcons from "react-icons/fi";
-import * as HiIcons from "react-icons/hi";
-import * as IoIcons from "react-icons/io5";
-import * as MdIcons from "react-icons/md";
-import * as RiIcons from "react-icons/ri";
-import * as TbIcons from "react-icons/tb";
+import { resolveIconSync } from "@/lib/resolve-icon";
 
 import {
   Select,
@@ -32,19 +23,7 @@ import { TaskStatus } from "@/features/tasks/types";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useGetCustomColumns } from "@/features/custom-columns/api/use-get-custom-columns";
 
-// Combine all icon sets
-export const allIcons = {
-  ...Icons,
-  ...BiIcons,
-  ...BsIcons,
-  ...FaIcons,
-  ...FiIcons,
-  ...HiIcons,
-  ...IoIcons,
-  ...MdIcons,
-  ...RiIcons,
-  ...TbIcons,
-};
+
 
 export const statusIconMap: Record<TaskStatus, React.ReactNode> = {
   [TaskStatus.TODO]: <CircleIcon className="size-[18px] text-muted-foreground" />,
@@ -137,15 +116,9 @@ export const StatusSelector = React.forwardRef<
               {/* Separator */}
               <div className="border-t my-1" />
               {customColumns.documents.map((column) => {
-                const IconComponent =
-                  allIcons[column.icon as keyof typeof allIcons];
-                const icon = IconComponent ? (
+                const IconComponent = resolveIconSync(column.icon);
+                const icon = (
                   <IconComponent
-                    className="size-[18px]"
-                    style={{ color: column.color }}
-                  />
-                ) : (
-                  <CircleIcon
                     className="size-[18px]"
                     style={{ color: column.color }}
                   />

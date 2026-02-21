@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { client } from "@/lib/rpc";
 import { AccountLifecycleState } from "../types";
 
@@ -93,7 +93,12 @@ export const useGetAccountLifecycle = () => {
             const result = await response.json();
             return result as LifecycleQueryResult;
         },
-        staleTime: 1000 * 30, // 30 seconds - critical for security status
+        // PERF: 2 min staleTime — lifecycle rarely changes mid-session.
+        // Background refetches still run; if state changes, guard will redirect.
+        staleTime: 2 * 60 * 1000,
+        // PERF: Keep previous data across remounts so LifecycleGuard can render
+        // children immediately with cached data instead of showing skeleton.
+        placeholderData: keepPreviousData,
         refetchOnWindowFocus: true, // Re-verify status when coming back to app
         refetchInterval: 2 * 60 * 1000, // Poll every 2 minutes
         refetchIntervalInBackground: false, // Don't poll when tab is not focused
@@ -106,12 +111,16 @@ export const useGetAccountLifecycle = () => {
         await queryClient.invalidateQueries({ queryKey: ["account-lifecycle"] });
     };
 
+    // PERF: Treat as "loaded" if we have ANY data (cached or fresh).
+    // This lets the dashboard render immediately with cached lifecycle state.
+    const hasData = !!query.data?.data;
+
     return {
         lifecycleState: query.data?.data ?? INITIAL_LIFECYCLE_STATE,
         /** New: Server-derived lifecycle routing */
         lifecycleRouting: query.data?.lifecycle ?? INITIAL_ROUTING,
-        isLoaded: query.data?.data?.isLoaded ?? false,
-        isLoading: query.isLoading,
+        isLoaded: hasData,
+        isLoading: query.isLoading && !hasData,
         isError: query.isError,
         refreshLifecycle,
     };

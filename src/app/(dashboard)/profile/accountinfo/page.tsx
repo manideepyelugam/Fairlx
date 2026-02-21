@@ -1,17 +1,15 @@
-import React from 'react'
-import { ProfileClient } from '@/features/auth/components/account-info'
-import { getCurrent } from "@/features/auth/queries";
-import { redirect } from "next/navigation";
+"use client";
 
-const page = async () => {
-     const user = await getCurrent();
-    
-      if (!user) {
-        redirect("/sign-in");
-      }
+import { useCurrent } from "@/features/auth/api/use-current";
+import { ProfileClient } from "@/features/auth/components/account-info";
+import { PageLoader } from "@/components/page-loader";
 
-  return (
-    <ProfileClient initialData={user} />)
-}
+const AccountInfoPage = () => {
+  const { data: user, isLoading } = useCurrent();
 
-export default page
+  if (isLoading || !user) return <PageLoader />;
+
+  return <ProfileClient initialData={user} />;
+};
+
+export default AccountInfoPage;

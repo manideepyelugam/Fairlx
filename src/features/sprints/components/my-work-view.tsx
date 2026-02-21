@@ -297,8 +297,41 @@ export const MyWorkView = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+      <div className="h-full flex flex-col bg-background animate-pulse">
+        {/* Header skeleton */}
+        <div className="px-4 pb-4">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <div className="h-7 w-32 bg-muted rounded-md mb-2" />
+              <div className="h-4 w-64 bg-muted/60 rounded-md" />
+            </div>
+          </div>
+          {/* Stats cards skeleton */}
+          <div className="grid grid-cols-5 gap-3 mb-8">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="rounded-lg border bg-muted/30 p-3">
+                <div className="h-3 w-16 bg-muted/60 rounded mb-2" />
+                <div className="h-7 w-10 bg-muted rounded" />
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Filters + board skeleton */}
+        <div className="px-4 py-3 border-b flex gap-2">
+          <div className="h-8 w-48 bg-muted/50 rounded-md" />
+          <div className="h-8 w-28 bg-muted/50 rounded-md" />
+          <div className="h-8 w-28 bg-muted/50 rounded-md" />
+        </div>
+        <div className="flex gap-4 p-4">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="w-[280px] flex-shrink-0 bg-muted/30 rounded-xl p-3 space-y-3">
+              <div className="h-5 w-24 bg-muted rounded" />
+              {[...Array(3)].map((_, j) => (
+                <div key={j} className="h-28 bg-card rounded-xl border border-border" />
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

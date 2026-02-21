@@ -90,31 +90,7 @@ import { useGetCustomColumns } from "@/features/custom-columns/api/use-get-custo
 import { useCreateTaskModal } from "@/features/tasks/hooks/use-create-task-modal";
 import { SelectSeparator } from "@/components/ui/select";
 import { snakeCaseToTitleCase } from "@/lib/utils";
-import * as Icons from "react-icons/ai";
-import * as BiIcons from "react-icons/bi";
-import * as BsIcons from "react-icons/bs";
-import * as FaIcons from "react-icons/fa";
-import * as FiIcons from "react-icons/fi";
-import * as HiIcons from "react-icons/hi";
-import * as IoIcons from "react-icons/io5";
-import * as MdIcons from "react-icons/md";
-import * as RiIcons from "react-icons/ri";
-import * as TbIcons from "react-icons/tb";
-import { CircleIcon } from "lucide-react";
-
-// Combine all icon sets for custom columns
-const allIcons = {
-  ...Icons,
-  ...BiIcons,
-  ...BsIcons,
-  ...FaIcons,
-  ...FiIcons,
-  ...HiIcons,
-  ...IoIcons,
-  ...MdIcons,
-  ...RiIcons,
-  ...TbIcons,
-};
+import { resolveIconSync } from "@/lib/resolve-icon";
 
 interface EnhancedBacklogScreenProps {
   workspaceId: string;
@@ -993,15 +969,11 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                               <>
                                                 <SelectSeparator />
                                                 {customColumns.map((column) => {
-                                                  const IconComponent = allIcons[column.icon as keyof typeof allIcons] as React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+                                                  const IconComponent = resolveIconSync(column.icon);
                                                   return (
                                                     <SelectItem key={column.$id} value={column.$id}>
                                                       <div className="flex items-center gap-2">
-                                                        {IconComponent ? (
-                                                          <IconComponent className="size-4" style={{ color: column.color }} />
-                                                        ) : (
-                                                          <CircleIcon className="size-4" style={{ color: column.color }} />
-                                                        )}
+                                                        <IconComponent className="size-4" style={{ color: column.color }} />
                                                         {column.name}
                                                       </div>
                                                     </SelectItem>
@@ -1392,15 +1364,11 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                         <>
                                           <SelectSeparator />
                                           {customColumns.map((column) => {
-                                            const IconComponent = allIcons[column.icon as keyof typeof allIcons] as React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+                                            const IconComponent = resolveIconSync(column.icon);
                                             return (
                                               <SelectItem key={column.$id} value={column.$id}>
                                                 <div className="flex items-center gap-2">
-                                                  {IconComponent ? (
-                                                    <IconComponent className="size-4" style={{ color: column.color }} />
-                                                  ) : (
-                                                    <CircleIcon className="size-4" style={{ color: column.color }} />
-                                                  )}
+                                                  <IconComponent className="size-4" style={{ color: column.color }} />
                                                   {column.name}
                                                 </div>
                                               </SelectItem>
@@ -1705,15 +1673,11 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                               <>
                                 <SelectSeparator />
                                 {customColumns.map((column) => {
-                                  const IconComponent = allIcons[column.icon as keyof typeof allIcons] as React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+                                  const IconComponent = resolveIconSync(column.icon);
                                   return (
                                     <SelectItem key={column.$id} value={column.$id}>
                                       <div className="flex items-center gap-2">
-                                        {IconComponent ? (
-                                          <IconComponent className="size-4" style={{ color: column.color }} />
-                                        ) : (
-                                          <CircleIcon className="size-4" style={{ color: column.color }} />
-                                        )}
+                                        <IconComponent className="size-4" style={{ color: column.color }} />
                                         {column.name}
                                       </div>
                                     </SelectItem>
