@@ -155,7 +155,7 @@ export function getLifecycleRouting(state: LifecycleState): {
             return {
                 redirectTo: null,
                 allowedPaths: ["*"],
-                blockedPaths: ["/onboarding", "/organization"],
+                blockedPaths: ["/onboarding", "/organization", "/welcome"],
             };
 
         case LifecycleState.ORG_OWNER_ONBOARDING:
