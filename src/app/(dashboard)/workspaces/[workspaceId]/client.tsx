@@ -26,6 +26,7 @@ import {
   ArrowUpRight,
   MoreHorizontal,
   FileText,
+  CheckCircle2,
 } from "lucide-react"
 import { useMemo } from "react"
 import Link from "next/link";
@@ -200,55 +201,55 @@ export const WorkspaceIdClient = () => {
             {isLoadingAnalytics ? (
               <DashboardStatsSkeleton />
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Total Task Card */}
-                <Card className="relative overflow-hidden bg-card border border-border shadow-sm hover:shadow-md transition-shadow">
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-muted-foreground" />
-                  <div className="p-4 pl-5">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-medium text-muted-foreground">Total Tasks</span>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg hover:bg-accent">
-                        <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/70" />
-                      </Button>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* Total Tasks Card */}
+                <Card className="p-4 bg-card border border-border shadow-sm hover:shadow-md transition-all group cursor-pointer">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center flex-shrink-0">
+                      <Layers className="h-4 w-4 text-blue-500" />
                     </div>
-                    <div className="flex items-end justify-between">
-                      <span className="text-3xl font-semibold tracking-tight text-foreground">{totalTasks}</span>
-                      <MiniBarChart value={totalTasks} max={totalTasks + 50} variant="default" />
+                    <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
+                  </div>
+                  <div className="flex items-end justify-between gap-2">
+                    <div>
+                      <div className="text-2xl font-bold tracking-tight text-foreground">{totalTasks}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">Total Tasks</div>
                     </div>
+                    <MiniBarChart value={totalTasks} max={totalTasks + 50} variant="default" />
                   </div>
                 </Card>
 
-                {/* Pending Task Card */}
-                <Card className="relative overflow-hidden bg-card border border-border shadow-sm hover:shadow-md transition-shadow">
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500" />
-                  <div className="p-4 pl-5">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-medium text-muted-foreground">Pending Tasks</span>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg hover:bg-accent">
-                        <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/70" />
-                      </Button>
+                {/* Pending Tasks Card */}
+                <Card className="p-4 bg-card border border-border shadow-sm hover:shadow-md transition-all group cursor-pointer">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center flex-shrink-0">
+                      <Clock className="h-4 w-4 text-amber-500" />
                     </div>
-                    <div className="flex items-end justify-between">
-                      <span className="text-3xl font-semibold tracking-tight text-amber-500">{pendingTasks}</span>
-                      <MiniBarChart value={pendingTasks} max={totalTasks} variant="dotted" />
+                    <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
+                  </div>
+                  <div className="flex items-end justify-between gap-2">
+                    <div>
+                      <div className="text-2xl font-bold tracking-tight text-amber-500">{pendingTasks}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">Pending Tasks</div>
                     </div>
+                    <MiniBarChart value={pendingTasks} max={totalTasks} variant="dotted" />
                   </div>
                 </Card>
 
-                {/* Completed Task Card */}
-                <Card className="relative overflow-hidden bg-card border border-border shadow-sm hover:shadow-md transition-shadow">
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500" />
-                  <div className="p-4 pl-5">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-medium text-muted-foreground">Completed Tasks</span>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg hover:bg-accent">
-                        <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/70" />
-                      </Button>
+                {/* Completed Tasks Card */}
+                <Card className="p-4 bg-card border border-border shadow-sm hover:shadow-md transition-all group cursor-pointer">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center flex-shrink-0">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                     </div>
-                    <div className="flex items-end justify-between">
-                      <span className="text-3xl font-semibold tracking-tight text-emerald-500">{completedTasks}</span>
-                      <MiniBarChart value={completedTasks} max={totalTasks} variant="blocks" />
+                    <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
+                  </div>
+                  <div className="flex items-end justify-between gap-2">
+                    <div>
+                      <div className="text-2xl font-bold tracking-tight text-emerald-500">{completedTasks}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">Completed Tasks</div>
                     </div>
+                    <MiniBarChart value={completedTasks} max={totalTasks} variant="blocks" />
                   </div>
                 </Card>
               </div>
