@@ -6,11 +6,11 @@ export const MiniBarChart = ({ value, max, variant = "default" }: { value: numbe
     // dotted variant - used for pending/warning states (amber)
     if (variant === "dotted") {
         return (
-            <div className="flex items-end gap-0.5 h-8">
+            <div className="flex items-end gap-0.5 h-7">
                 {Array.from({ length: bars }).map((_, i) => (
                     <div
                         key={i}
-                        className={`w-1.5 rounded-sm ${i < filledBars ? 'bg-amber-500' : 'bg-amber-500/20'}`}
+                        className={`w-1.5 rounded-sm ${i < filledBars ? 'bg-amber-500' : 'bg-amber-500/15'}`}
                         style={{ height: `${20 + (i * 5) % 30 + 20}%` }}
                     />
                 ))}
@@ -21,24 +21,24 @@ export const MiniBarChart = ({ value, max, variant = "default" }: { value: numbe
     // blocks variant - used for completed/success states (emerald)
     if (variant === "blocks") {
         return (
-            <div className="flex items-end gap-1 h-8">
+            <div className="flex items-end gap-1 h-7">
                 {Array.from({ length: 6 }).map((_, i) => (
                     <div
                         key={i}
-                        className={`w-3 h-6 rounded-sm ${i < Math.ceil(filledBars / 2) ? 'bg-emerald-500' : 'bg-emerald-500/20'}`}
+                        className={`w-2.5 h-5 rounded-sm ${i < Math.ceil(filledBars / 2) ? 'bg-emerald-500' : 'bg-emerald-500/15'}`}
                     />
                 ))}
             </div>
         )
     }
 
-    // default variant - neutral/black for totals
+    // default variant - blue for totals
     return (
-        <div className="flex items-end gap-0.5 h-8">
+        <div className="flex items-end gap-0.5 h-7">
             {Array.from({ length: bars }).map((_, i) => (
                 <div
                     key={i}
-                    className={`w-1 rounded-sm ${i < filledBars ? 'bg-foreground' : 'bg-muted'}`}
+                    className={`w-1 rounded-sm ${i < filledBars ? 'bg-blue-500' : 'bg-blue-500/15'}`}
                     style={{ height: `${30 + (i * 7) % 40 + 30}%` }}
                 />
             ))}
