@@ -102,6 +102,7 @@ export type PopulatedWorkItem = WorkItem & {
   project?: { $id: string; name: string; imageUrl?: string } | null;
   childrenCount?: number;
   children?: PopulatedWorkItem[];
+  commentCount?: number;
 };
 
 export type PopulatedSprint = Sprint & {

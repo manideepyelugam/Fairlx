@@ -16,6 +16,16 @@ import {
   GripVertical,
   Edit2,
   Trash2,
+  Share2,
+  Flag,
+  Clock,
+  Tag,
+  Users,
+  ArrowRight,
+  Layers,
+  Copy,
+  ExternalLink,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -36,14 +46,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -91,10 +94,39 @@ import { useCreateTaskModal } from "@/features/tasks/hooks/use-create-task-modal
 import { SelectSeparator } from "@/components/ui/select";
 import { snakeCaseToTitleCase } from "@/lib/utils";
 import { resolveIconSync } from "@/lib/resolve-icon";
+import { DatePicker } from "@/components/date-picker";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import { TaskAttachments } from "@/features/attachments/components/task-attachments";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
 
 interface EnhancedBacklogScreenProps {
   workspaceId: string;
   projectId: string;
+}
+
+// Default label color map for built-in label suggestions
+const LABEL_COLORS: Record<string, string> = {
+  "Bug": "#ef4444",
+  "Feature": "#a855f7",
+  "Improvement": "#3b82f6",
+  "Documentation": "#22c55e",
+  "Design": "#ec4899",
+  "Research": "#f59e0b",
+  "Frontend": "#6366f1",
+  "Backend": "#6b7280",
+};
+
+function getLabelColor(label: string): string {
+  if (LABEL_COLORS[label]) return LABEL_COLORS[label];
+  // Generate a deterministic color from the label string
+  let hash = 0;
+  for (let i = 0; i < label.length; i++) {
+    hash = label.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash % 360);
+  return `hsl(${hue}, 60%, 55%)`;
 }
 
 export default function EnhancedBacklogScreen({ workspaceId, projectId }: EnhancedBacklogScreenProps) {
@@ -187,15 +219,23 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   ];
   const allPriorities = [...defaultPriorities, ...customPriorities];
 
-  // Filter workspace members by project membership
+  // Filter workspace members by project membership, fallback to all workspace members
   const projectMembers = useMemo(() => {
-    if (!membersData?.documents || !projectMembersData?.documents) return [];
+    if (!membersData?.documents) return [];
+
+    // If no project members configured, show all workspace members
+    if (!projectMembersData?.documents || projectMembersData.documents.length === 0) {
+      return membersData.documents;
+    }
 
     // Create a set of user IDs who are in this project
     const projectUserIds = new Set(projectMembersData.documents.map(m => m.userId));
 
     // Filter workspace members to only include those in the project
-    return membersData.documents.filter(m => projectUserIds.has(m.userId));
+    const filtered = membersData.documents.filter(m => projectUserIds.has(m.userId));
+
+    // If filtering results in empty (e.g. userId mismatch), fallback to all workspace members
+    return filtered.length > 0 ? filtered : membersData.documents;
   }, [membersData, projectMembersData]);
 
   // Organize data
@@ -404,6 +444,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     if (updates.description !== undefined) jsonUpdates.description = updates.description;
     if (updates.flagged !== undefined) jsonUpdates.flagged = updates.flagged;
     if (updates.position !== undefined) jsonUpdates.position = updates.position;
+    if (updates.startDate !== undefined) jsonUpdates.startDate = updates.startDate ? new Date(updates.startDate) : null;
     if (updates.dueDate !== undefined) jsonUpdates.dueDate = new Date(updates.dueDate);
     if (updates.estimatedHours !== undefined) jsonUpdates.estimatedHours = updates.estimatedHours;
     if (updates.labels !== undefined) jsonUpdates.labels = updates.labels;
@@ -492,6 +533,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     setEditingWorkItemId(null);
     setEditingWorkItemTitle("");
   };
+
+  console.log("Selected Item:", selectedItem);
 
   const handleUpdateEpic = (workItemId: string, epicId: string | null) => {
     updateWorkItem({
@@ -1594,81 +1637,145 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
           </div>
         </div>
 
-        {/* Work Item Detail Drawer */}
+        {/* Work Item Detail Drawer - ClickUp-style */}
         <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-          <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+          <SheetContent className="w-full sm:max-w-[540px] p-0 overflow-hidden flex flex-col gap-0">
             {selectedItem && (
               <>
-                <SheetHeader>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span className="font-mono">{selectedItem.key}</span>
-                  </div>
-                  <SheetTitle className="text-xl">{selectedItem.title}</SheetTitle>
-                  <SheetDescription>
-                    View and edit work item details
-                  </SheetDescription>
+                {/* Hidden accessible title */}
+                <SheetHeader className="sr-only">
+                  <SheetTitle>{selectedItem.title}</SheetTitle>
+                  <SheetDescription>Work item details</SheetDescription>
                 </SheetHeader>
 
-                <Tabs defaultValue="details" className="mt-6">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="details">Details</TabsTrigger>
-                    <TabsTrigger value="subtasks">Subtasks</TabsTrigger>
-                  </TabsList>
+                {/* Top Navigation Bar */}
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-card">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <WorkItemIcon type={selectedItem.type} project={project ?? undefined} className="size-4" />
+                      <span className="text-xs text-muted-foreground">/</span>
+                      <span className="text-xs font-medium text-muted-foreground">{project?.name || "Project"}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">|</span>
+                    <button
+                      className="hover:bg-accent p-1 rounded transition-colors"
+                      onClick={() => {
+                        const url = typeof window !== "undefined"
+                          ? `${window.location.origin}/workspaces/${workspaceId}/tasks/${selectedItem.$id}`
+                          : "#";
+                        window.open(url, "_blank");
+                      }}
+                    >
+                      <ExternalLink className="size-3.5 text-muted-foreground" />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {canDeleteWorkItems && (
+                      <button
+                        className="hover:bg-destructive/10 p-1.5 rounded-md transition-colors group"
+                        title="Delete work item"
+                        onClick={() => {
+                          if (confirm("Are you sure you want to delete this work item? This action cannot be undone.")) {
+                            deleteWorkItem({ param: { workItemId: selectedItem.$id } });
+                            toast.success("Work item deleted");
+                            setIsDrawerOpen(false);
+                            setPendingChanges({});
+                          }
+                        }}
+                      >
+                        <Trash2 className="size-3.5 text-muted-foreground group-hover:text-destructive" />
+                      </button>
+                    )}
+                    <button
+                      className="hover:bg-accent p-1.5 mr-6 rounded-md transition-colors"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(
+                            typeof window !== "undefined"
+                              ? `${window.location.origin}/workspaces/${workspaceId}/projects/}`
+                              : ""
+                          );
+                          toast.success("Link copied");
+                        } catch { toast.error("Failed to copy"); }
+                      }}
+                    >
+                      <Share2 className="size-3.5 text-muted-foreground" />
+                    </button>
+ 
 
-                  <TabsContent value="details" className="space-y-4 mt-8">
+                  </div>
+                </div>
 
-                    <div className="space-y-4 ">
-                      <div className="space-y-2">
-                        <Label>Title</Label>
-                        <Input className="text-xs "
-                          value={pendingChanges.title ?? selectedItem.title}
-                          onChange={(e) => setPendingChanges(prev => ({ ...prev, title: e.target.value }))}
-                          placeholder="Work item title"
-                        />
+                {/* Scrollable Content */}
+                <div className="flex-1 overflow-y-auto">
+                  {/* Type Badge + Task ID */}
+                  <div className="px-5 pt-5 pb-2">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded-md text-xs font-medium">
+                        <WorkItemIcon type={selectedItem.type} project={project ?? undefined} className="size-3.5" />
+                        <span>{allWorkItemTypes.find(t => t.key === selectedItem.type)?.label || selectedItem.type}</span>
                       </div>
+                      <span className="text-xs text-muted-foreground font-mono">{selectedItem.key}</span>
+                    </div>
 
-                      <div className="space-y-2">
-                        <Label>Type</Label>
-                        <Select
-                          value={pendingChanges.type ?? selectedItem.type}
-                          onValueChange={(value: WorkItemType) => setPendingChanges(prev => ({ ...prev, type: value }))}
-                        >
-                          <SelectTrigger >
-                            <SelectValue>
-                              <div className="flex items-center gap-2 text-xs">
-                                <WorkItemIcon type={pendingChanges.type ?? selectedItem.type} project={project ?? undefined} className="size-3" />
-                                <span className="text-xs">{allWorkItemTypes.find(t => t.key === (pendingChanges.type ?? selectedItem.type))?.label || (pendingChanges.type ?? selectedItem.type)}</span>
-                              </div>
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {allWorkItemTypes.map((type) => (
-                              <SelectItem key={type.key} value={type.key}>
-                                <div className="flex items-center gap-2 text-xs">
-                                  <WorkItemIcon type={type.key as WorkItemType} project={project ?? undefined} className="size-3" />
-                                  <span className="text-xs">{type.label}</span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                    {/* Editable Title */}
+                    <Input
+                      value={pendingChanges.title ?? selectedItem.title}
+                      onChange={(e) => setPendingChanges(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="Task title"
+                      className="text-xl font-semibold border-none shadow-none px-0 h-auto focus-visible:ring-0 placeholder:text-muted-foreground/50"
+                    />
+                  </div>
+
+                  {/* Properties Section */}
+                  <div className="px-5 py-3">
+                    {/* Status Row */}
+                    <div className="flex items-center py-0.5 group">
+                      <div className="flex items-center gap-2.5  w-[140px] shrink-0">
+                        <CheckCircle2 className="size-3.5 text-muted-foreground" />
+                        <span className="text-xs  font-medium">Status</span>
                       </div>
-
-                      <div className="space-y-2">
-                        <Label>Status</Label>
+                      <div className="flex-1">
                         <Select
                           value={pendingChanges.status ?? selectedItem.status}
-                          onValueChange={(value: WorkItemStatus) => setPendingChanges(prev => ({ ...prev, status: value }))}
+                          onValueChange={(value) => {
+                            setPendingChanges(prev => ({ ...prev, status: value as WorkItemStatus }));
+                          }}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="h-8 border-none shadow-none bg-transparent hover:bg-accent/50 text-xs px-2 w-auto min-w-[120px]">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value={WorkItemStatus.TODO}>To Do</SelectItem>
-                            <SelectItem value={WorkItemStatus.ASSIGNED}>Assigned</SelectItem>
-                            <SelectItem value={WorkItemStatus.IN_PROGRESS}>In Progress</SelectItem>
-                            <SelectItem value={WorkItemStatus.IN_REVIEW}>In Review</SelectItem>
-                            <SelectItem value={WorkItemStatus.DONE}>Done</SelectItem>
+                            <SelectItem value={WorkItemStatus.TODO}>
+                              <div className="flex items-center gap-2">
+                                <div className="size-2 rounded-full bg-gray-400" />
+                                To Do
+                              </div>
+                            </SelectItem>
+                            <SelectItem value={WorkItemStatus.ASSIGNED}>
+                              <div className="flex items-center gap-2">
+                                <div className="size-2 rounded-full bg-blue-400" />
+                                Assigned
+                              </div>
+                            </SelectItem>
+                            <SelectItem value={WorkItemStatus.IN_PROGRESS}>
+                              <div className="flex items-center gap-2">
+                                <div className="size-2 rounded-full bg-yellow-400" />
+                                In Progress
+                              </div>
+                            </SelectItem>
+                            <SelectItem value={WorkItemStatus.IN_REVIEW}>
+                              <div className="flex items-center gap-2">
+                                <div className="size-2 rounded-full bg-purple-400" />
+                                In Review
+                              </div>
+                            </SelectItem>
+                            <SelectItem value={WorkItemStatus.DONE}>
+                              <div className="flex items-center gap-2">
+                                <div className="size-2 rounded-full bg-green-400" />
+                                Done
+                              </div>
+                            </SelectItem>
                             {customColumns.length > 0 && (
                               <>
                                 <SelectSeparator />
@@ -1688,37 +1795,119 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                           </SelectContent>
                         </Select>
                       </div>
+                    </div>
 
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label>Description</Label>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setEditingDescription(pendingChanges.description ?? selectedItem.description ?? "");
-                              setIsDescriptionDialogOpen(true);
-                            }}
-                          >
-                            <Edit2 className="size-3 mr-1" />
-                            Edit
-                          </Button>
-                        </div>
-                        <div
-                          className="prose prose-sm max-w-none dark:prose-invert min-h-[60px] p-3 border rounded-md bg-muted/30"
-                          dangerouslySetInnerHTML={{
-                            __html: DOMPurify.sanitize(pendingChanges.description ?? selectedItem.description ?? "<p class='text-muted-foreground'>No description</p>")
-                          }}
-                        />
+                    {/* Assignees Row */}
+                    <div className="flex items-center py-0.5 group">
+                      <div className="flex items-center gap-2.5 w-[140px] shrink-0">
+                        <Users className="size-3.5 text-muted-foreground" />
+                        <span className="text-xs  font-medium">Assignees</span>
                       </div>
+                      <div className="flex-1">
+                        <Select
+                          value={(pendingChanges.assigneeIds ?? selectedItem.assigneeIds)?.[0] || "unassigned"}
+                          onValueChange={(value) => {
+                            if (value === "unassigned") {
+                              setPendingChanges(prev => ({ ...prev, assigneeIds: [] }));
+                            } else {
+                              const currentIds = pendingChanges.assigneeIds ?? selectedItem.assigneeIds ?? [];
+                              if (currentIds.includes(value)) {
+                                setPendingChanges(prev => ({ ...prev, assigneeIds: currentIds.filter(id => id !== value) }));
+                              } else {
+                                setPendingChanges(prev => ({ ...prev, assigneeIds: [...currentIds, value] }));
+                              }
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="h-8 border-none shadow-none bg-transparent hover:bg-accent/50 text-sm px-2 w-auto min-w-[120px]">
+                            <div className="flex items-center gap-2">
+                              {selectedItem.assignees && selectedItem.assignees.filter(a => a != null).length > 0 ? (
+                                <div className="flex items-center gap-1.5">
+                                  {selectedItem.assignees.filter((a): a is NonNullable<typeof a> => a != null).slice(0, 3).map((assignee) => (
+                                    <Avatar key={assignee.$id} className="size-5">
+                                      <AvatarImage src={assignee.profileImageUrl || ""} />
+                                      <AvatarFallback className="text-[10px]">
+                                        {(assignee.name ?? "?").charAt(0).toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                  ))}
+                                  <span className="text-xs">{selectedItem.assignees.filter(a => a != null).map(a => a?.name?.split(" ")[0]).join(", ")}</span>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">Empty</span>
+                              )}
+                            </div>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="unassigned">Unassigned</SelectItem>
+                            {projectMembers.map((member) => (
+                              <SelectItem key={member.$id} value={member.$id}>
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="size-5">
+                                    <AvatarImage src={member.profileImageUrl || ""} />
+                                    <AvatarFallback className="text-[10px]">
+                                      {(member.name ?? "?").charAt(0).toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span className="text-xs">{member.name}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
 
-                      <div className="space-y-2">
-                        <Label>Priority</Label>
+
+                    {/* Type Row */}
+                    <div className="flex items-center py-0.5 group">
+                      <div className="flex items-center gap-2.5 w-[140px] shrink-0">
+                        <Layers className="size-3.5 text-muted-foreground" />
+                        <span className="text-xs  font-medium">Type</span>
+                      </div>
+                      <div className="flex-1">
+                        <Select
+                          value={pendingChanges.type ?? selectedItem.type}
+                          onValueChange={(value: WorkItemType) => {
+                            setPendingChanges(prev => ({ ...prev, type: value }));
+                          }}
+                        >
+                          <SelectTrigger className="h-8 border-none shadow-none bg-transparent hover:bg-accent/50 text-sm px-2 w-auto min-w-[120px]">
+                            <SelectValue>
+                              <div className="flex items-center gap-2 text-xs">
+                                <WorkItemIcon type={pendingChanges.type ?? selectedItem.type} project={project ?? undefined} className="size-3.5" />
+                                <span>{allWorkItemTypes.find(t => t.key === (pendingChanges.type ?? selectedItem.type))?.label || (pendingChanges.type ?? selectedItem.type)}</span>
+                              </div>
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {allWorkItemTypes.map((type) => (
+                              <SelectItem key={type.key} value={type.key}>
+                                <div className="flex items-center gap-2 text-xs">
+                                  <WorkItemIcon type={type.key as WorkItemType} project={project ?? undefined} className="size-3.5" />
+                                  <span>{type.label}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Priority Row */}
+                    <div className="flex items-center py-0.5 group">
+                      <div className="flex items-center gap-2.5 w-[140px] shrink-0">
+                        <Flag className="size-3.5 text-muted-foreground" />
+                        <span className="text-xs  font-medium">Priority</span>
+                      </div>
+                      <div className="flex-1">
                         <Select
                           value={pendingChanges.priority ?? selectedItem.priority ?? WorkItemPriority.MEDIUM}
-                          onValueChange={(value: WorkItemPriority) => setPendingChanges(prev => ({ ...prev, priority: value }))}
+                          onValueChange={(value: WorkItemPriority) => {
+                            setPendingChanges(prev => ({ ...prev, priority: value }));
+                          }}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="h-8 border-none shadow-none bg-transparent hover:bg-accent/50 text-xs px-2 w-auto min-w-[120px]">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -1730,85 +1919,335 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                           </SelectContent>
                         </Select>
                       </div>
+                    </div>
 
-                      <div className="space-y-2">
-                        <Label>Epic</Label>
-                        <Select
-                          value={pendingChanges.epicId !== undefined ? (pendingChanges.epicId || "none") : (selectedItem.epicId || "none")}
-                          onValueChange={(value) => setPendingChanges(prev => ({ ...prev, epicId: value === "none" ? null : value }))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select epic" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">No Epic</SelectItem>
-                            {epicsData?.documents?.map((epic) => (
-                              <SelectItem key={epic.$id} value={epic.$id}>
-                                {epic.key} - {epic.title}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+
+                    {/* Dates Row - Start Date */}
+                    <div className="flex items-center py-0.5 group">
+                      <div className="flex items-center gap-2.5 w-[140px] shrink-0">
+                        <Calendar className="size-3.5 text-muted-foreground" />
+                        <span className="text-xs  font-medium">Start Date</span>
                       </div>
-
-                      <div className="space-y-2">
-                        <Label>Story Points</Label>
-                        <Input
-                          type="number"
-                          value={pendingChanges.storyPoints !== undefined ? (pendingChanges.storyPoints ?? "") : (selectedItem.storyPoints ?? "")}
-                          onChange={(e) => setPendingChanges(prev => ({ ...prev, storyPoints: e.target.value ? parseInt(e.target.value) : undefined }))}
-                          placeholder="Enter story points"
-                          min="0"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Assignees</Label>
-                        <div className="flex gap-2">
-                          {selectedItem.assignees?.filter(
-                            (a): a is NonNullable<typeof a> => a != null && typeof a.$id === "string"
-                          ).map((assignee) => (
-                            <Avatar key={assignee.$id} className="size-8">
-                              <AvatarImage src={assignee.profileImageUrl || ""} />
-                              <AvatarFallback className="text-xs">
-                                {(assignee.name ?? "?").charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                          ))}
-                          <Button variant="outline" size="icon" className="size-8">
-                            <Plus className="size-4" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Save and Cancel Buttons */}
-                      <div className="flex gap-2 pt-4 border-t">
-                        <Button
-                          onClick={() => {
-                            if (Object.keys(pendingChanges).length > 0) {
-                              handleUpdateWorkItem(pendingChanges);
-                            }
-                            setIsEditMode(false);
-                            setPendingChanges({});
+                      <div className="flex-1">
+                        <DatePicker
+                          value={pendingChanges.startDate !== undefined ? (pendingChanges.startDate ? new Date(pendingChanges.startDate) : undefined) : (selectedItem.startDate ? new Date(selectedItem.startDate) : undefined)}
+                          onChange={(date) => {
+                            setPendingChanges(prev => ({ ...prev, startDate: date?.toISOString() ?? null }));
                           }}
-                          className="flex-1"
-                          size="xs"
-                        >
-                          Save Changes
-                        </Button>
-
+                          placeholder="Start"
+                          variant="ghost"
+                          className="h-8 border-none shadow-none bg-transparent hover:bg-accent/50 text-xs px-2 w-auto min-w-[120px] justify-start"
+                          size="sm"
+                        />
                       </div>
                     </div>
 
-                  </TabsContent>
+                    {/* Dates Row - Due/End Date */}
+                    <div className="flex items-center py-0.5 group">
+                      <div className="flex items-center gap-2.5 w-[140px] shrink-0">
+                        <ArrowRight className="size-3.5 text-muted-foreground" />
+                        <span className="text-xs  font-medium">Due Date</span>
+                      </div>
+                      <div className="flex-1">
+                        <DatePicker
+                          value={pendingChanges.dueDate !== undefined ? (pendingChanges.dueDate ? new Date(pendingChanges.dueDate) : undefined) : (selectedItem.dueDate ? new Date(selectedItem.dueDate) : undefined)}
+                          onChange={(date) => {
+                            setPendingChanges(prev => ({ ...prev, dueDate: date?.toISOString() }));
+                          }}
+                          placeholder="Due"
+                          variant="ghost"
+                          className="h-8 border-none shadow-none bg-transparent hover:bg-accent/50 text-xs px-2 w-auto min-w-[120px] justify-start"
+                          size="sm"
+                        />
+                      </div>
+                    </div>
 
-                  <TabsContent value="subtasks" className="mt-4">
+
+                    {/* Labels Row */}
+                    <div className="flex items-start py-0.5 group">
+                      <div className="flex items-center gap-2.5 w-[140px] shrink-0 pt-2">
+                        <Tag className="size-3.5 text-muted-foreground" />
+                        <span className="text-xs font-medium">Labels</span>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex flex-wrap gap-1.5 items-center min-h-[32px] px-2 py-1">
+                          {(pendingChanges.labels ?? selectedItem.labels ?? []).map((label, index) => {
+                            const customLabel = project?.customLabels?.find(l => l.name === label);
+                            const labelColor = customLabel?.color || getLabelColor(label);
+                            return (
+                              <Badge
+                                key={index}
+                                variant="outline"
+                                className="text-xs px-2 py-0.5 gap-1.5 font-normal cursor-default"
+                              >
+                                <span
+                                  className="size-2 rounded-full shrink-0"
+                                  style={{ backgroundColor: labelColor }}
+                                />
+                                {label}
+                                <button
+                                  className="ml-0.5 hover:text-destructive transition-colors"
+                                  onClick={() => {
+                                    const currentLabels = pendingChanges.labels ?? selectedItem.labels ?? [];
+                                    setPendingChanges(prev => ({
+                                      ...prev,
+                                      labels: currentLabels.filter((_, i) => i !== index),
+                                    }));
+                                  }}
+                                >
+                                  <X className="size-3" />
+                                </button>
+                              </Badge>
+                            );
+                          })}
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button className="size-6 rounded-md border border-dashed border-border flex items-center justify-center hover:bg-accent transition-colors">
+                                <Plus className="size-3.5 text-muted-foreground" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64 p-0" align="start">
+                              <div className="p-2 border-b border-border">
+                                <Input
+                                  placeholder="Add labels..."
+                                  className="h-8 text-sm"
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" && (e.target as HTMLInputElement).value.trim()) {
+                                      const newLabel = (e.target as HTMLInputElement).value.trim();
+                                      const currentLabels = pendingChanges.labels ?? selectedItem.labels ?? [];
+                                      if (!currentLabels.includes(newLabel)) {
+                                        setPendingChanges(prev => ({
+                                          ...prev,
+                                          labels: [...currentLabels, newLabel],
+                                        }));
+                                      }
+                                      (e.target as HTMLInputElement).value = "";
+                                    }
+                                  }}
+                                />
+                              </div>
+                              <div className="p-2">
+                                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2 px-1">Suggestions</p>
+                                <div className="space-y-0.5">
+                                  {[
+                                    ...(project?.customLabels?.map(l => l.name) || []),
+                                    "Bug", "Feature", "Improvement", "Documentation", "Design",
+                                    "Research", "Frontend", "Backend",
+                                  ]
+                                    .filter((v, i, a) => a.indexOf(v) === i)
+                                    .filter(label => !(pendingChanges.labels ?? selectedItem.labels ?? []).includes(label))
+                                    .map((label) => {
+                                      const customLabel = project?.customLabels?.find(l => l.name === label);
+                                      const labelColor = customLabel?.color || getLabelColor(label);
+                                      return (
+                                        <button
+                                          key={label}
+                                          className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm hover:bg-accent transition-colors text-left"
+                                          onClick={() => {
+                                            const currentLabels = pendingChanges.labels ?? selectedItem.labels ?? [];
+                                            if (!currentLabels.includes(label)) {
+                                              setPendingChanges(prev => ({
+                                                ...prev,
+                                                labels: [...currentLabels, label],
+                                              }));
+                                            }
+                                          }}
+                                        >
+                                          <span
+                                            className="size-2.5 rounded-full shrink-0"
+                                            style={{ backgroundColor: labelColor }}
+                                          />
+                                          <span>{label}</span>
+                                        </button>
+                                      );
+                                    })}
+                                </div>
+                              </div>
+                              {(pendingChanges.labels ?? selectedItem.labels ?? []).length > 0 && (
+                                <div className="p-2 border-t border-border">
+                                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2 px-1">Labels</p>
+                                  <div className="space-y-0.5">
+                                    {(pendingChanges.labels ?? selectedItem.labels ?? []).map((label, index) => {
+                                      const customLabel = project?.customLabels?.find(l => l.name === label);
+                                      const labelColor = customLabel?.color || getLabelColor(label);
+                                      return (
+                                        <div key={index} className="flex items-center justify-between px-2 py-1.5 rounded-md text-sm">
+                                          <div className="flex items-center gap-2">
+                                            <span
+                                              className="size-2.5 rounded-full shrink-0"
+                                              style={{ backgroundColor: labelColor }}
+                                            />
+                                            <span>{label}</span>
+                                          </div>
+                                          <button
+                                            className="text-muted-foreground hover:text-destructive transition-colors"
+                                            onClick={() => {
+                                              const currentLabels = pendingChanges.labels ?? selectedItem.labels ?? [];
+                                              setPendingChanges(prev => ({
+                                                ...prev,
+                                                labels: currentLabels.filter((_, i) => i !== index),
+                                              }));
+                                            }}
+                                          >
+                                            <X className="size-3.5" />
+                                          </button>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Time Estimate Row */}
+                    <div className="flex items-center py-0.5 group">
+                      <div className="flex items-center gap-2.5 w-[140px] shrink-0">
+                        <Clock className="size-3.5 text-muted-foreground" />
+                        <span className="text-xs  font-medium">Time Estimate</span>
+                      </div>
+                      <div className="flex-1">
+                        <Input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          placeholder="Empty"
+                          value={pendingChanges.estimatedHours !== undefined ? (pendingChanges.estimatedHours ?? "") : (selectedItem.estimatedHours ?? "")}
+                          onChange={(e) => {
+                            const val = e.target.value ? parseFloat(e.target.value) : undefined;
+                            setPendingChanges(prev => ({ ...prev, estimatedHours: val }));
+                          }}
+                          className="h-6 border-none shadow-none outline-none bg-transparent hover:bg-accent/50 text-xs px-2"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Story Points Row */}
+                    <div className="flex items-center py-0.5 group">
+                      <div className="flex items-center gap-2.5 w-[140px] shrink-0">
+                        <Layers className="size-3.5 text-muted-foreground" />
+                        <span className="text-xs  font-medium">Story Points</span>
+                      </div>
+                      <div className="flex-1">
+                        <Input
+                          type="number"
+                          min="0"
+                          placeholder="Empty"
+                          value={pendingChanges.storyPoints !== undefined ? (pendingChanges.storyPoints ?? "") : (selectedItem.storyPoints ?? "")}
+                          onChange={(e) => {
+                            const val = e.target.value ? parseInt(e.target.value) : undefined;
+                            setPendingChanges(prev => ({ ...prev, storyPoints: val }));
+                          }}
+                          className="h-8 border-none shadow-none bg-transparent hover:bg-accent/50 text-xs outline-none px-2"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Flagged Row */}
+                    <div className="flex items-center py-0.5 group">
+                      <div className="flex items-center gap-2.5 w-[140px] shrink-0">
+                        <Flag className="size-3.5 text-muted-foreground" />
+                        <span className="text-xs  font-medium">Flagged</span>
+                      </div>
+                      <div className="flex-1 px-2">
+                        <Switch
+                      
+                          checked={pendingChanges.flagged ?? selectedItem.flagged}
+                          onCheckedChange={(checked) => {
+                            setPendingChanges(prev => ({ ...prev, flagged: checked }));
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Description Section */}
+                  <div className="px-5 py-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-sm font-semibold flex items-center gap-2">
+                        Add description
+                      </span>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        className="h-6 text-xs"
+                        onClick={() => {
+                          setEditingDescription(selectedItem.description ?? "");
+                          setIsDescriptionDialogOpen(true);
+                        }}
+                      >
+                        Edit
+                      </Button>
+                    </div>
+                    {(selectedItem.description) ? (
+                      <div
+                        className="prose prose-sm max-w-none border rounded-lg  p-4 dark:prose-invert text-sm"
+                        dangerouslySetInnerHTML={{
+                          __html: DOMPurify.sanitize(selectedItem.description)
+                        }}
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground/50 italic">No description</p>
+                    )}
+                  </div>
+
+                  <Separator />
+
+                  {/* Subtasks Section */}
+                  <div className="px-5 py-4">
+                    <h3 className="text-sm font-semibold mb-3">Add subtask</h3>
                     <SubtasksList
                       workItemId={selectedItem.$id}
                       workspaceId={workspaceId}
                     />
-                  </TabsContent>
-                </Tabs>
+                  </div>
+
+                  <Separator />
+
+                  {/* Attachments Section */}
+                  <div className="px-5 py-4 pb-24">
+                    <h3 className="text-sm font-semibold mb-3">Attachments</h3>
+                    <TaskAttachments
+                      taskId={selectedItem.$id}
+                      workspaceId={workspaceId}
+                    />
+                  </div>
+
+                </div>
+
+                {/* Floating Save Button */}
+                {Object.keys(pendingChanges).length > 0 && (
+                  <div className="absolute bottom-6 right-6 z-50 flex items-center gap-2 animate-in slide-in-from-bottom-4 fade-in duration-200">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="shadow-lg bg-card"
+                      onClick={() => {
+                        setPendingChanges({});
+                      }}
+                    >
+                      Discard
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="shadow-lg px-6"
+                      onClick={() => {
+                        if (Object.keys(pendingChanges).length > 0) {
+                          handleUpdateWorkItem(pendingChanges);
+                        }
+                        setPendingChanges({});
+                      }}
+                    >
+                      Save Changes
+                    </Button>
+                  </div>
+                )}
               </>
             )}
           </SheetContent>
