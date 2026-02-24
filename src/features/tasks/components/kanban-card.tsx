@@ -172,12 +172,10 @@ export const KanbanCard = ({
                             : "No Date"}
                     </p>
 
-                    {(task.commentCount ?? 0) > 0 && (
-                        <p className="text-xs flex gap-0.5 items-center text-muted-foreground">
-                            <MessageCircle className="size-[14px] text-muted-foreground" />
-                            {task.commentCount}
-                        </p>
-                    )}
+                    <p className="text-xs flex gap-0.5 items-center text-muted-foreground">
+                        <MessageCircle className="size-[14px] text-muted-foreground" />
+                        {task.commentCount ?? 0}
+                    </p>
 
                 </div>
 

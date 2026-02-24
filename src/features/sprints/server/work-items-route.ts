@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 
-import { DATABASE_ID, WORK_ITEMS_ID, PROJECTS_ID, MEMBERS_ID } from "@/config";
+import { DATABASE_ID, WORK_ITEMS_ID, PROJECTS_ID, MEMBERS_ID, COMMENTS_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
 import { batchGetUsers } from "@/lib/batch-users";
@@ -369,6 +369,27 @@ const app = new Hono()
         }
       }
 
+      // Batch fetch comment counts for all work items
+      const commentCountMap = new Map<string, number>();
+      if (workItemIds.length > 0) {
+        try {
+          const comments = await databases.listDocuments(
+            DATABASE_ID,
+            COMMENTS_ID,
+            [
+              Query.equal("taskId", workItemIds),
+              Query.limit(5000),
+            ]
+          );
+          comments.documents.forEach((comment) => {
+            const taskId = comment.taskId as string;
+            commentCountMap.set(taskId, (commentCountMap.get(taskId) || 0) + 1);
+          });
+        } catch {
+          // Comments collection might not exist yet, ignore errors
+        }
+      }
+
       // Now populate work items using the pre-fetched maps (NO individual queries!)
       const populatedWorkItems = workItems.documents.map((workItem) => {
         // Get assignees from the pre-built map
@@ -400,6 +421,7 @@ const app = new Hono()
           project,
           childrenCount,
           children: childrenData,
+          commentCount: commentCountMap.get(workItem.$id) || 0,
         };
       });
 
@@ -733,6 +755,7 @@ const app = new Hono()
 
       const updateData = {
         ...updates,
+        startDate: updates.startDate !== undefined ? (updates.startDate ? updates.startDate.toISOString() : null) : undefined,
         dueDate: updates.dueDate?.toISOString(),
       };
       (updateData as Record<string, unknown>).lastModifiedBy = user.$id;

@@ -85,6 +85,7 @@ export const updateWorkItemSchema = z.object({
   description: z.string().nullable().optional(),
   flagged: z.boolean().optional(),
   position: z.number().optional(),
+  startDate: z.coerce.date().optional().nullable(),
   dueDate: z.coerce.date().optional(),
   estimatedHours: z
     .union([z.number().min(0), z.string(), z.undefined(), z.null()])

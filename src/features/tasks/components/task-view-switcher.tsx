@@ -236,6 +236,7 @@ const workItemToTask = (workItem: PopulatedWorkItem): PopulatedTask => {
     priority: workItem.priority as unknown as TaskPriority,
     labels: workItem.labels,
     flagged: workItem.flagged,
+    commentCount: workItem.commentCount ?? 0,
     assignees: safeAssignees,
     project: safeProject,
   };
