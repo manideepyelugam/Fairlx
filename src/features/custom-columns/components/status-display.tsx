@@ -19,8 +19,9 @@ interface StatusDisplayProps {
   projectId?: string;
 }
 
-export const StatusDisplay = ({ status, projectId }: StatusDisplayProps) => {
-  const workspaceId = useWorkspaceId();
+export const StatusDisplay = ({ status, projectId, workspaceId: passedWorkspaceId }: StatusDisplayProps & { workspaceId?: string }) => {
+  const currentWorkspaceId = useWorkspaceId();
+  const workspaceId = passedWorkspaceId || currentWorkspaceId;
   const { data: customColumns = { documents: [] } } = useGetCustomColumns({
     workspaceId,
     projectId,

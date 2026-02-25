@@ -32,7 +32,7 @@ export default function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={cn(inter.className, "antialiased min-h-screen")}>
+      <body suppressHydrationWarning className={cn(inter.className, "antialiased min-h-screen")}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

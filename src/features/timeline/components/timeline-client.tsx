@@ -36,7 +36,7 @@ interface TimelineClientProps {
   sprints: PopulatedSprint[];
   workItems: PopulatedWorkItem[];
   workspaceId: string;
-  projectId: string;
+  projectId?: string;
   showHeader?: boolean;
 }
 
@@ -203,7 +203,7 @@ export function TimelineClient({
         epics={initialData.epics}
         labels={initialData.labels}
         allItems={flatItems}
-        onCreateEpic={() => setIsCreateEpicDialogOpen(true)}
+        onCreateEpic={projectId ? () => setIsCreateEpicDialogOpen(true) : undefined}
       />
 
       {/* Main Content Area */}
@@ -249,13 +249,15 @@ export function TimelineClient({
         </div>
       )}
 
-      {/* Create Epic Dialog */}
-      <CreateEpicDialog
-        workspaceId={workspaceId}
-        projectId={projectId}
-        open={isCreateEpicDialogOpen}
-        onCloseAction={() => setIsCreateEpicDialogOpen(false)}
-      />
+      {/* Create Epic Dialog - Only if we have a projectId */}
+      {workspaceId && projectId && (
+        <CreateEpicDialog
+          workspaceId={workspaceId}
+          projectId={projectId}
+          open={isCreateEpicDialogOpen}
+          onCloseAction={() => setIsCreateEpicDialogOpen(false)}
+        />
+      )}
     </div>
   );
 }

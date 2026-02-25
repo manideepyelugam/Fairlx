@@ -8,19 +8,30 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { useGetMembers } from "@/features/members/api/use-get-members";
+import { useGetMySpaceMembers } from "@/features/my-space/api/use-get-my-space-members";
 
 interface ProjectMembersWidgetProps {
   workspaceId: string;
-  // projectId is for future feature to filter members by project
   projectId?: string;
+  isAggregated?: boolean;
   limit?: number;
 }
 
 export const ProjectMembersWidget = ({
   workspaceId,
+  isAggregated = false,
   limit = 8,
 }: ProjectMembersWidgetProps) => {
-  const { data: membersData, isLoading, error } = useGetMembers({ workspaceId });
+  const { data: membersData, isLoading: isMembersLoading, error: membersError } = useGetMembers({
+    workspaceId,
+    enabled: !isAggregated
+  });
+
+  const { data: mySpaceMembersData, isLoading: isMySpaceLoading, error: mySpaceError } = useGetMySpaceMembers();
+
+  const data = isAggregated ? mySpaceMembersData : membersData;
+  const isLoading = isAggregated ? isMySpaceLoading : isMembersLoading;
+  const error = isAggregated ? mySpaceError : membersError;
 
   if (isLoading) {
     return (
@@ -56,7 +67,7 @@ export const ProjectMembersWidget = ({
     );
   }
 
-  const members = membersData.documents || [];
+  const members = data?.documents || [];
   const displayMembers = members.slice(0, limit);
   const remainingCount = Math.max(0, members.length - limit);
 

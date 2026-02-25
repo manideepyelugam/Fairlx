@@ -151,8 +151,9 @@ export const createColumns = (
       cell: ({ row }) => {
         const status = row.original.status;
         const projectId = row.original.projectId;
+        const workspaceId = row.original.workspaceId;
 
-        return <StatusDisplay status={status} projectId={projectId} />;
+        return <StatusDisplay status={status} projectId={projectId} workspaceId={workspaceId} />;
       },
     },
     {

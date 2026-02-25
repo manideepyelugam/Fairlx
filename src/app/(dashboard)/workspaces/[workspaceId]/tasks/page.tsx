@@ -1,8 +1,8 @@
-import { MyWorkView } from "@/features/sprints/components/my-work-view";
+import { MySpaceClient } from "./client";
 
 const TasksPage = () => (
   <div className="h-full flex flex-col">
-    <MyWorkView />
+    <MySpaceClient />
   </div>
 );
 

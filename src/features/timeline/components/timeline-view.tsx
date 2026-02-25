@@ -6,21 +6,24 @@ import { client } from "@/lib/rpc";
 import { TimelineClient } from "./timeline-client";
 import { processTimelineData } from "../server/process-timeline-data";
 import { TimelineZoomLevel } from "../types";
+import { PopulatedWorkItem, Sprint } from "@/features/sprints/types";
 import { PageLoader } from "@/components/page-loader";
 import { PageError } from "@/components/page-error";
 
 interface TimelineViewProps {
   workspaceId: string;
   projectId?: string;
+  initialWorkItems?: { documents: PopulatedWorkItem[], total: number };
+  initialSprints?: { documents: Sprint[], total: number };
 }
 
 /**
  * Client-side Timeline view wrapper for use in task-view-switcher
  * Fetches timeline data on the client and renders the TimelineClient component
  */
-export function TimelineView({ workspaceId, projectId }: TimelineViewProps) {
+export function TimelineView({ workspaceId, projectId, initialWorkItems, initialSprints }: TimelineViewProps) {
   // Fetch sprints - use enabled to control when query runs
-  const { data: sprintsData, isLoading: isLoadingSprints, error: sprintsError } = useQuery({
+  const { data: fetchedSprintsData, isLoading: isLoadingSprints, error: sprintsError } = useQuery({
     queryKey: ["sprints", workspaceId, projectId],
     queryFn: async () => {
       const response = await client.api.sprints.$get({
@@ -37,11 +40,13 @@ export function TimelineView({ workspaceId, projectId }: TimelineViewProps) {
       const result = await response.json();
       return result.data;
     },
-    enabled: !!projectId,
+    enabled: !!projectId && !initialSprints,
   });
 
+  const sprintsData = initialSprints || fetchedSprintsData;
+
   // Fetch work items - include children for timeline visualization
-  const { data: workItemsData, isLoading: isLoadingWorkItems, error: workItemsError } = useQuery({
+  const { data: fetchedWorkItemsData, isLoading: isLoadingWorkItems, error: workItemsError } = useQuery({
     queryKey: ["work-items", workspaceId, projectId, "timeline"],
     queryFn: async () => {
       const response = await client.api["work-items"].$get({
@@ -59,8 +64,10 @@ export function TimelineView({ workspaceId, projectId }: TimelineViewProps) {
       const result = await response.json();
       return result.data;
     },
-    enabled: !!projectId,
+    enabled: !!projectId && !initialWorkItems,
   });
+
+  const workItemsData = initialWorkItems || fetchedWorkItemsData;
 
   // Process the data once both are loaded
   const processedData = useMemo(() => {
@@ -74,8 +81,8 @@ export function TimelineView({ workspaceId, projectId }: TimelineViewProps) {
     return processTimelineData(timelineData, TimelineZoomLevel.WEEKS);
   }, [sprintsData, workItemsData]);
 
-  // If no projectId is provided, show a message
-  if (!projectId) {
+  // If no projectId is provided and no initial data, show a message
+  if (!projectId && !initialWorkItems) {
     return (
       <div className="h-full w-full flex items-center justify-center">
         <PageError message="Please select a project to view the timeline" />

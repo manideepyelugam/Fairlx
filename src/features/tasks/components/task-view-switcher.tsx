@@ -39,9 +39,6 @@ const TimelineView = dynamic(() => import("@/features/timeline/components/timeli
   loading: () => <div className="h-[400px] animate-pulse p-4 space-y-3">{[...Array(6)].map((_, i) => <div key={i} className="h-10 bg-muted/40 rounded-lg" />)}</div>,
 });
 
-const MyBacklogView = dynamic(() => import("@/features/personal-backlog/components/my-backlog-view").then(mod => mod.MyBacklogView), {
-  loading: () => <div className="h-[400px] animate-pulse p-4 space-y-3">{[...Array(6)].map((_, i) => <div key={i} className="h-10 bg-muted/40 rounded-lg" />)}</div>,
-});
 
 const EnhancedBacklogScreen = dynamic(() => import("@/features/sprints/components/enhanced-backlog-screen"), {
   loading: () => <div className="h-[400px] animate-pulse p-4 space-y-3">{[...Array(6)].map((_, i) => <div key={i} className="h-10 bg-muted/40 rounded-lg" />)}</div>,
@@ -53,9 +50,12 @@ import { ProjectSetupOverlay } from "@/features/sprints/components/project-setup
 import { useGetWorkItems } from "@/features/sprints/api/use-get-work-items";
 import { useGetSprints } from "@/features/sprints/api/use-get-sprints";
 import { useBulkUpdateWorkItems } from "@/features/sprints/api/use-bulk-update-work-items";
-import { SprintStatus, WorkItemStatus, WorkItemPriority, PopulatedWorkItem } from "@/features/sprints/types";
+import { SprintStatus, WorkItemStatus, WorkItemPriority, PopulatedWorkItem, Sprint } from "@/features/sprints/types";
 import { CompleteSprintModal } from "@/features/sprints/components/complete-sprint-modal";
 import { CreateWorkItemModal } from "@/features/sprints/components/create-work-item-modal";
+import { useGetMySpaceItems } from "@/features/my-space/api/use-get-my-space-items";
+import { useGetMySpaceProjects } from "@/features/my-space/api/use-get-my-space-projects";
+import { useGetMySpaceSprints } from "@/features/my-space/api/use-get-my-space-sprints";
 
 import { useTaskFilters } from "../hooks/use-task-filters";
 import { TaskStatus, TaskPriority, PopulatedTask } from "../types";
@@ -207,8 +207,8 @@ const workItemToTask = (workItem: PopulatedWorkItem): PopulatedTask => {
   const safeProject = workItem.project && typeof workItem.project.$id === "string"
     ? {
       $id: workItem.project.$id,
-      name: workItem.project.name ?? "",
-      imageUrl: workItem.project.imageUrl ?? "",
+      name: workItem.project.name || "",
+      imageUrl: workItem.project.imageUrl || "",
     }
     : undefined;
 
@@ -253,7 +253,7 @@ export const TaskViewSwitcher = ({
 }: TaskViewSwitcherProps) => {
 
 
-  const [{ status, assigneeId, projectId, search, priority }] =
+  const [{ status, assigneeId, projectId, search, priority, labels }] =
     useTaskFilters();
   const [view, setView] = useQueryState("task-view", { defaultValue: "dashboard" });
   const [completeSprintOpen, setCompleteSprintOpen] = useState(false);
@@ -287,14 +287,22 @@ export const TaskViewSwitcher = ({
   // Use Work Items instead of Tasks - map status filter from TaskStatus to WorkItemStatus
   const mappedStatus = status ? taskStatusToWorkItemStatus(status as TaskStatus) : undefined;
 
-  const { data: workItemsData, isLoading: isLoadingWorkItems } = useGetWorkItems({
+  // MY SPACE: Use cross-workspace API when showMyTasksOnly is true
+  const mySpaceQuery = useGetMySpaceItems({ enabled: showMyTasksOnly });
+  const mySpaceProjectsQuery = useGetMySpaceProjects({ enabled: showMyTasksOnly });
+  const mySpaceSprintsQuery = useGetMySpaceSprints({ enabled: showMyTasksOnly });
+  const workItemsQuery = useGetWorkItems({
     workspaceId,
     projectId: effectiveProjectId || undefined,
     assigneeId: effectiveAssigneeId || undefined,
     status: mappedStatus,
     priority: priority && priority !== "null" ? priority as unknown as WorkItemPriority : undefined,
     search: undefined, // Don't filter on server side, use client-side search
+    enabled: !showMyTasksOnly,
   });
+  const { data: workItemsData, isLoading: isLoadingWorkItems } = showMyTasksOnly
+    ? { data: mySpaceQuery.data, isLoading: mySpaceQuery.isLoading }
+    : { data: workItemsQuery.data, isLoading: workItemsQuery.isLoading };
 
   // Get sprints for setup overlay check (only when viewing a project)
   const { data: sprintsData } = useGetSprints({
@@ -326,13 +334,31 @@ export const TaskViewSwitcher = ({
     };
   }, [workItemsData, sprintsData]);
 
-  // Client-side filtering for search
+  // Client-side filtering for My Space mode and search
   const filteredTasks = useMemo(() => {
     if (!tasks?.documents) return undefined;
 
     let filtered = tasks.documents;
 
-    // Apply search filter
+    // Apply filters client-side in My Space mode
+    if (showMyTasksOnly) {
+      if (status && status !== "all") {
+        filtered = filtered.filter(task => task.status === status);
+      }
+      if (projectId && projectId !== "all") {
+        filtered = filtered.filter(task => task.projectId === projectId);
+      }
+      if (priority && priority !== "all" && priority !== "null") {
+        filtered = filtered.filter(task => task.priority === priority);
+      }
+      if (labels && labels.length > 0) {
+        filtered = filtered.filter(task =>
+          labels.some((label: string) => task.labels?.includes(label))
+        );
+      }
+    }
+
+    // Apply search filter (always client-side)
     if (search) {
       const searchLower = search.toLowerCase();
       filtered = filtered.filter(task =>
@@ -346,7 +372,12 @@ export const TaskViewSwitcher = ({
       documents: filtered,
       total: filtered.length
     };
-  }, [tasks, search]);
+  }, [tasks, search, showMyTasksOnly, status, projectId, priority, labels]);
+
+  const columns = useMemo(() => createColumns(
+    canEditTasks,
+    canDeleteTasks
+  ), [canEditTasks, canDeleteTasks]);
 
   // Filter tasks for Kanban view to only show the active sprint
   const kanbanTasks = useMemo(() => {
@@ -354,16 +385,20 @@ export const TaskViewSwitcher = ({
 
     const activeSprint = sprintsData?.documents?.find(s => s.status === SprintStatus.ACTIVE);
 
-    // If we are in project view and have sprints, only show items from the active sprint
-    // If not in project view or no active sprint, maybe show nothing or keep as is? 
-    // The user said "in kanban only show active sprint workitems".
+    // In My Space mode, we might have multiple active sprints across different projects
+    if (showMyTasksOnly) {
+      const activeSprintIds = new Set(mySpaceSprintsQuery.data?.documents?.filter(s => s.status === SprintStatus.ACTIVE).map(s => s.$id) || []);
+      if (activeSprintIds.size === 0) return [];
+      return filteredTasks.documents.filter(task => task.sprintId && activeSprintIds.has(task.sprintId));
+    }
+
     if (effectiveProjectId) {
       if (!activeSprint) return []; // No active sprint = no items in Kanban
       return filteredTasks.documents.filter(task => task.sprintId === activeSprint.$id);
     }
 
     return filteredTasks.documents;
-  }, [filteredTasks, sprintsData, effectiveProjectId]);
+  }, [filteredTasks, sprintsData, effectiveProjectId, mySpaceSprintsQuery.data?.documents, showMyTasksOnly]);
 
 
 
@@ -409,19 +444,14 @@ export const TaskViewSwitcher = ({
             <SlidingTabsTrigger className="h-8 w-full text-xs lg:w-auto" value="timeline">
               Timeline
             </SlidingTabsTrigger>
-            {paramProjectId && (
+            {(paramProjectId || showMyTasksOnly) && (
               <SlidingTabsTrigger className="h-8 w-full text-xs lg:w-auto" value="backlog">
-                Backlog
-              </SlidingTabsTrigger>
-            )}
-            {showMyTasksOnly && (
-              <SlidingTabsTrigger className="h-8 w-full text-xs lg:w-auto" value="my-backlog">
-                My Backlog
+                {showMyTasksOnly ? "Backlog" : "Backlog"}
               </SlidingTabsTrigger>
             )}
           </SlidingTabsList>
 
-          {isAdmin && view === "kanban" && setupState.activeSprint && (
+          {isAdmin && view === "kanban" && setupState.activeSprint && !showMyTasksOnly && (
             <Button
               onClick={() => setCompleteSprintOpen(true)}
               size="xs"
@@ -438,10 +468,11 @@ export const TaskViewSwitcher = ({
       </div>
 
 
-      {view !== "dashboard" && view !== "timeline" && view !== "backlog" && (
+      {(view !== "dashboard" && (showMyTasksOnly || (view !== "timeline" && view !== "backlog"))) && (
         <DataFilters
           hideProjectFilter={hideProjectFilter}
           showMyTasksOnly={showMyTasksOnly}
+          projects={showMyTasksOnly ? (mySpaceProjectsQuery.data?.documents || []) : undefined}
           disableManageColumns={effectiveProjectId ? setupState.needsSetup : false}
         />
       )}
@@ -455,11 +486,11 @@ export const TaskViewSwitcher = ({
         <>
           <TabsContent value="dashboard" className="mt-0 p-4">
             <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>}>
-              <DataDashboard tasks={filteredTasks?.documents} isLoading={isLoadingTasks} />
+              <DataDashboard tasks={filteredTasks?.documents} isLoading={isLoadingTasks} isAggregated={showMyTasksOnly} />
             </Suspense>
           </TabsContent>
           <TabsContent value="table" className="mt-0 p-4">
-            {effectiveProjectId && setupState.needsSetup ? (
+            {effectiveProjectId && setupState.needsSetup && !showMyTasksOnly ? (
               <ProjectSetupOverlay
                 workspaceId={workspaceId}
                 projectId={effectiveProjectId}
@@ -485,7 +516,7 @@ export const TaskViewSwitcher = ({
             )}
           </TabsContent>
           <TabsContent value="kanban" className="mt-0 p-4">
-            {effectiveProjectId && setupState.needsSetup ? (
+            {effectiveProjectId && setupState.needsSetup && !showMyTasksOnly ? (
               <ProjectSetupOverlay
                 workspaceId={workspaceId}
                 projectId={effectiveProjectId}
@@ -521,7 +552,7 @@ export const TaskViewSwitcher = ({
             )}
           </TabsContent>
           <TabsContent value="calendar" className="mt-0 h-full p-4 pb-4">
-            {effectiveProjectId && setupState.needsSetup ? (
+            {effectiveProjectId && setupState.needsSetup && !showMyTasksOnly ? (
               <ProjectSetupOverlay
                 workspaceId={workspaceId}
                 projectId={effectiveProjectId}
@@ -541,7 +572,7 @@ export const TaskViewSwitcher = ({
             )}
           </TabsContent>
           <TabsContent value="timeline" className="mt-0 h-full">
-            {effectiveProjectId && setupState.needsSetup ? (
+            {effectiveProjectId && setupState.needsSetup && !showMyTasksOnly ? (
               <ProjectSetupOverlay
                 workspaceId={workspaceId}
                 projectId={effectiveProjectId}
@@ -562,21 +593,23 @@ export const TaskViewSwitcher = ({
                 <TimelineView
                   workspaceId={workspaceId}
                   projectId={paramProjectId || projectId || undefined}
+                  initialWorkItems={showMyTasksOnly ? (tasks as unknown as { documents: PopulatedWorkItem[], total: number }) : undefined}
+                  initialSprints={showMyTasksOnly ? (mySpaceSprintsQuery.data as unknown as { documents: Sprint[], total: number }) : undefined}
                 />
               </Suspense>
             )}
           </TabsContent>
-          {paramProjectId && (
+          {(paramProjectId || showMyTasksOnly) && (
             <TabsContent value="backlog" className="mt-0 h-full">
               <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>}>
-                <EnhancedBacklogScreen workspaceId={workspaceId} projectId={paramProjectId} />
-              </Suspense>
-            </TabsContent>
-          )}
-          {showMyTasksOnly && (
-            <TabsContent value="my-backlog" className="mt-0 h-full">
-              <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><LoaderIcon className="size-5 animate-spin text-muted-foreground" /></div>}>
-                <MyBacklogView workspaceId={workspaceId} />
+                {showMyTasksOnly ? (
+                  <DataTable
+                    columns={columns}
+                    data={filteredTasks?.documents?.filter(t => !t.sprintId) ?? []}
+                  />
+                ) : (
+                  <EnhancedBacklogScreen workspaceId={workspaceId} projectId={paramProjectId!} />
+                )}
               </Suspense>
             </TabsContent>
           )}

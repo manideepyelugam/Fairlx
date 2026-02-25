@@ -23,7 +23,6 @@ import {
   Users,
   ArrowRight,
   Layers,
-  Copy,
   ExternalLink,
   X,
 } from "lucide-react";
@@ -1701,7 +1700,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                     >
                       <Share2 className="size-3.5 text-muted-foreground" />
                     </button>
- 
+
 
                   </div>
                 </div>
@@ -2155,7 +2154,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                       </div>
                       <div className="flex-1 px-2">
                         <Switch
-                      
+
                           checked={pendingChanges.flagged ?? selectedItem.flagged}
                           onCheckedChange={(checked) => {
                             setPendingChanges(prev => ({ ...prev, flagged: checked }));

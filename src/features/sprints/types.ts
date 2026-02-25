@@ -77,12 +77,12 @@ export type WorkItem = Models.Document & {
   labels?: string[];
   components?: string[];      // NEW: Component IDs
   customFields?: CustomFieldValue[] | null; // NEW: Custom field values
-  
+
   // Resolution (for completed items)
   resolution?: string | null;        // NEW: Resolution type (e.g., "Fixed", "Won't Fix", "Duplicate")
   resolvedAt?: string | null;        // NEW: When item was resolved
   resolvedBy?: string | null;        // NEW: Who resolved the item
-  
+
   // Time tracking
   timeSpent?: number;                // NEW: Total time spent in minutes
   originalEstimate?: number;         // NEW: Original time estimate in minutes
@@ -110,4 +110,5 @@ export type PopulatedSprint = Sprint & {
   workItemCount?: number;
   completedPoints?: number;
   totalPoints?: number;
+  project?: { $id: string; name: string; imageUrl?: string } | null;
 };

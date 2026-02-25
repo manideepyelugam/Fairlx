@@ -157,13 +157,15 @@ export function TimelineHeader({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button
-            size="sm"
-            onClick={onCreateEpic}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Epic
-          </Button>
+          {onCreateEpic && (
+            <Button
+              size="sm"
+              onClick={onCreateEpic}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Epic
+            </Button>
+          )}
         </div>
       </div>
 
