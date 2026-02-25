@@ -64,6 +64,7 @@ function SprintGroupRow({
   onToggleExpanded,
 }: SprintGroupRowProps) {
   const { sprint, epics, isExpanded } = sprintGroup;
+  const project = sprint.project;
 
   return (
     <div className="border-b">
@@ -79,7 +80,25 @@ function SprintGroupRow({
             <ChevronRight className="h-4 w-4" />
           )}
         </button>
-        <span className="font-semibold text-sm flex-1">{sprint.name}</span>
+
+        {project && (
+          <Avatar className="h-5 w-5 flex-shrink-0">
+            <AvatarImage src={project.imageUrl} alt={project.name} />
+            <AvatarFallback className="text-[10px] bg-blue-100">
+              {project.name[0]?.toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+        )}
+
+        <div className="flex flex-col flex-1 min-w-0">
+          <span className="font-semibold text-sm truncate">{sprint.name}</span>
+          {project && (
+            <span className="text-[10px] text-muted-foreground truncate leading-tight">
+              {project.name}
+            </span>
+          )}
+        </div>
+
         <Badge variant="secondary" className="text-xs">
           {sprint.status}
         </Badge>

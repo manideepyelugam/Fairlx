@@ -27,7 +27,8 @@ import {
   Briefcase,
   Building2,
   Wrench,
-  X
+  X,
+  ArrowLeft,
 } from "lucide-react";
 import { useUpdateProfile } from "../api/use-update-profile";
 import { useUploadProfileImage } from "../api/use-upload-profile-image";
@@ -36,11 +37,25 @@ import { DeleteAccountDialog } from "./delete-account-dialog";
 import { LinkedProviders } from "./linked-providers";
 import { Models } from "node-appwrite";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 import { workingDomainOptions, WorkingDomain, roleOptions, RoleOption, designationOptions, DesignationOption } from "../schemas";
 
 interface ProfileClientProps {
   initialData: Models.User<Models.Preferences>;
 }
+
+const BackButton = () => {
+  const router = useRouter();
+  return (
+    <button
+      onClick={() => router.back()}
+      className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group"
+    >
+      <ArrowLeft className="size-4 group-hover:-translate-x-0.5 transition-transform" />
+      Back
+    </button>
+  );
+};
 
 export const ProfileClient = ({ initialData }: ProfileClientProps) => {
   // Basic profile
@@ -195,6 +210,9 @@ export const ProfileClient = ({ initialData }: ProfileClientProps) => {
   return (
     <div className="h-full w-full p-6">
       <div className="max-w-4xl mx-auto space-y-6">
+
+        {/* Back Navigation */}
+        <BackButton />
 
         <div className="w-full p-5 rounded-xl border flex items-center justify-between">
           <div className="flex items-start gap-5">

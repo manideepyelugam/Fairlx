@@ -47,11 +47,12 @@ import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 interface DocumentListProps {
   projectId: string;
   workspaceId: string;
+  readOnly?: boolean;
 }
 
 type SortOption = "newest" | "oldest" | "name" | "size";
 
-export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
+export const DocumentList = ({ projectId, workspaceId, readOnly = false }: DocumentListProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<DocumentCategory | "all">("all");
   const [includeArchived, setIncludeArchived] = useState(false);
@@ -71,16 +72,16 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
     isProjectAdmin,
     isLoading: isLoadingPermissions,
   } = useProjectPermissions({ projectId, workspaceId });
-  
+
   // Check if user is workspace admin (organization creator/admin)
   const { isAdmin } = useCurrentMember({ workspaceId });
   const isWorkspaceAdmin = isAdmin;
-  
-  // Effective permissions (admin OR project-level)
-  const canView = isWorkspaceAdmin || isProjectAdmin || canViewProjectDocs;
-  const canCreate = isWorkspaceAdmin || isProjectAdmin || canCreateDocs;
-  const canEdit = isWorkspaceAdmin || isProjectAdmin || canEditDocs;
-  const canDelete = isWorkspaceAdmin || isProjectAdmin || canDeleteDocs;
+
+  // Effective permissions (admin OR project-level), overridden by readOnly
+  const canView = readOnly || isWorkspaceAdmin || isProjectAdmin || canViewProjectDocs;
+  const canCreate = readOnly ? false : (isWorkspaceAdmin || isProjectAdmin || canCreateDocs);
+  const canEdit = readOnly ? false : (isWorkspaceAdmin || isProjectAdmin || canEditDocs);
+  const canDelete = readOnly ? false : (isWorkspaceAdmin || isProjectAdmin || canDeleteDocs);
 
   // Bulk delete confirmation
   const [DeleteConfirmDialog, confirmBulkDelete] = useConfirm(
@@ -156,13 +157,13 @@ export const DocumentList = ({ projectId, workspaceId }: DocumentListProps) => {
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
-    
+
     // Permission check
     if (!canDelete) {
       toast.error("You don't have permission to delete documents");
       return;
     }
-    
+
     const ok = await confirmBulkDelete();
     if (!ok) return;
 

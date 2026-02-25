@@ -8,9 +8,11 @@ import {
   ArrowUpRight,
   MoreHorizontal,
   PlusIcon,
+  Layers,
 } from "lucide-react";
 import { TaskStatus, TaskPriority, Task } from "../types";
-import { Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from "recharts";
+import { Member } from "@/features/members/types";
+import { Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { formatDistanceToNow, format } from "date-fns";
 import { useMemo } from "react";
 import { useGetMembers } from "@/features/members/api/use-get-members";
@@ -19,6 +21,7 @@ import { useProjectId } from "@/features/projects/hooks/use-project-id";
 import { ProjectActivityLogWidget } from "@/features/audit-logs/components/project-activity-log-widget";
 import { ProjectMembersWidget } from "@/features/members/components/project-members-widget";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
+import { useGetMySpaceMembers } from "@/features/my-space/api/use-get-my-space-members";
 
 // Mini bar chart component for stat cards - uses semantic colors based on variant
 const MiniBarChart = ({ value, max, variant = "default" }: { value: number; max: number; variant?: "default" | "dotted" | "blocks" }) => {
@@ -71,14 +74,26 @@ const MiniBarChart = ({ value, max, variant = "default" }: { value: number; max:
 interface DataDashboardProps {
   tasks?: Task[];
   isLoading?: boolean;
+  isAggregated?: boolean;
 }
 
-export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
+export const DataDashboard = ({ tasks = [], isAggregated = false }: DataDashboardProps) => {
   const workspaceId = useWorkspaceId();
   const projectId = useProjectId();
-  const { data: membersData } = useGetMembers({ workspaceId });
 
-  const members = useMemo(() => membersData?.documents ?? [], [membersData?.documents]);
+  // Regular workspace members
+  const { data: membersData } = useGetMembers({
+    workspaceId,
+    enabled: !isAggregated
+  });
+
+  // Aggregated My Space members
+  const { data: mySpaceMembersData } = useGetMySpaceMembers();
+
+  const members = useMemo(() => {
+    if (isAggregated) return (mySpaceMembersData?.documents as unknown as Member[]) ?? [];
+    return (membersData?.documents as unknown as Member[]) ?? [];
+  }, [isAggregated, membersData?.documents, mySpaceMembersData?.documents]);
 
   // Calculate analytics from real tasks data
   const analytics = useMemo(() => {
@@ -179,16 +194,41 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
       .sort((a, b) => new Date(b.$updatedAt || b.$createdAt).getTime() - new Date(a.$updatedAt || a.$createdAt).getTime())
       .slice(0, 5)
       .map(task => {
-        const member = members.find(m => m.$id === task.assigneeId);
+        const assignees = (task as Record<string, unknown>).assignees as { name?: string; email?: string; profileImageUrl?: string }[] || [];
+        const firstAssignee = assignees[0];
+
+        let assigneeName = "Unassigned";
+        let assigneeImage = null;
+
+        if (firstAssignee) {
+          assigneeName = firstAssignee.name || firstAssignee.email || "Unknown";
+          assigneeImage = firstAssignee.profileImageUrl;
+        } else if (task.assigneeIds && task.assigneeIds.length > 0) {
+          const member = members.find(m => m.$id === task.assigneeIds[0] || (m as Record<string, unknown>).userId === task.assigneeIds[0]);
+          if (member) {
+            assigneeName = member.name || "Unknown";
+            assigneeImage = member.profileImageUrl;
+          }
+        } else if (task.assigneeId) {
+          const member = members.find(m => m.$id === task.assigneeId || (m as Record<string, unknown>).userId === task.assigneeId);
+          if (member) {
+            assigneeName = member.name || "Unknown";
+            assigneeImage = member.profileImageUrl;
+          }
+        }
+
+        const projectName = ((task as Record<string, unknown>).project as Record<string, unknown>)?.name as string || "Unknown Project";
+
         return {
           id: task.$id,
           title: task.name || task.title,
           status: task.status === TaskStatus.DONE ? "Completed" :
             task.status === TaskStatus.IN_PROGRESS || task.status === TaskStatus.IN_REVIEW ? "In Progress" : "To Do",
-          assignee: member?.name || "Unassigned",
-          assigneeImage: member?.profileImageUrl,
+          assignee: assigneeName,
+          assigneeImage: assigneeImage,
           priority: task.priority || "MEDIUM",
           dueDate: task.dueDate ? new Date(task.dueDate) : null,
+          project: projectName,
         };
       });
   }, [tasks, members]);
@@ -214,9 +254,8 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
     }).filter(m => m.total > 0).sort((a, b) => b.completed - a.completed).slice(0, 5);
   }, [tasks, members]);
 
-  // Priority distribution (unused but kept for future use)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _priorityDistribution = useMemo(() => [
+  // Priority distribution (enabled!)
+  const priorityDistribution = useMemo(() => [
     { name: "URGENT", count: tasks.filter(t => t.priority === TaskPriority.URGENT).length, fill: "#ef4444" },
     { name: "HIGH", count: tasks.filter(t => t.priority === TaskPriority.HIGH).length, fill: "#f97316" },
     { name: "MEDIUM", count: tasks.filter(t => t.priority === TaskPriority.MEDIUM).length, fill: "#eab308" },
@@ -373,9 +412,66 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
 
 
 
+            {/* Priority Distribution Chart */}
+            <Card className="p-5 bg-card border border-border shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-sm font-medium tracking-tight text-foreground">Priority Distribution</h3>
+                <Layers className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div className="h-[230px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsBarChart
+                    data={priorityDistribution}
+                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" className="dark:stroke-slate-700" />
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fontSize: 11, fill: '#64748b' }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 11, fill: '#64748b' }}
+                      axisLine={false}
+                      tickLine={false}
+                      allowDecimals={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        fontSize: '12px'
+                      }}
+                    />
+                    <Bar
+                      dataKey="count"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={50}
+                    >
+                      {priorityDistribution.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </RechartsBarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
+                {priorityDistribution.map((priority) => (
+                  <div key={priority.name} className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: priority.fill }} />
+                    <span className="text-[11px] text-muted-foreground">{priority.name}</span>
+                    <span className="text-[11px] font-medium">{priority.count}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
             <ProjectActivityLogWidget
               workspaceId={workspaceId}
-              projectId={projectId}
+              projectId={isAggregated ? undefined : projectId}
+              isAggregated={isAggregated}
               limit={6}
             />
           </div>
@@ -391,8 +487,9 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
 
             {/* Table Header */}
             <div className="grid grid-cols-12 gap-4 pb-3 border-b border-border text-xs font-medium text-muted-foreground">
-              <div className="col-span-5">Name</div>
-              <div className="col-span-3">Time</div>
+              <div className="col-span-4">Name</div>
+              <div className="col-span-2">Project</div>
+              <div className="col-span-2">Time</div>
               <div className="col-span-2">Status</div>
               <div className="col-span-2">Priority</div>
             </div>
@@ -405,7 +502,7 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
                     key={task.id}
                     className="grid grid-cols-12 gap-4 py-3 items-center hover:bg-accent -mx-5 px-5 transition-colors"
                   >
-                    <div className="col-span-5 flex items-center gap-3">
+                    <div className="col-span-4 flex items-center gap-3">
                       <MemberAvatar
                         name={task.assignee}
                         imageUrl={task.assigneeImage}
@@ -416,7 +513,10 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
                         <p className="text-xs text-muted-foreground truncate">{task.title}</p>
                       </div>
                     </div>
-                    <div className="col-span-3">
+                    <div className="col-span-2">
+                      <p className="text-sm text-foreground truncate">{task.project}</p>
+                    </div>
+                    <div className="col-span-2">
                       <p className="text-sm text-muted-foreground">
                         {task.dueDate ? format(task.dueDate, 'MMM d') : '—'}
                       </p>
@@ -493,7 +593,8 @@ export const DataDashboard = ({ tasks = [] }: DataDashboardProps) => {
             {/* Team Members */}
             <ProjectMembersWidget
               workspaceId={workspaceId}
-              projectId={projectId}
+              projectId={isAggregated ? undefined : projectId}
+              isAggregated={isAggregated}
               limit={12}
             />
           </div>

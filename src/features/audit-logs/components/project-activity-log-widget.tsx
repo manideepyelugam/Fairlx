@@ -11,10 +11,12 @@ import { MemberAvatar } from "@/features/members/components/member-avatar";
 
 import { useGetRecentProjectActivityLogs } from "../hooks/use-get-project-activity-logs";
 import { ActivityType } from "../types";
+import { useGetMySpaceActivityLogs } from "@/features/my-space/api/use-get-my-space-activity-logs";
 
 interface ProjectActivityLogWidgetProps {
   workspaceId: string;
-  projectId: string;
+  projectId?: string;
+  isAggregated?: boolean;
   limit?: number;
 }
 
@@ -53,13 +55,24 @@ const getActionColor = (action: string) => {
 export const ProjectActivityLogWidget = ({
   workspaceId,
   projectId,
+  isAggregated = false,
   limit = 5,
 }: ProjectActivityLogWidgetProps) => {
-  const { data, isLoading, error } = useGetRecentProjectActivityLogs({
+  const { data: projectLogs, isLoading: isProjectLoading, error: projectError } = useGetRecentProjectActivityLogs({
     workspaceId,
-    projectId,
+    projectId: projectId!,
     limit,
+    enabled: !isAggregated
   });
+
+  const { data: mySpaceLogs, isLoading: isMySpaceLoading, error: mySpaceError } = useGetMySpaceActivityLogs({
+    limit,
+    enabled: isAggregated
+  });
+
+  const data = isAggregated ? mySpaceLogs : projectLogs;
+  const isLoading = isAggregated ? isMySpaceLoading : isProjectLoading;
+  const error = isAggregated ? mySpaceError : projectError;
 
   if (isLoading) {
     return (
@@ -95,7 +108,7 @@ export const ProjectActivityLogWidget = ({
     );
   }
 
-  const activities = data.data || [];
+  const activities = Array.isArray(data) ? data : (data?.data || []);
 
   return (
     <Card className="p-5 bg-card border border-border shadow-sm">
@@ -105,7 +118,10 @@ export const ProjectActivityLogWidget = ({
           Recent Activity
         </h3>
         <Link
-          href={`/workspaces/${workspaceId}/projects/${projectId}/audit-logs`}
+          href={isAggregated || !projectId
+            ? `/workspaces/${workspaceId}/audit-log`
+            : `/workspaces/${workspaceId}/projects/${projectId}/audit-logs`
+          }
         >
           <Button variant="ghost" size="sm" className="h-7 w-7 hover:bg-accent p-0">
             <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
@@ -120,7 +136,7 @@ export const ProjectActivityLogWidget = ({
         <div className="space-y-2  max-h-[230px] overflow-y-auto pr-1">
           {activities.map((activity) => (
             <div
-              key={activity.id}
+              key={`${activity.id}-${activity.timestamp}`}
               className="flex items-start gap-3 p-2 rounded-lg bg-muted hover:bg-accent transition-colors"
             >
               <div className="flex-shrink-0 mt-0.5 text-primary">
@@ -141,11 +157,13 @@ export const ProjectActivityLogWidget = ({
                       {activity.userName || "Someone"}
                     </p>
                   </div>
-                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                    {formatDistanceToNow(new Date(activity.timestamp), {
-                      addSuffix: true,
-                    })}
-                  </span>
+                  {activity.timestamp && (
+                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                      {formatDistanceToNow(new Date(activity.timestamp), {
+                        addSuffix: true,
+                      })}
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   <span className={getActionColor(activity.action)}>

@@ -47,7 +47,7 @@ export async function getActivityLogs({
 
   // Build base queries
   const baseQueries = [Query.equal("workspaceId", workspaceId)];
-  
+
   if (projectId) {
     baseQueries.push(Query.equal("projectId", projectId));
   }
@@ -68,11 +68,12 @@ export async function getActivityLogs({
     const collectionsToFetch = type
       ? [{ type, collectionId: getCollectionId(type) }]
       : [
-          { type: ActivityType.TASK, collectionId: TASKS_ID },
-          { type: ActivityType.PROJECT, collectionId: PROJECTS_ID },
-          { type: ActivityType.TIME_LOG, collectionId: TIME_LOGS_ID },
-          { type: ActivityType.SPRINT, collectionId: SPRINTS_ID },
-        ];
+        { type: ActivityType.TASK, collectionId: TASKS_ID },
+        { type: ActivityType.PROJECT, collectionId: PROJECTS_ID },
+        { type: ActivityType.TIME_LOG, collectionId: TIME_LOGS_ID },
+        { type: ActivityType.SPRINT, collectionId: SPRINTS_ID },
+        { type: ActivityType.WORK_ITEM, collectionId: WORK_ITEMS_ID },
+      ];
 
     // **PARALLEL FETCH**: All collections fetched at once in a single batch
     const results = await Promise.allSettled(
@@ -89,7 +90,7 @@ export async function getActivityLogs({
 
     // Transform all results into activity logs
     const allActivities: ActivityLog[] = [];
-    
+
     // Collect all unique user IDs to fetch in batch
     const userIds = new Set<string>();
     const tempActivities: Array<{
@@ -126,7 +127,7 @@ export async function getActivityLogs({
       Query.equal("workspaceId", workspaceId),
       Query.limit(100),
     ]);
-    
+
     // Collect user IDs from members
     for (const member of membersResult.documents) {
       if (member.userId) {
@@ -137,7 +138,7 @@ export async function getActivityLogs({
     // **BATCH FETCH USERS**: Get all users at once
     const { users } = await createAdminClient();
     const userMap = new Map<string, { name: string; email: string; imageUrl?: string }>();
-    
+
     const userFetchResults = await Promise.allSettled(
       Array.from(userIds).map(async (userId) => {
         try {
@@ -148,7 +149,7 @@ export async function getActivityLogs({
         }
       })
     );
-    
+
     // Build user map
     for (const result of userFetchResults) {
       if (result.status === "fulfilled" && result.value.user) {
@@ -164,16 +165,16 @@ export async function getActivityLogs({
     // Now create activity logs with resolved user info
     for (const { doc, activityType, activityAction } of tempActivities) {
       let userId = getUserIdFromDocument(doc, activityType, activityAction);
-      
+
       // Don't use currentUserId as fallback - we want to show "Unknown User" 
       // when we genuinely don't know who performed the action
       // Only fallback to workspace members for created items where we have no user field
       if (!userId && activityAction === "created" && membersResult.documents.length > 0) {
         userId = membersResult.documents[0].userId as string;
       }
-      
+
       const userInfo = userId ? userMap.get(userId) : null;
-      
+
       const description = doc.description as string | undefined;
 
       allActivities.push({
@@ -219,10 +220,10 @@ export async function getActivityLogs({
 
     // Get page of results
     const paginatedActivities = sortedActivities.slice(startIndex, startIndex + limit);
-    
+
     // Determine if there are more results
     const hasMore = startIndex + limit < sortedActivities.length;
-    
+
     // Generate next cursor from last item
     let nextCursor: string | undefined;
     if (hasMore && paginatedActivities.length > 0) {
@@ -247,15 +248,15 @@ export async function getActivityLogs({
  * Extracts user ID from document based on collection type
  */
 function getUserIdFromDocument(
-  doc: Record<string, unknown>, 
-  activityType: ActivityType, 
+  doc: Record<string, unknown>,
+  activityType: ActivityType,
   action?: string
 ): string | undefined {
   // First, check if document has lastModifiedBy field (for updates)
   if (action === "updated" && doc.lastModifiedBy) {
     return doc.lastModifiedBy as string;
   }
-  
+
   switch (activityType) {
     case ActivityType.TASK:
       // For task creates, use assigneeId or the first assigneeIds
@@ -267,34 +268,34 @@ function getUserIdFromDocument(
       }
       // For updates without lastModifiedBy, return undefined
       return undefined;
-    
+
     case ActivityType.TIME_LOG:
       // Time logs have userId field
       return doc.userId as string;
-    
+
     case ActivityType.ATTACHMENT:
       // Attachments have uploadedBy field
       return doc.uploadedBy as string;
-    
+
     case ActivityType.WORKSPACE:
       // Workspaces have userId field (creator)
       return doc.userId as string;
-    
+
     case ActivityType.WORK_ITEM:
       // Work items have assigneeIds array
       {
         const assigneeIds = doc.assigneeIds as string[] | undefined;
         return assigneeIds?.[0];
       }
-    
+
     case ActivityType.MEMBER:
       // Members collection has userId field
       return doc.userId as string;
-    
+
     case ActivityType.BACKLOG_ITEM:
       // Personal backlog has userId field
       return doc.userId as string;
-    
+
     case ActivityType.PROJECT:
     case ActivityType.SPRINT:
     case ActivityType.CUSTOM_COLUMN:
@@ -302,7 +303,7 @@ function getUserIdFromDocument(
       // These don't have direct user fields
       // We'll need to infer from workspace membership
       return undefined;
-    
+
     default:
       return undefined;
   }

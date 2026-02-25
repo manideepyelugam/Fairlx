@@ -5,6 +5,7 @@ interface useGetProjectActivityLogsProps {
   workspaceId: string;
   projectId: string;
   limit?: number;
+  enabled?: boolean;
 }
 
 export const useGetProjectActivityLogs = ({
@@ -46,6 +47,7 @@ export const useGetRecentProjectActivityLogs = ({
   workspaceId,
   projectId,
   limit = 5,
+  enabled,
 }: useGetProjectActivityLogsProps) => {
   const query = useQuery({
     queryKey: ["activity-logs", "recent", workspaceId, projectId, limit],
@@ -65,6 +67,7 @@ export const useGetRecentProjectActivityLogs = ({
       const data = await response.json();
       return data;
     },
+    enabled,
     staleTime: 1000 * 30, // 30 seconds for widget
   });
 

@@ -1,9 +1,11 @@
+import { useMemo } from "react";
 import { FolderIcon, ListChecksIcon, UserIcon, AlertTriangleIcon, Settings2Icon } from "lucide-react";
 
 import { useGetMembers } from "@/features/members/api/use-get-members";
 import { useGetProjects } from "@/features/projects/api/use-get-projects";
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 import { useProjectId } from "@/features/projects/hooks/use-project-id";
+import { Project } from "@/features/projects/types";
 
 import { DatePicker } from "@/components/date-picker";
 import {
@@ -30,25 +32,29 @@ import { useManageColumnsModal } from "@/features/custom-columns/hooks/use-manag
 interface DataFiltersProps {
   hideProjectFilter?: boolean;
   showMyTasksOnly?: boolean; // New prop to hide assignee filter in My Tasks
+  projects?: Project[]; // Passed in My Space mode for cross-workspace filters
   disableManageColumns?: boolean; // Disable when project setup is needed
 }
 
-export const DataFilters = ({ hideProjectFilter, showMyTasksOnly, disableManageColumns }: DataFiltersProps) => {
+export const DataFilters = ({ hideProjectFilter, showMyTasksOnly, projects: passedProjects, disableManageColumns }: DataFiltersProps) => {
   const workspaceId = useWorkspaceId();
   const currentProjectId = useProjectId();
 
-  const { data: projects, isLoading: isLoadingProjects } = useGetProjects({
+  // FETCH projects for current workspace if not passed (normal workspace view)
+  const { data: projectsData, isLoading: isLoadingProjects } = useGetProjects({
     workspaceId,
   });
   const { data: members, isLoading: isLoadingMembers } = useGetMembers({
     workspaceId,
   });
 
+  const projects = useMemo(() => passedProjects || projectsData?.documents || [], [passedProjects, projectsData?.documents]);
+
   const isLoading = isLoadingProjects || isLoadingMembers;
 
   const { open: openManageModal } = useManageColumnsModal();
 
-  const projectOptions = projects?.documents.map((project) => ({
+  const projectOptions = projects?.map((project) => ({
     value: project.$id,
     label: project.name,
   }));
@@ -104,11 +110,29 @@ export const DataFilters = ({ hideProjectFilter, showMyTasksOnly, disableManageC
     setFilters({ labels: newLabels.length > 0 ? newLabels : null });
   };
 
-  // Mock available labels - in a real app, this would come from an API
-  const availableLabels = [
-    "frontend", "backend", "bug", "feature", "urgent", "documentation",
-    "testing", "design", "security", "performance", "api", "ui/ux"
-  ];
+  // Dynamically derive available labels from all relevant projects
+  const availableLabels = useMemo(() => {
+    if (!projects || projects.length === 0) {
+      return [
+        "frontend", "backend", "bug", "feature", "urgent", "documentation",
+        "testing", "design", "security", "performance", "api", "ui/ux"
+      ];
+    }
+
+    const labelSet = new Set<string>();
+    projects.forEach(project => {
+      project.customLabels?.forEach(label => {
+        if (label.name) labelSet.add(label.name);
+      });
+    });
+
+    // If no custom labels found in projects, fallback to defaults
+    if (labelSet.size === 0) {
+      return ["frontend", "backend", "bug", "feature", "urgent", "documentation"];
+    }
+
+    return Array.from(labelSet);
+  }, [projects]);
 
   if (isLoading) return null;
 
