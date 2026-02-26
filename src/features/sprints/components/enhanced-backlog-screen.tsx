@@ -53,14 +53,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import DOMPurify from "dompurify";
 import { RichTextEditor } from "@/components/editor/rich-text-editor";
 
 import { useGetSprints } from "../api/use-get-sprints";
@@ -149,11 +141,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_isEditMode, setIsEditMode] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<Partial<PopulatedWorkItem>>({});
-  const [isDescriptionDialogOpen, setIsDescriptionDialogOpen] = useState(false);
-  const [editingDescription, setEditingDescription] = useState("");
   const [drawerWidth, setDrawerWidth] = useState(540);
   const [isExpanded, setIsExpanded] = useState(false);
-  const drawerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {

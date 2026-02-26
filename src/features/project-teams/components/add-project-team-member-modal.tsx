@@ -112,10 +112,9 @@ export function AddProjectTeamMemberModal({
         setIsAdding(true);
 
         const userIdsArray = Array.from(selectedUserIds);
-        let completed = 0;
 
         for (const userId of userIdsArray) {
-            await new Promise<void>((resolve, reject) => {
+            await new Promise<void>((resolve) => {
                 addMember(
                     {
                         projectId,
@@ -125,11 +124,9 @@ export function AddProjectTeamMemberModal({
                     },
                     {
                         onSuccess: () => {
-                            completed++;
                             resolve();
                         },
                         onError: () => {
-                            completed++;
                             resolve(); // Continue even if one fails
                         },
                     }
