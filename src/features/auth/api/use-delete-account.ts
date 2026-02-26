@@ -15,13 +15,13 @@ export const useDeleteAccount = () => {
   const mutation = useMutation<{ success: boolean }, Error>({
     mutationFn: async () => {
       const response = await client.api.auth.account.$delete();
+      const data = await response.json();
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error((error as { error?: string }).error || "Failed to delete account");
+        throw new Error((data as { error?: string }).error || "Failed to delete account");
       }
 
-      return response.json() as Promise<{ success: boolean }>;
+      return data as { success: boolean };
     },
     onSuccess: () => {
       queryClient.clear(); // Clear all cached data

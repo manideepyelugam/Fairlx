@@ -408,7 +408,7 @@ const app = new Hono()
     async (c) => {
       const user = c.get("user");
       const databases = c.get("databases");
-      const { name, type, status, workspaceId, projectId, dueDate, assigneeIds, description, estimatedHours, priority, labels } =
+      const { name, type, status, workspaceId, projectId, startDate, dueDate, assigneeIds, description, estimatedHours, priority, labels } =
         c.req.valid("json");
 
       const member = await getMember({
@@ -527,6 +527,7 @@ const app = new Hono()
           status,
           workspaceId,
           projectId,
+          startDate: startDate || null,
           dueDate: dueDate || null,
           assigneeIds: assigneeIds || [],
           position: newPosition,
@@ -564,8 +565,7 @@ const app = new Hono()
     async (c) => {
       const user = c.get("user");
       const databases = c.get("databases");
-      // Note: endDate is in schema but not in database - we ignore it
-      const { name, type, status, projectId, dueDate, assigneeIds, description, estimatedHours, priority, labels, flagged, storyPoints } =
+      const { name, type, status, projectId, startDate, dueDate, assigneeIds, description, estimatedHours, priority, labels, flagged, storyPoints } =
         c.req.valid("json");
 
       const { taskId } = c.req.param();
@@ -638,11 +638,11 @@ const app = new Hono()
       if (type !== undefined) updateData.type = type;
       if (status !== undefined) updateData.status = status;
       if (projectId !== undefined) updateData.projectId = projectId;
+      if (startDate !== undefined) updateData.startDate = startDate;
       if (dueDate !== undefined) updateData.dueDate = dueDate;
       if (description !== undefined) updateData.description = description;
       if (estimatedHours !== undefined) updateData.estimatedHours = estimatedHours;
       if (storyPoints !== undefined) updateData.storyPoints = storyPoints;
-      // Note: endDate column doesn't exist in workItems collection, so we skip it
       if (priority !== undefined) updateData.priority = priority;
       if (labels !== undefined) updateData.labels = labels;
       if (flagged !== undefined) updateData.flagged = flagged;
