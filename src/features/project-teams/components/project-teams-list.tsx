@@ -13,6 +13,7 @@ import { CreateProjectTeamModal } from "./create-project-team-modal";
 import { EditProjectTeamModal } from "./edit-project-team-modal";
 import { AddProjectTeamMemberModal } from "./add-project-team-member-modal";
 import { TeamMembersModal } from "./team-members-modal";
+import { TeamPermissionsDialog } from "./team-permissions-dialog";
 import { PopulatedProjectTeam } from "../types";
 import {
     AlertDialog,
@@ -37,6 +38,7 @@ export function ProjectTeamsList({ projectId, canManage = false }: ProjectTeamsL
     const [deleteTeamName, setDeleteTeamName] = useState("");
     const [viewMembersTeam, setViewMembersTeam] = useState<PopulatedProjectTeam | null>(null);
     const [editTeam, setEditTeam] = useState<PopulatedProjectTeam | null>(null);
+    const [permissionsTeam, setPermissionsTeam] = useState<PopulatedProjectTeam | null>(null);
 
     const { data: teamsData, isLoading } = useGetProjectTeams({ projectId });
     const { mutate: deleteTeam, isPending: isDeleting } = useDeleteProjectTeam({ projectId });
@@ -108,6 +110,7 @@ export function ProjectTeamsList({ projectId, canManage = false }: ProjectTeamsL
                             onViewMembers={() => setViewMembersTeam(team)}
                             onEdit={() => setEditTeam(team)}
                             onAddMember={() => setAddMemberTeamId(team.$id)}
+                            onManagePermissions={() => setPermissionsTeam(team)}
                             onDelete={() => {
                                 setDeleteTeamId(team.$id);
                                 setDeleteTeamName(team.name);
@@ -180,6 +183,17 @@ export function ProjectTeamsList({ projectId, canManage = false }: ProjectTeamsL
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Manage Permissions Dialog */}
+            {permissionsTeam && (
+                <TeamPermissionsDialog
+                    teamId={permissionsTeam.$id}
+                    teamName={permissionsTeam.name}
+                    teamColor={permissionsTeam.color}
+                    open={!!permissionsTeam}
+                    onOpenChange={(open) => !open && setPermissionsTeam(null)}
+                />
+            )}
         </div>
     );
 }
