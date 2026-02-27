@@ -90,6 +90,12 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
     task.dueDate ? new Date(task.dueDate) : undefined
   );
 
+  // Optimistic local state for status, type, priority, assignees — instant UI like dates
+  const [localStatus, setLocalStatus] = useState<string>(task.status);
+  const [localType, setLocalType] = useState<string>(task.type || "TASK");
+  const [localPriority, setLocalPriority] = useState<string | undefined>(task.priority);
+  const [localAssigneeIds, setLocalAssigneeIds] = useState<string[]>(task.assigneeIds || []);
+
   // Helper to convert plain text to HTML if needed
   const normalizeDescription = (desc: string | null | undefined): string => {
     if (!desc) return "";
@@ -148,6 +154,23 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
     setLocalDueDate(task.dueDate ? new Date(task.dueDate) : undefined);
   }, [task.dueDate]);
 
+  // Sync status, type, priority, assignees when task changes from server
+  useEffect(() => {
+    setLocalStatus(task.status);
+  }, [task.status]);
+
+  useEffect(() => {
+    setLocalType(task.type || "TASK");
+  }, [task.type]);
+
+  useEffect(() => {
+    setLocalPriority(task.priority);
+  }, [task.priority]);
+
+  useEffect(() => {
+    setLocalAssigneeIds(task.assigneeIds || []);
+  }, [task.assigneeIds]);
+
   // Update mention members when they load
   useEffect(() => {
     if (members?.documents) {
@@ -176,6 +199,43 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
       json: updates,
     });
   };
+
+  // Optimistic handlers for status, type, priority, assignees — instant UI like dates
+  const handleStatusChange = useCallback((value: string) => {
+    const prev = localStatus;
+    setLocalStatus(value);
+    updateTask(
+      { param: { taskId: task.$id }, json: { status: value } },
+      { onError: () => { setLocalStatus(prev); } }
+    );
+  }, [task.$id, localStatus, updateTask]);
+
+  const handleTypeChange = useCallback((value: string) => {
+    const prev = localType;
+    setLocalType(value);
+    updateTask(
+      { param: { taskId: task.$id }, json: { type: value } },
+      { onError: () => { setLocalType(prev); } }
+    );
+  }, [task.$id, localType, updateTask]);
+
+  const handlePriorityChange = useCallback((value: string) => {
+    const prev = localPriority;
+    setLocalPriority(value);
+    updateTask(
+      { param: { taskId: task.$id }, json: { priority: value } },
+      { onError: () => { setLocalPriority(prev); } }
+    );
+  }, [task.$id, localPriority, updateTask]);
+
+  const handleAssigneesChange = useCallback((ids: string[]) => {
+    const prev = localAssigneeIds;
+    setLocalAssigneeIds(ids);
+    updateTask(
+      { param: { taskId: task.$id }, json: { assigneeIds: ids } },
+      { onError: () => { setLocalAssigneeIds(prev); } }
+    );
+  }, [task.$id, localAssigneeIds, updateTask]);
 
   // Immediate date update — optimistic UI updates local state instantly.
   // Edge-case: if the new start date is after the existing end date, clear end date.
@@ -468,8 +528,8 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
               <div>
                 <label className="text-xs text-muted-foreground mb-1.5 block">Status</label>
                 <StatusSelector
-                  value={task.status}
-                  onChange={canEdit ? (value) => handleUpdate({ status: value }) : () => { }}
+                  value={localStatus}
+                  onChange={canEdit ? handleStatusChange : () => { }}
                   projectId={task.projectId}
                   disabled={!canEdit}
                 />
@@ -479,8 +539,8 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
               <div>
                 <label className="text-xs text-muted-foreground mb-1.5 block">Type</label>
                 <TypeSelector
-                  value={task.type || "TASK"}
-                  onValueChange={canEdit ? (value) => handleUpdate({ type: value }) : () => { }}
+                  value={localType}
+                  onValueChange={canEdit ? handleTypeChange : () => { }}
                   project={project}
                   customTypes={project?.customWorkItemTypes}
                   className="w-full bg-card border-border"
@@ -492,8 +552,8 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
               <div>
                 <label className="text-xs text-muted-foreground mb-1.5 block">Priority</label>
                 <PrioritySelector
-                  value={task.priority}
-                  onValueChange={canEdit ? (value) => handleUpdate({ priority: value }) : () => { }}
+                  value={localPriority}
+                  onValueChange={canEdit ? handlePriorityChange : () => { }}
                   customPriorities={project?.customPriorities}
                   disabled={!canEdit}
                 />
@@ -504,8 +564,8 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 <label className="text-xs text-muted-foreground mb-1.5 block">Assignees</label>
                 <AssigneeMultiSelect
                   memberOptions={memberOptions}
-                  selectedAssigneeIds={task.assigneeIds || []}
-                  onAssigneesChange={canEdit ? (ids) => handleUpdate({ assigneeIds: ids }) : () => { }}
+                  selectedAssigneeIds={localAssigneeIds}
+                  onAssigneesChange={canEdit ? handleAssigneesChange : () => { }}
                   placeholder="Select assignees"
                   disabled={!canEdit}
                 />

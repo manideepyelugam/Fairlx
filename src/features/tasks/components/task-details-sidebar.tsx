@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   CircleDotDashedIcon,
   ChevronDown,
@@ -248,6 +248,27 @@ export const TaskDetailsSidebar = ({
   const [labelSearch, setLabelSearch] = useState("");
   const [typeSearch, setTypeSearch] = useState("");
 
+  // Optimistic local state — instant UI like the date picker
+  const [localStatus, setLocalStatus] = useState<string>(task.status);
+  const [localPriority, setLocalPriority] = useState<string | undefined>(task.priority);
+  const [localType, setLocalType] = useState<string>(task.type || "TASK");
+  const [localAssigneeId, setLocalAssigneeId] = useState<string | null>(
+    task.assignees && task.assignees.length > 0
+      ? task.assignees[0].$id
+      : task.assignee?.$id || null
+  );
+
+  // Sync local state from server when task prop changes
+  useEffect(() => { setLocalStatus(task.status); }, [task.status]);
+  useEffect(() => { setLocalPriority(task.priority); }, [task.priority]);
+  useEffect(() => { setLocalType(task.type || "TASK"); }, [task.type]);
+  useEffect(() => {
+    const id = task.assignees && task.assignees.length > 0
+      ? task.assignees[0].$id
+      : task.assignee?.$id || null;
+    setLocalAssigneeId(id);
+  }, [task.assignees, task.assignee]);
+
   const handleUpdateTask = (updates: Record<string, string | string[] | null | undefined>) => {
     updateTask(
       { param: { taskId: task.$id }, json: updates },
@@ -271,24 +292,69 @@ export const TaskDetailsSidebar = ({
       toast.error("This status transition is not allowed by the workflow rules");
       return;
     }
-    handleUpdateTask({ status });
+    const prev = localStatus;
+    setLocalStatus(status);
     setStatusOpen(false);
+    updateTask(
+      { param: { taskId: task.$id }, json: { status } },
+      {
+        onError: (error) => {
+          setLocalStatus(prev);
+          const errorMessage = error?.message || "Failed to update task";
+          if (errorMessage.includes("transition") || errorMessage.includes("workflow")) {
+            toast.error("This status transition is not allowed by the workflow");
+          } else {
+            toast.error(errorMessage);
+          }
+        },
+      }
+    );
   };
 
   const handlePriorityChange = (priority: string) => {
-    handleUpdateTask({ priority: priority || undefined });
+    const prev = localPriority;
+    setLocalPriority(priority || undefined);
     setPriorityOpen(false);
+    updateTask(
+      { param: { taskId: task.$id }, json: { priority: priority || undefined } },
+      {
+        onError: (error) => {
+          setLocalPriority(prev);
+          toast.error(error?.message || "Failed to update task");
+        },
+      }
+    );
   };
 
   const handleTypeChange = (type: string) => {
-    handleUpdateTask({ type });
+    const prev = localType;
+    setLocalType(type);
     setTypeOpen(false);
+    updateTask(
+      { param: { taskId: task.$id }, json: { type } },
+      {
+        onError: (error) => {
+          setLocalType(prev);
+          toast.error(error?.message || "Failed to update task");
+        },
+      }
+    );
   };
 
   const handleAssigneeChange = (assigneeId: string) => {
+    const prev = localAssigneeId;
     const assigneeIds = assigneeId === "__none" ? [] : [assigneeId];
-    handleUpdateTask({ assigneeIds });
+    setLocalAssigneeId(assigneeId === "__none" ? null : assigneeId);
     setAssigneeOpen(false);
+    updateTask(
+      { param: { taskId: task.$id }, json: { assigneeIds } },
+      {
+        onError: (error) => {
+          setLocalAssigneeId(prev);
+          toast.error(error?.message || "Failed to update task");
+        },
+      }
+    );
   };
 
 
@@ -306,7 +372,7 @@ export const TaskDetailsSidebar = ({
   const currentStatus = useMemo(() => {
     // First check if we have a matching workflow status
     const workflowStatus = workflowFilteredStatuses.find(
-      s => s.value === task.status
+      s => s.value === localStatus
     );
     if (workflowStatus) {
       return {
@@ -316,23 +382,32 @@ export const TaskDetailsSidebar = ({
       };
     }
     // Fallback to static config
-    return statusConfig[task.status] || {
+    return statusConfig[localStatus] || {
       icon: <CircleDotDashedIcon className="size-4 text-gray-400" />,
       label: "Backlog",
       color: "text-gray-400",
     };
-  }, [task.status, workflowFilteredStatuses]);
+  }, [localStatus, workflowFilteredStatuses]);
 
   // Get current priority display
-  const currentPriority = task.priority
-    ? priorityConfig[task.priority]
+  const currentPriority = localPriority
+    ? priorityConfig[localPriority]
     : null;
 
-  // Get current assignee
-  const currentAssignee =
-    task.assignees && task.assignees.length > 0
-      ? task.assignees[0]
-      : task.assignee;
+  // Get current assignee — use local optimistic state
+  const currentAssignee = useMemo(() => {
+    if (!localAssigneeId) return null;
+    // Find from task.assignees or members
+    if (task.assignees && task.assignees.length > 0) {
+      const found = task.assignees.find((a: { $id: string }) => a.$id === localAssigneeId);
+      if (found) return found;
+    }
+    if (task.assignee && task.assignee.$id === localAssigneeId) return task.assignee;
+    // Fallback: try to find from members list
+    const member = members?.documents?.find((m: Member) => m.$id === localAssigneeId);
+    if (member) return { $id: member.$id, name: member.name, profileImageUrl: member.profileImageUrl };
+    return null;
+  }, [localAssigneeId, task.assignees, task.assignee, members]);
 
   // Default work item types
   // Get available work item types (custom + defaults)
@@ -345,9 +420,9 @@ export const TaskDetailsSidebar = ({
 
   // Get current type display
   const currentType = useMemo(() => {
-    const typeKey = task.type || "TASK";
+    const typeKey = localType;
     return workItemTypes.find(t => t.key === typeKey) || defaultWorkItemTypes[0];
-  }, [task.type, workItemTypes]);
+  }, [localType, workItemTypes]);
 
   // Filter types by search
   const filteredTypes = useMemo(() => {
@@ -424,7 +499,7 @@ export const TaskDetailsSidebar = ({
                   <div className="space-y-0.5">
                     {filteredStatuses.map((status) => {
                       const isAllowed = 'isAllowed' in status ? status.isAllowed !== false : true;
-                      const isCurrent = task.status === status.value;
+                      const isCurrent = localStatus === status.value;
 
                       return (
                         <button
@@ -492,7 +567,7 @@ export const TaskDetailsSidebar = ({
                           <span className="text-xs tracking-normal">{priority.label}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          {task.priority === priority.value && <Check className="size-4 text-gray-600" />}
+                          {localPriority === priority.value && <Check className="size-4 text-gray-600" />}
                           <span className="text-xs text-gray-400">{priority.key}</span>
                         </div>
                       </button>
@@ -626,7 +701,7 @@ export const TaskDetailsSidebar = ({
                           <span className="text-xs tracking-normal">{type.label}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          {task.type === type.key && <Check className="size-4 text-gray-600" />}
+                          {localType === type.key && <Check className="size-4 text-gray-600" />}
                         </div>
                       </button>
                     ))}

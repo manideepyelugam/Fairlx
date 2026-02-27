@@ -4,7 +4,7 @@ import { ID, Query } from "node-appwrite";
 import { z } from "zod";
 
 import { createSessionClient } from "@/lib/appwrite";
-import { DATABASE_ID, CUSTOM_COLUMNS_ID } from "@/config";
+import { DATABASE_ID, CUSTOM_COLUMNS_ID, PROJECTS_ID, WORKFLOW_STATUSES_ID } from "@/config";
 
 import { createCustomColumnSchema, updateCustomColumnSchema } from "../schemas";
 
@@ -103,6 +103,74 @@ const app = new Hono()
         ID.unique(),
         documentData
       );
+
+      // Auto-sync: If this is a project column and the project has a workflow, create a workflow status
+      if (projectId && !workflowId) {
+        try {
+          // Get the project to check if it has a workflowId
+          const project = await databases.getDocument(
+            DATABASE_ID,
+            PROJECTS_ID,
+            projectId
+          );
+
+          if (project.workflowId) {
+            // Check if status already exists in workflow with the same name or key
+            const normalizedKey = name.toLowerCase().replace(/[\s_-]+/g, "_").toUpperCase();
+            const existingStatuses = await databases.listDocuments(
+              DATABASE_ID,
+              WORKFLOW_STATUSES_ID,
+              [
+                Query.equal("workflowId", project.workflowId),
+                Query.or([
+                  Query.equal("name", name),
+                  Query.equal("key", normalizedKey)
+                ])
+              ]
+            );
+
+            if (existingStatuses.total === 0) {
+              // Get max position for workflow statuses
+              const workflowStatuses = await databases.listDocuments(
+                DATABASE_ID,
+                WORKFLOW_STATUSES_ID,
+                [
+                  Query.equal("workflowId", project.workflowId),
+                  Query.orderDesc("position"),
+                  Query.limit(1)
+                ]
+              );
+              const statusPosition = workflowStatuses.documents.length > 0 
+                ? workflowStatuses.documents[0].position + 1 
+                : 0;
+
+              // Create the workflow status
+              await databases.createDocument(
+                DATABASE_ID,
+                WORKFLOW_STATUSES_ID,
+                ID.unique(),
+                {
+                  workflowId: project.workflowId,
+                  name: name,
+                  key: normalizedKey,
+                  icon: icon || "Circle",
+                  color: color || "#6B7280",
+                  statusType: "OPEN",
+                  description: null,
+                  position: statusPosition,
+                  positionX: 100 + (statusPosition * 180), // Place new statuses on canvas
+                  positionY: 100,
+                  isInitial: false,
+                  isFinal: false,
+                }
+              );
+            }
+          }
+        } catch (syncError) {
+          // Log but don't fail the main operation
+          console.error("Error syncing custom column to workflow status:", syncError);
+        }
+      }
 
       return c.json({ data: customColumn });
     }
