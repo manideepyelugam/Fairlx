@@ -540,6 +540,61 @@ const app = new Hono()
         }
       );
 
+      // Auto-sync: Create custom columns in all projects that use this workflow
+      try {
+        const projectsUsingWorkflow = await databases.listDocuments(
+          DATABASE_ID,
+          PROJECTS_ID,
+          [Query.equal("workflowId", workflowId)]
+        );
+
+        // Create custom column for each project using this workflow
+        for (const project of projectsUsingWorkflow.documents) {
+          // Check if custom column already exists for this project with the same name
+          const existingColumns = await databases.listDocuments(
+            DATABASE_ID,
+            CUSTOM_COLUMNS_ID,
+            [
+              Query.equal("projectId", project.$id),
+              Query.equal("name", statusData.name)
+            ]
+          );
+
+          if (existingColumns.total === 0) {
+            // Get max position for this project's columns
+            const projectColumns = await databases.listDocuments(
+              DATABASE_ID,
+              CUSTOM_COLUMNS_ID,
+              [
+                Query.equal("projectId", project.$id),
+                Query.orderDesc("position"),
+                Query.limit(1)
+              ]
+            );
+            const columnPosition = projectColumns.documents.length > 0 
+              ? projectColumns.documents[0].position + 1000 
+              : 1000;
+
+            await databases.createDocument(
+              DATABASE_ID,
+              CUSTOM_COLUMNS_ID,
+              ID.unique(),
+              {
+                name: statusData.name,
+                workspaceId: workflow.workspaceId,
+                projectId: project.$id,
+                icon: statusData.icon || "Circle",
+                color: statusData.color,
+                position: columnPosition,
+              }
+            );
+          }
+        }
+      } catch (syncError) {
+        // Log but don't fail the main operation
+        console.error("Error syncing workflow status to project columns:", syncError);
+      }
+
       return c.json({ data: status });
     }
   )
