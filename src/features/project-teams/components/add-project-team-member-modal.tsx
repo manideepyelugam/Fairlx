@@ -211,11 +211,13 @@ export function AddProjectTeamMemberModal({
                                 {filteredMembers.map((member) => {
                                     const isSelected = selectedUserIds.has(member.userId);
                                     return (
-                                        <button
+                                        <div
                                             key={member.userId}
-                                            type="button"
+                                            role="button"
+                                            tabIndex={0}
                                             onClick={() => toggleMember(member.userId)}
-                                            className={`w-full flex items-center gap-3 p-2 rounded-md transition-colors ${
+                                            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleMember(member.userId); } }}
+                                            className={`w-full flex items-center gap-3 p-2 rounded-md transition-colors cursor-pointer ${
                                                 isSelected
                                                     ? "bg-muted"
                                                     : "hover:bg-muted/50"
@@ -238,7 +240,7 @@ export function AddProjectTeamMemberModal({
                                             {isSelected && (
                                                 <Check className="h-4 w-4 text-primary shrink-0" />
                                             )}
-                                        </button>
+                                        </div>
                                     );
                                 })}
                             </div>
