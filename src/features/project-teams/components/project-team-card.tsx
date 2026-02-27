@@ -64,11 +64,11 @@ export function ProjectTeamCard({
                 </div>
 
                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="opacity-100"
                         >
                             <MoreHorizontal className="h-4 w-4" />
                         </Button>

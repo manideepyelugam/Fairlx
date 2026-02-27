@@ -7,7 +7,6 @@ import {
   Layers,
   FileText,
   Github,
-  Users2,
   UserPlus,
   Settings,
 } from "lucide-react";
@@ -50,8 +49,7 @@ interface ProjectToolItem {
  * - Backlog: Requires task.create
  * - Docs: Requires project.view
  * - AI Github: Requires project.view
- * - Teams: Requires team.manage or team.create or project.view
- * - Members: Requires member.invite or member.remove or project.view
+ * - Teams & Members: Requires team.manage or team.create or member.invite or member.remove or project.view
  * - Audit Logs: Requires project.view or project.settings.manage
  * - Settings: Requires project.settings.manage
  */
@@ -131,18 +129,11 @@ export const ProjectTools = () => {
       canView: () => effectiveCanViewProject,
     },
     {
-      id: "teams",
-      label: "Teams",
-      href: "/teams",
-      icon: <Users2 className="size-4" />,
-      canView: () => canManageTeams || canCreateTeams || effectiveCanViewProject,
-    },
-    {
       id: "members",
-      label: "Members",
+      label: "Teams & Members",
       href: "/members",
       icon: <UserPlus className="size-4" />,
-      canView: () => canInviteMembers || canRemoveMembers || effectiveCanViewMembers,
+      canView: () => canManageTeams || canCreateTeams || canInviteMembers || canRemoveMembers || effectiveCanViewMembers,
     },
     {
       id: "settings",
