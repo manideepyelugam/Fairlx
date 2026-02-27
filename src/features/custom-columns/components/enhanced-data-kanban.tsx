@@ -487,7 +487,7 @@ export const EnhancedDataKanban = ({
               <div
                 {...provided.droppableProps}
                 ref={provided.innerRef}
-                className="flex overflow-x-auto gap-4 pb-4"
+                className="flex overflow-x-scroll gap-4 pb-4 kanban-scrollbar"
               >
                 {orderedColumns.map((column, index) => {
                   const columnTasks = tasks[column.id] || [];
