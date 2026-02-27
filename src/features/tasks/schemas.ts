@@ -11,8 +11,8 @@ const baseTaskSchema = z.object({
   ),
   workspaceId: z.string().trim().min(1, "Required"),
   projectId: z.string().trim().min(1, "Required"),
+  startDate: z.coerce.date().optional(),
   dueDate: z.coerce.date().optional(),
-  endDate: z.coerce.date().optional(),
   assigneeIds: z.array(z.string().trim().min(1)).optional(),
   assignedTeamId: z.string().trim().optional(),
   description: z.string().nullable().optional(),
@@ -32,14 +32,14 @@ const baseTaskSchema = z.object({
 
 export const createTaskSchema = baseTaskSchema.refine(
   (data) => {
-    if (data.endDate && data.dueDate) {
-      return data.endDate >= data.dueDate;
+    if (data.dueDate && data.startDate) {
+      return data.dueDate >= data.startDate;
     }
     return true;
   },
   {
-    message: "End date must be after or equal to start date",
-    path: ["endDate"],
+    message: "Due date must be after or equal to start date",
+    path: ["dueDate"],
   }
 );
 
@@ -48,26 +48,26 @@ export const createTaskFormSchema = baseTaskSchema.omit({ workspaceId: true }).e
   assignedTeamId: z.string().trim().optional(),
 }).refine(
   (data) => {
-    if (data.endDate && data.dueDate) {
-      return data.endDate >= data.dueDate;
+    if (data.dueDate && data.startDate) {
+      return data.dueDate >= data.startDate;
     }
     return true;
   },
   {
-    message: "End date must be after or equal to start date",
-    path: ["endDate"],
+    message: "Due date must be after or equal to start date",
+    path: ["dueDate"],
   }
 );
 
 export const updateTaskSchema = baseTaskSchema.omit({ workspaceId: true }).partial().refine(
   (data) => {
-    if (data.endDate && data.dueDate) {
-      return data.endDate >= data.dueDate;
+    if (data.dueDate && data.startDate) {
+      return data.dueDate >= data.startDate;
     }
     return true;
   },
   {
-    message: "End date must be after or equal to start date",
-    path: ["endDate"],
+    message: "Due date must be after or equal to start date",
+    path: ["dueDate"],
   }
 );

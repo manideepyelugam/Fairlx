@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 
 import { LegalAcceptance } from "./legal-acceptance";
 import { useAcceptLegal } from "../api/use-accept-legal";
+import { useLogout } from "../api/use-logout";
 import { useGetAccountLifecycle } from "../api/use-account-lifecycle";
 import { OrganizationRole } from "@/features/organizations/types";
 
@@ -29,6 +30,7 @@ import { OrganizationRole } from "@/features/organizations/types";
 export function LegalAcceptanceModal() {
     const { lifecycleState, refreshLifecycle } = useGetAccountLifecycle();
     const mutation = useAcceptLegal();
+    const logoutMutation = useLogout();
 
     const [acceptedTerms, setAcceptedTerms] = useState(false);
     const [acceptedDPA, setAcceptedDPA] = useState(false);
@@ -206,10 +208,11 @@ export function LegalAcceptanceModal() {
             {/* Logout button for people who don't want to accept or are stuck */}
             <div className="mt-8 z-10">
                 <button
-                    onClick={() => window.location.href = "/api/auth/logout"}
-                    className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => logoutMutation.mutate()}
+                    disabled={logoutMutation.isPending}
+                    className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
                 >
-                    Log out of my account
+                    {logoutMutation.isPending ? "Logging out..." : "Log out of my account"}
                 </button>
             </div>
         </div>

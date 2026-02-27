@@ -78,8 +78,8 @@ export const CreateTaskForm = ({
       priority: undefined,
       status: undefined,
       projectId: projectId || "",
+      startDate: undefined,
       dueDate: undefined,
-      endDate: undefined,
       flagged: false,
     },
   });
@@ -228,7 +228,7 @@ export const CreateTaskForm = ({
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="dueDate"
+                    name="startDate"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Start Date</FormLabel>
@@ -241,10 +241,10 @@ export const CreateTaskForm = ({
                   />
                   <FormField
                     control={form.control}
-                    name="endDate"
+                    name="dueDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>End Date (Optional)</FormLabel>
+                        <FormLabel>Due Date (Optional)</FormLabel>
                         <FormControl>
                           <DatePicker {...field} />
                         </FormControl>

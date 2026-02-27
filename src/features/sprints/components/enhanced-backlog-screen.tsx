@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, memo } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import {
   ChevronDown,
@@ -92,6 +92,138 @@ import { TaskAttachments } from "@/features/attachments/components/task-attachme
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+// Memoized assignee popover component for instant checkbox feedback
+interface AssigneePopoverProps {
+  workItemId: string;
+  initialAssigneeIds: string[];
+  projectMembers: Array<{ $id: string; name?: string; profileImageUrl?: string | null }>;
+  onUpdate: (workItemId: string, newAssigneeIds: string[]) => void;
+}
+
+const AssigneePopover = memo(function AssigneePopover({
+  workItemId,
+  initialAssigneeIds,
+  projectMembers,
+  onUpdate,
+}: AssigneePopoverProps) {
+  // Local state for INSTANT UI feedback (checkbox AND display)
+  const [localIds, setLocalIds] = useState<string[]>(initialAssigneeIds);
+  // Track the committed server state to compare against debounced result
+  const committedIdsRef = useRef<string[]>(initialAssigneeIds);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounced DB update: only fires if final state differs from last committed state
+  const scheduleUpdate = useCallback((newIds: string[]) => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      const committed = [...committedIdsRef.current].sort().join(",");
+      const next = [...newIds].sort().join(",");
+      if (committed !== next) {
+        committedIdsRef.current = newIds;
+        onUpdate(workItemId, newIds);
+      }
+    }, 1000);
+  }, [workItemId, onUpdate]);
+
+  const handleToggle = (memberId: string) => {
+    const newIds = localIds.includes(memberId)
+      ? localIds.filter(id => id !== memberId)
+      : [...localIds, memberId];
+    
+    // 1. Update local state INSTANTLY
+    setLocalIds(newIds);
+    // 2. Schedule DB update — cancelled if user reverts within 600ms
+    scheduleUpdate(newIds);
+  };
+
+  const handleClearAll = () => {
+    setLocalIds([]);
+    scheduleUpdate([]);
+  };
+
+  // Derive display assignees from LOCAL state + projectMembers for INSTANT updates
+  const displayAssignees = useMemo(() => 
+    localIds
+      .map(id => projectMembers.find(m => m.$id === id))
+      .filter((m): m is NonNullable<typeof m> => m != null),
+    [localIds, projectMembers]
+  );
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <div
+          role="button"
+          tabIndex={0}
+          className="flex items-center gap-1 cursor-pointer hover:bg-accent rounded px-1 w-full"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {displayAssignees.length > 0 ? (
+            <>
+              <div className="flex -space-x-1">
+                {displayAssignees.slice(0, 3).map((assignee) => (
+                  <Avatar key={assignee.$id} className="size-5 border-2 border-background">
+                    <AvatarImage src={assignee.profileImageUrl || undefined} />
+                    <AvatarFallback className="text-[10px]">
+                      {assignee.name?.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                ))}
+              </div>
+              <span className="text-xs text-muted-foreground truncate">
+                {displayAssignees.length > 2
+                  ? `${displayAssignees.length} assigned`
+                  : displayAssignees.map(a => a?.name?.split(" ")[0]).join(", ")}
+              </span>
+            </>
+          ) : (
+            <span className="text-xs text-muted-foreground">Unassigned</span>
+          )}
+        </div>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-0" align="end" onClick={(e) => e.stopPropagation()}>
+        <div className="p-2 border-b">
+          <p className="text-xs font-medium text-muted-foreground">Assign members</p>
+        </div>
+        <div className="max-h-[200px] overflow-y-auto p-1">
+          {projectMembers.map((member) => {
+            const isSelected = localIds.includes(member.$id);
+            return (
+              <div
+                key={member.$id}
+                role="button"
+                tabIndex={0}
+                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors cursor-pointer ${isSelected ? "bg-muted" : "hover:bg-accent"}`}
+                onClick={() => handleToggle(member.$id)}
+                onKeyDown={(e) => e.key === 'Enter' && handleToggle(member.$id)}
+              >
+                <Checkbox checked={isSelected} className="pointer-events-none" />
+                <Avatar className="size-5">
+                  <AvatarImage src={member.profileImageUrl || undefined} />
+                  <AvatarFallback className="text-[10px]">
+                    {member.name?.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-xs truncate">{member.name}</span>
+              </div>
+            );
+          })}
+        </div>
+        {localIds.length > 0 && (
+          <div className="p-1 border-t">
+            <button
+              className="w-full text-xs text-muted-foreground hover:text-foreground px-2 py-1.5 rounded-md hover:bg-accent transition-colors text-left"
+              onClick={handleClearAll}
+            >
+              Clear all
+            </button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+});
 
 interface EnhancedBacklogScreenProps {
   workspaceId: string;
@@ -410,6 +542,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     updateWorkItem({
       param: { workItemId: itemId },
       json: { status },
+      optimistic: true,
+      silent: true,
     });
   };
 
@@ -441,6 +575,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     updateWorkItem({
       param: { workItemId: draggableId },
       json: { sprintId: newSprintId },
+      optimistic: true,
+      silent: true,
     });
 
     toast.success("Work item moved");
@@ -472,6 +608,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     updateWorkItem({
       param: { workItemId: selectedItem.$id },
       json: jsonUpdates,
+      optimistic: true,
+      silent: false, // Show toast for explicit save actions in drawer
     });
 
     // Update local state immediately for better UX
@@ -543,6 +681,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     updateWorkItem({
       param: { workItemId },
       json: { title: editingWorkItemTitle },
+      optimistic: true,
+      silent: true,
     });
 
     setEditingWorkItemId(null);
@@ -560,6 +700,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     updateWorkItem({
       param: { workItemId },
       json: { epicId: epicId === "none" ? null : epicId },
+      optimistic: true,
+      silent: true,
     });
   };
 
@@ -567,6 +709,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     updateWorkItem({
       param: { workItemId },
       json: { storyPoints },
+      optimistic: true,
+      silent: true,
     });
   };
 
@@ -574,31 +718,20 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     updateWorkItem({
       param: { workItemId },
       json: { priority },
+      optimistic: true,
+      silent: true,
     });
   };
 
-  const handleUpdateAssignee = (workItemId: string, assigneeId: string) => {
-    // Find the current item
-    const allItems = workItemsData?.documents || [];
-    const currentItem = allItems.find(item => item.$id === workItemId);
-    const currentAssigneeIds = currentItem?.assigneeIds || [];
-
-    let newAssigneeIds: string[];
-    if (assigneeId === "unassigned") {
-      newAssigneeIds = [];
-    } else if (currentAssigneeIds.includes(assigneeId)) {
-      // Toggle off - remove this assignee
-      newAssigneeIds = currentAssigneeIds.filter((id: string) => id !== assigneeId);
-    } else {
-      // Toggle on - add this assignee
-      newAssigneeIds = [...currentAssigneeIds, assigneeId];
-    }
-
+  // Called by AssigneePopover with the new assignee IDs array
+  const handleAssigneeUpdate = useCallback((workItemId: string, newAssigneeIds: string[]) => {
     updateWorkItem({
       param: { workItemId },
       json: { assigneeIds: newAssigneeIds },
+      optimistic: true,
+      silent: true,
     });
-  };
+  }, [updateWorkItem]);
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
@@ -1106,73 +1239,15 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                           </SelectContent>
                                         </Select>
 
-                                        {/* Assignee Multi-Select */}
-                                        <Popover>
-                                          <PopoverTrigger asChild>
-                                            <button
-                                              className="w-[140px] h-7 text-xs flex-shrink-0 flex items-center gap-1 px-2 border rounded-md hover:bg-accent/50 transition-colors"
-                                              onClick={(e) => e.stopPropagation()}
-                                            >
-                                              {item.assignees && item.assignees.filter(a => a != null).length > 0 ? (
-                                                <div className="flex items-center gap-1 overflow-hidden">
-                                                  <div className="flex -space-x-1.5">
-                                                    {item.assignees.filter((a): a is NonNullable<typeof a> => a != null).slice(0, 3).map((assignee) => (
-                                                      <Avatar key={assignee.$id} className="size-4 border border-background">
-                                                        <AvatarImage src={assignee.profileImageUrl || undefined} />
-                                                        <AvatarFallback className="text-[8px]">
-                                                          {assignee.name?.charAt(0).toUpperCase()}
-                                                        </AvatarFallback>
-                                                      </Avatar>
-                                                    ))}
-                                                  </div>
-                                                  <span className="truncate text-xs">
-                                                    {item.assignees.filter(a => a != null).length > 2
-                                                      ? `${item.assignees.filter(a => a != null).length} assigned`
-                                                      : item.assignees.filter(a => a != null).map(a => a?.name?.split(" ")[0]).join(", ")}
-                                                  </span>
-                                                </div>
-                                              ) : (
-                                                <span className="text-muted-foreground">Unassigned</span>
-                                              )}
-                                            </button>
-                                          </PopoverTrigger>
-                                          <PopoverContent className="w-56 p-0" align="end" onClick={(e) => e.stopPropagation()}>
-                                            <div className="p-2 border-b">
-                                              <p className="text-xs font-medium text-muted-foreground">Assign members</p>
-                                            </div>
-                                            <div className="max-h-[200px] overflow-y-auto p-1">
-                                              {projectMembers.map((member) => {
-                                                const isSelected = (item.assigneeIds || []).includes(member.$id);
-                                                return (
-                                                  <button
-                                                    key={member.$id}
-                                                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${isSelected ? "bg-muted" : "hover:bg-accent"}`}
-                                                    onClick={() => handleUpdateAssignee(item.$id, member.$id)}
-                                                  >
-                                                    <Checkbox checked={isSelected} className="pointer-events-none" />
-                                                    <Avatar className="size-5">
-                                                      <AvatarImage src={member.profileImageUrl || undefined} />
-                                                      <AvatarFallback className="text-[10px]">
-                                                        {member.name?.charAt(0).toUpperCase()}
-                                                      </AvatarFallback>
-                                                    </Avatar>
-                                                    <span className="text-xs truncate">{member.name}</span>
-                                                  </button>
-                                                );
-                                              })}
-                                            </div>
-                                            {(item.assigneeIds || []).length > 0 && (
-                                              <div className="p-1 border-t">
-                                                <button
-                                                  className="w-full text-xs text-muted-foreground hover:text-foreground px-2 py-1.5 rounded-md hover:bg-accent transition-colors text-left"
-                                                  onClick={() => handleUpdateAssignee(item.$id, "unassigned")}
-                                                >
-                                                  Clear all
-                                                </button>
-                                              </div>
-                                            )}
-                                          </PopoverContent>
-                                        </Popover>
+                                        {/* Assignee Multi-Select - Memoized for instant checkbox feedback */}
+                                        <div className="w-[140px] h-7 text-xs flex-shrink-0 flex items-center border rounded-md hover:bg-accent/50 transition-colors">
+                                          <AssigneePopover
+                                            workItemId={item.$id}
+                                            initialAssigneeIds={item.assigneeIds || []}
+                                            projectMembers={projectMembers}
+                                            onUpdate={handleAssigneeUpdate}
+                                          />
+                                        </div>
                                       </div>
                                     </div>
                                   )}
@@ -1526,73 +1601,15 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                     </SelectContent>
                                   </Select>
 
-                                  {/* Assignee Multi-Select */}
-                                  <Popover>
-                                    <PopoverTrigger asChild>
-                                      <button
-                                        className="w-[140px] h-7 text-xs flex-shrink-0 flex items-center gap-1 px-2 border rounded-md hover:bg-accent/50 transition-colors"
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        {item.assignees && item.assignees.filter(a => a != null).length > 0 ? (
-                                          <div className="flex items-center gap-1 overflow-hidden">
-                                            <div className="flex -space-x-1.5">
-                                              {item.assignees.filter((a): a is NonNullable<typeof a> => a != null).slice(0, 3).map((assignee) => (
-                                                <Avatar key={assignee.$id} className="size-4 border border-background">
-                                                  <AvatarImage src={assignee.profileImageUrl || undefined} />
-                                                  <AvatarFallback className="text-[8px]">
-                                                    {assignee.name?.charAt(0).toUpperCase()}
-                                                  </AvatarFallback>
-                                                </Avatar>
-                                              ))}
-                                            </div>
-                                            <span className="truncate text-xs">
-                                              {item.assignees.filter(a => a != null).length > 2
-                                                ? `${item.assignees.filter(a => a != null).length} assigned`
-                                                : item.assignees.filter(a => a != null).map(a => a?.name?.split(" ")[0]).join(", ")}
-                                            </span>
-                                          </div>
-                                        ) : (
-                                          <span className="text-muted-foreground">Unassigned</span>
-                                        )}
-                                      </button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-56 p-0" align="end" onClick={(e) => e.stopPropagation()}>
-                                      <div className="p-2 border-b">
-                                        <p className="text-xs font-medium text-muted-foreground">Assign members</p>
-                                      </div>
-                                      <div className="max-h-[200px] overflow-y-auto p-1">
-                                        {projectMembers.map((member) => {
-                                          const isSelected = (item.assigneeIds || []).includes(member.$id);
-                                          return (
-                                            <button
-                                              key={member.$id}
-                                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${isSelected ? "bg-muted" : "hover:bg-accent"}`}
-                                              onClick={() => handleUpdateAssignee(item.$id, member.$id)}
-                                            >
-                                              <Checkbox checked={isSelected} className="pointer-events-none" />
-                                              <Avatar className="size-5">
-                                                <AvatarImage src={member.profileImageUrl || undefined} />
-                                                <AvatarFallback className="text-[10px]">
-                                                  {member.name?.charAt(0).toUpperCase()}
-                                                </AvatarFallback>
-                                              </Avatar>
-                                              <span className="text-xs truncate">{member.name}</span>
-                                            </button>
-                                          );
-                                        })}
-                                      </div>
-                                      {(item.assigneeIds || []).length > 0 && (
-                                        <div className="p-1 border-t">
-                                          <button
-                                            className="w-full text-xs text-muted-foreground hover:text-foreground px-2 py-1.5 rounded-md hover:bg-accent transition-colors text-left"
-                                            onClick={() => handleUpdateAssignee(item.$id, "unassigned")}
-                                          >
-                                            Clear all
-                                          </button>
-                                        </div>
-                                      )}
-                                    </PopoverContent>
-                                  </Popover>
+                                  {/* Assignee Multi-Select - Memoized for instant checkbox feedback */}
+                                  <div className="w-[140px] h-7 text-xs flex-shrink-0 flex items-center border rounded-md hover:bg-accent/50 transition-colors">
+                                    <AssigneePopover
+                                      workItemId={item.$id}
+                                      initialAssigneeIds={item.assigneeIds || []}
+                                      projectMembers={projectMembers}
+                                      onUpdate={handleAssigneeUpdate}
+                                    />
+                                  </div>
 
                                   {/* Actions Dropdown */}
                                   {canDeleteWorkItems && (
@@ -1966,14 +1983,25 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                 const currentIds = pendingChanges.assigneeIds ?? selectedItem.assigneeIds ?? [];
                                 const isSelected = currentIds.includes(member.$id);
                                 return (
-                                  <button
+                                  <div
                                     key={member.$id}
-                                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${isSelected ? "bg-muted" : "hover:bg-accent"}`}
+                                    role="button"
+                                    tabIndex={0}
+                                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors cursor-pointer ${isSelected ? "bg-muted" : "hover:bg-accent"}`}
                                     onClick={() => {
                                       if (isSelected) {
                                         setPendingChanges(prev => ({ ...prev, assigneeIds: currentIds.filter(id => id !== member.$id) }));
                                       } else {
                                         setPendingChanges(prev => ({ ...prev, assigneeIds: [...currentIds, member.$id] }));
+                                      }
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        if (isSelected) {
+                                          setPendingChanges(prev => ({ ...prev, assigneeIds: currentIds.filter(id => id !== member.$id) }));
+                                        } else {
+                                          setPendingChanges(prev => ({ ...prev, assigneeIds: [...currentIds, member.$id] }));
+                                        }
                                       }
                                     }}
                                   >
@@ -1985,7 +2013,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                       </AvatarFallback>
                                     </Avatar>
                                     <span className="text-xs">{member.name}</span>
-                                  </button>
+                                  </div>
                                 );
                               })}
                             </div>

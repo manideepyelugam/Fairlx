@@ -36,25 +36,33 @@ export function workItemToTimelineItem(
   const progress = calculateProgress(item);
   const isExpanded = expandedItems.has(item.$id);
 
-  // Work items only have dueDate in Appwrite, not startDate/endDate
-  // For timeline display, use sprint dates or create synthetic dates
+  // Use work item's own startDate/dueDate if available
+  // Fall back to sprint dates or calculated defaults only if not set
   let startDate: string | undefined;
   let dueDate: string | undefined;
 
-  if (item.dueDate) {
-    // Work item has a specific due date
-    const due = parseISO(item.dueDate);
-    // Calculate start date as 7 days before due date (or use estimated hours if available)
+  if (item.startDate && item.dueDate) {
+    // Work item has both start and due dates - use them directly
+    startDate = item.startDate;
+    dueDate = item.dueDate;
+  } else if (item.startDate && !item.dueDate) {
+    // Has start date but no due date - calculate due date
+    const start = parseISO(item.startDate);
     const estimatedDays = item.estimatedHours ? Math.max(1, Math.ceil(item.estimatedHours / 8)) : 7;
-    const start = addDays(due, -estimatedDays);
-    startDate = format(start, "yyyy-MM-dd");
+    startDate = item.startDate;
+    dueDate = format(addDays(start, estimatedDays), "yyyy-MM-dd");
+  } else if (item.dueDate && !item.startDate) {
+    // Has due date but no start date - calculate start date
+    const due = parseISO(item.dueDate);
+    const estimatedDays = item.estimatedHours ? Math.max(1, Math.ceil(item.estimatedHours / 8)) : 7;
+    startDate = format(addDays(due, -estimatedDays), "yyyy-MM-dd");
     dueDate = item.dueDate;
   } else if (sprint?.startDate && sprint?.endDate) {
-    // No due date but item is in a sprint - use sprint dates
+    // No dates on item but item is in a sprint - use sprint dates
     startDate = sprint.startDate;
     dueDate = sprint.endDate;
   } else {
-    // No due date and no sprint - use current date + 7 days as default
+    // No dates and no sprint - use current date + 7 days as default
     const now = new Date();
     const defaultDue = addDays(now, 7);
     const defaultStart = now;

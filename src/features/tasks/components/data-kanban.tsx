@@ -466,7 +466,7 @@ export const DataKanban = ({
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex overflow-x-auto gap-4 pb-4">
+        <div className="flex overflow-x-scroll gap-4 pb-4 kanban-scrollbar">
           {visibleBoards.map((board) => {
             const selectedInColumn = tasks[board].filter(task =>
               selectedTasks.has(task.$id)

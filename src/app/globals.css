@@ -184,6 +184,34 @@ body {
   display: none;
 }
 
+/* Kanban board - always-visible horizontal scrollbar */
+.kanban-scrollbar {
+  -ms-overflow-style: auto;
+  scrollbar-width: auto;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+
+.kanban-scrollbar::-webkit-scrollbar {
+  display: block;
+  height: 12px;
+}
+
+.kanban-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 999px;
+}
+
+.kanban-scrollbar::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border));
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.kanban-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.5);
+}
+
 /* Animation for shimmer effect */
 @keyframes shimmer {
   0% {
