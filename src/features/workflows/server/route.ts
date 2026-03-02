@@ -328,18 +328,111 @@ const app = new Hono()
     }
   )
 
+  // Get allowed transitions from a status
+  // NOTE: This route must be defined BEFORE /:workflowId to avoid being caught by the parameterized route
+  .get(
+    "/allowed-transitions",
+    sessionMiddleware,
+    zValidator(
+      "query",
+      z.object({
+        workflowId: z.string(),
+        fromStatusId: z.string(),
+      })
+    ),
+    async (c) => {
+      const databases = c.get("databases");
+      const user = c.get("user");
+
+      const { workflowId, fromStatusId } = c.req.valid("query");
+
+      const workflow = await databases.getDocument<Workflow>(
+        DATABASE_ID,
+        WORKFLOWS_ID,
+        workflowId
+      );
+
+      const member = await getMember({
+        databases,
+        workspaceId: workflow.workspaceId,
+        userId: user.$id,
+      });
+
+      if (!member) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      // Get all transitions from this status
+      const transitions = await databases.listDocuments<WorkflowTransition>(
+        DATABASE_ID,
+        WORKFLOW_TRANSITIONS_ID,
+        [
+          Query.equal("workflowId", workflowId),
+          Query.equal("fromStatusId", fromStatusId),
+        ]
+      );
+
+      // Get user's team memberships for filtering
+      const userTeamMemberships = await databases.listDocuments(
+        DATABASE_ID,
+        PROJECT_TEAM_MEMBERS_ID,
+        [Query.equal("userId", user.$id)]
+      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const userTeamIds = userTeamMemberships.documents.map((m) => (m as any).teamId);
+
+      // Filter transitions based on role and team restrictions
+      const allowedTransitions = transitions.documents.filter((t) => {
+        // Check role restrictions
+        if (t.allowedMemberRoles && t.allowedMemberRoles.length > 0) {
+          if (!t.allowedMemberRoles.includes(member.role)) {
+            return false;
+          }
+        }
+
+        // Check team restrictions
+        if (t.allowedTeamIds && t.allowedTeamIds.length > 0) {
+          const hasAllowedTeam = t.allowedTeamIds.some((teamId: string) =>
+            userTeamIds.includes(teamId)
+          );
+          if (!hasAllowedTeam) {
+            return false;
+          }
+        }
+
+        return true;
+      });
+
+      // Get the target status details
+      const targetStatusIds = allowedTransitions.map((t) => t.toStatusId);
+      const targetStatuses =
+        targetStatusIds.length > 0
+          ? await databases.listDocuments<WorkflowStatus>(
+            DATABASE_ID,
+            WORKFLOW_STATUSES_ID,
+            [Query.equal("$id", targetStatusIds)]
+          )
+          : { documents: [] };
+
+      const statusMap = new Map(
+        targetStatuses.documents.map((s) => [s.$id, s])
+      );
+
+      const result = allowedTransitions.map((t) => ({
+        ...t,
+        toStatus: statusMap.get(t.toStatusId),
+        requiresApproval: t.requiresApproval || false,
+      }));
+
+      return c.json({ data: result });
+    }
+  )
+
   // Get a single workflow with all statuses and transitions
   .get("/:workflowId", sessionMiddleware, async (c) => {
     const databases = c.get("databases");
     const user = c.get("user");
     const { workflowId } = c.req.param();
-
-    // Guard: Skip reserved paths that should be handled by other routes
-    // This prevents "allowed-transitions" from being treated as a workflow ID
-    const reservedPaths = ["allowed-transitions"];
-    if (reservedPaths.includes(workflowId)) {
-      return c.json({ error: "Invalid workflow ID" }, 400);
-    }
 
     const workflow = await databases.getDocument<Workflow>(
       DATABASE_ID,
@@ -1131,120 +1224,7 @@ const app = new Hono()
     }
   )
 
-  /**
-   * Get allowed transitions from a status for the current user.
-   * Filters out transitions the user cannot perform based on:
-   * - 3.1 Role-Based Restrictions (allowedMemberRoles)
-   * - 3.2 Team-Based Restrictions (allowedTeamIds)
-   * Note: Approval requirements are included but not filtered - UI should show lock icon
-   */
-  .get(
-    "/allowed-transitions",
-    sessionMiddleware,
-    zValidator(
-      "query",
-      z.object({
-        workflowId: z.string(),
-        fromStatusId: z.string(),
-      })
-    ),
-    async (c) => {
-      const databases = c.get("databases");
-      const user = c.get("user");
-
-      const { workflowId, fromStatusId } = c.req.valid("query");
-
-      const workflow = await databases.getDocument<Workflow>(
-        DATABASE_ID,
-        WORKFLOWS_ID,
-        workflowId
-      );
-
-      const member = await getMember({
-        databases,
-        workspaceId: workflow.workspaceId,
-        userId: user.$id,
-      });
-
-      if (!member) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      // Get all transitions from this status
-      const transitions = await databases.listDocuments<WorkflowTransition>(
-        DATABASE_ID,
-        WORKFLOW_TRANSITIONS_ID,
-        [
-          Query.equal("workflowId", workflowId),
-          Query.equal("fromStatusId", fromStatusId),
-        ]
-      );
-
-      // Get user's team memberships for filtering
-      const userTeamMemberships = await databases.listDocuments(
-        DATABASE_ID,
-        PROJECT_TEAM_MEMBERS_ID,
-        [Query.equal("userId", user.$id)]
-      );
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const userTeamIds = userTeamMemberships.documents.map((m) => (m as any).teamId);
-
-      // Filter transitions based on role and team restrictions
-      const allowedTransitions = transitions.documents.filter((t) => {
-        // Check role restrictions
-        if (t.allowedMemberRoles && t.allowedMemberRoles.length > 0) {
-          if (!t.allowedMemberRoles.includes(member.role)) {
-            return false;
-          }
-        }
-
-        // Check team restrictions
-        if (t.allowedTeamIds && t.allowedTeamIds.length > 0) {
-          const hasAllowedTeam = t.allowedTeamIds.some((teamId: string) =>
-            userTeamIds.includes(teamId)
-          );
-          if (!hasAllowedTeam) {
-            return false;
-          }
-        }
-
-        return true;
-      });
-
-      // Get the target status details
-      const targetStatusIds = allowedTransitions.map((t) => t.toStatusId);
-      const targetStatuses =
-        targetStatusIds.length > 0
-          ? await databases.listDocuments<WorkflowStatus>(
-            DATABASE_ID,
-            WORKFLOW_STATUSES_ID,
-            [Query.equal("$id", targetStatusIds)]
-          )
-          : { documents: [] };
-
-      const statusMap = new Map(
-        targetStatuses.documents.map((s) => [s.$id, s])
-      );
-
-      const result = allowedTransitions.map((t) => ({
-        ...t,
-        toStatus: statusMap.get(t.toStatusId),
-        requiresApproval: t.requiresApproval || false,
-      }));
-
-      return c.json({ data: result });
-    }
-  )
-
-  /**
-   * Connect a project to a workflow.
-   * 
-   * Edge Cases Handled:
-   * - 3.5 Cross-Workspace Permission Check: Project and workflow must be in same workspace
-   * - 3.6 Permission Hierarchy: Only OWNER, ADMIN, or Space ADMIN can connect
-   * - 4.1 Orphaned Workflow Statuses: Sync cleanup removes orphaned statuses
-   * - 7.3 Auto-Sync Column Creation: Custom columns auto-created in project
-   */
+  // ============ Connect project to workflow ============
   .post(
     "/:workflowId/connect-project/:projectId",
     sessionMiddleware,

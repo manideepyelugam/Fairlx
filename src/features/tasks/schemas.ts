@@ -11,6 +11,7 @@ const baseTaskSchema = z.object({
   ),
   workspaceId: z.string().trim().min(1, "Required"),
   projectId: z.string().trim().min(1, "Required"),
+  parentId: z.string().trim().optional().nullable(), // Parent task ID for sub-issues
   startDate: z.coerce.date().optional(),
   dueDate: z.coerce.date().optional(),
   assigneeIds: z.array(z.string().trim().min(1)).optional(),
