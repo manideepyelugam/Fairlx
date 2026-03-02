@@ -31,8 +31,17 @@ import { createTaskSchema, updateTaskSchema } from "../schemas";
 import { Task, TaskStatus, TaskPriority } from "../types";
 
 /**
- * Validate if a status transition is allowed for the user
- * Checks workflow rules, role restrictions, team restrictions, and approval requirements
+ * Validate if a status transition is allowed for the user.
+ * 
+ * Implements fail-closed security: on validation error, the transition is BLOCKED
+ * to prevent bypassing workflow rules due to network/API failures.
+ * 
+ * Edge Cases Handled:
+ * - 1.1 Transition Not Defined: Returns error with human-readable status names
+ * - 1.2 Same Status Transition: Always allowed (no validation needed)
+ * - 1.3 Legacy/Backward Compatibility: Allowed if statuses not in workflow
+ * - 1.4 Circular Transitions (Loops): Allowed if transition is defined
+ * - 1.5 Network/API Error: BLOCKED (fail-closed for security)
  * 
  * @param databases - Database client
  * @param workflowId - The workflow to validate against
@@ -41,6 +50,7 @@ import { Task, TaskStatus, TaskPriority } from "../types";
  * @param userId - User attempting the transition
  * @param projectId - Project ID (for team membership lookup)
  * @param memberRole - User's workspace member role
+ * @returns Validation result with allowed flag and error details
  */
 async function validateStatusTransition(
   databases: Databases,
@@ -51,7 +61,8 @@ async function validateStatusTransition(
   projectId: string,
   memberRole: string
 ): Promise<{ allowed: boolean; reason?: string; message?: string }> {
-  // If same status, always allowed
+  // Edge Case 1.2: Same status transition - always allowed
+  // No workflow validation needed when status doesn't change (e.g., only title/description update)
   if (fromStatus === toStatus) {
     return { allowed: true };
   }
@@ -68,13 +79,15 @@ async function validateStatusTransition(
     const fromStatusDoc = workflowStatuses.documents.find(s => s.key === fromStatus);
     const toStatusDoc = workflowStatuses.documents.find(s => s.key === toStatus);
 
-    // If statuses are not found in workflow, it means the task uses legacy/default statuses
-    // In this case, allow the transition (backward compatibility)
+    // Edge Case 1.3: Legacy/Backward Compatibility
+    // If statuses are not found in workflow, task uses legacy/default statuses
+    // Allow transition to prevent blocking users on legacy tasks
     if (!fromStatusDoc || !toStatusDoc) {
       return { allowed: true };
     }
 
     // Get the transition between these statuses
+    // Edge Case 1.4: Circular transitions are valid if defined (e.g., DONE → BACKLOG for reopen)
     const transitions = await databases.listDocuments(
       DATABASE_ID,
       WORKFLOW_TRANSITIONS_ID,
@@ -85,7 +98,8 @@ async function validateStatusTransition(
       ]
     );
 
-    // No transition defined = not allowed
+    // Edge Case 1.1: Transition Not Defined
+    // If no transition exists between these statuses, block with clear error message
     if (transitions.total === 0) {
       return {
         allowed: false,
@@ -96,7 +110,8 @@ async function validateStatusTransition(
 
     const transition = transitions.documents[0];
 
-    // Check role restrictions
+    // Check role restrictions (RBAC)
+    // Only specified roles can perform this transition
     if (transition.allowedMemberRoles && transition.allowedMemberRoles.length > 0) {
       if (!transition.allowedMemberRoles.includes(memberRole)) {
         return {
@@ -108,6 +123,7 @@ async function validateStatusTransition(
     }
 
     // Check team restrictions (uses project-scoped teams)
+    // Only members of specified teams can perform this transition
     if (transition.allowedTeamIds && transition.allowedTeamIds.length > 0) {
       const userTeams = await databases.listDocuments(
         DATABASE_ID,
@@ -130,6 +146,7 @@ async function validateStatusTransition(
     }
 
     // Check approval requirement (uses project-scoped teams)
+    // Transition requires approval from designated approver teams
     if (transition.requiresApproval) {
       // Check if user is in approver team
       const userTeams = await databases.listDocuments(
@@ -153,9 +170,16 @@ async function validateStatusTransition(
     }
 
     return { allowed: true };
-  } catch {
-    // On error, allow the transition to prevent blocking users due to validation errors
-    return { allowed: true };
+  } catch (error) {
+    // Edge Case 1.5: Fail-Closed Security
+    // On validation error (network/API failure), BLOCK the transition
+    // This prevents bypassing workflow rules due to system errors
+    console.error("Workflow transition validation error:", error);
+    return {
+      allowed: false,
+      reason: "VALIDATION_ERROR",
+      message: "Failed to validate workflow transition. Please try again.",
+    };
   }
 }
 
@@ -277,7 +301,7 @@ const app = new Hono()
         dueDate: z.string().nullish(),
         priority: z.nativeEnum(TaskPriority).nullish(),
         labels: z.string().nullish(), // Will be comma-separated list
-        parentTaskId: z.string().nullish(), // Filter by parent task for sub-issues
+        parentId: z.string().nullish(), // Filter by parent task for sub-issues
       })
     ),
     async (c) => {
@@ -285,7 +309,7 @@ const app = new Hono()
       const databases = c.get("databases");
       const user = c.get("user");
 
-      const { workspaceId, projectId, assigneeId, status, dueDate, priority, labels, parentTaskId } =
+      const { workspaceId, projectId, assigneeId, status, dueDate, priority, labels, parentId } =
         c.req.valid("query");
 
       const member = await getMember({
@@ -344,8 +368,8 @@ const app = new Hono()
         }
       }
 
-      if (parentTaskId) {
-        query.push(Query.equal("parentTaskId", parentTaskId));
+      if (parentId) {
+        query.push(Query.equal("parentId", parentId));
       }
 
       const tasks = await databases.listDocuments<Task>(
@@ -463,7 +487,7 @@ const app = new Hono()
     async (c) => {
       const user = c.get("user");
       const databases = c.get("databases");
-      const { name, type, status, workspaceId, projectId, parentTaskId, startDate, dueDate, assigneeIds, description, estimatedHours, priority, labels } =
+      const { name, type, status, workspaceId, projectId, parentId, startDate, dueDate, assigneeIds, description, estimatedHours, priority, labels } =
         c.req.valid("json");
 
       const member = await getMember({
@@ -537,8 +561,12 @@ const app = new Hono()
         projectId
       );
 
-      // ======= INITIAL STATUS VALIDATION =======
-      // If project has a workflow, validate that the status is an initial status
+      // ======= INITIAL STATUS VALIDATION (Edge Case 2.5) =======
+      // If project has a workflow, validate that the status is an initial status.
+      // Tasks MUST start with a status marked `isInitial: true` when workflow is active.
+      // 
+      // Implements fail-closed security: if validation fails due to error, block creation
+      // to prevent bypassing workflow rules.
       if (project.workflowId) {
         try {
           const workflowStatuses = await databases.listDocuments(
@@ -561,8 +589,14 @@ const app = new Hono()
               allowedStatuses: validInitialStatusKeys,
             }, 400);
           }
-        } catch {
-          // If workflow check fails, continue without validation
+        } catch (error) {
+          // Fail-closed: if workflow check fails, block task creation
+          // This prevents bypassing workflow rules due to system errors
+          console.error("Initial status validation error:", error);
+          return c.json({
+            error: "Failed to validate initial status. Please try again.",
+            reason: "VALIDATION_ERROR",
+          }, 500);
         }
       }
       // ======= END INITIAL STATUS VALIDATION =======
@@ -582,7 +616,7 @@ const app = new Hono()
           status,
           workspaceId,
           projectId,
-          parentTaskId: parentTaskId || null, // Parent task ID for sub-issues
+          parentId: parentId || null, // Parent task ID for sub-issues
           startDate: startDate || null,
           dueDate: dueDate || null,
           assigneeIds: assigneeIds || [],

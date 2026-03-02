@@ -91,6 +91,7 @@ export type Workflow = Models.Document & {
   spaceId?: string | null;
   isDefault: boolean;
   isArchived: boolean;
+  isSystem?: boolean; // Edge Case 3.4: System workflows cannot be modified or deleted
 };
 
 // ===================================
@@ -356,12 +357,140 @@ export const STATUS_COLORS = [
 // ===================================
 
 /**
- * Check if a status has a valid canvas position (not in sidebar)
+ * Check if a status has a valid canvas position (not in sidebar).
+ * 
+ * Edge Case 2.8: Status Canvas Position Edge Cases
  * Statuses with positionX=0 AND positionY=0 are considered "in sidebar"
+ * and are NOT rendered on the workflow canvas, but remain usable in dropdowns.
  */
 export function hasCanvasPosition(status: WorkflowStatus): boolean {
   return (status.positionX !== undefined && status.positionX > 0) || 
          (status.positionY !== undefined && status.positionY > 0);
+}
+
+/**
+ * Normalize a status name to a valid key.
+ * 
+ * Edge Case 6.2: Status Key Normalization
+ * Converts spaces and special characters to underscores.
+ * 
+ * @example
+ * normalizeStatusKey("In Progress") // "IN_PROGRESS"
+ * normalizeStatusKey("To-Do") // "TO_DO"
+ * normalizeStatusKey("Bug #1") // "BUG_1"
+ */
+export function normalizeStatusKey(name: string): string {
+  return name
+    .trim()
+    .toUpperCase()
+    .replace(/[\s\-]+/g, "_")       // Replace spaces and hyphens with underscores
+    .replace(/[^A-Z0-9_]/g, "")     // Remove invalid characters
+    .replace(/^(\d)/, "_$1")        // Prefix with underscore if starts with number
+    .replace(/_+/g, "_")            // Collapse multiple underscores
+    .replace(/^_|_$/g, "");         // Trim leading/trailing underscores
+}
+
+// ===================================
+// Status Analysis Types
+// ===================================
+
+export interface StatusAnalysis {
+  /** Statuses with no incoming or outgoing transitions (completely isolated) */
+  orphanedStatuses: WorkflowStatus[];
+  /** Statuses with outgoing but no incoming transitions (not initial) */
+  unreachableStatuses: WorkflowStatus[];
+  /** Statuses with incoming but no outgoing transitions (not final) */
+  deadEndStatuses: WorkflowStatus[];
+  /** Whether the workflow has at least one initial status */
+  hasInitialStatus: boolean;
+  /** Whether the workflow has at least one final status */
+  hasFinalStatus: boolean;
+  /** Whether all non-initial statuses are reachable from an initial status */
+  isFullyConnected: boolean;
+}
+
+/**
+ * Analyze workflow statuses for potential issues.
+ * 
+ * Detects the following edge cases:
+ * - 2.1 Orphaned Statuses: No transitions at all
+ * - 2.2 Unreachable Statuses: No incoming transitions (not initial)
+ * - 2.3 Dead-End Statuses: No outgoing transitions (not final)
+ * 
+ * @param statuses - All statuses in the workflow
+ * @param transitions - All transitions in the workflow
+ * @returns Analysis result with categorized status issues
+ */
+export function analyzeWorkflowStatuses(
+  statuses: WorkflowStatus[],
+  transitions: WorkflowTransition[]
+): StatusAnalysis {
+  // Edge Case 2.1: Orphaned Statuses
+  const orphanedStatuses = statuses.filter(status => {
+    if (status.isInitial) return false; // Initial statuses are entry points
+    const hasIncoming = transitions.some(t => t.toStatusId === status.$id);
+    const hasOutgoing = transitions.some(t => t.fromStatusId === status.$id);
+    return !hasIncoming && !hasOutgoing;
+  });
+
+  // Edge Case 2.2: Unreachable Statuses
+  const unreachableStatuses = statuses.filter(status => {
+    if (status.isInitial) return false;
+    const hasIncoming = transitions.some(t => t.toStatusId === status.$id);
+    const hasOutgoing = transitions.some(t => t.fromStatusId === status.$id);
+    return !hasIncoming && hasOutgoing;
+  });
+
+  // Edge Case 2.3: Dead-End Statuses
+  const deadEndStatuses = statuses.filter(status => {
+    if (status.isFinal) return false;
+    const hasIncoming = transitions.some(t => t.toStatusId === status.$id);
+    const hasOutgoing = transitions.some(t => t.fromStatusId === status.$id);
+    return hasIncoming && !hasOutgoing;
+  });
+
+  const hasInitialStatus = statuses.some(s => s.isInitial);
+  const hasFinalStatus = statuses.some(s => s.isFinal);
+
+  // Check if workflow is fully connected
+  // A workflow is fully connected if all non-initial statuses are reachable from initial
+  const isFullyConnected = unreachableStatuses.length === 0 && 
+                           orphanedStatuses.length === 0 &&
+                           hasInitialStatus;
+
+  return {
+    orphanedStatuses,
+    unreachableStatuses,
+    deadEndStatuses,
+    hasInitialStatus,
+    hasFinalStatus,
+    isFullyConnected,
+  };
+}
+
+/**
+ * Get all statuses that can be reached from a given status.
+ * Useful for determining valid paths through the workflow.
+ * 
+ * @param statusId - Starting status ID
+ * @param transitions - All transitions in the workflow
+ * @param visited - Set of already visited status IDs (for cycle detection)
+ * @returns Set of reachable status IDs
+ */
+export function getReachableStatusIds(
+  statusId: string,
+  transitions: WorkflowTransition[],
+  visited: Set<string> = new Set()
+): Set<string> {
+  if (visited.has(statusId)) return visited;
+  visited.add(statusId);
+
+  const outgoingTransitions = transitions.filter(t => t.fromStatusId === statusId);
+  for (const transition of outgoingTransitions) {
+    getReachableStatusIds(transition.toStatusId, transitions, visited);
+  }
+
+  return visited;
 }
 
 export function convertStatusesToNodes(
