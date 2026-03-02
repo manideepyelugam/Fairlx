@@ -17,6 +17,7 @@ import {
   SPACE_MEMBERS_ID,
   CUSTOM_COLUMNS_ID,
   DEFAULT_COLUMN_SETTINGS_ID,
+  TASKS_ID,
 } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 
@@ -38,10 +39,23 @@ import {
 } from "../types";
 
 /**
- * Helper function to check if user has permission to manage workflows
- * Permissions:
- * - Workspace OWNER or ADMIN can manage all workflows
- * - Space ADMIN (Master) can manage workflows in their space
+ * Helper function to check if user has permission to manage workflows.
+ * 
+ * Implements Edge Case 3.6 - Permission Hierarchy:
+ * | Action           | Workspace OWNER | Workspace ADMIN | Space ADMIN (Master) | Regular MEMBER |
+ * |------------------|-----------------|-----------------|----------------------|----------------|
+ * | Create workflow  | ✅              | ✅              | ✅ (space-level)     | ❌             |
+ * | Update workflow  | ✅              | ✅              | ✅ (space-level)     | ❌             |
+ * | Delete workflow  | ✅              | ✅              | ✅ (space-level)     | ❌             |
+ * | Add status       | ✅              | ✅              | ✅ (space-level)     | ❌             |
+ * | Add transition   | ✅              | ✅              | ✅ (space-level)     | ❌             |
+ * | Connect project  | ✅              | ✅              | ✅ (space-level)     | ❌             |
+ *
+ * @param databases - Database client
+ * @param workspaceId - The workspace ID to check membership in
+ * @param userId - The user to check permissions for
+ * @param spaceId - Optional space ID for space-level workflow checks
+ * @returns Permission check result with member info
  */
 async function checkWorkflowPermission(
   databases: Databases,
@@ -559,6 +573,8 @@ const app = new Hono()
   // ============ Status endpoints ============
 
   // Add a status to a workflow
+  // Edge Case 2.4: Duplicate Status Key - Creation is blocked if key already exists
+  // Edge Case 7.3: Auto-Sync Column Creation - Custom columns created in connected projects
   .post(
     "/:workflowId/statuses",
     sessionMiddleware,
@@ -591,7 +607,8 @@ const app = new Hono()
         return c.json({ error: "Only workspace owners, admins, or space masters can add statuses" }, 403);
       }
 
-      // Check for duplicate key
+      // Edge Case 2.4: Duplicate Status Key Validation
+      // Block creation if a status with the same key already exists in this workflow
       const existingStatuses = await databases.listDocuments<WorkflowStatus>(
         DATABASE_ID,
         WORKFLOW_STATUSES_ID,
@@ -756,18 +773,32 @@ const app = new Hono()
         return c.json({ error: "Only workspace owners, admins, or space masters can update statuses" }, 403);
       }
 
-      const updatedStatus = await databases.updateDocument<WorkflowStatus>(
-        DATABASE_ID,
-        WORKFLOW_STATUSES_ID,
-        statusId,
-        updates
-      );
+      // Check if status still exists before updating (may have been deleted by sync)
+      try {
+        const updatedStatus = await databases.updateDocument<WorkflowStatus>(
+          DATABASE_ID,
+          WORKFLOW_STATUSES_ID,
+          statusId,
+          updates
+        );
 
-      return c.json({ data: updatedStatus });
+        return c.json({ data: updatedStatus });
+      } catch (error) {
+        // If status was already deleted (e.g., by sync), return gracefully
+        if (error instanceof Error && 'code' in error && (error as unknown as { code: number }).code === 404) {
+          return c.json({ data: null, deleted: true });
+        }
+        throw error;
+      }
     }
   )
 
   // Delete a status
+  // Edge Case 2.7: Status Deletion with Active Tasks
+  // - Status deletion succeeds even if tasks exist in this status
+  // - All transitions to/from this status are automatically deleted
+  // - Tasks in the deleted status become "orphaned" (have invalid status key)
+  // - Response includes count of affected tasks for UI feedback
   .delete("/:workflowId/statuses/:statusId", sessionMiddleware, async (c) => {
     const databases = c.get("databases");
     const user = c.get("user");
@@ -794,7 +825,42 @@ const app = new Hono()
       return c.json({ error: "Only workspace owners, admins, or space masters can delete statuses" }, 403);
     }
 
-    // Delete associated transitions
+    // Get the status to find its key (for counting affected tasks)
+    const statusDoc = await databases.getDocument<WorkflowStatus>(
+      DATABASE_ID,
+      WORKFLOW_STATUSES_ID,
+      statusId
+    );
+
+    // Count tasks that will be orphaned by this deletion
+    // These tasks will have an invalid status key after deletion
+    let affectedTasksCount = 0;
+    try {
+      // Get all projects using this workflow
+      const projectsUsingWorkflow = await databases.listDocuments(
+        DATABASE_ID,
+        PROJECTS_ID,
+        [Query.equal("workflowId", workflowId)]
+      );
+
+      // Count tasks in each project with this status
+      for (const project of projectsUsingWorkflow.documents) {
+        const tasksInStatus = await databases.listDocuments(
+          DATABASE_ID,
+          TASKS_ID,
+          [
+            Query.equal("projectId", project.$id),
+            Query.equal("status", statusDoc.key),
+            Query.limit(1), // We only need to know if there are any
+          ]
+        );
+        affectedTasksCount += tasksInStatus.total;
+      }
+    } catch {
+      // If counting fails, continue with deletion anyway
+    }
+
+    // Delete associated transitions first
     const transitions = await databases.listDocuments<WorkflowTransition>(
       DATABASE_ID,
       WORKFLOW_TRANSITIONS_ID,
@@ -813,14 +879,35 @@ const app = new Hono()
       )
     );
 
+    // Delete the status
     await databases.deleteDocument(DATABASE_ID, WORKFLOW_STATUSES_ID, statusId);
 
-    return c.json({ data: { $id: statusId } });
+    return c.json({
+      data: {
+        $id: statusId,
+        deletedTransitions: transitions.total,
+        affectedTasks: affectedTasksCount,
+        warning: affectedTasksCount > 0
+          ? `${affectedTasksCount} task(s) will have an invalid status and may not appear in Kanban until migrated.`
+          : undefined,
+      },
+    });
   })
 
   // ============ Transition endpoints ============
 
-  // Add a transition
+  /**
+   * Add a transition to a workflow.
+   * 
+   * Transition can include:
+   * - 3.1 allowedMemberRoles: Only specified roles can perform this transition
+   * - 3.2 allowedTeamIds: Only members of specified teams can perform this transition
+   * - 3.3 requiresApproval + approverTeamIds: Requires approval from designated teams
+   * 
+   * Edge Cases:
+   * - 3.4 System Workflow Protection: Cannot add transitions to system workflows
+   * - 6.1 Transition Duplication Prevention: Blocks duplicate transitions
+   */
   .post(
     "/:workflowId/transitions",
     sessionMiddleware,
@@ -998,7 +1085,14 @@ const app = new Hono()
 
   // ============ Transition validation ============
 
-  // Validate if a transition is allowed
+  /**
+   * Validate if a transition is allowed for the current user.
+   * 
+   * Edge Cases Handled:
+   * - 3.1 Role-Based Transition Restriction: Checks allowedMemberRoles
+   * - 3.2 Team-Based Transition Restriction: Checks allowedTeamIds
+   * - 3.3 Approval-Required Transition: Checks requiresApproval and approverTeamIds
+   */
   .post(
     "/validate-transition",
     sessionMiddleware,
@@ -1168,13 +1262,231 @@ const app = new Hono()
         return c.json({ error: "Project and workflow must be in the same workspace" }, 400);
       }
 
-      // Update the project to use this workflow
+      // =========================================
+      // Sync project columns -> workflow statuses
+      // Delete workflow statuses that no longer exist in the project
+      // =========================================
+
+      // Get workflow statuses
+      const workflowStatuses = await databases.listDocuments<WorkflowStatus>(
+        DATABASE_ID,
+        WORKFLOW_STATUSES_ID,
+        [Query.equal("workflowId", workflowId), Query.orderAsc("position")]
+      );
+
+      // Get project's customWorkItemTypes (legacy/inline storage)
+      // May be a JSON string or array
+      let projectCustomTypes: Array<{
+        key: string;
+        label: string;
+        icon: string;
+        color: string;
+        visible?: boolean;
+      }> = [];
+      
+      if (project.customWorkItemTypes) {
+        if (typeof project.customWorkItemTypes === 'string') {
+          try {
+            projectCustomTypes = JSON.parse(project.customWorkItemTypes);
+          } catch {
+            projectCustomTypes = [];
+          }
+        } else if (Array.isArray(project.customWorkItemTypes)) {
+          projectCustomTypes = project.customWorkItemTypes;
+        }
+      }
+
+      // Get custom columns from the database
+      const projectCustomColumns = await databases.listDocuments(
+        DATABASE_ID,
+        CUSTOM_COLUMNS_ID,
+        [
+          Query.equal("workspaceId", workflow.workspaceId),
+          Query.equal("projectId", projectId),
+          Query.orderAsc("position"),
+        ]
+      );
+
+      // Get default column settings (to check which columns are hidden/enabled)
+      const defaultColumnSettings = await databases.listDocuments(
+        DATABASE_ID,
+        DEFAULT_COLUMN_SETTINGS_ID,
+        [
+          Query.equal("workspaceId", workflow.workspaceId),
+          Query.equal("projectId", projectId),
+        ]
+      );
+
+      // Build a map of column visibility from default settings
+      const columnVisibility = new Map<string, boolean>();
+      for (const setting of defaultColumnSettings.documents) {
+        columnVisibility.set(setting.columnId, setting.isEnabled);
+      }
+
+      // Default task statuses (always available in projects)
+      const DEFAULT_STATUSES = [
+        { key: "TODO", label: "To Do", color: "#9CA3AF", icon: "Circle" },
+        { key: "ASSIGNED", label: "Assigned", color: "#EF4444", icon: "UserCheck" },
+        { key: "IN_PROGRESS", label: "In Progress", color: "#F59E0B", icon: "Clock" },
+        { key: "IN_REVIEW", label: "In Review", color: "#3B82F6", icon: "Eye" },
+        { key: "DONE", label: "Done", color: "#10B981", icon: "CheckCircle" },
+      ];
+
+      // Build comprehensive list of all project statuses
+      interface ProjectStatus {
+        key: string;
+        name: string;
+        icon: string;
+        color: string;
+        isVisible: boolean;
+      }
+
+      const allProjectStatuses: ProjectStatus[] = [];
+      const seenNames = new Set<string>();
+
+      // 1. Start with default statuses (check visibility from settings)
+      for (const defaultStatus of DEFAULT_STATUSES) {
+        const normalizedName = defaultStatus.label.toLowerCase();
+        const isVisible = columnVisibility.has(defaultStatus.key)
+          ? columnVisibility.get(defaultStatus.key)
+          : true;
+
+        if (!seenNames.has(normalizedName)) {
+          seenNames.add(normalizedName);
+          allProjectStatuses.push({
+            key: defaultStatus.key,
+            name: defaultStatus.label,
+            icon: defaultStatus.icon,
+            color: defaultStatus.color,
+            isVisible: isVisible !== false,
+          });
+        }
+      }
+
+      // 2. Add custom columns from the database
+      for (const col of projectCustomColumns.documents) {
+        const normalizedName = col.name.toLowerCase();
+        const existingIndex = allProjectStatuses.findIndex(
+          s => s.name.toLowerCase() === normalizedName
+        );
+
+        if (existingIndex >= 0) {
+          allProjectStatuses[existingIndex] = {
+            ...allProjectStatuses[existingIndex],
+            icon: col.icon || allProjectStatuses[existingIndex].icon,
+            color: col.color || allProjectStatuses[existingIndex].color,
+          };
+        } else if (!seenNames.has(normalizedName)) {
+          seenNames.add(normalizedName);
+          const normalizeKey = (name: string): string => {
+            return name.toLowerCase().replace(/[\s_-]+/g, "_").toUpperCase();
+          };
+          allProjectStatuses.push({
+            key: normalizeKey(col.name),
+            name: col.name,
+            icon: col.icon || "Circle",
+            color: col.color || "#6B7280",
+            isVisible: true,
+          });
+        }
+      }
+
+      // 3. Update existing statuses with customWorkItemTypes data (for icon/color overrides)
+      // NOTE: We intentionally DON'T add new items from customWorkItemTypes here
+      // because they are legacy/cached data that may have been deleted from the actual columns.
+      // Only use customWorkItemTypes to update visibility/appearance of existing statuses.
+      for (const type of projectCustomTypes) {
+        if (!type.label || typeof type.label !== 'string') continue;
+
+        const normalizedName = type.label.toLowerCase();
+        const existingIndex = allProjectStatuses.findIndex(
+          s => s.name.toLowerCase() === normalizedName
+        );
+
+        // Only update existing statuses, don't add new ones from customWorkItemTypes
+        if (existingIndex >= 0) {
+          allProjectStatuses[existingIndex] = {
+            ...allProjectStatuses[existingIndex],
+            icon: type.icon || allProjectStatuses[existingIndex].icon,
+            color: type.color || allProjectStatuses[existingIndex].color,
+            isVisible: type.visible !== false,
+          };
+        }
+        // Removed: else if (!seenNames.has(normalizedName)) { ... }
+        // We no longer add statuses from customWorkItemTypes that don't exist in defaults or customColumns
+      }
+
+      // Find workflow statuses that don't exist in the project (orphaned)
+      const projectStatusNames = new Set(allProjectStatuses.map(s => s.name.toLowerCase()));
+      const projectStatusKeys = new Set(allProjectStatuses.map(s => s.key));
+
+      const orphanedWorkflowStatuses = workflowStatuses.documents.filter(status => {
+        // Check if this workflow status matches any project status by name or key
+        const matchesByName = projectStatusNames.has(status.name.toLowerCase());
+        const matchesByKey = projectStatusKeys.has(status.key);
+        return !matchesByName && !matchesByKey;
+      });
+
+      let deletedCount = 0;
+
+      if (orphanedWorkflowStatuses.length > 0) {
+        // Get all transitions for this workflow
+        const allTransitions = await databases.listDocuments(
+          DATABASE_ID,
+          WORKFLOW_TRANSITIONS_ID,
+          [Query.equal("workflowId", workflowId)]
+        );
+
+        for (const orphanedStatus of orphanedWorkflowStatuses) {
+          // Delete all transitions to/from this status
+          const relatedTransitions = allTransitions.documents.filter(
+            (t) => t.fromStatusId === orphanedStatus.$id || t.toStatusId === orphanedStatus.$id
+          );
+
+          for (const transition of relatedTransitions) {
+            try {
+              await databases.deleteDocument(
+                DATABASE_ID,
+                WORKFLOW_TRANSITIONS_ID,
+                transition.$id
+              );
+            } catch {
+              // Transition may have already been deleted
+            }
+          }
+
+          // Delete the status
+          try {
+            await databases.deleteDocument(
+              DATABASE_ID,
+              WORKFLOW_STATUSES_ID,
+              orphanedStatus.$id
+            );
+            deletedCount++;
+          } catch {
+            // Status may have already been deleted
+          }
+        }
+      }
+
+      // Clean up stale customWorkItemTypes entries
+      // Only keep entries that match defaults or custom columns
+      const validStatusNames = new Set(allProjectStatuses.map(s => s.name.toLowerCase()));
+      const cleanedCustomTypes = Array.isArray(projectCustomTypes) 
+        ? projectCustomTypes.filter(type => {
+            if (!type.label || typeof type.label !== 'string') return false;
+            return validStatusNames.has(type.label.toLowerCase());
+          })
+        : [];
+
+      // Update the project to use this workflow and clean up customWorkItemTypes
       const updatedProject = await databases.updateDocument(
         DATABASE_ID,
         PROJECTS_ID,
         projectId,
         {
           workflowId: workflowId,
+          customWorkItemTypes: JSON.stringify(cleanedCustomTypes),
         }
       );
 
@@ -1182,6 +1494,7 @@ const app = new Hono()
         data: {
           project: updatedProject,
           workflow: workflow,
+          deletedStatuses: deletedCount,
         },
       });
     }
@@ -1240,13 +1553,26 @@ const app = new Hono()
       }
 
       // Get project's customWorkItemTypes (legacy/inline storage)
-      const projectCustomTypes = (project.customWorkItemTypes || []) as Array<{
+      // May be a JSON string or array
+      let projectCustomTypes: Array<{
         key: string;
         label: string;
         icon: string;
         color: string;
         visible?: boolean;
-      }>;
+      }> = [];
+      
+      if (project.customWorkItemTypes) {
+        if (typeof project.customWorkItemTypes === 'string') {
+          try {
+            projectCustomTypes = JSON.parse(project.customWorkItemTypes);
+          } catch {
+            projectCustomTypes = [];
+          }
+        } else if (Array.isArray(project.customWorkItemTypes)) {
+          projectCustomTypes = project.customWorkItemTypes;
+        }
+      }
 
       // Get custom columns from the database
       const projectCustomColumns = await databases.listDocuments(
@@ -1475,7 +1801,9 @@ const app = new Hono()
           }
         }
 
-        // 3. Add project's customWorkItemTypes (may override or add new ones)
+        // 3. Update existing statuses with customWorkItemTypes data (for icon/color/visibility overrides)
+        // NOTE: We intentionally DON'T add new items from customWorkItemTypes here
+        // because they are legacy/cached data that may have been deleted from the actual columns.
         for (const type of projectCustomTypes) {
           // Skip entries with missing or invalid label
           if (!type.label || typeof type.label !== 'string') {
@@ -1488,6 +1816,7 @@ const app = new Hono()
             s => s.name.toLowerCase() === normalizedName
           );
 
+          // Only update existing statuses, don't add new ones from customWorkItemTypes
           if (existingIndex >= 0) {
             // Update existing status
             allProjectStatuses[existingIndex] = {
@@ -1497,23 +1826,18 @@ const app = new Hono()
               isVisible: type.visible !== false,
               source: "customType",
             };
-          } else if (!seenNames.has(normalizedName)) {
-            // Add as new custom type
-            seenNames.add(normalizedName);
-            allProjectStatuses.push({
-              key: type.key,
-              name: type.label,
-              icon: type.icon || "Circle",
-              color: type.color || "#6B7280",
-              isVisible: type.visible !== false,
-              source: "customType",
-            });
           }
+          // Removed: else if (!seenNames.has(normalizedName)) { ... }
+          // We no longer add statuses from customWorkItemTypes that don't exist in defaults or customColumns
         }
 
         // Track statistics
         let addedCount = 0;
         let updatedCount = 0;
+        let deletedCount = 0;
+
+        // Track matched workflow status IDs to find orphaned statuses later
+        const matchedWorkflowStatusIds = new Set<string>();
 
         // Calculate base canvas position for new statuses
         let maxX = 100;
@@ -1532,6 +1856,8 @@ const app = new Hono()
           );
 
           if (existingWorkflowStatus) {
+            // Track that this workflow status is matched to a project status
+            matchedWorkflowStatusIds.add(existingWorkflowStatus.$id);
             // Status exists in workflow - update visibility based on project
             const shouldBeOnCanvas = projectStatus.isVisible;
             const isCurrentlyOnCanvas =
@@ -1601,13 +1927,73 @@ const app = new Hono()
           }
         }
 
-        // Update project to use this workflow
+        // =========================================
+        // Delete workflow statuses that no longer exist in the project
+        // These are "orphaned" statuses that were previously synced but
+        // have since been deleted from the project
+        // =========================================
+        const orphanedWorkflowStatuses = workflowStatuses.documents.filter(
+          (status) => !matchedWorkflowStatusIds.has(status.$id)
+        );
+
+        if (orphanedWorkflowStatuses.length > 0) {
+          // Get all transitions for this workflow to delete related ones
+          const allTransitions = await databases.listDocuments(
+            DATABASE_ID,
+            WORKFLOW_TRANSITIONS_ID,
+            [Query.equal("workflowId", workflowId)]
+          );
+
+          for (const orphanedStatus of orphanedWorkflowStatuses) {
+            // First, delete all transitions to/from this status
+            const relatedTransitions = allTransitions.documents.filter(
+              (t) => t.fromStatusId === orphanedStatus.$id || t.toStatusId === orphanedStatus.$id
+            );
+
+            for (const transition of relatedTransitions) {
+              try {
+                await databases.deleteDocument(
+                  DATABASE_ID,
+                  WORKFLOW_TRANSITIONS_ID,
+                  transition.$id
+                );
+              } catch {
+                // Transition may have already been deleted, continue
+              }
+            }
+
+            // Then delete the status itself
+            try {
+              await databases.deleteDocument(
+                DATABASE_ID,
+                WORKFLOW_STATUSES_ID,
+                orphanedStatus.$id
+              );
+              deletedCount++;
+            } catch {
+              // Status may have already been deleted, continue
+            }
+          }
+        }
+
+        // Clean up stale customWorkItemTypes entries
+        // Only keep entries that match defaults or custom columns
+        const validStatusNames = new Set(allProjectStatuses.map(s => s.name.toLowerCase()));
+        const cleanedCustomTypes = Array.isArray(projectCustomTypes) 
+          ? projectCustomTypes.filter(type => {
+              if (!type.label || typeof type.label !== 'string') return false;
+              return validStatusNames.has(type.label.toLowerCase());
+            })
+          : [];
+
+        // Update project to use this workflow and clean up customWorkItemTypes
         await databases.updateDocument(
           DATABASE_ID,
           PROJECTS_ID,
           projectId,
           {
             workflowId: workflowId,
+            customWorkItemTypes: JSON.stringify(cleanedCustomTypes),
           }
         );
 
@@ -1617,6 +2003,7 @@ const app = new Hono()
             resolution: "project",
             addedStatuses: addedCount,
             updatedStatuses: updatedCount,
+            deletedStatuses: deletedCount,
           },
         });
       }
@@ -1624,6 +2011,9 @@ const app = new Hono()
   )
 
   // ============ Disconnect project from workflow ============
+  // Edge Case 3.5: Cross-Workspace Permission Check
+  // Edge Case 3.6: Permission Hierarchy (OWNER and ADMIN can disconnect)
+  // Edge Case 8.2: Project Disconnection - workflowId set to null, tasks remain
   .post(
     "/:workflowId/disconnect-project/:projectId",
     sessionMiddleware,
@@ -1639,14 +2029,28 @@ const app = new Hono()
         workflowId
       );
 
-      const member = await getMember({
-        databases,
-        workspaceId: workflow.workspaceId,
-        userId: user.$id,
-      });
+      // Get the project to verify cross-workspace consistency
+      const project = await databases.getDocument(
+        DATABASE_ID,
+        PROJECTS_ID,
+        projectId
+      );
 
-      if (!member || member.role !== MemberRole.ADMIN) {
-        return c.json({ error: "Only admins can disconnect projects from workflows" }, 403);
+      // Edge Case 3.5: Verify project and workflow are in the same workspace
+      if (project.workspaceId !== workflow.workspaceId) {
+        return c.json({ error: "Project and workflow must be in the same workspace" }, 400);
+      }
+
+      // Edge Case 3.6: Only OWNER and ADMIN can disconnect projects
+      const { hasPermission } = await checkWorkflowPermission(
+        databases,
+        workflow.workspaceId,
+        user.$id,
+        workflow.spaceId
+      );
+
+      if (!hasPermission) {
+        return c.json({ error: "Only workspace owners, admins, or space masters can disconnect projects from workflows" }, 403);
       }
 
       // Update the project to remove workflow connection
