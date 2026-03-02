@@ -17,6 +17,7 @@ import {
   SPACE_MEMBERS_ID,
   CUSTOM_COLUMNS_ID,
   DEFAULT_COLUMN_SETTINGS_ID,
+  TASKS_ID,
 } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 
@@ -38,10 +39,23 @@ import {
 } from "../types";
 
 /**
- * Helper function to check if user has permission to manage workflows
- * Permissions:
- * - Workspace OWNER or ADMIN can manage all workflows
- * - Space ADMIN (Master) can manage workflows in their space
+ * Helper function to check if user has permission to manage workflows.
+ * 
+ * Implements Edge Case 3.6 - Permission Hierarchy:
+ * | Action           | Workspace OWNER | Workspace ADMIN | Space ADMIN (Master) | Regular MEMBER |
+ * |------------------|-----------------|-----------------|----------------------|----------------|
+ * | Create workflow  | ✅              | ✅              | ✅ (space-level)     | ❌             |
+ * | Update workflow  | ✅              | ✅              | ✅ (space-level)     | ❌             |
+ * | Delete workflow  | ✅              | ✅              | ✅ (space-level)     | ❌             |
+ * | Add status       | ✅              | ✅              | ✅ (space-level)     | ❌             |
+ * | Add transition   | ✅              | ✅              | ✅ (space-level)     | ❌             |
+ * | Connect project  | ✅              | ✅              | ✅ (space-level)     | ❌             |
+ *
+ * @param databases - Database client
+ * @param workspaceId - The workspace ID to check membership in
+ * @param userId - The user to check permissions for
+ * @param spaceId - Optional space ID for space-level workflow checks
+ * @returns Permission check result with member info
  */
 async function checkWorkflowPermission(
   databases: Databases,
@@ -466,6 +480,8 @@ const app = new Hono()
   // ============ Status endpoints ============
 
   // Add a status to a workflow
+  // Edge Case 2.4: Duplicate Status Key - Creation is blocked if key already exists
+  // Edge Case 7.3: Auto-Sync Column Creation - Custom columns created in connected projects
   .post(
     "/:workflowId/statuses",
     sessionMiddleware,
@@ -498,7 +514,8 @@ const app = new Hono()
         return c.json({ error: "Only workspace owners, admins, or space masters can add statuses" }, 403);
       }
 
-      // Check for duplicate key
+      // Edge Case 2.4: Duplicate Status Key Validation
+      // Block creation if a status with the same key already exists in this workflow
       const existingStatuses = await databases.listDocuments<WorkflowStatus>(
         DATABASE_ID,
         WORKFLOW_STATUSES_ID,
@@ -684,6 +701,11 @@ const app = new Hono()
   )
 
   // Delete a status
+  // Edge Case 2.7: Status Deletion with Active Tasks
+  // - Status deletion succeeds even if tasks exist in this status
+  // - All transitions to/from this status are automatically deleted
+  // - Tasks in the deleted status become "orphaned" (have invalid status key)
+  // - Response includes count of affected tasks for UI feedback
   .delete("/:workflowId/statuses/:statusId", sessionMiddleware, async (c) => {
     const databases = c.get("databases");
     const user = c.get("user");
@@ -710,7 +732,42 @@ const app = new Hono()
       return c.json({ error: "Only workspace owners, admins, or space masters can delete statuses" }, 403);
     }
 
-    // Delete associated transitions
+    // Get the status to find its key (for counting affected tasks)
+    const statusDoc = await databases.getDocument<WorkflowStatus>(
+      DATABASE_ID,
+      WORKFLOW_STATUSES_ID,
+      statusId
+    );
+
+    // Count tasks that will be orphaned by this deletion
+    // These tasks will have an invalid status key after deletion
+    let affectedTasksCount = 0;
+    try {
+      // Get all projects using this workflow
+      const projectsUsingWorkflow = await databases.listDocuments(
+        DATABASE_ID,
+        PROJECTS_ID,
+        [Query.equal("workflowId", workflowId)]
+      );
+
+      // Count tasks in each project with this status
+      for (const project of projectsUsingWorkflow.documents) {
+        const tasksInStatus = await databases.listDocuments(
+          DATABASE_ID,
+          TASKS_ID,
+          [
+            Query.equal("projectId", project.$id),
+            Query.equal("status", statusDoc.key),
+            Query.limit(1), // We only need to know if there are any
+          ]
+        );
+        affectedTasksCount += tasksInStatus.total;
+      }
+    } catch {
+      // If counting fails, continue with deletion anyway
+    }
+
+    // Delete associated transitions first
     const transitions = await databases.listDocuments<WorkflowTransition>(
       DATABASE_ID,
       WORKFLOW_TRANSITIONS_ID,
@@ -729,14 +786,35 @@ const app = new Hono()
       )
     );
 
+    // Delete the status
     await databases.deleteDocument(DATABASE_ID, WORKFLOW_STATUSES_ID, statusId);
 
-    return c.json({ data: { $id: statusId } });
+    return c.json({
+      data: {
+        $id: statusId,
+        deletedTransitions: transitions.total,
+        affectedTasks: affectedTasksCount,
+        warning: affectedTasksCount > 0
+          ? `${affectedTasksCount} task(s) will have an invalid status and may not appear in Kanban until migrated.`
+          : undefined,
+      },
+    });
   })
 
   // ============ Transition endpoints ============
 
-  // Add a transition
+  /**
+   * Add a transition to a workflow.
+   * 
+   * Transition can include:
+   * - 3.1 allowedMemberRoles: Only specified roles can perform this transition
+   * - 3.2 allowedTeamIds: Only members of specified teams can perform this transition
+   * - 3.3 requiresApproval + approverTeamIds: Requires approval from designated teams
+   * 
+   * Edge Cases:
+   * - 3.4 System Workflow Protection: Cannot add transitions to system workflows
+   * - 6.1 Transition Duplication Prevention: Blocks duplicate transitions
+   */
   .post(
     "/:workflowId/transitions",
     sessionMiddleware,
@@ -914,7 +992,14 @@ const app = new Hono()
 
   // ============ Transition validation ============
 
-  // Validate if a transition is allowed
+  /**
+   * Validate if a transition is allowed for the current user.
+   * 
+   * Edge Cases Handled:
+   * - 3.1 Role-Based Transition Restriction: Checks allowedMemberRoles
+   * - 3.2 Team-Based Transition Restriction: Checks allowedTeamIds
+   * - 3.3 Approval-Required Transition: Checks requiresApproval and approverTeamIds
+   */
   .post(
     "/validate-transition",
     sessionMiddleware,
@@ -1046,7 +1131,13 @@ const app = new Hono()
     }
   )
 
-  // Get allowed transitions from a status
+  /**
+   * Get allowed transitions from a status for the current user.
+   * Filters out transitions the user cannot perform based on:
+   * - 3.1 Role-Based Restrictions (allowedMemberRoles)
+   * - 3.2 Team-Based Restrictions (allowedTeamIds)
+   * Note: Approval requirements are included but not filtered - UI should show lock icon
+   */
   .get(
     "/allowed-transitions",
     sessionMiddleware,
@@ -1145,7 +1236,15 @@ const app = new Hono()
     }
   )
 
-  // ============ Connect project to workflow ============
+  /**
+   * Connect a project to a workflow.
+   * 
+   * Edge Cases Handled:
+   * - 3.5 Cross-Workspace Permission Check: Project and workflow must be in same workspace
+   * - 3.6 Permission Hierarchy: Only OWNER, ADMIN, or Space ADMIN can connect
+   * - 4.1 Orphaned Workflow Statuses: Sync cleanup removes orphaned statuses
+   * - 7.3 Auto-Sync Column Creation: Custom columns auto-created in project
+   */
   .post(
     "/:workflowId/connect-project/:projectId",
     sessionMiddleware,
@@ -1932,6 +2031,9 @@ const app = new Hono()
   )
 
   // ============ Disconnect project from workflow ============
+  // Edge Case 3.5: Cross-Workspace Permission Check
+  // Edge Case 3.6: Permission Hierarchy (OWNER and ADMIN can disconnect)
+  // Edge Case 8.2: Project Disconnection - workflowId set to null, tasks remain
   .post(
     "/:workflowId/disconnect-project/:projectId",
     sessionMiddleware,
@@ -1947,14 +2049,28 @@ const app = new Hono()
         workflowId
       );
 
-      const member = await getMember({
-        databases,
-        workspaceId: workflow.workspaceId,
-        userId: user.$id,
-      });
+      // Get the project to verify cross-workspace consistency
+      const project = await databases.getDocument(
+        DATABASE_ID,
+        PROJECTS_ID,
+        projectId
+      );
 
-      if (!member || member.role !== MemberRole.ADMIN) {
-        return c.json({ error: "Only admins can disconnect projects from workflows" }, 403);
+      // Edge Case 3.5: Verify project and workflow are in the same workspace
+      if (project.workspaceId !== workflow.workspaceId) {
+        return c.json({ error: "Project and workflow must be in the same workspace" }, 400);
+      }
+
+      // Edge Case 3.6: Only OWNER and ADMIN can disconnect projects
+      const { hasPermission } = await checkWorkflowPermission(
+        databases,
+        workflow.workspaceId,
+        user.$id,
+        workflow.spaceId
+      );
+
+      if (!hasPermission) {
+        return c.json({ error: "Only workspace owners, admins, or space masters can disconnect projects from workflows" }, 403);
       }
 
       // Update the project to remove workflow connection
