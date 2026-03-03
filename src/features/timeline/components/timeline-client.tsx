@@ -120,15 +120,15 @@ export function TimelineClient({
     };
   }, [filteredItems, zoomLevel]);
 
-  // Get selected item details
+  // Get selected item details - use flatItems (same as grid) for consistent dates
   const selectedItem = useMemo(() => {
     if (!selectedItemId) return null;
     return (
-      initialData.allTimelineItems.find(
+      flatItems.find(
         (item: TimelineItem) => item.id === selectedItemId
       ) || null
     );
-  }, [selectedItemId, initialData.allTimelineItems]);
+  }, [selectedItemId, flatItems]);
 
   // Check if all items are expanded
   const allExpanded = useMemo(() => {

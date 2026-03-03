@@ -3,7 +3,7 @@
 import { InferRequestType } from "hono";
 import { client } from "@/lib/rpc";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   X,
@@ -82,6 +82,20 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
   const [title, setTitle] = useState(task.title);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
 
+  // Optimistic local state for dates — updates instantly on pick
+  const [localStartDate, setLocalStartDate] = useState<Date | undefined>(
+    task.startDate ? new Date(task.startDate) : undefined
+  );
+  const [localDueDate, setLocalDueDate] = useState<Date | undefined>(
+    task.dueDate ? new Date(task.dueDate) : undefined
+  );
+
+  // Optimistic local state for status, type, priority, assignees — instant UI like dates
+  const [localStatus, setLocalStatus] = useState<string>(task.status);
+  const [localType, setLocalType] = useState<string>(task.type || "TASK");
+  const [localPriority, setLocalPriority] = useState<string | undefined>(task.priority);
+  const [localAssigneeIds, setLocalAssigneeIds] = useState<string[]>(task.assigneeIds || []);
+
   // Helper to convert plain text to HTML if needed
   const normalizeDescription = (desc: string | null | undefined): string => {
     if (!desc) return "";
@@ -131,6 +145,32 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
     setTitle(task.title);
   }, [task.title]);
 
+  // Sync dates when task changes (e.g. from server or other updates)
+  useEffect(() => {
+    setLocalStartDate(task.startDate ? new Date(task.startDate) : undefined);
+  }, [task.startDate]);
+
+  useEffect(() => {
+    setLocalDueDate(task.dueDate ? new Date(task.dueDate) : undefined);
+  }, [task.dueDate]);
+
+  // Sync status, type, priority, assignees when task changes from server
+  useEffect(() => {
+    setLocalStatus(task.status);
+  }, [task.status]);
+
+  useEffect(() => {
+    setLocalType(task.type || "TASK");
+  }, [task.type]);
+
+  useEffect(() => {
+    setLocalPriority(task.priority);
+  }, [task.priority]);
+
+  useEffect(() => {
+    setLocalAssigneeIds(task.assigneeIds || []);
+  }, [task.assigneeIds]);
+
   // Update mention members when they load
   useEffect(() => {
     if (members?.documents) {
@@ -160,31 +200,94 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
     });
   };
 
-  // Debounced update for date fields to prevent multiple API calls
-  const dateUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const handleDebouncedDateUpdate = useCallback((updates: UpdateTaskPayload) => {
-    // Clear any pending timeout
-    if (dateUpdateTimeoutRef.current) {
-      clearTimeout(dateUpdateTimeoutRef.current);
-    }
-    
-    // Set new timeout
-    dateUpdateTimeoutRef.current = setTimeout(() => {
-      updateTask({
-        param: { taskId: task.$id },
-        json: updates,
-      });
-    }, 500); // 500ms debounce
-  }, [task.$id, updateTask]);
+  // Optimistic handlers for status, type, priority, assignees — instant UI like dates
+  const handleStatusChange = useCallback((value: string) => {
+    const prev = localStatus;
+    setLocalStatus(value);
+    updateTask(
+      { param: { taskId: task.$id }, json: { status: value } },
+      { onError: () => { setLocalStatus(prev); } }
+    );
+  }, [task.$id, localStatus, updateTask]);
 
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (dateUpdateTimeoutRef.current) {
-        clearTimeout(dateUpdateTimeoutRef.current);
+  const handleTypeChange = useCallback((value: string) => {
+    const prev = localType;
+    setLocalType(value);
+    updateTask(
+      { param: { taskId: task.$id }, json: { type: value } },
+      { onError: () => { setLocalType(prev); } }
+    );
+  }, [task.$id, localType, updateTask]);
+
+  const handlePriorityChange = useCallback((value: string) => {
+    const prev = localPriority;
+    setLocalPriority(value);
+    updateTask(
+      { param: { taskId: task.$id }, json: { priority: value } },
+      { onError: () => { setLocalPriority(prev); } }
+    );
+  }, [task.$id, localPriority, updateTask]);
+
+  const handleAssigneesChange = useCallback((ids: string[]) => {
+    const prev = localAssigneeIds;
+    setLocalAssigneeIds(ids);
+    updateTask(
+      { param: { taskId: task.$id }, json: { assigneeIds: ids } },
+      { onError: () => { setLocalAssigneeIds(prev); } }
+    );
+  }, [task.$id, localAssigneeIds, updateTask]);
+
+  // Immediate date update — optimistic UI updates local state instantly.
+  // Edge-case: if the new start date is after the existing end date, clear end date.
+  // Edge-case: if the new end date is before the existing start date (shouldn't happen
+  //            because we pass minDate to the picker, but guard anyway).
+  const handleStartDateChange = useCallback((date: Date | undefined) => {
+    // Optimistic: update local state immediately
+    setLocalStartDate(date);
+
+    const prevDueDate = localDueDate;
+    if (date && prevDueDate && date > prevDueDate) {
+      // Start pushed past end → clear end date so they are consistent
+      setLocalDueDate(undefined);
+      updateTask(
+        { param: { taskId: task.$id }, json: { startDate: date, dueDate: undefined } },
+        {
+          onError: () => {
+            // Revert on failure
+            setLocalStartDate(task.startDate ? new Date(task.startDate) : undefined);
+            setLocalDueDate(task.dueDate ? new Date(task.dueDate) : undefined);
+          },
+        }
+      );
+    } else {
+      updateTask(
+        { param: { taskId: task.$id }, json: { startDate: date } },
+        {
+          onError: () => {
+            setLocalStartDate(task.startDate ? new Date(task.startDate) : undefined);
+          },
+        }
+      );
+    }
+  }, [task.$id, task.startDate, task.dueDate, localDueDate, updateTask]);
+
+  const handleEndDateChange = useCallback((date: Date | undefined) => {
+    const prevStartDate = localStartDate;
+    // Guard: end date must not be before start date
+    if (date && prevStartDate && date < prevStartDate) return;
+
+    // Optimistic: update local state immediately
+    setLocalDueDate(date);
+
+    updateTask(
+      { param: { taskId: task.$id }, json: { dueDate: date } },
+      {
+        onError: () => {
+          setLocalDueDate(task.dueDate ? new Date(task.dueDate) : undefined);
+        },
       }
-    };
-  }, []);
+    );
+  }, [task.$id, task.dueDate, localStartDate, updateTask]);
 
   const handleTitleBlur = () => {
     setIsEditingTitle(false);
@@ -425,8 +528,8 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
               <div>
                 <label className="text-xs text-muted-foreground mb-1.5 block">Status</label>
                 <StatusSelector
-                  value={task.status}
-                  onChange={canEdit ? (value) => handleUpdate({ status: value }) : () => { }}
+                  value={localStatus}
+                  onChange={canEdit ? handleStatusChange : () => { }}
                   projectId={task.projectId}
                   disabled={!canEdit}
                 />
@@ -436,8 +539,8 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
               <div>
                 <label className="text-xs text-muted-foreground mb-1.5 block">Type</label>
                 <TypeSelector
-                  value={task.type || "TASK"}
-                  onValueChange={canEdit ? (value) => handleUpdate({ type: value }) : () => { }}
+                  value={localType}
+                  onValueChange={canEdit ? handleTypeChange : () => { }}
                   project={project}
                   customTypes={project?.customWorkItemTypes}
                   className="w-full bg-card border-border"
@@ -449,8 +552,8 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
               <div>
                 <label className="text-xs text-muted-foreground mb-1.5 block">Priority</label>
                 <PrioritySelector
-                  value={task.priority}
-                  onValueChange={canEdit ? (value) => handleUpdate({ priority: value }) : () => { }}
+                  value={localPriority}
+                  onValueChange={canEdit ? handlePriorityChange : () => { }}
                   customPriorities={project?.customPriorities}
                   disabled={!canEdit}
                 />
@@ -461,8 +564,8 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 <label className="text-xs text-muted-foreground mb-1.5 block">Assignees</label>
                 <AssigneeMultiSelect
                   memberOptions={memberOptions}
-                  selectedAssigneeIds={task.assigneeIds || []}
-                  onAssigneesChange={canEdit ? (ids) => handleUpdate({ assigneeIds: ids }) : () => { }}
+                  selectedAssigneeIds={localAssigneeIds}
+                  onAssigneesChange={canEdit ? handleAssigneesChange : () => { }}
                   placeholder="Select assignees"
                   disabled={!canEdit}
                 />
@@ -473,21 +576,24 @@ const TaskPreviewContent = ({ task, workspaceId, onEdit, onClose, onAttachmentPr
                 <div className="min-w-0">
                   <label className="text-[10px] text-muted-foreground mb-1 block font-medium">Start Date</label>
                   <DatePicker
-                    value={task.dueDate ? new Date(task.dueDate) : undefined}
-                    onChange={canEdit ? (date) => handleDebouncedDateUpdate({ dueDate: date }) : () => { }}
+                    value={localStartDate}
+                    onChange={canEdit ? handleStartDateChange : () => {}}
                     placeholder="Set start date"
                     className="w-full bg-card border-border h-8 text-xs overflow-hidden"
                     disabled={!canEdit}
+                    minDate={new Date()}
+                    maxDate={localDueDate}
                   />
                 </div>
                 <div className="min-w-0">
                   <label className="text-[10px] text-muted-foreground mb-1 block font-medium">End Date</label>
                   <DatePicker
-                    value={task.endDate ? new Date(task.endDate) : undefined}
-                    onChange={canEdit ? (date) => handleDebouncedDateUpdate({ endDate: date }) : () => { }}
+                    value={localDueDate}
+                    onChange={canEdit ? handleEndDateChange : () => {}}
                     placeholder="Set end date"
                     className="w-full bg-card border-border h-8 text-xs overflow-hidden"
                     disabled={!canEdit}
+                    minDate={localStartDate ?? new Date()}
                   />
                 </div>
               </div>

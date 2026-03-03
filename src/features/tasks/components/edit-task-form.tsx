@@ -66,11 +66,11 @@ export const EditTaskForm = ({
       type: initialValues.type ?? undefined,
       status: initialValues.status,
       projectId: initialValues.projectId,
+      startDate: initialValues.startDate
+        ? new Date(initialValues.startDate)
+        : undefined,
       dueDate: initialValues.dueDate
         ? new Date(initialValues.dueDate)
-        : undefined,
-      endDate: initialValues.endDate
-        ? new Date(initialValues.endDate)
         : undefined,
       assigneeIds: initialValues.assigneeIds || (initialValues.assigneeId ? [initialValues.assigneeId] : []),
       description: initialValues.description ?? undefined,
@@ -164,7 +164,7 @@ export const EditTaskForm = ({
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="dueDate"
+                  name="startDate"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Start Date</FormLabel>
@@ -177,10 +177,10 @@ export const EditTaskForm = ({
                 />
                 <FormField
                   control={form.control}
-                  name="endDate"
+                  name="dueDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>End Date (Optional)</FormLabel>
+                      <FormLabel>Due Date (Optional)</FormLabel>
                       <FormControl>
                         <DatePicker {...field} />
                       </FormControl>

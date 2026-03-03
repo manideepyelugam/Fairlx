@@ -197,10 +197,10 @@ export const ProjectMembersClient = () => {
                 <div>
                     <h2 className="text-xl font-semibold flex items-center gap-2">
                         <UserPlus className="h-5 w-5" />
-                        Project Members
+                        Teams & Members
                     </h2>
                     <p className="text-sm text-muted-foreground mt-1">
-                        Manage who has access to this project.
+                        Manage teams and members who have access to this project.
                     </p>
                 </div>
                 {/* Only show Add Member button on Members tab, handled inside TabsContent if needed, or global header */}

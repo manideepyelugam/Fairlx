@@ -134,9 +134,9 @@ export const ProjectActivityLogWidget = ({
         </p>
       ) : (
         <div className="space-y-2  max-h-[230px] overflow-y-auto pr-1">
-          {activities.map((activity) => (
+          {activities.map((activity, index) => (
             <div
-              key={`${activity.id}-${activity.timestamp}`}
+              key={`${index}-${activity.id}-${activity.timestamp}`}
               className="flex items-start gap-3 p-2 rounded-lg bg-muted hover:bg-accent transition-colors"
             >
               <div className="flex-shrink-0 mt-0.5 text-primary">

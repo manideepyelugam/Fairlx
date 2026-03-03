@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 
-import { DATABASE_ID, MEMBERS_ID, PROJECTS_ID, TASKS_ID, TIME_LOGS_ID, COMMENTS_ID, WORKFLOW_TRANSITIONS_ID, PROJECT_TEAM_MEMBERS_ID, WORKFLOW_STATUSES_ID } from "@/config";
+import { DATABASE_ID, MEMBERS_ID, PROJECTS_ID, TASKS_ID, TIME_LOGS_ID, COMMENTS_ID, WORKFLOW_TRANSITIONS_ID, PROJECT_TEAM_MEMBERS_ID, WORKFLOW_STATUSES_ID, CUSTOM_COLUMNS_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
 import { batchGetUsers } from "@/lib/batch-users";
@@ -31,8 +31,17 @@ import { createTaskSchema, updateTaskSchema } from "../schemas";
 import { Task, TaskStatus, TaskPriority } from "../types";
 
 /**
- * Validate if a status transition is allowed for the user
- * Checks workflow rules, role restrictions, team restrictions, and approval requirements
+ * Validate if a status transition is allowed for the user.
+ * 
+ * Implements fail-closed security: on validation error, the transition is BLOCKED
+ * to prevent bypassing workflow rules due to network/API failures.
+ * 
+ * Edge Cases Handled:
+ * - 1.1 Transition Not Defined: Returns error with human-readable status names
+ * - 1.2 Same Status Transition: Always allowed (no validation needed)
+ * - 1.3 Legacy/Backward Compatibility: Allowed if statuses not in workflow
+ * - 1.4 Circular Transitions (Loops): Allowed if transition is defined
+ * - 1.5 Network/API Error: BLOCKED (fail-closed for security)
  * 
  * @param databases - Database client
  * @param workflowId - The workflow to validate against
@@ -41,6 +50,7 @@ import { Task, TaskStatus, TaskPriority } from "../types";
  * @param userId - User attempting the transition
  * @param projectId - Project ID (for team membership lookup)
  * @param memberRole - User's workspace member role
+ * @returns Validation result with allowed flag and error details
  */
 async function validateStatusTransition(
   databases: Databases,
@@ -51,7 +61,8 @@ async function validateStatusTransition(
   projectId: string,
   memberRole: string
 ): Promise<{ allowed: boolean; reason?: string; message?: string }> {
-  // If same status, always allowed
+  // Edge Case 1.2: Same status transition - always allowed
+  // No workflow validation needed when status doesn't change (e.g., only title/description update)
   if (fromStatus === toStatus) {
     return { allowed: true };
   }
@@ -68,13 +79,15 @@ async function validateStatusTransition(
     const fromStatusDoc = workflowStatuses.documents.find(s => s.key === fromStatus);
     const toStatusDoc = workflowStatuses.documents.find(s => s.key === toStatus);
 
-    // If statuses are not found in workflow, it means the task uses legacy/default statuses
-    // In this case, allow the transition (backward compatibility)
+    // Edge Case 1.3: Legacy/Backward Compatibility
+    // If statuses are not found in workflow, task uses legacy/default statuses
+    // Allow transition to prevent blocking users on legacy tasks
     if (!fromStatusDoc || !toStatusDoc) {
       return { allowed: true };
     }
 
     // Get the transition between these statuses
+    // Edge Case 1.4: Circular transitions are valid if defined (e.g., DONE → BACKLOG for reopen)
     const transitions = await databases.listDocuments(
       DATABASE_ID,
       WORKFLOW_TRANSITIONS_ID,
@@ -85,7 +98,8 @@ async function validateStatusTransition(
       ]
     );
 
-    // No transition defined = not allowed
+    // Edge Case 1.1: Transition Not Defined
+    // If no transition exists between these statuses, block with clear error message
     if (transitions.total === 0) {
       return {
         allowed: false,
@@ -96,7 +110,8 @@ async function validateStatusTransition(
 
     const transition = transitions.documents[0];
 
-    // Check role restrictions
+    // Check role restrictions (RBAC)
+    // Only specified roles can perform this transition
     if (transition.allowedMemberRoles && transition.allowedMemberRoles.length > 0) {
       if (!transition.allowedMemberRoles.includes(memberRole)) {
         return {
@@ -108,6 +123,7 @@ async function validateStatusTransition(
     }
 
     // Check team restrictions (uses project-scoped teams)
+    // Only members of specified teams can perform this transition
     if (transition.allowedTeamIds && transition.allowedTeamIds.length > 0) {
       const userTeams = await databases.listDocuments(
         DATABASE_ID,
@@ -130,6 +146,7 @@ async function validateStatusTransition(
     }
 
     // Check approval requirement (uses project-scoped teams)
+    // Transition requires approval from designated approver teams
     if (transition.requiresApproval) {
       // Check if user is in approver team
       const userTeams = await databases.listDocuments(
@@ -153,10 +170,67 @@ async function validateStatusTransition(
     }
 
     return { allowed: true };
-  } catch {
-    // On error, allow the transition to prevent blocking users due to validation errors
-    return { allowed: true };
+  } catch (error) {
+    // Edge Case 1.5: Fail-Closed Security
+    // On validation error (network/API failure), BLOCK the transition
+    // This prevents bypassing workflow rules due to system errors
+    console.error("Workflow transition validation error:", error);
+    return {
+      allowed: false,
+      reason: "VALIDATION_ERROR",
+      message: "Failed to validate workflow transition. Please try again.",
+    };
   }
+}
+
+/**
+ * Resolve status ID or key to a human-readable name.
+ * If it's a standard TaskStatus, returns it as-is (formatted).
+ * If it's a custom column ID, looks up the column name.
+ * Falls back to the original value if not found.
+ */
+async function resolveStatusName(
+  databases: Databases,
+  status: string,
+  workspaceId: string
+): Promise<string> {
+  // Check if it's a standard TaskStatus enum value
+  if (Object.values(TaskStatus).includes(status as TaskStatus)) {
+    // Format the enum value nicely (e.g., "IN_PROGRESS" -> "In Progress")
+    return status.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  // Otherwise, try to look up in custom columns
+  try {
+    const customColumns = await databases.listDocuments(
+      DATABASE_ID,
+      CUSTOM_COLUMNS_ID,
+      [Query.equal("workspaceId", workspaceId), Query.equal("$id", status)]
+    );
+    
+    if (customColumns.documents.length > 0) {
+      return customColumns.documents[0].name as string;
+    }
+  } catch {
+    // Silent failure - return status as-is
+  }
+
+  // Also check workflow statuses (for workflow-managed statuses)
+  try {
+    const workflowStatuses = await databases.listDocuments(
+      DATABASE_ID,
+      WORKFLOW_STATUSES_ID,
+      [Query.equal("$id", status)]
+    );
+    
+    if (workflowStatuses.documents.length > 0) {
+      return workflowStatuses.documents[0].name as string;
+    }
+  } catch {
+    // Silent failure - return status as-is
+  }
+
+  return status;
 }
 
 const app = new Hono()
@@ -227,6 +301,7 @@ const app = new Hono()
         dueDate: z.string().nullish(),
         priority: z.nativeEnum(TaskPriority).nullish(),
         labels: z.string().nullish(), // Will be comma-separated list
+        parentId: z.string().nullish(), // Filter by parent task for sub-issues
       })
     ),
     async (c) => {
@@ -234,7 +309,7 @@ const app = new Hono()
       const databases = c.get("databases");
       const user = c.get("user");
 
-      const { workspaceId, projectId, assigneeId, status, dueDate, priority, labels } =
+      const { workspaceId, projectId, assigneeId, status, dueDate, priority, labels, parentId } =
         c.req.valid("query");
 
       const member = await getMember({
@@ -291,6 +366,10 @@ const app = new Hono()
         for (const label of labelList) {
           query.push(Query.contains("labels", label));
         }
+      }
+
+      if (parentId) {
+        query.push(Query.equal("parentId", parentId));
       }
 
       const tasks = await databases.listDocuments<Task>(
@@ -408,7 +487,7 @@ const app = new Hono()
     async (c) => {
       const user = c.get("user");
       const databases = c.get("databases");
-      const { name, type, status, workspaceId, projectId, dueDate, assigneeIds, description, estimatedHours, priority, labels } =
+      const { name, type, status, workspaceId, projectId, parentId, startDate, dueDate, assigneeIds, description, estimatedHours, priority, labels } =
         c.req.valid("json");
 
       const member = await getMember({
@@ -482,8 +561,12 @@ const app = new Hono()
         projectId
       );
 
-      // ======= INITIAL STATUS VALIDATION =======
-      // If project has a workflow, validate that the status is an initial status
+      // ======= INITIAL STATUS VALIDATION (Edge Case 2.5) =======
+      // If project has a workflow, validate that the status is an initial status.
+      // Tasks MUST start with a status marked `isInitial: true` when workflow is active.
+      // 
+      // Implements fail-closed security: if validation fails due to error, block creation
+      // to prevent bypassing workflow rules.
       if (project.workflowId) {
         try {
           const workflowStatuses = await databases.listDocuments(
@@ -506,8 +589,14 @@ const app = new Hono()
               allowedStatuses: validInitialStatusKeys,
             }, 400);
           }
-        } catch {
-          // If workflow check fails, continue without validation
+        } catch (error) {
+          // Fail-closed: if workflow check fails, block task creation
+          // This prevents bypassing workflow rules due to system errors
+          console.error("Initial status validation error:", error);
+          return c.json({
+            error: "Failed to validate initial status. Please try again.",
+            reason: "VALIDATION_ERROR",
+          }, 500);
         }
       }
       // ======= END INITIAL STATUS VALIDATION =======
@@ -527,6 +616,8 @@ const app = new Hono()
           status,
           workspaceId,
           projectId,
+          parentId: parentId || null, // Parent task ID for sub-issues
+          startDate: startDate || null,
           dueDate: dueDate || null,
           assigneeIds: assigneeIds || [],
           position: newPosition,
@@ -536,6 +627,7 @@ const app = new Hono()
           labels: labels || [],
           flagged: false,
           lastModifiedBy: user.$id,
+          reporterId: member.$id, // Track who created the task
           sprintId: targetSprintId, // Auto-assign to active sprint if available
         }
       ) as Task;
@@ -564,8 +656,7 @@ const app = new Hono()
     async (c) => {
       const user = c.get("user");
       const databases = c.get("databases");
-      // Note: endDate is in schema but not in database - we ignore it
-      const { name, type, status, projectId, dueDate, assigneeIds, description, estimatedHours, priority, labels, flagged, storyPoints } =
+      const { name, type, status, projectId, startDate, dueDate, assigneeIds, description, estimatedHours, priority, labels, flagged, storyPoints } =
         c.req.valid("json");
 
       const { taskId } = c.req.param();
@@ -638,11 +729,11 @@ const app = new Hono()
       if (type !== undefined) updateData.type = type;
       if (status !== undefined) updateData.status = status;
       if (projectId !== undefined) updateData.projectId = projectId;
+      if (startDate !== undefined) updateData.startDate = startDate;
       if (dueDate !== undefined) updateData.dueDate = dueDate;
       if (description !== undefined) updateData.description = description;
       if (estimatedHours !== undefined) updateData.estimatedHours = estimatedHours;
       if (storyPoints !== undefined) updateData.storyPoints = storyPoints;
-      // Note: endDate column doesn't exist in workItems collection, so we skip it
       if (priority !== undefined) updateData.priority = priority;
       if (labels !== undefined) updateData.labels = labels;
       if (flagged !== undefined) updateData.flagged = flagged;
@@ -692,12 +783,18 @@ const app = new Hono()
             // Silent failure for non-critical event dispatch
           });
         } else {
+          // Resolve status IDs to human-readable names for notifications
+          const [oldStatusName, newStatusName] = await Promise.all([
+            resolveStatusName(databases, existingTask.status, task.workspaceId),
+            resolveStatusName(databases, status, task.workspaceId)
+          ]);
+          
           const event = createStatusChangedEvent(
             task,
             user.$id,
             userName,
-            existingTask.status,
-            status
+            oldStatusName,
+            newStatusName
           );
           dispatchWorkitemEvent(event).catch(() => {
             // Silent failure for non-critical event dispatch
@@ -883,6 +980,30 @@ const app = new Hono()
         ? validAssignees.filter((a) => task.assigneeIds!.includes(a.$id))
         : [];
 
+      // Fetch reporter info (task creator)
+      let reporter: { $id: string; name: string; email?: string; profileImageUrl?: string | null } | undefined;
+      if (task.reporterId) {
+        try {
+          const reporterMember = await databases.getDocument(
+            DATABASE_ID,
+            MEMBERS_ID,
+            task.reporterId
+          ) as Models.Document;
+          
+          const reporterUser = await users.get(reporterMember.userId as string);
+          const reporterPrefs = reporterUser.prefs as { profileImageUrl?: string | null } | undefined;
+          
+          reporter = {
+            $id: reporterMember.$id,
+            name: reporterUser.name || reporterUser.email,
+            email: reporterUser.email,
+            profileImageUrl: reporterPrefs?.profileImageUrl ?? null,
+          };
+        } catch {
+          // Silent failure - reporter info is optional
+        }
+      }
+
       return c.json({
         data: {
           ...task,
@@ -891,6 +1012,7 @@ const app = new Hono()
           project,
           assignee, // Keep for backward compatibility
           assignees: taskAssignees, // New field for multiple assignees
+          reporter, // Task creator info
         },
       });
     } catch {
@@ -1066,24 +1188,33 @@ const app = new Hono()
       // Send bulk notifications via dispatcher
       const userName = user.name || user.email || "Someone";
 
-      updatedTasks.forEach(({ task, oldStatus, statusChanged }) => {
-        // Only emit events for significant changes
-        if (statusChanged) {
-          if (task.status === "DONE" || task.status === "CLOSED") {
-            const event = createCompletedEvent(task, user.$id, userName);
-            dispatchWorkitemEvent(event).catch(() => { });
-          } else {
-            const event = createStatusChangedEvent(
-              task,
-              user.$id,
-              userName,
-              oldStatus || "",
-              task.status
-            );
-            dispatchWorkitemEvent(event).catch(() => { });
+      // Process notifications asynchronously (fire and forget)
+      (async () => {
+        for (const { task, oldStatus, statusChanged } of updatedTasks) {
+          // Only emit events for significant changes
+          if (statusChanged) {
+            if (task.status === "DONE" || task.status === "CLOSED") {
+              const event = createCompletedEvent(task, user.$id, userName);
+              dispatchWorkitemEvent(event).catch(() => { });
+            } else {
+              // Resolve status IDs to human-readable names for notifications
+              const [oldStatusName, newStatusName] = await Promise.all([
+                resolveStatusName(databases, oldStatus || "", task.workspaceId),
+                resolveStatusName(databases, task.status, task.workspaceId)
+              ]);
+              
+              const event = createStatusChangedEvent(
+                task,
+                user.$id,
+                userName,
+                oldStatusName,
+                newStatusName
+              );
+              dispatchWorkitemEvent(event).catch(() => { });
+            }
           }
         }
-      });
+      })().catch(() => { /* Silent failure for non-critical event dispatch */ });
 
       // Return success with any partial failures noted
       return c.json({

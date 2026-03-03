@@ -1,6 +1,6 @@
 "use client";
 
-import { Layers, Github, FileText, Settings, Calendar, Users2, UserPlus } from "lucide-react";
+import { Layers, Github, FileText, Settings, Calendar, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { format, isPast, differenceInDays } from "date-fns";
 
@@ -122,23 +122,13 @@ export const ProjectIdClient = () => {
             </button>
           </Link>
 
-          <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/teams`} className="!text-sm">
-            <button
-              type="button"
-              className="inline-flex items-center rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors"
-            >
-              <Users2 className="size-4 mr-3" />
-              Teams
-            </button>
-          </Link>
-
           <Link href={`/workspaces/${project.workspaceId}/projects/${project.$id}/members`} className="!text-sm">
             <button
               type="button"
               className="inline-flex items-center rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors"
             >
               <UserPlus className="size-4 mr-3" />
-              Members
+              Teams & Members
             </button>
           </Link>
 

@@ -5,18 +5,27 @@
  */
 
 /**
- * Generates a public Appwrite storage file URL that works in email clients.
+ * Generates a public file URL that works in email clients.
  * 
- * The URL format is: {endpoint}/storage/buckets/{bucketId}/files/{fileId}/view?project={projectId}
+ * Supports both R2 (via R2_PUBLIC_URL) and Appwrite storage.
  * 
- * IMPORTANT: The storage bucket must have public read permissions for this to work.
- * Configure this in Appwrite Console > Storage > Bucket Settings > Permissions
+ * For R2: Returns {R2_PUBLIC_URL}/{bucketId}/{fileId}
+ * For Appwrite: Returns {endpoint}/storage/buckets/{bucketId}/files/{fileId}/view?project={projectId}
  * 
- * @param fileId - The Appwrite file ID
+ * IMPORTANT: The storage bucket/R2 bucket must have public read permissions for this to work.
+ * 
+ * @param fileId - The file ID
  * @param bucketId - The storage bucket ID
  * @returns Public URL string
  */
 export function getPublicFileUrl(fileId: string, bucketId: string): string {
+    // Check if R2 is configured with a public URL
+    const r2PublicUrl = process.env.R2_PUBLIC_URL;
+    if (r2PublicUrl) {
+        return `${r2PublicUrl}/${bucketId}/${fileId}`;
+    }
+
+    // Fall back to Appwrite URL format
     const endpoint = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!;
     const projectId = process.env.NEXT_PUBLIC_APPWRITE_PROJECT!;
 
@@ -39,6 +48,14 @@ export function getEmailSafeLogoUrl(logoUrl: string | undefined): string | undef
     // Only allow HTTP/HTTPS URLs - email clients block data: URLs
     if (logoUrl.startsWith('http://') || logoUrl.startsWith('https://')) {
         return logoUrl;
+    }
+
+    // Convert relative proxy URLs to absolute URLs for email clients
+    if (logoUrl.startsWith('/api/storage/')) {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+        if (appUrl) {
+            return `${appUrl}${logoUrl}`;
+        }
     }
 
     // Return undefined for data: URLs and other protocols

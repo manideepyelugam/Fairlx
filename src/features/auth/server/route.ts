@@ -16,9 +16,11 @@ import {
   acceptLegalSchema
 } from "../schemas";
 import { createAdminClient } from "@/lib/appwrite";
-import { ID, ImageFormat, Client, Account } from "node-appwrite";
+import { ID, Client, Account } from "node-appwrite";
 import { AUTH_COOKIE } from "../constants";
 import { sessionMiddleware } from "@/lib/session-middleware";
+import { getStorageProvider } from "@/lib/storage";
+import { deleteImageSilently, getImageUrl } from "@/lib/storage/helpers";
 import {
   DATABASE_ID,
   IMAGES_BUCKET_ID,
@@ -338,6 +340,22 @@ const app = new Hono()
                 }
               };
 
+              // COMPLIANCE FIX: Log audit event FIRST before mutating state
+              // This ensures we have a compliance record even if subsequent operations fail
+              // If audit logging fails, we abort the acceptance to maintain compliance integrity
+              const { logOrgAudit, OrgAuditAction } = await import("@/features/organizations/audit");
+              await logOrgAudit({
+                databases,
+                organizationId: orgId,
+                actorUserId: user.$id,
+                actionType: OrgAuditAction.USER_ACCEPTED_LEGAL,
+                metadata: {
+                  version: CURRENT_LEGAL_VERSION,
+                  applyToOrg: true,
+                },
+              });
+
+              // Audit log succeeded - now safe to update organization settings
               await databases.updateDocument(
                 DATABASE_ID,
                 ORGANIZATIONS_ID,
@@ -359,23 +377,6 @@ const app = new Hono()
                 ...updatedPrefs,
                 legalHistory
               });
-
-              // Log Audit Event
-              try {
-                const { logOrgAudit, OrgAuditAction } = await import("@/features/organizations/audit");
-                await logOrgAudit({
-                  databases,
-                  organizationId: orgId,
-                  actorUserId: user.$id,
-                  actionType: OrgAuditAction.USER_ACCEPTED_LEGAL,
-                  metadata: {
-                    version: CURRENT_LEGAL_VERSION,
-                    applyToOrg: true,
-                  },
-                });
-              } catch (auditError) {
-                console.error("Failed to log legal acceptance audit:", auditError);
-              }
             }
           }
         }
@@ -549,39 +550,20 @@ const app = new Hono()
 
       // Delete old profile image if exists
       if (user.prefs?.profileImageId) {
-        try {
-          await storage.deleteFile(IMAGES_BUCKET_ID, user.prefs.profileImageId);
-        } catch {
-          // Ignore error if file doesn't exist
-        }
+        await deleteImageSilently(storage, user.prefs.profileImageId);
       }
 
-      // Upload new profile image
-      const uploadedFile = await storage.createFile(
+      // Upload new profile image to storage bucket (R2 or Appwrite)
+      const storageProvider = getStorageProvider(storage);
+      const fileId = ID.unique();
+      const uploadedFile = await storageProvider.uploadFile(
         IMAGES_BUCKET_ID,
-        ID.unique(),
+        fileId,
         file
       );
 
-      // Get optimized preview URL to keep prefs payload small
-      const previewArrayBuffer = await storage.getFilePreview(
-        IMAGES_BUCKET_ID,
-        uploadedFile.$id,
-        256,
-        256,
-        undefined,
-        80,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        ImageFormat.Webp
-      );
-
-      const base64 = Buffer.from(previewArrayBuffer).toString("base64");
-      const fileUrl = `data:image/webp;base64,${base64}`;
+      // Get CDN URL (https://storage.fairlx.com/...) or proxy fallback
+      const fileUrl = getImageUrl(uploadedFile.id);
 
       // Safely extract and sanitize existing preferences
       let currentPrefs = {};
@@ -600,8 +582,8 @@ const app = new Hono()
       await account.updatePrefs({
         ...currentPrefs,
         profileImageUrl: fileUrl,
-        profileImageId: uploadedFile.$id,
-        profileImageMimeType: "image/webp",
+        profileImageId: uploadedFile.id,
+        profileImageMimeType: file.type || "image/png",
         profileImageUpdatedAt: new Date().toISOString(),
       });
 

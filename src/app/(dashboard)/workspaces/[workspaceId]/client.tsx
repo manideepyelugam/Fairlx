@@ -15,7 +15,6 @@ import { useCurrent } from "@/features/auth/api/use-current"
 
 import { formatDistanceToNow, format } from "date-fns"
 import {
-  PlusIcon,
   SettingsIcon,
   Users,
   Clock,
@@ -23,12 +22,11 @@ import {
   FolderKanban,
   ExternalLink,
   TrendingUp,
-  ArrowUpRight,
   MoreHorizontal,
   FileText,
   CheckCircle2,
 } from "lucide-react"
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link";
 
 import {
@@ -48,6 +46,9 @@ export const WorkspaceIdClient = () => {
   const { data: workItems, isLoading: isLoadingWorkItems } = useGetWorkItems({ workspaceId, limit: 50 })
   const { data: projects, isLoading: isLoadingProjects } = useGetProjects({ workspaceId })
   const { data: members, isLoading: isLoadingMembers } = useGetMembers({ workspaceId })
+
+  // Filter state for Project Overview chart
+  const [projectOverviewFilter, setProjectOverviewFilter] = useState<"week" | "month" | "year">("week")
 
   const totalTasks = analytics?.taskCount || 0;
   const completedTasks = analytics?.completedTaskCount || 0;
@@ -171,6 +172,30 @@ export const WorkspaceIdClient = () => {
     }
   }, [analytics, workItems, members, projects])
 
+  // Filter data for Project Overview chart based on filter selection
+  const filteredProjectOverviewData = useMemo(() => {
+    if (!dynamicData.monthlyData || dynamicData.monthlyData.length === 0) {
+      return [];
+    }
+
+    const data = dynamicData.monthlyData;
+
+    // Map filter to number of data points to show
+    // monthlyData typically has 12 months, so we slice accordingly
+    switch (projectOverviewFilter) {
+      case "week":
+        // Show last 7 days worth of data or last 1-2 data points
+        return data.slice(-2);
+      case "month":
+        // Show last month's data (last 4 data points approximately)
+        return data.slice(-4);
+      case "year":
+      default:
+        // Show all data
+        return data;
+    }
+  }, [dynamicData.monthlyData, projectOverviewFilter]);
+
   // Removed the global PageLoader block to enable decoupling
   if (!analytics && isLoadingAnalytics) {
     // Optional: You could still return a full shell skeleton here if you want
@@ -208,7 +233,6 @@ export const WorkspaceIdClient = () => {
                     <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center flex-shrink-0">
                       <Layers className="h-4 w-4 text-blue-500" />
                     </div>
-                    <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
                   </div>
                   <div className="flex items-end justify-between gap-2">
                     <div>
@@ -225,7 +249,6 @@ export const WorkspaceIdClient = () => {
                     <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center flex-shrink-0">
                       <Clock className="h-4 w-4 text-amber-500" />
                     </div>
-                    <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
                   </div>
                   <div className="flex items-end justify-between gap-2">
                     <div>
@@ -242,7 +265,6 @@ export const WorkspaceIdClient = () => {
                     <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center flex-shrink-0">
                       <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                     </div>
-                    <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
                   </div>
                   <div className="flex items-end justify-between gap-2">
                     <div>
@@ -264,14 +286,18 @@ export const WorkspaceIdClient = () => {
                 <Card className="p-5 bg-card border border-border shadow-sm">
                   <div className="flex items-center justify-between mb-8">
                     <h3 className="text-sm font-medium tracking-tight text-foreground">Project Overview</h3>
-                    <select className="text-xs bg-muted text-foreground px-2 py-1 rounded-md border border-border focus:ring-2 focus:ring-primary cursor-pointer">
-                      <option>This Week</option>
-                      <option>This Month</option>
-                      <option>This Year</option>
+                    <select 
+                      value={projectOverviewFilter}
+                      onChange={(e) => setProjectOverviewFilter(e.target.value as "week" | "month" | "year")}
+                      className="text-xs bg-muted text-foreground px-2 py-1 rounded-md border border-border focus:ring-2 focus:ring-primary cursor-pointer"
+                    >
+                      <option value="week">Last 2 Months</option>
+                      <option value="month">Last 4 Months</option>
+                      <option value="year">All Time</option>
                     </select>
                   </div>
                   <div className="h-[240px]">
-                    <WorkspaceProjectOverviewChart data={dynamicData.monthlyData} />
+                    <WorkspaceProjectOverviewChart data={filteredProjectOverviewData} />
                   </div>
                 </Card>
 
@@ -279,11 +305,6 @@ export const WorkspaceIdClient = () => {
                 <Card className="p-5 bg-card border border-border shadow-sm">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm font-medium tracking-tight text-foreground">Task Statistics</h3>
-                    <select className="text-xs bg-muted text-foreground px-2 py-1 rounded-md border border-border focus:ring-2 focus:ring-primary cursor-pointer">
-                      <option>Monthly</option>
-                      <option>Weekly</option>
-                      <option>Daily</option>
-                    </select>
                   </div>
 
                   {/* Total Project Count with Trend */}
@@ -461,9 +482,6 @@ export const WorkspaceIdClient = () => {
               <Card className="p-5 bg-card border border-border shadow-sm flex-1">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-medium tracking-tight text-foreground">Due Alerts</h3>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-accent">
-                    <PlusIcon className="h-4 w-4 text-muted-foreground" />
-                  </Button>
                 </div>
 
                 {dynamicData.dueSoonWorkItems.length > 0 ? (

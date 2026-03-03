@@ -28,6 +28,8 @@ export const useCreateWorkflowStatus = () => {
       toast.success("Status created.");
       queryClient.invalidateQueries({ queryKey: ["workflow-statuses", variables.param.workflowId] });
       queryClient.invalidateQueries({ queryKey: ["workflow", variables.param.workflowId] });
+      // Also invalidate custom-columns in case we synced to project columns
+      queryClient.invalidateQueries({ queryKey: ["custom-columns"] });
     },
     onError: () => {
       toast.error("Failed to create workflow status.");

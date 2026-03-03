@@ -1,6 +1,6 @@
 "use client";
 
-import { Users, MoreHorizontal, Trash2, UserPlus, Eye, Pencil } from "lucide-react";
+import { Users, MoreHorizontal, Trash2, UserPlus, Eye, Pencil, Shield } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +27,7 @@ interface ProjectTeamCardProps {
     onDelete?: () => void;
     onViewMembers?: () => void;
     onEdit?: () => void;
+    onManagePermissions?: () => void;
     canManage?: boolean;
 }
 
@@ -36,6 +37,7 @@ export function ProjectTeamCard({
     onDelete,
     onViewMembers,
     onEdit,
+    onManagePermissions,
     canManage = false,
 }: ProjectTeamCardProps) {
     return (
@@ -62,11 +64,11 @@ export function ProjectTeamCard({
                 </div>
 
                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="opacity-100"
                         >
                             <MoreHorizontal className="h-4 w-4" />
                         </Button>
@@ -86,6 +88,10 @@ export function ProjectTeamCard({
                                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAddMember?.(); }}>
                                     <UserPlus className="mr-2 h-4 w-4" />
                                     Add Member
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onManagePermissions?.(); }}>
+                                    <Shield className="mr-2 h-4 w-4" />
+                                    Manage Permissions
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                     onClick={(e) => { e.stopPropagation(); onDelete?.(); }}

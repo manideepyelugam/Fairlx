@@ -496,7 +496,7 @@ export const MyWorkView = () => {
         ) : view === "board" ? (
           /* Board View - Kanban Style with drag and drop */
           <DragDropContext onDragEnd={onDragEnd}>
-            <div className="flex overflow-x-auto gap-4 p-4 h-full pb-4">
+            <div className="flex overflow-x-scroll gap-4 p-4 h-full pb-4 kanban-scrollbar">
               {visibleColumns.map((column) => {
                 const items = itemsByStatus[column.id] || [];
                 return (

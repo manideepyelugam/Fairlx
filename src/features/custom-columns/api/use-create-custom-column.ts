@@ -24,6 +24,9 @@ export const useCreateCustomColumn = () => {
       toast.success("Custom column created");
       // Invalidate queries for this specific workspace and project
       queryClient.invalidateQueries({ queryKey: ["custom-columns", data.workspaceId, data.projectId] });
+      // Also invalidate workflow-statuses in case we synced to a workflow
+      queryClient.invalidateQueries({ queryKey: ["workflow-statuses"] });
+      queryClient.invalidateQueries({ queryKey: ["workflow"] });
     },
     onError: () => {
       toast.error("Failed to create custom column");

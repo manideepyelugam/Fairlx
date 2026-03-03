@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback, memo, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import {
   ChevronDown,
@@ -53,14 +53,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import DOMPurify from "dompurify";
 import { RichTextEditor } from "@/components/editor/rich-text-editor";
 
 import { useGetSprints } from "../api/use-get-sprints";
@@ -99,6 +91,203 @@ import { Separator } from "@/components/ui/separator";
 import { TaskAttachments } from "@/features/attachments/components/task-attachments";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+// Memoized assignee popover component for instant checkbox feedback
+interface AssigneePopoverProps {
+  workItemId: string;
+  initialAssigneeIds: string[];
+  projectMembers: Array<{ $id: string; name?: string; profileImageUrl?: string | null }>;
+  onUpdate: (workItemId: string, newAssigneeIds: string[]) => void;
+}
+
+const AssigneePopover = memo(function AssigneePopover({
+  workItemId,
+  initialAssigneeIds,
+  projectMembers,
+  onUpdate,
+}: AssigneePopoverProps) {
+  // Local state for INSTANT UI feedback (checkbox AND display)
+  const [localIds, setLocalIds] = useState<string[]>(initialAssigneeIds);
+  // Track the committed server state to compare against debounced result
+  const committedIdsRef = useRef<string[]>(initialAssigneeIds);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounced DB update: only fires if final state differs from last committed state
+  const scheduleUpdate = useCallback((newIds: string[]) => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      const committed = [...committedIdsRef.current].sort().join(",");
+      const next = [...newIds].sort().join(",");
+      if (committed !== next) {
+        committedIdsRef.current = newIds;
+        onUpdate(workItemId, newIds);
+      }
+    }, 1000);
+  }, [workItemId, onUpdate]);
+
+  const handleToggle = (memberId: string) => {
+    const newIds = localIds.includes(memberId)
+      ? localIds.filter(id => id !== memberId)
+      : [...localIds, memberId];
+    
+    // 1. Update local state INSTANTLY
+    setLocalIds(newIds);
+    // 2. Schedule DB update — cancelled if user reverts within 600ms
+    scheduleUpdate(newIds);
+  };
+
+  const handleClearAll = () => {
+    setLocalIds([]);
+    scheduleUpdate([]);
+  };
+
+  // Derive display assignees from LOCAL state + projectMembers for INSTANT updates
+  const displayAssignees = useMemo(() => 
+    localIds
+      .map(id => projectMembers.find(m => m.$id === id))
+      .filter((m): m is NonNullable<typeof m> => m != null),
+    [localIds, projectMembers]
+  );
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <div
+          role="button"
+          tabIndex={0}
+          className="flex items-center gap-1 cursor-pointer hover:bg-accent rounded px-1 w-full"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {displayAssignees.length > 0 ? (
+            <>
+              <div className="flex -space-x-1">
+                {displayAssignees.slice(0, 3).map((assignee) => (
+                  <Avatar key={assignee.$id} className="size-5 border-2 border-background">
+                    <AvatarImage src={assignee.profileImageUrl || undefined} />
+                    <AvatarFallback className="text-[10px]">
+                      {assignee.name?.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                ))}
+              </div>
+              <span className="text-xs text-muted-foreground truncate">
+                {displayAssignees.length > 2
+                  ? `${displayAssignees.length} assigned`
+                  : displayAssignees.map(a => a?.name?.split(" ")[0]).join(", ")}
+              </span>
+            </>
+          ) : (
+            <span className="text-xs text-muted-foreground">Unassigned</span>
+          )}
+        </div>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-0" align="end" onClick={(e) => e.stopPropagation()}>
+        <div className="p-2 border-b">
+          <p className="text-xs font-medium text-muted-foreground">Assign members</p>
+        </div>
+        <div className="max-h-[200px] overflow-y-auto p-1">
+          {projectMembers.map((member) => {
+            const isSelected = localIds.includes(member.$id);
+            return (
+              <div
+                key={member.$id}
+                role="button"
+                tabIndex={0}
+                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors cursor-pointer ${isSelected ? "bg-muted" : "hover:bg-accent"}`}
+                onClick={() => handleToggle(member.$id)}
+                onKeyDown={(e) => e.key === 'Enter' && handleToggle(member.$id)}
+              >
+                <Checkbox checked={isSelected} className="pointer-events-none" />
+                <Avatar className="size-5">
+                  <AvatarImage src={member.profileImageUrl || undefined} />
+                  <AvatarFallback className="text-[10px]">
+                    {member.name?.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-xs truncate">{member.name}</span>
+              </div>
+            );
+          })}
+        </div>
+        {localIds.length > 0 && (
+          <div className="p-1 border-t">
+            <button
+              className="w-full text-xs text-muted-foreground hover:text-foreground px-2 py-1.5 rounded-md hover:bg-accent transition-colors text-left"
+              onClick={handleClearAll}
+            >
+              Clear all
+            </button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+});
+
+// Memoized Select All Checkbox for instant feedback
+interface SelectAllCheckboxProps {
+  itemIds: string[];
+  selectedItemIds: Set<string>;
+  onToggle: (itemIds: string[]) => void;
+  label: string;
+  itemCount: number;
+}
+
+const SelectAllCheckbox = memo(function SelectAllCheckbox({
+  itemIds,
+  selectedItemIds,
+  onToggle,
+  label,
+  itemCount,
+}: SelectAllCheckboxProps) {
+  // Calculate selection state
+  const selectionState = useMemo(() => {
+    if (itemIds.length === 0) return 'none';
+    let selectedCount = 0;
+    for (const id of itemIds) {
+      if (selectedItemIds.has(id)) selectedCount++;
+    }
+    if (selectedCount === 0) return 'none';
+    if (selectedCount === itemIds.length) return 'all';
+    return 'some';
+  }, [itemIds, selectedItemIds]);
+
+  const handleClick = useCallback(() => {
+    onToggle(itemIds);
+  }, [itemIds, onToggle]);
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="w-5 flex items-center justify-center">
+            <Checkbox
+              checked={
+                selectionState === 'all'
+                  ? true
+                  : selectionState === 'some'
+                    ? "indeterminate"
+                    : false
+              }
+              onCheckedChange={handleClick}
+              className="data-[state=unchecked]:border-border"
+              aria-label={label}
+              disabled={itemIds.length === 0}
+            />
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="top">
+          <p className="text-xs">
+            {selectionState === 'all' 
+              ? 'Deselect all' 
+              : `Select all ${itemCount} items`}
+          </p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+});
 
 interface EnhancedBacklogScreenProps {
   workspaceId: string;
@@ -148,8 +337,36 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_isEditMode, setIsEditMode] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<Partial<PopulatedWorkItem>>({});
-  const [isDescriptionDialogOpen, setIsDescriptionDialogOpen] = useState(false);
-  const [editingDescription, setEditingDescription] = useState("");
+  const [drawerWidth, setDrawerWidth] = useState(540);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const isDraggingRef = useRef(false);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDraggingRef.current = true;
+    const startX = e.clientX;
+    const startWidth = drawerWidth;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!isDraggingRef.current) return;
+      const delta = startX - moveEvent.clientX;
+      const newWidth = Math.min(Math.max(startWidth + delta, 400), window.innerWidth * 0.85);
+      setDrawerWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      isDraggingRef.current = false;
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  }, [drawerWidth]);
 
   const { open: openCreateTaskModal } = useCreateTaskModal();
 
@@ -263,7 +480,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     );
   }, [workItemsData, searchQuery]);
 
-  const getSprintWorkItems = (sprintId: string) => {
+  // Define getSprintWorkItems BEFORE it's used in allVisibleWorkItemIds
+  const getSprintWorkItems = useCallback((sprintId: string) => {
     const items = workItemsData?.documents?.filter((item) =>
       item.sprintId === sprintId && item.type !== WorkItemType.EPIC
     ) || [];
@@ -272,8 +490,18 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.key.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  };
+  }, [workItemsData, searchQuery]);
 
+  // All visible work items (backlog + sprints)
+  const allVisibleWorkItemIds = useMemo(() => {
+    const sprintItemIds = sprints.flatMap(sprint => 
+      getSprintWorkItems(sprint.$id).map(item => item.$id)
+    );
+    const backlogItemIds = backlogItems.map(item => item.$id);
+    return [...backlogItemIds, ...sprintItemIds];
+  }, [backlogItems, sprints, getSprintWorkItems]);
+
+  // Keyboard shortcuts for bulk selection
   const getStatusCounts = (items: PopulatedWorkItem[]) => {
     return {
       todo: items.filter((item) => item.status === WorkItemStatus.TODO).length,
@@ -283,7 +511,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
   };
 
   // Multi-select Handlers
-  const toggleSelection = (itemId: string) => {
+  const toggleSelection = useCallback((itemId: string) => {
     setSelectedItemIds((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(itemId)) {
@@ -293,29 +521,94 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
       }
       return newSet;
     });
-  };
+  }, []);
 
-  /* Unused selection helpers
-  const selectAll = (itemIds: string[]) => {
+  // Select all items from a given list
+  const selectAll = useCallback((itemIds: string[]) => {
     setSelectedItemIds((prev) => {
       const newSet = new Set(prev);
       itemIds.forEach(id => newSet.add(id));
       return newSet;
     });
-  };
+  }, []);
 
-  const deselectAll = (itemIds: string[]) => {
+  // Deselect all items from a given list
+  const _deselectAll = useCallback((itemIds: string[]) => {
     setSelectedItemIds((prev) => {
       const newSet = new Set(prev);
       itemIds.forEach(id => newSet.delete(id));
       return newSet;
     });
-  };
-  */
+  }, []);
 
-  const clearSelection = () => {
+  // Toggle all items in a list (select all if not all selected, deselect all if all are selected)
+  const toggleSelectAll = useCallback((itemIds: string[]) => {
+    setSelectedItemIds(prev => {
+      const allSelected = itemIds.length > 0 && itemIds.every(id => prev.has(id));
+      if (allSelected) {
+        // Deselect all
+        const newSet = new Set(prev);
+        itemIds.forEach(id => newSet.delete(id));
+        return newSet;
+      } else {
+        // Select all
+        const newSet = new Set(prev);
+        itemIds.forEach(id => newSet.add(id));
+        return newSet;
+      }
+    });
+  }, []);
+
+  // Check if all items in a list are selected
+  const _areAllSelected = useCallback((itemIds: string[]): boolean => {
+    return itemIds.length > 0 && itemIds.every(id => selectedItemIds.has(id));
+  }, [selectedItemIds]);
+
+  // Check if some (but not all) items in a list are selected  
+  const _areSomeSelected = useCallback((itemIds: string[]): boolean => {
+    if (itemIds.length === 0) return false;
+    const selectedCount = itemIds.filter(id => selectedItemIds.has(id)).length;
+    return selectedCount > 0 && selectedCount < itemIds.length;
+  }, [selectedItemIds]);
+
+  const clearSelection = useCallback(() => {
     setSelectedItemIds(new Set());
-  };
+  }, []);
+
+  // Keyboard shortcuts for selection
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in an input
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
+      // Ctrl/Cmd + A: Select all visible items
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+        e.preventDefault();
+        if (selectedItemIds.size === allVisibleWorkItemIds.length && allVisibleWorkItemIds.length > 0) {
+          // All already selected, deselect all
+          clearSelection();
+        } else {
+          // Select all visible items
+          selectAll(allVisibleWorkItemIds);
+        }
+      }
+
+      // Escape: Clear selection
+      if (e.key === 'Escape' && selectedItemIds.size > 0) {
+        e.preventDefault();
+        clearSelection();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedItemIds, allVisibleWorkItemIds, clearSelection, selectAll]);
+
+  // Memoize backlog item IDs to avoid recalculating on every render
+  const backlogItemIds = useMemo(() => backlogItems.map(i => i.$id), [backlogItems]);
 
 
   // Bulk Actions
@@ -389,6 +682,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     updateWorkItem({
       param: { workItemId: itemId },
       json: { status },
+      optimistic: true,
+      silent: true,
     });
   };
 
@@ -420,6 +715,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     updateWorkItem({
       param: { workItemId: draggableId },
       json: { sprintId: newSprintId },
+      optimistic: true,
+      silent: true,
     });
 
     toast.success("Work item moved");
@@ -451,6 +748,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     updateWorkItem({
       param: { workItemId: selectedItem.$id },
       json: jsonUpdates,
+      optimistic: true,
+      silent: false, // Show toast for explicit save actions in drawer
     });
 
     // Update local state immediately for better UX
@@ -522,6 +821,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     updateWorkItem({
       param: { workItemId },
       json: { title: editingWorkItemTitle },
+      optimistic: true,
+      silent: true,
     });
 
     setEditingWorkItemId(null);
@@ -539,6 +840,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     updateWorkItem({
       param: { workItemId },
       json: { epicId: epicId === "none" ? null : epicId },
+      optimistic: true,
+      silent: true,
     });
   };
 
@@ -546,6 +849,8 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     updateWorkItem({
       param: { workItemId },
       json: { storyPoints },
+      optimistic: true,
+      silent: true,
     });
   };
 
@@ -553,15 +858,20 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
     updateWorkItem({
       param: { workItemId },
       json: { priority },
+      optimistic: true,
+      silent: true,
     });
   };
 
-  const handleUpdateAssignee = (workItemId: string, assigneeId: string) => {
+  // Called by AssigneePopover with the new assignee IDs array
+  const handleAssigneeUpdate = useCallback((workItemId: string, newAssigneeIds: string[]) => {
     updateWorkItem({
       param: { workItemId },
-      json: { assigneeIds: assigneeId === "unassigned" ? [] : [assigneeId] },
+      json: { assigneeIds: newAssigneeIds },
+      optimistic: true,
+      silent: true,
     });
-  };
+  }, [updateWorkItem]);
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
@@ -627,7 +937,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                   <Button
                     size="xs"
                     // Default/Primary variant
-                    onClick={openCreateTaskModal}
+                    onClick={() => openCreateTaskModal()}
                   >
                     <Plus className="w-3 h-3 mr-0.5" />
                     Create Full Workitem
@@ -706,6 +1016,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
             {/* Sprint Sections */}
             {sprints.map((sprint) => {
               const sprintItems = getSprintWorkItems(sprint.$id);
+              const sprintItemIds = sprintItems.map(i => i.$id); // Calculate once per sprint
               const counts = getStatusCounts(sprintItems);
               const isExpanded = expandedSprints.includes(sprint.$id);
 
@@ -890,11 +1201,18 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                             </div>
                           ) : (
                             <div className="divide-y divide-border">
-                              {/* Column Header Row */}
-                              {/* <div className="px-4 py-2 bg-muted/50 border-b border-border">
+                              {/* Column Header Row with Select All */}
+                              <div className="px-4 py-2 bg-muted/50 border-b border-border">
                                 <div className="flex items-center gap-4">
                                   <div className="flex items-center gap-3">
-                                    <div className="w-5" />
+                                    {/* Select All Checkbox for Sprint - Memoized */}
+                                    <SelectAllCheckbox
+                                      itemIds={sprintItemIds}
+                                      selectedItemIds={selectedItemIds}
+                                      onToggle={toggleSelectAll}
+                                      label={`Select all items in ${sprint.name}`}
+                                      itemCount={sprintItemIds.length}
+                                    />
                                     <div className="w-4" />
                                     <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider w-4">Type</span>
                                     <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider w-20">Key</span>
@@ -907,7 +1225,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                     <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider w-[120px]">Assignee</span>
                                   </div>
                                 </div>
-                              </div> */}
+                              </div>
                               {sprintItems.map((item, index) => (
                                 <Draggable key={item.$id} draggableId={item.$id} index={index}>
                                   {(provided, snapshot) => (
@@ -1069,48 +1387,15 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                           </SelectContent>
                                         </Select>
 
-                                        {/* Assignee Dropdown */}
-                                        <Select
-                                          value={item.assignees?.[0]?.$id || "unassigned"}
-                                          onValueChange={(value) => handleUpdateAssignee(item.$id, value)}
-                                        >
-                                          <SelectTrigger
-                                            className="w-[120px] h-7 text-xs flex-shrink-0"
-                                            onClick={(e) => e.stopPropagation()}
-                                          >
-                                            <SelectValue className="overflow-x-hidden" placeholder="Assignee">
-                                              {item.assignees?.[0] ? (
-                                                <div className="flex items-center w-[80px] overflow-x-hidden gap-1">
-                                                  <Avatar className="size-4">
-                                                    <AvatarImage src={item.assignees[0].profileImageUrl || undefined} />
-                                                    <AvatarFallback className="text-[10px]">
-                                                      {item.assignees[0].name?.charAt(0).toUpperCase()}
-                                                    </AvatarFallback>
-                                                  </Avatar>
-                                                  <span className="truncate overflow-x-hidden">{item.assignees[0].name}</span>
-                                                </div>
-                                              ) : (
-                                                "Unassigned"
-                                              )}
-                                            </SelectValue>
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="unassigned">Unassigned</SelectItem>
-                                            {projectMembers.map((member) => (
-                                              <SelectItem key={member.$id} value={member.$id}>
-                                                <div className="flex items-center gap-2">
-                                                  <Avatar className="size-4">
-                                                    <AvatarImage src={member.profileImageUrl || undefined} />
-                                                    <AvatarFallback className="text-[10px]">
-                                                      {member.name?.charAt(0).toUpperCase()}
-                                                    </AvatarFallback>
-                                                  </Avatar>
-                                                  {member.name}
-                                                </div>
-                                              </SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
+                                        {/* Assignee Multi-Select - Memoized for instant checkbox feedback */}
+                                        <div className="w-[140px] h-7 text-xs flex-shrink-0 flex items-center border rounded-md hover:bg-accent/50 transition-colors">
+                                          <AssigneePopover
+                                            workItemId={item.$id}
+                                            initialAssigneeIds={item.assigneeIds || []}
+                                            projectMembers={projectMembers}
+                                            onUpdate={handleAssigneeUpdate}
+                                          />
+                                        </div>
                                       </div>
                                     </div>
                                   )}
@@ -1214,7 +1499,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                   Create work item
                                 </button>
                                 <button
-                                  onClick={openCreateTaskModal}
+                                  onClick={() => openCreateTaskModal()}
                                   className="w-1/2 px-4 py-3 text-left text-sm text-muted-foreground hover:bg-accent transition-colors flex items-center gap-2"
                                 >
                                   <Plus className="size-4" />
@@ -1289,7 +1574,14 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                         <div className="px-4 py-2 bg-muted/50 border-b border-border">
                           <div className="flex items-center gap-4">
                             <div className="flex items-center gap-3">
-                              <div className="w-5" />
+                              {/* Select All Checkbox - Memoized */}
+                              <SelectAllCheckbox
+                                itemIds={backlogItemIds}
+                                selectedItemIds={selectedItemIds}
+                                onToggle={toggleSelectAll}
+                                label="Select all backlog items"
+                                itemCount={backlogItemIds.length}
+                              />
                               <div className="w-4" />
                               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider w-4">Type</span>
                               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider w-20">Key</span>
@@ -1464,48 +1756,15 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                                     </SelectContent>
                                   </Select>
 
-                                  {/* Assignee Dropdown */}
-                                  <Select
-                                    value={item.assignees?.[0]?.$id || "unassigned"}
-                                    onValueChange={(value) => handleUpdateAssignee(item.$id, value)}
-                                  >
-                                    <SelectTrigger
-                                      className="w-[120px] h-7 text-xs flex-shrink-0"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      <SelectValue placeholder="Assignee">
-                                        {item.assignees?.[0] ? (
-                                          <div className="flex items-center w-[80px] overflow-hidden gap-1">
-                                            <Avatar className="size-4 shrink-0">
-                                              <AvatarImage src={item.assignees[0].profileImageUrl || undefined} />
-                                              <AvatarFallback className="text-[10px]">
-                                                {item.assignees[0].name?.charAt(0).toUpperCase()}
-                                              </AvatarFallback>
-                                            </Avatar>
-                                            <span className="truncate">{item.assignees[0].name}</span>
-                                          </div>
-                                        ) : (
-                                          "Unassigned"
-                                        )}
-                                      </SelectValue>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="unassigned">Unassigned</SelectItem>
-                                      {projectMembers.map((member) => (
-                                        <SelectItem key={member.$id} value={member.$id}>
-                                          <div className="flex items-center gap-2">
-                                            <Avatar className="size-4">
-                                              <AvatarImage src={member.profileImageUrl || undefined} />
-                                              <AvatarFallback className="text-[10px]">
-                                                {member.name?.charAt(0).toUpperCase()}
-                                              </AvatarFallback>
-                                            </Avatar>
-                                            {member.name}
-                                          </div>
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
+                                  {/* Assignee Multi-Select - Memoized for instant checkbox feedback */}
+                                  <div className="w-[140px] h-7 text-xs flex-shrink-0 flex items-center border rounded-md hover:bg-accent/50 transition-colors">
+                                    <AssigneePopover
+                                      workItemId={item.$id}
+                                      initialAssigneeIds={item.assigneeIds || []}
+                                      projectMembers={projectMembers}
+                                      onUpdate={handleAssigneeUpdate}
+                                    />
+                                  </div>
 
                                   {/* Actions Dropdown */}
                                   {canDeleteWorkItems && (
@@ -1618,7 +1877,7 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                             Create work item
                           </button>
                           <button
-                            onClick={openCreateTaskModal}
+                            onClick={() => openCreateTaskModal()}
                             className="w-1/2 px-4 py-3 text-left text-sm text-muted-foreground hover:bg-muted transition-colors flex items-center gap-2"
                           >
                             <Plus className="size-4" />
@@ -1637,8 +1896,24 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
         </div>
 
         {/* Work Item Detail Drawer - ClickUp-style */}
-        <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-          <SheetContent className="w-full sm:max-w-[540px] p-0 overflow-hidden flex flex-col gap-0">
+        <Sheet open={isDrawerOpen} onOpenChange={(open) => {
+          setIsDrawerOpen(open);
+          if (!open) {
+            setIsExpanded(false);
+            setDrawerWidth(540);
+          }
+        }}>
+          <SheetContent 
+            className="p-0 overflow-hidden flex flex-col gap-0"
+            style={{ width: isExpanded ? "90vw" : `${drawerWidth}px`, maxWidth: isExpanded ? "90vw" : `${drawerWidth}px` }}
+          >
+            {/* Drag handle for resizing */}
+            {!isExpanded && (
+              <div
+                className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/20 active:bg-primary/30 transition-colors z-50"
+                onMouseDown={handleMouseDown}
+              />
+            )}
             {selectedItem && (
               <>
                 {/* Hidden accessible title */}
@@ -1669,6 +1944,26 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                     </button>
                   </div>
                   <div className="flex items-center gap-1">
+                    {/* Expand/Collapse toggle */}
+                    <TooltipProvider delayDuration={300}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            className="hover:bg-accent p-1.5 rounded-md transition-colors"
+                            onClick={() => setIsExpanded(!isExpanded)}
+                          >
+                            {isExpanded ? (
+                              <ChevronRight className="size-3.5 text-muted-foreground" />
+                            ) : (
+                              <ChevronDown className="size-3.5 text-muted-foreground rotate-[-90deg]" />
+                            )}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">
+                          <p className="text-xs">{isExpanded ? "Collapse panel" : "Expand panel"}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                     {canDeleteWorkItems && (
                       <button
                         className="hover:bg-destructive/10 p-1.5 rounded-md transition-colors group"
@@ -1803,57 +2098,92 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
                         <span className="text-xs  font-medium">Assignees</span>
                       </div>
                       <div className="flex-1">
-                        <Select
-                          value={(pendingChanges.assigneeIds ?? selectedItem.assigneeIds)?.[0] || "unassigned"}
-                          onValueChange={(value) => {
-                            if (value === "unassigned") {
-                              setPendingChanges(prev => ({ ...prev, assigneeIds: [] }));
-                            } else {
-                              const currentIds = pendingChanges.assigneeIds ?? selectedItem.assigneeIds ?? [];
-                              if (currentIds.includes(value)) {
-                                setPendingChanges(prev => ({ ...prev, assigneeIds: currentIds.filter(id => id !== value) }));
-                              } else {
-                                setPendingChanges(prev => ({ ...prev, assigneeIds: [...currentIds, value] }));
-                              }
-                            }
-                          }}
-                        >
-                          <SelectTrigger className="h-8 border-none shadow-none bg-transparent hover:bg-accent/50 text-sm px-2 w-auto min-w-[120px]">
-                            <div className="flex items-center gap-2">
-                              {selectedItem.assignees && selectedItem.assignees.filter(a => a != null).length > 0 ? (
-                                <div className="flex items-center gap-1.5">
-                                  {selectedItem.assignees.filter((a): a is NonNullable<typeof a> => a != null).slice(0, 3).map((assignee) => (
-                                    <Avatar key={assignee.$id} className="size-5">
-                                      <AvatarImage src={assignee.profileImageUrl || ""} />
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button className="h-8 flex items-center gap-2 px-2 rounded-md hover:bg-accent/50 transition-colors min-w-[120px]">
+                              {(() => {
+                                const currentIds = pendingChanges.assigneeIds ?? selectedItem.assigneeIds ?? [];
+                                const currentAssignees = selectedItem.assignees?.filter(a => a != null) || [];
+                                if (currentIds.length > 0 && currentAssignees.length > 0) {
+                                  return (
+                                    <div className="flex items-center gap-1.5">
+                                      <div className="flex -space-x-1.5">
+                                        {currentAssignees.slice(0, 3).map((assignee) => (
+                                          <Avatar key={assignee.$id} className="size-5 border border-background">
+                                            <AvatarImage src={assignee.profileImageUrl || ""} />
+                                            <AvatarFallback className="text-[10px]">
+                                              {(assignee.name ?? "?").charAt(0).toUpperCase()}
+                                            </AvatarFallback>
+                                          </Avatar>
+                                        ))}
+                                      </div>
+                                      <span className="text-xs">
+                                        {currentAssignees.length > 2
+                                          ? `${currentAssignees.length} assigned`
+                                          : currentAssignees.map(a => a?.name?.split(" ")[0]).join(", ")}
+                                      </span>
+                                    </div>
+                                  );
+                                }
+                                return <span className="text-xs text-muted-foreground">Empty</span>;
+                              })()}
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-56 p-0" align="start">
+                            <div className="p-2 border-b">
+                              <p className="text-xs font-medium text-muted-foreground">Assign members</p>
+                            </div>
+                            <div className="max-h-[200px] overflow-y-auto p-1">
+                              {projectMembers.map((member) => {
+                                const currentIds = pendingChanges.assigneeIds ?? selectedItem.assigneeIds ?? [];
+                                const isSelected = currentIds.includes(member.$id);
+                                return (
+                                  <div
+                                    key={member.$id}
+                                    role="button"
+                                    tabIndex={0}
+                                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors cursor-pointer ${isSelected ? "bg-muted" : "hover:bg-accent"}`}
+                                    onClick={() => {
+                                      if (isSelected) {
+                                        setPendingChanges(prev => ({ ...prev, assigneeIds: currentIds.filter(id => id !== member.$id) }));
+                                      } else {
+                                        setPendingChanges(prev => ({ ...prev, assigneeIds: [...currentIds, member.$id] }));
+                                      }
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        if (isSelected) {
+                                          setPendingChanges(prev => ({ ...prev, assigneeIds: currentIds.filter(id => id !== member.$id) }));
+                                        } else {
+                                          setPendingChanges(prev => ({ ...prev, assigneeIds: [...currentIds, member.$id] }));
+                                        }
+                                      }
+                                    }}
+                                  >
+                                    <Checkbox checked={isSelected} className="pointer-events-none" />
+                                    <Avatar className="size-5">
+                                      <AvatarImage src={member.profileImageUrl || ""} />
                                       <AvatarFallback className="text-[10px]">
-                                        {(assignee.name ?? "?").charAt(0).toUpperCase()}
+                                        {(member.name ?? "?").charAt(0).toUpperCase()}
                                       </AvatarFallback>
                                     </Avatar>
-                                  ))}
-                                  <span className="text-xs">{selectedItem.assignees.filter(a => a != null).map(a => a?.name?.split(" ")[0]).join(", ")}</span>
-                                </div>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">Empty</span>
-                              )}
+                                    <span className="text-xs">{member.name}</span>
+                                  </div>
+                                );
+                              })}
                             </div>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="unassigned">Unassigned</SelectItem>
-                            {projectMembers.map((member) => (
-                              <SelectItem key={member.$id} value={member.$id}>
-                                <div className="flex items-center gap-2">
-                                  <Avatar className="size-5">
-                                    <AvatarImage src={member.profileImageUrl || ""} />
-                                    <AvatarFallback className="text-[10px]">
-                                      {(member.name ?? "?").charAt(0).toUpperCase()}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <span className="text-xs">{member.name}</span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                            {(pendingChanges.assigneeIds ?? selectedItem.assigneeIds ?? []).length > 0 && (
+                              <div className="p-1 border-t">
+                                <button
+                                  className="w-full text-xs text-muted-foreground hover:text-foreground px-2 py-1.5 rounded-md hover:bg-accent transition-colors text-left"
+                                  onClick={() => setPendingChanges(prev => ({ ...prev, assigneeIds: [] }))}
+                                >
+                                  Clear all
+                                </button>
+                              </div>
+                            )}
+                          </PopoverContent>
+                        </Popover>
                       </div>
                     </div>
 
@@ -2166,34 +2496,32 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
 
                   <Separator />
 
-                  {/* Description Section */}
+                  {/* Description Section - Inline TipTap Editor */}
                   <div className="px-5 py-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-sm font-semibold flex items-center gap-2">
-                        Add description
-                      </span>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        className="h-6 text-xs"
-                        onClick={() => {
-                          setEditingDescription(selectedItem.description ?? "");
-                          setIsDescriptionDialogOpen(true);
+                    <TooltipProvider delayDuration={300}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-sm font-semibold flex items-center gap-2 mb-3 cursor-default">
+                            Description
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" align="start">
+                          <p className="text-xs">Click below to edit description. Supports rich text formatting.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <div className="border rounded-lg overflow-hidden">
+                      <RichTextEditor
+                        content={pendingChanges.description ?? selectedItem.description ?? ""}
+                        onChange={(content) => {
+                          setPendingChanges(prev => ({ ...prev, description: content }));
                         }}
-                      >
-                        Edit
-                      </Button>
-                    </div>
-                    {(selectedItem.description) ? (
-                      <div
-                        className="prose prose-sm max-w-none border rounded-lg  p-4 dark:prose-invert text-sm"
-                        dangerouslySetInnerHTML={{
-                          __html: DOMPurify.sanitize(selectedItem.description)
-                        }}
+                        workspaceId={workspaceId}
+                        projectId={projectId}
+                        placeholder="Add a description..."
+                        minHeight="120px"
                       />
-                    ) : (
-                      <p className="text-sm text-muted-foreground/50 italic">No description</p>
-                    )}
+                    </div>
                   </div>
 
                   <Separator />
@@ -2277,38 +2605,6 @@ export default function EnhancedBacklogScreen({ workspaceId, projectId }: Enhanc
         open={isCreateEpicDialogOpen}
         onCloseAction={() => setIsCreateEpicDialogOpen(false)}
       />
-
-      {/* Description Edit Dialog */}
-      <Dialog open={isDescriptionDialogOpen} onOpenChange={setIsDescriptionDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Edit Description</DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 overflow-y-auto min-h-[300px]">
-            <RichTextEditor
-              content={editingDescription}
-              onChange={(content) => setEditingDescription(content)}
-              workspaceId={workspaceId}
-              projectId={projectId}
-              placeholder="Add a description..."
-              minHeight="250px"
-            />
-          </div>
-          <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setIsDescriptionDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                setPendingChanges(prev => ({ ...prev, description: editingDescription }));
-                setIsDescriptionDialogOpen(false);
-              }}
-            >
-              Save Description
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </DragDropContext>
   );
 }

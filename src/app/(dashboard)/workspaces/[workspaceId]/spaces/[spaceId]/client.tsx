@@ -47,6 +47,7 @@ import { useCurrentMember } from "@/features/members/hooks/use-current-member";
 import { useUpdateProject } from "@/features/projects/api/use-update-project";
 import { useConfirm } from "@/hooks/use-confirm";
 import { MasterBadge } from "@/features/spaces/components/space-role-badge";
+import { useGetWorkflows } from "@/features/workflows/api/use-get-workflows";
 // import { useGetTeams } from "@/features/teams/api/use-get-teams";
 // import { useUpdateTeam } from "@/features/teams/api/use-update-team";
 import { useGetMembers } from "@/features/members/api/use-get-members";
@@ -69,6 +70,7 @@ export const SpaceIdClient = () => {
   const { data: space, isLoading: isLoadingSpace } = useGetSpace({ spaceId });
   const { data: projectsData, isLoading: isLoadingProjects } = useGetProjects({ workspaceId });
   const { data: membersData } = useGetMembers({ workspaceId });
+  const { data: workflowsData } = useGetWorkflows({ workspaceId, spaceId });
   const { isAdmin } = useCurrentMember({ workspaceId });
 
   const [isAddProjectOpen, setIsAddProjectOpen] = useState(false);
@@ -76,6 +78,17 @@ export const SpaceIdClient = () => {
 
   // Workspace admins are treated as space masters
   const isMaster = isAdmin;
+
+  // Create a map of workflow IDs to names
+  const workflowMap = useMemo(() => {
+    const map = new Map<string, string>();
+    if (workflowsData?.documents) {
+      for (const workflow of workflowsData.documents) {
+        map.set(workflow.$id, workflow.name);
+      }
+    }
+    return map;
+  }, [workflowsData]);
 
   // Get the space owner from members
   const spaceOwner = useMemo(() => {
@@ -116,9 +129,15 @@ export const SpaceIdClient = () => {
     router.push(`/workspaces/${workspaceId}/projects/${projectId}`);
   };
 
-  const handleWorkflowClick = (projectId: string, e: React.MouseEvent) => {
+  const handleWorkflowClick = (projectId: string, projectWorkflowId: string | undefined, e: React.MouseEvent) => {
     e.stopPropagation();
-    router.push(`/workspaces/${workspaceId}/projects/${projectId}/workflow`);
+    // If project has a workflow assigned, go directly to the workflow editor
+    if (projectWorkflowId) {
+      router.push(`/workspaces/${workspaceId}/spaces/${spaceId}/workflows/${projectWorkflowId}`);
+    } else {
+      // Otherwise, go to the project workflow setup page
+      router.push(`/workspaces/${workspaceId}/projects/${projectId}/workflow`);
+    }
   };
 
   const handleCreateProject = () => {
@@ -319,7 +338,7 @@ export const SpaceIdClient = () => {
                           <h4 className="font-semibold text-base truncate group-hover:text-primary transition-colors">
                             {project.name}
                           </h4>
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex items-center gap-1">
                             {/* Workflow Icon */}
                             <TooltipProvider delayDuration={100}>
                               <Tooltip>
@@ -328,7 +347,7 @@ export const SpaceIdClient = () => {
                                     size="icon"
                                     variant="ghost"
                                     className="size-7 hover:bg-primary/10 hover:text-primary"
-                                    onClick={(e) => handleWorkflowClick(project.$id, e)}
+                                    onClick={(e) => handleWorkflowClick(project.$id, project.workflowId, e)}
                                   >
                                     <GitBranch className="size-4" />
                                   </Button>
@@ -375,7 +394,11 @@ export const SpaceIdClient = () => {
                           )}
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <GitBranch className="size-3" />
-                            <span>{project.workflowId ? "Custom" : "Default"} Workflow</span>
+                            <span>
+                              {project.workflowId 
+                                ? workflowMap.get(project.workflowId) || "Custom Workflow"
+                                : "Default Workflow"}
+                            </span>
                           </div>
                         </div>
                       </div>

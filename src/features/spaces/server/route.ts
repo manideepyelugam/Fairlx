@@ -8,7 +8,6 @@ import { MemberRole } from "@/features/members/types";
 
 import {
   DATABASE_ID,
-  IMAGES_BUCKET_ID,
   SPACES_ID,
   SPACE_MEMBERS_ID,
   PROJECTS_ID,
@@ -17,6 +16,7 @@ import {
 import { sessionMiddleware } from "@/lib/session-middleware";
 // Usage metering for billing - every action must be metered
 import { logComputeUsage, getComputeUnits } from "@/lib/usage-metering";
+import { uploadImageAndGetUrl } from "@/lib/storage/helpers";
 
 import {
   createSpaceSchema,
@@ -90,18 +90,8 @@ const app = new Hono()
       // Handle image upload
       let uploadedImageUrl: string | undefined;
       if (image instanceof File) {
-        const file = await storage.createFile(
-          IMAGES_BUCKET_ID,
-          ID.unique(),
-          image
-        );
-        const arrayBuffer = await storage.getFilePreview(
-          IMAGES_BUCKET_ID,
-          file.$id
-        );
-        uploadedImageUrl = `data:image/png;base64,${Buffer.from(
-          arrayBuffer
-        ).toString("base64")}`;
+        const result = await uploadImageAndGetUrl(storage, image);
+        uploadedImageUrl = result.url;
       }
 
       // Get max position for ordering
@@ -375,18 +365,8 @@ const app = new Hono()
       // Handle image upload if provided
       let uploadedImageUrl: string | undefined;
       if (updates.image instanceof File) {
-        const file = await storage.createFile(
-          IMAGES_BUCKET_ID,
-          ID.unique(),
-          updates.image
-        );
-        const arrayBuffer = await storage.getFilePreview(
-          IMAGES_BUCKET_ID,
-          file.$id
-        );
-        uploadedImageUrl = `data:image/png;base64,${Buffer.from(
-          arrayBuffer
-        ).toString("base64")}`;
+        const result = await uploadImageAndGetUrl(storage, updates.image);
+        uploadedImageUrl = result.url;
       }
 
       // Prepare update payload
