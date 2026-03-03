@@ -3,6 +3,7 @@ import { DATABASE_ID, ATTACHMENTS_ID, ATTACHMENTS_BUCKET_ID, TASKS_ID } from "@/
 import { Attachment } from "../types";
 import { Query, ID } from "node-appwrite";
 import { Task } from "@/features/tasks/types";
+import { getAdminStorageProvider } from "@/lib/storage";
 
 export const getAttachments = async (taskId: string, workspaceId: string): Promise<Attachment[]> => {
   const { databases } = await createAdminClient();
@@ -80,7 +81,7 @@ export const deleteAttachment = async (
   deletedBy?: string,
   deleterName?: string
 ): Promise<void> => {
-  const { databases, storage } = await createAdminClient();
+  const { databases } = await createAdminClient();
 
   // First get the attachment to get the fileId
   const attachment = await databases.getDocument(
@@ -97,9 +98,10 @@ export const deleteAttachment = async (
   // Store attachment info for notifications
   const taskId = attachment.taskId;
 
-  // Delete the file from storage
+  // Delete the file from storage (R2 or Appwrite)
   try {
-    await storage.deleteFile(ATTACHMENTS_BUCKET_ID, attachment.fileId);
+    const storageProvider = await getAdminStorageProvider();
+    await storageProvider.deleteFile(ATTACHMENTS_BUCKET_ID, attachment.fileId);
   } catch {
     // Continue with database deletion even if file deletion fails
   }

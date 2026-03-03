@@ -6,7 +6,6 @@ import { z } from "zod";
 
 import {
   DATABASE_ID,
-  IMAGES_BUCKET_ID,
   MEMBERS_ID,
   PROJECTS_ID,
   TASKS_ID,
@@ -18,6 +17,7 @@ import {
   ORGANIZATIONS_ID,
 } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
+import { uploadImageAndGetUrl } from "@/lib/storage/helpers";
 import { generateInviteCode } from "@/lib/utils";
 
 import { MemberRole, WorkspaceMemberRole } from "@/features/members/types";
@@ -166,20 +166,8 @@ const app = new Hono()
       let uploadedImageUrl: string | undefined;
 
       if (image instanceof File) {
-        const file = await storage.createFile(
-          IMAGES_BUCKET_ID,
-          ID.unique(),
-          image
-        );
-
-        const arrayBuffer = await storage.getFilePreview(
-          IMAGES_BUCKET_ID,
-          file.$id
-        );
-
-        uploadedImageUrl = `data:image/png;base64,${Buffer.from(
-          arrayBuffer
-        ).toString("base64")}`;
+        const result = await uploadImageAndGetUrl(storage, image);
+        uploadedImageUrl = result.url;
       }
 
       // Get ORG ID
@@ -248,20 +236,8 @@ const app = new Hono()
       let uploadedImageUrl: string | undefined;
 
       if (image instanceof File) {
-        const file = await storage.createFile(
-          IMAGES_BUCKET_ID,
-          ID.unique(),
-          image
-        );
-
-        const arrayBuffer = await storage.getFilePreview(
-          IMAGES_BUCKET_ID,
-          file.$id
-        );
-
-        uploadedImageUrl = `data:image/png;base64,${Buffer.from(
-          arrayBuffer
-        ).toString("base64")}`;
+        const result = await uploadImageAndGetUrl(storage, image);
+        uploadedImageUrl = result.url;
       } else {
         uploadedImageUrl = image;
       }

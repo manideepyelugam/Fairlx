@@ -8,6 +8,7 @@ import {
     WORKSPACES_ID,
 } from "@/config";
 import { StorageDailySnapshot } from "@/features/usage/types";
+import { getAdminStorageProvider } from "@/lib/storage";
 
 /**
  * Storage Snapshot Job
@@ -39,7 +40,7 @@ export interface StorageSnapshotResult {
  */
 export async function captureWorkspaceStorageSnapshot(
     databases: Databases,
-    storage: { listFiles: (bucketId: string, queries?: string[]) => Promise<{ total: number; files: { sizeBytes: number }[] }> },
+    storage: { listFiles: (bucketId: string, queries?: string[]) => Promise<{ total: number; files: { sizeBytes: number }[] }> } | null,
     workspaceId: string
 ): Promise<StorageSnapshotResult> {
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
@@ -86,7 +87,9 @@ export async function captureWorkspaceStorageSnapshot(
         let totalBytes = 0;
 
         try {
-            const files = await storage.listFiles(ATTACHMENTS_BUCKET_ID, [
+            // Use unified storage provider (R2 or Appwrite)
+            const storageProvider = storage || await getAdminStorageProvider();
+            const files = await storageProvider.listFiles(ATTACHMENTS_BUCKET_ID, [
                 Query.limit(10000), // Adjust based on expected file count
             ]);
 
@@ -136,7 +139,7 @@ export async function captureWorkspaceStorageSnapshot(
  */
 export async function captureAllStorageSnapshots(
     databases: Databases,
-    storage: { listFiles: (bucketId: string, queries?: string[]) => Promise<{ total: number; files: { sizeBytes: number }[] }> }
+    storage?: { listFiles: (bucketId: string, queries?: string[]) => Promise<{ total: number; files: { sizeBytes: number }[] }> } | null
 ): Promise<StorageSnapshotResult[]> {
     const results: StorageSnapshotResult[] = [];
 
@@ -150,7 +153,7 @@ export async function captureAllStorageSnapshots(
     for (const workspace of workspaces.documents) {
         const result = await captureWorkspaceStorageSnapshot(
             databases,
-            storage,
+            storage || null,
             workspace.$id
         );
         results.push(result);

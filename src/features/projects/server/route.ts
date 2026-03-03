@@ -9,8 +9,9 @@ import { seedProjectRolesAndAssignOwner } from "@/features/projects/lib/utils";
 import { TaskStatus } from "@/features/tasks/types";
 import { WorkflowInheritanceMode, Space } from "@/features/spaces/types";
 
-import { DATABASE_ID, IMAGES_BUCKET_ID, PROJECTS_ID, TASKS_ID, TIME_LOGS_ID, SPACES_ID } from "@/config";
+import { DATABASE_ID, PROJECTS_ID, TASKS_ID, TIME_LOGS_ID, SPACES_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
+import { uploadImageAndGetUrl } from "@/lib/storage/helpers";
 import {
   dispatchWorkitemEvent,
 } from "@/lib/notifications";
@@ -66,20 +67,8 @@ const app = new Hono()
       let uploadedImageUrl: string | undefined;
 
       if (image instanceof File) {
-        const file = await storage.createFile(
-          IMAGES_BUCKET_ID,
-          ID.unique(),
-          image
-        );
-
-        const arrayBuffer = await storage.getFilePreview(
-          IMAGES_BUCKET_ID,
-          file.$id
-        );
-
-        uploadedImageUrl = `data:image/png;base64,${Buffer.from(
-          arrayBuffer
-        ).toString("base64")}`;
+        const result = await uploadImageAndGetUrl(storage, image);
+        uploadedImageUrl = result.url;
       }
 
       // If project is being created within a space, check for workflow inheritance
@@ -289,20 +278,8 @@ const app = new Hono()
       let uploadedImageUrl: string | undefined;
 
       if (image instanceof File) {
-        const file = await storage.createFile(
-          IMAGES_BUCKET_ID,
-          ID.unique(),
-          image
-        );
-
-        const arrayBuffer = await storage.getFilePreview(
-          IMAGES_BUCKET_ID,
-          file.$id
-        );
-
-        uploadedImageUrl = `data:image/png;base64,${Buffer.from(
-          arrayBuffer
-        ).toString("base64")}`;
+        const result = await uploadImageAndGetUrl(storage, image);
+        uploadedImageUrl = result.url;
       } else {
         uploadedImageUrl = image;
       }

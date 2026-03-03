@@ -5,6 +5,7 @@ import { ID, Query } from "node-appwrite";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { DATABASE_ID, PROJECT_DOCS_ID, PROJECT_DOCS_BUCKET_ID, PROJECTS_ID, MEMBERS_ID } from "@/config";
 import { getMember } from "@/features/members/utils";
+import { getStorageProvider } from "@/lib/storage";
 
 import {
   getProjectDocumentsSchema,
@@ -73,10 +74,11 @@ const app = new Hono()
         );
 
         // Add URLs to documents
+        const storageProvider = getStorageProvider(storage);
         const documentsWithUrls = await Promise.all(
           documents.documents.map(async (doc) => {
             try {
-              const url = storage.getFileView(PROJECT_DOCS_BUCKET_ID, doc.fileId).toString();
+              const url = storageProvider.getPublicUrl(PROJECT_DOCS_BUCKET_ID, doc.fileId);
               return { ...doc, url };
             } catch {
               return { ...doc, url: null };
@@ -185,9 +187,10 @@ const app = new Hono()
           }, 400);
         }
 
-        // Upload file to storage
+        // Upload file to storage (R2 or Appwrite)
         const fileId = ID.unique();
-        await storage.createFile(PROJECT_DOCS_BUCKET_ID, fileId, file);
+        const storageProvider = getStorageProvider(storage);
+        await storageProvider.uploadFile(PROJECT_DOCS_BUCKET_ID, fileId, file);
 
         // Create document record
         const document = await databases.createDocument<ProjectDocument>(
@@ -212,7 +215,7 @@ const app = new Hono()
         );
 
         // Get URL for the uploaded file
-        const url = storage.getFileView(PROJECT_DOCS_BUCKET_ID, fileId).toString();
+        const url = storageProvider.getPublicUrl(PROJECT_DOCS_BUCKET_ID, fileId);
 
         return c.json({
           data: {
@@ -361,15 +364,16 @@ const app = new Hono()
         }
 
         // Delete old file
+        const storageProvider = getStorageProvider(storage);
         try {
-          await storage.deleteFile(PROJECT_DOCS_BUCKET_ID, document.fileId);
+          await storageProvider.deleteFile(PROJECT_DOCS_BUCKET_ID, document.fileId);
         } catch {
           // Ignore deletion errors
         }
 
         // Upload new file
         const fileId = ID.unique();
-        await storage.createFile(PROJECT_DOCS_BUCKET_ID, fileId, file);
+        await storageProvider.uploadFile(PROJECT_DOCS_BUCKET_ID, fileId, file);
 
         // Update document record
         const updatedDocument = await databases.updateDocument<ProjectDocument>(
@@ -385,7 +389,7 @@ const app = new Hono()
           }
         );
 
-        const url = storage.getFileView(PROJECT_DOCS_BUCKET_ID, fileId).toString();
+        const url = storageProvider.getPublicUrl(PROJECT_DOCS_BUCKET_ID, fileId);
 
         return c.json({
           data: {
@@ -440,9 +444,10 @@ const app = new Hono()
           return c.json({ error: "Forbidden: No permission to delete documents in this project" }, 403);
         }
 
-        // Delete file from storage
+        // Delete file from storage (R2 or Appwrite)
         try {
-          await storage.deleteFile(PROJECT_DOCS_BUCKET_ID, document.fileId);
+          const storageProvider = getStorageProvider(storage);
+          await storageProvider.deleteFile(PROJECT_DOCS_BUCKET_ID, document.fileId);
         } catch {
           // Ignore deletion errors
         }
@@ -498,10 +503,11 @@ const app = new Hono()
           return c.json({ error: "Forbidden: No permission to download documents in this project" }, 403);
         }
 
-        // Get file from storage
-        const file = await storage.getFileDownload(PROJECT_DOCS_BUCKET_ID, document.fileId);
+        // Get file from storage (R2 or Appwrite)
+        const storageProvider = getStorageProvider(storage);
+        const file = await storageProvider.getFileView(PROJECT_DOCS_BUCKET_ID, document.fileId);
 
-        return new Response(file, {
+        return new Response(new Uint8Array(file), {
           headers: {
             "Content-Disposition": `attachment; filename="${document.name}"`,
             "Content-Type": document.mimeType || "application/octet-stream",
@@ -555,7 +561,8 @@ const app = new Hono()
         }
 
         // Get URL
-        const url = storage.getFileView(PROJECT_DOCS_BUCKET_ID, document.fileId).toString();
+        const storageProvider = getStorageProvider(storage);
+        const url = storageProvider.getPublicUrl(PROJECT_DOCS_BUCKET_ID, document.fileId);
 
         // Get uploader info
         let uploader = null;
