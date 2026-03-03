@@ -7,6 +7,7 @@ import { ATTACHMENTS_BUCKET_ID, DATABASE_ID, ATTACHMENTS_ID } from "@/config";
 import { getMember } from "@/features/members/utils";
 // Storage metering for billing - every file operation must be metered
 import { logStorageUsage } from "@/lib/usage-metering";
+import { getStorageProvider } from "@/lib/storage";
 
 import {
   deleteAttachmentSchema,
@@ -60,6 +61,7 @@ const app = new Hono()
         const user = c.get("user");
         const databases = c.get("databases");
         const storage = c.get("storage");
+        const storageProvider = getStorageProvider(storage);
 
         const body = await c.req.parseBody();
 
@@ -91,9 +93,9 @@ const app = new Hono()
           return c.json({ error: "File type not allowed" }, 400);
         }
 
-        // Upload file to storage
+        // Upload file to storage (R2 or Appwrite)
         const fileId = ID.unique();
-        const uploadedFile = await storage.createFile(
+        const uploadedFile = await storageProvider.uploadFile(
           ATTACHMENTS_BUCKET_ID,
           fileId,
           file
@@ -104,7 +106,7 @@ const app = new Hono()
           name: file.name,
           size: file.size,
           mimeType: file.type,
-          fileId: uploadedFile.$id,
+          fileId: uploadedFile.id,
           taskId,
           workspaceId,
           uploadedBy: user.$id,
@@ -194,6 +196,7 @@ const app = new Hono()
       const user = c.get("user");
       const databases = c.get("databases");
       const storage = c.get("storage");
+      const storageProvider = getStorageProvider(storage);
       const { attachmentId } = c.req.param();
       const { workspaceId } = c.req.valid("query");
 
@@ -219,9 +222,8 @@ const app = new Hono()
           return c.json({ error: "Attachment not found" }, 404);
         }
 
-        // Get file from storage using getFileView (same content, proven reliable)
-        // We add our own Content-Disposition header to force download
-        const file = await storage.getFileView(ATTACHMENTS_BUCKET_ID, attachment.fileId);
+        // Get file from storage (R2 or Appwrite)
+        const file = await storageProvider.getFileView(ATTACHMENTS_BUCKET_ID, attachment.fileId);
 
         // Log download for traffic billing (fire-and-forget, don't await)
         logStorageUsage({
@@ -239,7 +241,7 @@ const app = new Hono()
         // Use RFC 5987 encoding for unicode filenames
         const safeFilename = attachment.name.replace(/[^\x20-\x7E]/g, '_');
         const encodedFilename = encodeURIComponent(attachment.name);
-        return new Response(file, {
+        return new Response(new Uint8Array(file), {
           headers: {
             'Content-Disposition': `attachment; filename="${safeFilename}"; filename*=UTF-8''${encodedFilename}`,
             'Content-Type': attachment.mimeType || 'application/octet-stream',
@@ -258,6 +260,7 @@ const app = new Hono()
       const user = c.get("user");
       const databases = c.get("databases");
       const storage = c.get("storage");
+      const storageProvider = getStorageProvider(storage);
       const { attachmentId } = c.req.param();
       const { workspaceId } = c.req.valid("query");
 
@@ -283,11 +286,11 @@ const app = new Hono()
           return c.json({ error: "Attachment not found" }, 404);
         }
 
-        // Get file from storage and return it directly for preview
-        const file = await storage.getFileView(ATTACHMENTS_BUCKET_ID, attachment.fileId);
+        // Get file from storage (R2 or Appwrite) for preview
+        const file = await storageProvider.getFileView(ATTACHMENTS_BUCKET_ID, attachment.fileId);
 
         // Return the file directly with proper headers for preview
-        return new Response(file, {
+        return new Response(new Uint8Array(file), {
           headers: {
             'Content-Type': attachment.mimeType || 'application/octet-stream',
           },
