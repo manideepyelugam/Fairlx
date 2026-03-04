@@ -20,7 +20,7 @@ export const WorkspaceAvatar = ({
       <div
         className={cn("relative size-6 rounded-md overflow-hidden", className)}
       >
-        <Image src={image} alt={name} fill className="object-cover" />
+        <Image src={image} alt={name} fill className="object-cover" unoptimized={image.startsWith('http')} />
       </div>
     );
   }

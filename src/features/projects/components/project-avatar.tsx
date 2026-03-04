@@ -22,7 +22,7 @@ export const ProjectAvatar = ({
       <div
         className={cn("relative size-5 rounded-md overflow-hidden", className)}
       >
-        <Image src={image} alt={name} fill className="object-cover" />
+        <Image src={image} alt={name} fill className="object-cover" unoptimized={image.startsWith('http')} />
       </div>
     );
   }

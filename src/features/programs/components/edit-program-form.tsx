@@ -244,6 +244,7 @@ export const EditProgramForm = ({ onCancel, initialValues }: EditProgramFormProp
                             fill
                             className="object-cover"
                             src={field.value}
+                            unoptimized={typeof field.value === 'string' && field.value.startsWith('http')}
                           />
                         </div>
                       ) : (

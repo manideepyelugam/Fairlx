@@ -27,7 +27,7 @@ export const SpaceAvatar = ({
           className
         )}
       >
-        <Image src={image} alt={name} fill className="object-cover" />
+        <Image src={image} alt={name} fill className="object-cover" unoptimized={image.startsWith('http')} />
       </div>
     );
   }
