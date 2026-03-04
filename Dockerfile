@@ -10,8 +10,11 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-# Compile the custom Socket.IO server (no tsconfig.server.json assumed)
-RUN npx tsc server.ts --esModuleInterop --module commonjs --target es2017 --skipLibCheck --outDir .
+# Compile the custom Socket.IO server to a temp dir so generated .js files
+# don't pollute src/ and cause ESLint errors during next build
+RUN npx tsc server.ts --esModuleInterop --module commonjs --target es2017 --skipLibCheck --outDir /tmp/server-build \
+    && cp /tmp/server-build/server.js . \
+    && rm -rf /tmp/server-build
 RUN npm run build
 
 # ── Stage 3: Production runner ────────────────────────────────────────
