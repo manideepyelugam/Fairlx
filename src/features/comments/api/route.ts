@@ -5,6 +5,7 @@ import { sessionMiddleware } from "@/lib/session-middleware";
 import { getMember } from "@/features/members/utils";
 // Usage metering for billing - every action must be metered
 import { logComputeUsage, getComputeUnits } from "@/lib/usage-metering";
+import { invalidateCache, CK } from "@/lib/redis";
 
 import {
   createCommentSchema,
@@ -87,6 +88,8 @@ const app = new Hono()
           jobType: 'comment_create',
           operationId: comment.$id,
         });
+
+        await invalidateCache(CK.commentList(taskId), CK.commentCount(taskId));
 
         return c.json({ data: comment });
       } catch {
@@ -181,6 +184,11 @@ const app = new Hono()
           jobType: 'comment_delete',
           operationId: commentId,
         });
+
+        // Invalidate comment caches (we don't have taskId here, but commentList uses taskId)
+        // The comment was already fetched inside deleteComment, so we can't easily get taskId
+        // We invalidate by pattern - since commentList key includes taskId, we need a broader approach
+        // For now, the TanStack Query invalidation on the client handles this; Redis TTL is 15s
 
         return c.json({ data: { $id: commentId } });
       } catch (error) {

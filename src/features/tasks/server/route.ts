@@ -22,6 +22,7 @@ import {
   createMentionEvent,
 } from "@/lib/notifications/events";
 import { extractMentions, extractSnippet } from "@/lib/mentions";
+import { invalidateCachePattern, CKPattern } from "@/lib/redis";
 
 
 import { getMember } from "@/features/members/utils";
@@ -276,6 +277,9 @@ const app = new Hono()
 
       // Delete the task
       await databases.deleteDocument(DATABASE_ID, TASKS_ID, taskId);
+
+      // Invalidate task list caches for this workspace
+      await invalidateCachePattern(CKPattern.taskLists(task.workspaceId));
 
       // Dispatch deletion event (non-blocking)
       const userName = user.name || user.email || "Someone";
@@ -638,6 +642,9 @@ const app = new Hono()
       const createEvent = createTaskCreatedEvent(task, user.$id, userName);
       dispatchWorkitemEvent(createEvent).catch(() => { });
 
+      // Invalidate task list caches for this workspace
+      await invalidateCachePattern(CKPattern.taskLists(workspaceId));
+
       // Emit domain event for task assignment (non-blocking)
       if (assigneeIds && assigneeIds.length > 0) {
         const event = createAssignedEvent(task, user.$id, userName, assigneeIds);
@@ -880,6 +887,9 @@ const app = new Hono()
           });
         }
       }
+
+      // Invalidate task list caches for this workspace after update
+      await invalidateCachePattern(CKPattern.taskLists(existingTask.workspaceId));
 
       return c.json({ data: task });
     }

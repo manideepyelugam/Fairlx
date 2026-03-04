@@ -28,6 +28,8 @@ import {
   ORGANIZATION_MEMBERS_ID,
 } from "@/config";
 import { OrganizationRole } from "@/features/organizations/types";
+import { cached, invalidateCache, invalidateCachePattern, CK, CKPattern, TTL } from "@/lib/redis";
+import { rateLimitMiddleware, RATE_LIMITS } from "@/lib/redis";
 
 const app = new Hono()
   .get("/current", sessionMiddleware, (c) => {
@@ -36,26 +38,33 @@ const app = new Hono()
     return c.json({ data: user });
   })
   .get("/lifecycle", sessionMiddleware, async (c) => {
-    // Dynamic import to avoid circular dependency
-    const { getLifecycleStateWithLegacy } = await import("./actions");
+    const user = c.get("user");
 
-    // FIX: Single resolver call instead of two parallel calls.
-    // Previously called resolveAccountLifecycleState() + getLifecycleState()
-    // which BOTH independently called resolveUserLifecycleState() → 12 DB reads.
-    // Now: 1 call → ~6 DB reads (50% reduction per lifecycle poll).
-    const { legacyState, lifecycle } = await getLifecycleStateWithLegacy();
+    // Cache lifecycle state (polled on every page navigation, ~6 DB reads)
+    const result = await cached(
+      CK.authLifecycle(user.$id),
+      async () => {
+        // Dynamic import to avoid circular dependency
+        const { getLifecycleStateWithLegacy } = await import("./actions");
+        const { legacyState, lifecycle } = await getLifecycleStateWithLegacy();
+        return { legacyState, lifecycle };
+      },
+      TTL.AUTH_LIFECYCLE
+    );
 
     return c.json({
-      data: legacyState,
+      data: result.legacyState,
       lifecycle: {
-        state: lifecycle.state,
-        redirectTo: lifecycle.redirectTo,
-        allowedPaths: lifecycle.allowedPaths,
-        blockedPaths: lifecycle.blockedPaths,
+        state: result.lifecycle.state,
+        redirectTo: result.lifecycle.redirectTo,
+        allowedPaths: result.lifecycle.allowedPaths,
+        blockedPaths: result.lifecycle.blockedPaths,
       }
     });
   })
-  .post("/login", zValidator("json", loginSchema), async (c) => {
+  .post("/login", rateLimitMiddleware(RATE_LIMITS.LOGIN, (c) => {
+    return c.req.header("x-forwarded-for") || c.req.header("x-real-ip") || "anonymous";
+  }), zValidator("json", loginSchema), async (c) => {
     const { email, password } = c.req.valid("json");
 
     const { account } = await createAdminClient();
@@ -131,7 +140,9 @@ const app = new Hono()
       throw error;
     }
   })
-  .post("/register", zValidator("json", registerSchema), async (c) => {
+  .post("/register", rateLimitMiddleware(RATE_LIMITS.LOGIN, (c) => {
+    return c.req.header("x-forwarded-for") || c.req.header("x-real-ip") || "anonymous";
+  }), zValidator("json", registerSchema), async (c) => {
     const { name, email, password, acceptedTerms, acceptedDPA } = c.req.valid("json");
 
     // SECURITY: Backend enforcement (redundant with zod but mandatory)
@@ -246,9 +257,16 @@ const app = new Hono()
   })
   .post("/logout", sessionMiddleware, async (c) => {
     const account = c.get("account");
+    const user = c.get("user");
 
     deleteCookie(c, AUTH_COOKIE);
     await account.deleteSession("current");
+
+    // Invalidate user caches on logout
+    await Promise.all([
+      invalidateCache(CK.authLifecycle(user.$id)),
+      invalidateCachePattern(CKPattern.allUserPerms(user.$id)),
+    ]);
 
     return c.json({ success: true });
   })
@@ -850,7 +868,9 @@ const app = new Hono()
       return c.json({ error: "Failed to send verification email. Please try again." }, 500);
     }
   })
-  .post("/forgot-password", zValidator("json", forgotPasswordSchema), async (c) => {
+  .post("/forgot-password", rateLimitMiddleware(RATE_LIMITS.LOGIN, (c) => {
+    return c.req.header("x-forwarded-for") || c.req.header("x-real-ip") || "anonymous";
+  }), zValidator("json", forgotPasswordSchema), async (c) => {
     const { email } = c.req.valid("json");
 
     try {

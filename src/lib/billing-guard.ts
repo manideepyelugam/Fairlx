@@ -4,6 +4,7 @@ import { createMiddleware } from "hono/factory";
 import { Query, Databases } from "node-appwrite";
 import { DATABASE_ID, BILLING_ACCOUNTS_ID, WORKSPACES_ID } from "@/config";
 import { BillingStatus, BillingAccountType } from "@/features/billing/types";
+import { cached, CK, TTL } from "@/lib/redis";
 
 /**
  * Billing Guard Middleware
@@ -62,6 +63,12 @@ async function getBillingStatusForUser(
     accountType?: string,
     primaryOrgId?: string
 ): Promise<{ status: BillingStatus; accountId?: string; daysUntilSuspension?: number }> {
+    // Cache key: use orgId for ORG accounts, userId for PERSONAL
+    const cacheKey = (accountType === "ORG" && primaryOrgId)
+        ? CK.billingStatus(primaryOrgId)
+        : CK.billingStatus(userId);
+
+    return cached(cacheKey, async () => {
     try {
         // Determine billing entity based on account type
         if (accountType === "ORG" && primaryOrgId) {
@@ -132,6 +139,7 @@ async function getBillingStatusForUser(
         // This is a tradeoff - should monitor for patterns
         return { status: BillingStatus.ACTIVE };
     }
+    }, TTL.BILLING_STATUS);
 }
 
 /**

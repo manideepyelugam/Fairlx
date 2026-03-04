@@ -7,6 +7,7 @@ import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
 import { batchGetUsers } from "@/lib/batch-users";
 import { getMember } from "@/features/members/utils";
+import { cachedCounter, invalidateCache, CK, TTL } from "@/lib/redis";
 
 import {
   createNotificationSchema,
@@ -136,18 +137,25 @@ const app = new Hono()
       return c.json({ error: "Unauthorized" }, 401);
     }
 
-    const unreadNotifications = await databases.listDocuments<Notification>(
-      DATABASE_ID,
-      NOTIFICATIONS_ID,
-      [
-        Query.equal("workspaceId", workspaceId),
-        Query.equal("userId", user.$id),
-        Query.equal("read", false),
-        Query.limit(1),
-      ]
+    const unreadNotifications = await cachedCounter(
+      CK.notifUnread(user.$id),
+      async () => {
+        const result = await databases.listDocuments<Notification>(
+          DATABASE_ID,
+          NOTIFICATIONS_ID,
+          [
+            Query.equal("workspaceId", workspaceId),
+            Query.equal("userId", user.$id),
+            Query.equal("read", false),
+            Query.limit(1),
+          ]
+        );
+        return result.total;
+      },
+      TTL.NOTIFICATION_UNREAD
     );
 
-    return c.json({ data: { count: unreadNotifications.total } });
+    return c.json({ data: { count: unreadNotifications } });
   })
 
   // Mark notification as read (deletes the notification)
@@ -177,6 +185,9 @@ const app = new Hono()
         NOTIFICATIONS_ID,
         notificationId
       );
+
+      // Invalidate notification caches for this user
+      await invalidateCache(CK.notifUnread(user.$id), CK.notificationList(user.$id));
 
       return c.json({ data: { $id: notificationId } });
     }
@@ -226,6 +237,9 @@ const app = new Hono()
         )
       );
 
+      // Invalidate notification caches for this user
+      await invalidateCache(CK.notifUnread(user.$id), CK.notificationList(user.$id));
+
       return c.json({ data: { success: true, count: unreadNotifications.total } });
     }
   )
@@ -255,6 +269,9 @@ const app = new Hono()
       notificationId
     );
 
+    // Invalidate notification caches for this user
+    await invalidateCache(CK.notifUnread(user.$id), CK.notificationList(user.$id));
+
     return c.json({ data: { $id: notificationId } });
   })
 
@@ -283,6 +300,9 @@ const app = new Hono()
           read: false,
         }
       );
+
+      // Invalidate notification caches for the target user
+      await invalidateCache(CK.notifUnread(userId), CK.notificationList(userId));
 
       return c.json({ data: notification });
     }

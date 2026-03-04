@@ -11,6 +11,7 @@ import { WorkflowInheritanceMode, Space } from "@/features/spaces/types";
 
 import { DATABASE_ID, PROJECTS_ID, TASKS_ID, TIME_LOGS_ID, SPACES_ID } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
+import { cached, invalidateCache, invalidateCachePattern, CK, CKPattern, TTL } from "@/lib/redis";
 import { uploadImageAndGetUrl } from "@/lib/storage/helpers";
 import {
   dispatchWorkitemEvent,
@@ -144,6 +145,11 @@ const app = new Hono()
         );
       }
 
+
+      await invalidateCache(CK.projectList(workspaceId));
+      if (normalizedSpaceId) {
+        await invalidateCache(CK.spaceProjectCount(normalizedSpaceId));
+      }
 
       return c.json({ data: transformProject(project) });
     }
@@ -332,6 +338,8 @@ const app = new Hono()
       const event = createProjectUpdatedEvent(project, user.$id, userName);
       dispatchWorkitemEvent(event).catch(() => { });
 
+      await invalidateCache(CK.project(projectId), CK.projectList(existingProject.workspaceId));
+
       return c.json({ data: transformProject(project) });
     }
   )
@@ -394,6 +402,8 @@ const app = new Hono()
       const event = createProjectUpdatedEvent(project, user.$id, userName, "Copied settings from another project");
       dispatchWorkitemEvent(event).catch(() => { });
 
+      await invalidateCache(CK.project(projectId));
+
       return c.json({ data: transformProject(project) });
     }
   )
@@ -455,6 +465,13 @@ const app = new Hono()
       // Finally delete the project
       await databases.deleteDocument(DATABASE_ID, PROJECTS_ID, projectId);
 
+      await invalidateCache(
+        CK.project(projectId),
+        CK.projectList(existingProject.workspaceId)
+      );
+      await invalidateCachePattern(CKPattern.projectPerms(projectId));
+      await invalidateCachePattern(CKPattern.taskLists(existingProject.workspaceId));
+
       return c.json({ data: { $id: existingProject.$id } });
     } catch {
       return c.json({ error: "Failed to delete project and related data" }, 500);
@@ -489,6 +506,12 @@ const app = new Hono()
     }
 
     const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+    // Cache analytics (10 count queries → 1 cached result, 60s TTL)
+    const analyticsData = await cached(
+      CK.projectAnalytics(projectId, currentMonth),
+      async () => {
     const thisMonthStart = startOfMonth(now);
     const thisMonthEnd = endOfMonth(now);
     const lastMonthStart = startOfMonth(subMonths(now, 1));
@@ -623,8 +646,7 @@ const app = new Hono()
     const overdueTaskDifference =
       overdueTaskCount - lastMonthOverdueTasks.total;
 
-    return c.json({
-      data: {
+    return {
         taskCount,
         taskDifference,
         assignedTaskCount,
@@ -635,8 +657,12 @@ const app = new Hono()
         incompleteTaskDifference,
         overdueTaskCount,
         overdueTaskDifference,
+      };
       },
-    });
+      TTL.PROJECT_ANALYTICS
+    );
+
+    return c.json({ data: analyticsData });
   })
   .post(
     "/:projectId/teams/:teamId",

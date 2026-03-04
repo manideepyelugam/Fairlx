@@ -3,6 +3,7 @@ import { Query, type Databases } from "node-appwrite";
 import { DATABASE_ID, MEMBERS_ID, WORKSPACES_ID, ORGANIZATION_MEMBERS_ID } from "@/config";
 import { resolveUserOrgAccess, hasAnyOrgAccess } from "@/lib/permissions/resolveUserOrgAccess";
 import { resolveUserWorkspaceAccess } from "@/lib/permissions/resolveUserWorkspaceAccess";
+import { cached, CK, TTL } from "@/lib/redis";
 
 interface GetMemberProps {
   databases: Databases;
@@ -26,9 +27,15 @@ export const getMember = async ({
   workspaceId,
   userId,
 }: GetMemberProps) => {
-  // Use authoritative resolver
-  const access = await resolveUserWorkspaceAccess(databases, userId, workspaceId);
-  return access.memberDocument;
+  // Use Redis cache for workspace member lookup (called on EVERY request)
+  return cached(
+    CK.workspaceMember(userId, workspaceId),
+    async () => {
+      const access = await resolveUserWorkspaceAccess(databases, userId, workspaceId);
+      return access.memberDocument ?? null;
+    },
+    TTL.WORKSPACE_MEMBER
+  );
 };
 
 interface GetOrgMemberForWorkspaceProps {
