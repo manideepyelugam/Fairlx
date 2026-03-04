@@ -1,0 +1,14 @@
+# Quick start for contributors:
+# 1. Copy .env.example to .env.local
+# 2. Fill in your Appwrite credentials in .env.local
+# 3. Run: docker-compose up
+
+version: '3.8'
+services:
+  app:
+    image: stemlen/fairlx:latest
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.local
+    restart: unless-stopped
