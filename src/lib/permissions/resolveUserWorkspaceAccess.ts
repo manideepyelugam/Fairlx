@@ -3,6 +3,7 @@ import "server-only";
 import { Databases, Query, Models } from "node-appwrite";
 import { DATABASE_ID, WORKSPACES_ID, MEMBERS_ID } from "@/config";
 import { resolveUserOrgAccess, hasAnyOrgAccess } from "./resolveUserOrgAccess";
+import { cached, CK, TTL } from "@/lib/redis";
 
 // ============================================================================
 // TYPES
@@ -62,6 +63,20 @@ export interface WorkspaceAccessResult {
  *    - READ/WRITE/DELETE: Requires EXPLICIT workspace membership.
  */
 export async function resolveUserWorkspaceAccess(
+    databases: Databases,
+    userId: string,
+    workspaceId: string
+): Promise<WorkspaceAccessResult> {
+    // Cache workspace access (2 queries saved per call, called on EVERY request)
+    return cached(
+        CK.workspaceRbac(userId, workspaceId),
+        () => _resolveUserWorkspaceAccessUncached(databases, userId, workspaceId),
+        TTL.WORKSPACE_RBAC
+    );
+}
+
+/** Uncached implementation */
+async function _resolveUserWorkspaceAccessUncached(
     databases: Databases,
     userId: string,
     workspaceId: string

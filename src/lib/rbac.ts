@@ -3,6 +3,7 @@ import { getMember } from "@/features/members/utils";
 
 import { PERMISSIONS, ROLE_PERMISSIONS, Role } from "./permissions";
 import { DATABASE_ID, CUSTOM_ROLES_ID } from "@/config";
+import { cached, CK, TTL } from "@/lib/redis";
 
 /**
  * Checks if a user has a specific permission within a workspace.
@@ -18,6 +19,19 @@ import { DATABASE_ID, CUSTOM_ROLES_ID } from "@/config";
  * Retrieves the list of permissions for a user in a workspace.
  */
 export async function getPermissions(
+    databases: Databases,
+    workspaceId: string,
+    userId: string
+): Promise<string[]> {
+    // Cache workspace RBAC permissions
+    return cached(
+        CK.workspaceRbac(userId, workspaceId) + ":perms",
+        () => _getPermissionsUncached(databases, workspaceId, userId),
+        TTL.WORKSPACE_RBAC
+    );
+}
+
+async function _getPermissionsUncached(
     databases: Databases,
     workspaceId: string,
     userId: string

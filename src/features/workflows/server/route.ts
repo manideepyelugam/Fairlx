@@ -20,6 +20,7 @@ import {
   TASKS_ID,
 } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
+import { invalidateCache, invalidateCachePattern, CK, CKPattern } from "@/lib/redis";
 
 import {
   createWorkflowSchema,
@@ -512,6 +513,9 @@ const app = new Hono()
         updates
       );
 
+      await invalidateCache(CK.workflow(workflowId));
+      await invalidateCachePattern(CKPattern.workflowData(workflowId));
+
       return c.json({ data: updatedWorkflow });
     }
   )
@@ -566,6 +570,9 @@ const app = new Hono()
     ]);
 
     await databases.deleteDocument(DATABASE_ID, WORKFLOWS_ID, workflowId);
+
+    await invalidateCache(CK.workflow(workflowId));
+    await invalidateCachePattern(CKPattern.workflowData(workflowId));
 
     return c.json({ data: { $id: workflowId } });
   })
@@ -705,6 +712,8 @@ const app = new Hono()
         console.error("Error syncing workflow status to project columns:", syncError);
       }
 
+      await invalidateCache(CK.workflow(workflowId), CK.workflowStatuses(workflowId));
+
       return c.json({ data: status });
     }
   )
@@ -781,6 +790,8 @@ const app = new Hono()
           statusId,
           updates
         );
+
+        await invalidateCache(CK.workflow(workflowId), CK.workflowStatuses(workflowId));
 
         return c.json({ data: updatedStatus });
       } catch (error) {
@@ -882,6 +893,8 @@ const app = new Hono()
     // Delete the status
     await databases.deleteDocument(DATABASE_ID, WORKFLOW_STATUSES_ID, statusId);
 
+    await invalidateCache(CK.workflow(workflowId), CK.workflowStatuses(workflowId), CK.workflowTransitions(workflowId));
+
     return c.json({
       data: {
         $id: statusId,
@@ -972,6 +985,8 @@ const app = new Hono()
         }
       );
 
+      await invalidateCache(CK.workflow(workflowId), CK.workflowTransitions(workflowId));
+
       return c.json({ data: transition });
     }
   )
@@ -1047,6 +1062,8 @@ const app = new Hono()
         updates
       );
 
+      await invalidateCache(CK.workflow(workflowId), CK.workflowTransitions(workflowId));
+
       return c.json({ data: updatedTransition });
     }
   )
@@ -1079,6 +1096,8 @@ const app = new Hono()
     }
 
     await databases.deleteDocument(DATABASE_ID, WORKFLOW_TRANSITIONS_ID, transitionId);
+
+    await invalidateCache(CK.workflow(workflowId), CK.workflowTransitions(workflowId));
 
     return c.json({ data: { $id: transitionId } });
   })

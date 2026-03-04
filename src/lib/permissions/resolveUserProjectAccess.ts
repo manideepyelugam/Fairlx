@@ -17,6 +17,7 @@ import {
     ProjectMemberStatus,
 } from "@/features/project-teams/types";
 import { assertInvariant } from "@/lib/invariants";
+import { cached, CK, TTL } from "@/lib/redis";
 
 // =============================================================================
 // PROJECT PERMISSION KEYS
@@ -100,6 +101,20 @@ export const ROLE_PERMISSIONS: Record<ProjectMemberRole, ProjectPermissionKey[]>
  */
 export async function resolveUserProjectAccess(
     _databases: Databases, // Kept for API compatibility, but we use admin client
+    userId: string,
+    projectId: string
+): Promise<ProjectAccessResult> {
+    // Cache project access resolution (5-10 Appwrite queries saved per call)
+    return cached(
+        CK.projectAccess(userId, projectId),
+        () => _resolveUserProjectAccessUncached(_databases, userId, projectId),
+        TTL.PROJECT_ACCESS
+    );
+}
+
+/** Uncached implementation of resolveUserProjectAccess */
+async function _resolveUserProjectAccessUncached(
+    _databases: Databases,
     userId: string,
     projectId: string
 ): Promise<ProjectAccessResult> {

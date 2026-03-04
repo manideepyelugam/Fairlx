@@ -4,6 +4,7 @@ import { Databases, ID, Query } from "node-appwrite";
 import { DATABASE_ID, USAGE_EVENTS_ID } from "@/config";
 import { ResourceType, UsageSource, UsageModule, UsageEvent, OwnerType } from "@/features/usage/types";
 import { assertBillingNotSuspended, adjustEventForLockedCycle, getBillingAccount } from "./billing-primitives";
+import { setIfNotExists, CK, TTL } from "@/lib/redis";
 
 /**
  * Usage Ledger - Immutable Usage Event Writer
@@ -139,7 +140,19 @@ export async function writeUsageEvent(
         };
     }
 
-    // 1. Check idempotency key FIRST (prevent duplicates)
+    // 1. Check idempotency key FIRST using Redis (fast path - avoids DB query)
+    const redisKey = CK.idempotency(params.idempotencyKey);
+    const isNew = await setIfNotExists(redisKey, "1", TTL.IDEMPOTENCY);
+    if (!isNew) {
+        // Key already exists in Redis — this is a duplicate
+        return {
+            written: false,
+            reason: "DUPLICATE",
+            message: "Event with this idempotency key already exists (Redis)",
+        };
+    }
+
+    // Fallback: Also check DB for events that predate Redis (belt-and-suspenders)
     const existing = await findByIdempotencyKey(databases, params.idempotencyKey);
     if (existing) {
         return {

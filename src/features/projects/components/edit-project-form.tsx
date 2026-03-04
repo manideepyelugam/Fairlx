@@ -216,6 +216,7 @@ export const EditProjectForm = ({
                                   alt="Logo"
                                   fill
                                   className="object-cover"
+                                  unoptimized
                                 />
                               </div>
                             ) : (

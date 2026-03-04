@@ -14,6 +14,7 @@ import { OrgPermissionKey } from "@/features/org-permissions/types";
 import { AppRouteKey } from "./appRouteKeys";
 import { getRouteKeysForPermissions, getPathsForRouteKeys, getAllRouteKeys } from "./permissionRouteMap";
 import { assertOwnerHasFullAccess } from "@/lib/invariants";
+import { cached, CK, TTL } from "@/lib/redis";
 
 /**
  * Resolve User Org Access (Department-Driven)
@@ -77,6 +78,21 @@ export interface UserOrgAccessResult {
  * @returns Complete UserOrgAccessResult object
  */
 export async function resolveUserOrgAccess(
+    databases: Databases,
+    userId: string,
+    organizationId: string,
+    workspaceId?: string
+): Promise<UserOrgAccessResult> {
+    // Cache org access resolution (3-5 Appwrite queries saved per call)
+    return cached(
+        CK.orgAccess(userId, organizationId),
+        () => _resolveUserOrgAccessUncached(databases, userId, organizationId, workspaceId),
+        TTL.ORG_ACCESS
+    );
+}
+
+/** Uncached implementation */
+async function _resolveUserOrgAccessUncached(
     databases: Databases,
     userId: string,
     organizationId: string,

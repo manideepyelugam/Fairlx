@@ -14,6 +14,7 @@ import {
   MEMBERS_ID,
 } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
+import { invalidateCache, CK } from "@/lib/redis";
 // Usage metering for billing - every action must be metered
 import { logComputeUsage, getComputeUnits } from "@/lib/usage-metering";
 import { uploadImageAndGetUrl } from "@/lib/storage/helpers";
@@ -148,6 +149,8 @@ const app = new Hono()
           displayName: `Space: ${name}`,
         },
       });
+
+      await invalidateCache(CK.spaceList(workspaceId));
 
       return c.json({ data: space });
     }
@@ -401,6 +404,8 @@ const app = new Hono()
         },
       });
 
+      await invalidateCache(CK.space(spaceId), CK.spaceList(space.workspaceId));
+
       return c.json({ data: updatedSpace });
     }
   )
@@ -457,22 +462,22 @@ const app = new Hono()
     await databases.deleteDocument(DATABASE_ID, SPACES_ID, spaceId);
 
     // Log compute usage for billing
-    logComputeUsage({
-      databases,
-      workspaceId: space.workspaceId,
-      units: getComputeUnits('space_delete'),
-      jobType: 'space_delete',
-      operationId: spaceId,
-      sourceContext: {
-        type: 'workspace',
-        displayName: `Space: ${space.name}`,
-      },
-    });
+      logComputeUsage({
+        databases,
+        workspaceId: space.workspaceId,
+        units: getComputeUnits('space_delete'),
+        jobType: 'space_delete',
+        operationId: spaceId,
+        sourceContext: {
+          type: 'workspace',
+          displayName: `Space: ${space.name}`,
+        },
+      });
 
-    return c.json({ data: { $id: spaceId } });
-  })
+      await invalidateCache(CK.space(spaceId), CK.spaceList(space.workspaceId));
 
-  // Add member to space
+      return c.json({ data: { $id: spaceId } });
+  })  // Add member to space
   .post(
     "/:spaceId/members",
     sessionMiddleware,

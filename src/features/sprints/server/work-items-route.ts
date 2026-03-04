@@ -10,6 +10,7 @@ import { batchGetUsers } from "@/lib/batch-users";
 import { getMember } from "@/features/members/utils";
 import { Project } from "@/features/projects/types";
 import { logComputeUsage, getComputeUnits } from "@/lib/usage-metering";
+import { invalidateCachePattern, CKPattern } from "@/lib/redis";
 import {
   dispatchWorkitemEvent,
 } from "@/lib/notifications";
@@ -772,6 +773,8 @@ const app = new Hono()
         });
       }
 
+      await invalidateCachePattern(CKPattern.workItemLists(data.workspaceId));
+
       return c.json({ data: workItem });
     }
   )
@@ -922,6 +925,8 @@ const app = new Hono()
         dispatchWorkitemEvent(event).catch(() => { });
       }
 
+      await invalidateCachePattern(CKPattern.workItemLists(workItem.workspaceId));
+
       return c.json({ data: updatedWorkItem });
     }
   )
@@ -984,6 +989,8 @@ const app = new Hono()
       } as unknown as Task;
       const deleteEvent = createDeletedEvent(taskLike, user.$id, userName);
       dispatchWorkitemEvent(deleteEvent).catch(() => { });
+
+      await invalidateCachePattern(CKPattern.workItemLists(workItem.workspaceId));
 
       return c.json({ data: { $id: workItem.$id } });
     }
@@ -1058,6 +1065,8 @@ const app = new Hono()
       // but we should at least log it.
       console.log(`[WorkItemsRoute] Bulk deleted ${workItemIds.length} items`);
 
+      await invalidateCachePattern(CKPattern.workItemLists(firstWorkItem.workspaceId));
+
       return c.json({ data: { count: workItemIds.length } });
     }
   )
@@ -1110,6 +1119,8 @@ const app = new Hono()
         const event = createTaskUpdatedEvent(taskLike, user.$id, userName, `Bulk moved ${updatedItems.length} items to sprint`);
         dispatchWorkitemEvent(event).catch(() => { });
       }
+
+      await invalidateCachePattern(CKPattern.workItemLists(firstWorkItem.workspaceId));
 
       return c.json({ data: updatedItems });
     }

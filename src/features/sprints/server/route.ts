@@ -12,6 +12,7 @@ import { PERMISSIONS } from "@/lib/permissions";
 
 import { getMember } from "@/features/members/utils";
 import { logComputeUsage, getComputeUnits } from "@/lib/usage-metering";
+import { invalidateCache, invalidateCachePattern, CK, CKPattern } from "@/lib/redis";
 
 import {
   createSprintSchema,
@@ -345,6 +346,9 @@ const app = new Hono()
         metadata: { sprintId: sprint.$id, sprintName: name },
       });
 
+      await invalidateCache(CK.sprintList(workspaceId, projectId));
+      await invalidateCachePattern(CKPattern.sprintLists(workspaceId));
+
       return c.json({ data: sprint });
     }
   )
@@ -440,6 +444,8 @@ const app = new Hono()
         jobType: isComplete ? 'sprint_complete' : 'sprint_update',
         metadata: { sprintId, updatedFields: Object.keys(updates) },
       });
+
+      await invalidateCache(CK.sprint(sprintId), CK.sprintList(sprint.workspaceId, sprint.projectId));
 
       return c.json({ data: updatedSprint });
     }
@@ -542,6 +548,9 @@ const app = new Hono()
         },
       });
 
+      await invalidateCache(CK.sprint(sprintId), CK.sprintList(workspaceId, projectId));
+      await invalidateCachePattern(CKPattern.workItemLists(workspaceId));
+
       return c.json({ data: updatedSprint });
     }
   )
@@ -606,6 +615,9 @@ const app = new Hono()
         jobType: 'sprint_delete',
         metadata: { sprintId, movedItems: workItems.total },
       });
+
+      await invalidateCache(CK.sprint(sprintId), CK.sprintList(sprint.workspaceId, sprint.projectId));
+      await invalidateCachePattern(CKPattern.workItemLists(sprint.workspaceId));
 
       return c.json({ data: { $id: sprint.$id } });
     }

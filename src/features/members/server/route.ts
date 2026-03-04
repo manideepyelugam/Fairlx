@@ -9,6 +9,7 @@ import { batchGetUsers } from "@/lib/batch-users";
 import { DATABASE_ID, MEMBERS_ID, NOTIFICATIONS_ID, WORKSPACES_ID } from "@/config";
 import { getPermissions } from "@/lib/rbac";
 import { validateUserOrgMembershipForWorkspace } from "@/lib/invariants";
+import { invalidateCache, invalidateCachePattern, CK, CKPattern } from "@/lib/redis";
 
 import { getMember } from "../utils";
 import { Member, MemberRole, WorkspaceMemberRole, MemberStatus } from "../types";
@@ -185,6 +186,14 @@ const app = new Hono()
       // Silent
     }
 
+    // Invalidate member and permission caches
+    await invalidateCache(
+      CK.workspaceMember(memberToDelete.userId, memberToDelete.workspaceId),
+      CK.memberList(memberToDelete.workspaceId)
+    );
+    await invalidateCachePattern(CKPattern.workspacePerms(memberToDelete.workspaceId));
+    await invalidateCachePattern(CKPattern.allUserPerms(memberToDelete.userId));
+
     return c.json({ data: { $id: memberToDelete.$id } });
   })
   .patch(
@@ -275,6 +284,14 @@ const app = new Hono()
       } catch {
         // Silent failure - notifications are non-critical
       }
+
+      // Invalidate member and permission caches on role change
+      await invalidateCache(
+        CK.workspaceMember(memberToUpdate.userId, memberToUpdate.workspaceId),
+        CK.memberList(memberToUpdate.workspaceId)
+      );
+      await invalidateCachePattern(CKPattern.workspacePerms(memberToUpdate.workspaceId));
+      await invalidateCachePattern(CKPattern.allUserPerms(memberToUpdate.userId));
 
       return c.json({ data: { $id: memberToUpdate.$id } });
     }
@@ -396,6 +413,12 @@ const app = new Hono()
             // silent
           }
 
+          await invalidateCache(
+            CK.workspaceMember(userId, workspaceId),
+            CK.memberList(workspaceId)
+          );
+          await invalidateCachePattern(CKPattern.workspacePerms(workspaceId));
+
           return c.json({ data: reactivatedMember });
         } else {
           // Active member already exists
@@ -448,6 +471,10 @@ const app = new Hono()
       } catch {
         // Silent failure - notifications are non-critical
       }
+
+      // Invalidate member caches
+      await invalidateCache(CK.memberList(workspaceId));
+      await invalidateCachePattern(CKPattern.workspacePerms(workspaceId));
 
       return c.json({ data: newMember });
     }

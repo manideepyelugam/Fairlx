@@ -19,6 +19,8 @@
 
 import { Server as SocketIOServer, Socket } from "socket.io";
 import { Server as HTTPServer } from "http";
+import { createAdapter } from "@socket.io/redis-adapter";
+import { getRedisClient, getRedisSubscriber } from "@/lib/redis/client";
 import { SocketNotificationPayload, SocketAuthPayload } from "./types";
 
 // =============================================================================
@@ -55,6 +57,17 @@ export function initSocketServer(httpServer: HTTPServer): SocketIOServer {
         },
         transports: ["websocket", "polling"],
     });
+
+    // Attach Redis adapter for multi-process/horizontal scaling
+    try {
+        const pubClient = getRedisClient();
+        const subClient = getRedisSubscriber();
+        io.adapter(createAdapter(pubClient, subClient));
+        console.log("[SocketServer] Redis adapter attached for pub/sub");
+    } catch (err) {
+        console.warn("[SocketServer] Redis adapter failed, falling back to in-memory:", err);
+        // Socket.IO will use default in-memory adapter — still works for single-process
+    }
 
     io.on("connection", handleConnection);
 
