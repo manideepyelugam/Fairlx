@@ -10,11 +10,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-# Compile the custom Socket.IO server to a temp dir so generated .js files
-# don't pollute src/ and cause ESLint errors during next build
-RUN npx tsc server.ts --esModuleInterop --module commonjs --target es2017 --skipLibCheck --outDir /tmp/server-build \
-    && cp /tmp/server-build/server.js . \
-    && rm -rf /tmp/server-build
+# Bundle the custom Socket.IO server using esbuild (resolves @/ path aliases via tsconfig)
+RUN npx esbuild server.ts --bundle --platform=node --target=node20 --outfile=server.js \
+    --external:next --external:socket.io --external:@socket.io/* --external:dotenv \
+    --external:ioredis
 RUN npm run build
 
 # ── Stage 3: Production runner ────────────────────────────────────────
