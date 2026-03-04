@@ -150,6 +150,7 @@ export const EditWorkspaceForm = ({
                                 alt="Logo"
                                 fill
                                 className="object-cover"
+                                unoptimized
                               />
                             </div>
                           ) : (

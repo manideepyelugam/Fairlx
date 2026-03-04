@@ -119,7 +119,7 @@ export const ProgramProjectsList = ({ programId, workspaceId, canManage = false 
                         <div className="space-y-1">
                           {available.map((p: { $id: string; name: string; key?: string; imageUrl?: string }) => (
                             <button key={p.$id} onClick={() => handleLink(p.$id)} disabled={isLinking} className="flex items-center gap-3 w-full p-3 rounded-lg hover:bg-accent transition-colors text-left disabled:opacity-50">
-                              {p.imageUrl ? <Image src={p.imageUrl} alt={p.name} width={32} height={32} className="h-8 w-8 rounded-md object-cover" /> : <div className="h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center text-xs font-semibold">{p.name[0]?.toUpperCase()}</div>}
+                              {p.imageUrl ? <Image src={p.imageUrl} alt={p.name} width={32} height={32} className="h-8 w-8 rounded-md object-cover" unoptimized={p.imageUrl.startsWith('http')} /> : <div className="h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center text-xs font-semibold">{p.name[0]?.toUpperCase()}</div>}
                               <div className="flex-1 min-w-0"><p className="font-medium truncate">{p.name}</p>{p.key && <p className="text-xs text-muted-foreground">{p.key}</p>}</div>
                               {isLinking && <Loader2 className="h-4 w-4 animate-spin shrink-0" />}
                             </button>
@@ -159,7 +159,7 @@ export const ProgramProjectsList = ({ programId, workspaceId, canManage = false 
                   <div className="flex items-center gap-4">
                     {/* Avatar */}
                     {project.imageUrl ? (
-                      <Image src={project.imageUrl} alt={project.name} width={40} height={40} className="h-10 w-10 rounded-lg object-cover shrink-0" />
+                      <Image src={project.imageUrl} alt={project.name} width={40} height={40} className="h-10 w-10 rounded-lg object-cover shrink-0" unoptimized={project.imageUrl.startsWith('http')} />
                     ) : (
                       <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0"><span className="text-sm font-bold">{project.name[0]?.toUpperCase()}</span></div>
                     )}

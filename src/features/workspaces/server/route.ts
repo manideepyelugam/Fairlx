@@ -267,9 +267,13 @@ const app = new Hono()
       userId: user.$id,
     });
 
-    // Verify delete permissions
-    if (!member || member.role !== MemberRole.OWNER) {
-      return c.json({ error: "Only workspace owner can delete" }, 401);
+    // Verify delete permissions (OWNER, ADMIN, or WS_ADMIN can delete)
+    if (!member || (
+      member.role !== MemberRole.OWNER &&
+      member.role !== MemberRole.ADMIN &&
+      member.role !== WorkspaceMemberRole.WS_ADMIN
+    )) {
+      return c.json({ error: "Only workspace admins can delete" }, 401);
     }
 
     // Delete all related data when workspace is deleted
