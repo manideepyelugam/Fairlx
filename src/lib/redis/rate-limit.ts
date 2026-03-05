@@ -20,6 +20,7 @@ export async function checkRateLimit(
     windowSeconds: number = 60
 ): Promise<{ allowed: boolean; remaining: number; retryAfterMs?: number }> {
     const redis = getRedisClient();
+    if (!redis) return { allowed: true, remaining: maxRequests }; // No Redis → allow all
     const key = `rate:${identifier}`;
 
     try {

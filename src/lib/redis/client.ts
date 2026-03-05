@@ -1,4 +1,3 @@
-import "server-only";
 import Redis from "ioredis";
 
 /**
@@ -8,18 +7,23 @@ import Redis from "ioredis";
  * Gracefully handles connection failures — app NEVER breaks if Redis is down.
  * 
  * ARCHITECTURE:
+ * - Completely OPTIONAL: if REDIS_URL is not set, returns null (no connection attempts)
  * - Single connection for cache reads/writes
  * - Separate subscriber connection for Pub/Sub (Socket.IO adapter)
- * - Lazy connect: doesn't block server startup
  * - Auto-reconnect with exponential backoff
  */
 
-let redis: Redis | null = null;
+const REDIS_URL = process.env.REDIS_URL;
 
-export function getRedisClient(): Redis {
-    if (!redis) {
-        const url = process.env.REDIS_URL || "redis://127.0.0.1:6379";
-        redis = new Redis(url, {
+let redis: Redis | null = null;
+let redisInitialized = false;
+
+export function getRedisClient(): Redis | null {
+    if (!REDIS_URL) return null;
+
+    if (!redisInitialized) {
+        redisInitialized = true;
+        redis = new Redis(REDIS_URL, {
             password: process.env.REDIS_PASSWORD || undefined,
             maxRetriesPerRequest: 3,
             retryStrategy(times) {
@@ -27,7 +31,6 @@ export function getRedisClient(): Redis {
                 return Math.min(times * 100, 3000); // Exponential backoff, max 3s
             },
             enableOfflineQueue: false, // Don't queue commands when disconnected
-            lazyConnect: true,
             connectTimeout: 5000,
             commandTimeout: 3000, // Individual command timeout
         });
@@ -43,10 +46,6 @@ export function getRedisClient(): Redis {
         redis.on("close", () => {
             console.warn("[Redis] Connection closed");
         });
-
-        redis.connect().catch((err) => {
-            console.error("[Redis] Initial connect failed:", err.message);
-        });
     }
     return redis;
 }
@@ -55,9 +54,10 @@ export function getRedisClient(): Redis {
  * Get a duplicate client for Redis Pub/Sub (subscriber needs dedicated connection)
  * Used by Socket.IO Redis adapter
  */
-export function getRedisSubscriber(): Redis {
-    const url = process.env.REDIS_URL || "redis://127.0.0.1:6379";
-    const sub = new Redis(url, {
+export function getRedisSubscriber(): Redis | null {
+    if (!REDIS_URL) return null;
+
+    const sub = new Redis(REDIS_URL, {
         password: process.env.REDIS_PASSWORD || undefined,
         maxRetriesPerRequest: 3,
         retryStrategy(times) {
@@ -73,10 +73,6 @@ export function getRedisSubscriber(): Redis {
         console.error("[Redis:Sub] Connection error:", err.message);
     });
 
-    sub.connect().catch((err) => {
-        console.error("[Redis:Sub] Initial connect failed:", err.message);
-    });
-
     return sub;
 }
 
@@ -86,6 +82,7 @@ export function getRedisSubscriber(): Redis {
 export async function isRedisHealthy(): Promise<boolean> {
     try {
         const client = getRedisClient();
+        if (!client) return false;
         const result = await client.ping();
         return result === "PONG";
     } catch {
