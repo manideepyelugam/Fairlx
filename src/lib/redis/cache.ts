@@ -24,7 +24,7 @@ const inFlight = new Map<string, Promise<unknown>>();
 export async function cached<T>(
     key: string,
     fetcher: () => Promise<T>,
-    ttlSeconds: number = 60
+    ttlSeconds: number = 300
 ): Promise<T> {
     const redis = getRedisClient();
 
@@ -72,7 +72,7 @@ export async function cached<T>(
 export async function cachedCounter(
     key: string,
     fetcher: () => Promise<number>,
-    ttlSeconds: number = 30
+    ttlSeconds: number = 120
 ): Promise<number> {
     const redis = getRedisClient();
     if (!redis) return fetcher();

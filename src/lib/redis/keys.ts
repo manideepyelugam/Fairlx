@@ -13,66 +13,66 @@
 // =============================================================
 export const TTL = {
     // ── AUTHENTICATION & SESSION ──
-    AUTH_LIFECYCLE: 30,           // Polled every navigation, changes on prefs update
+    AUTH_LIFECYCLE: 300,          // Polled on navigation — invalidated on prefs update (5 min)
 
-    // ── PERMISSIONS (change on member/role CRUD only) ──
-    PROJECT_ACCESS: 120,          // resolveUserProjectAccess() — 5-10 queries saved
-    ORG_ACCESS: 180,              // resolveUserOrgAccess() — 3-5 queries saved
-    WORKSPACE_RBAC: 120,          // resolveWorkspacePermissions() — 2 queries saved
-    WORKSPACE_MEMBER: 120,        // getMember() — 1-2 queries saved, called EVERYWHERE
-    WORKFLOW_PERMISSION: 120,     // checkWorkflowPermission()
+    // ── PERMISSIONS (change on member/role CRUD only → invalidated explicitly) ──
+    PROJECT_ACCESS: 600,          // resolveUserProjectAccess() — invalidated on role change (10 min)
+    ORG_ACCESS: 600,              // resolveUserOrgAccess() — invalidated on org member change (10 min)
+    WORKSPACE_RBAC: 600,          // resolveWorkspacePermissions() — invalidated on role CRUD (10 min)
+    WORKSPACE_MEMBER: 600,        // getMember() — invalidated on member CRUD (10 min)
+    WORKFLOW_PERMISSION: 600,     // checkWorkflowPermission() — invalidated on change (10 min)
 
-    // ── BILLING (changes on payment events only) ──
-    BILLING_ACCOUNT: 300,         // resolveBillingAccount() — very stable
-    BILLING_STATUS: 120,          // ACTIVE/DUE/SUSPENDED — checked every request
-    WALLET_BALANCE: 30,           // Changes on transactions
+    // ── BILLING (changes on payment events only → invalidated explicitly) ──
+    BILLING_ACCOUNT: 1800,        // resolveBillingAccount() — very stable (30 min)
+    BILLING_STATUS: 600,          // ACTIVE/DUE/SUSPENDED — invalidated on payment events (10 min)
+    WALLET_BALANCE: 120,          // Changes on transactions (2 min)
 
-    // ── ENTITY DOCUMENTS (change on explicit update only) ──
-    WORKSPACE: 300,
-    PROJECT: 300,
-    SPACE: 300,
-    SPRINT: 120,
-    WORKFLOW: 600,                // Workflows change very rarely
-    WORKFLOW_STATUSES: 600,       // Status definitions change very rarely
-    WORKFLOW_TRANSITIONS: 600,    // Transition rules change very rarely
-    CUSTOM_FIELDS: 600,           // Custom field definitions
-    CUSTOM_COLUMNS: 600,          // Custom column definitions
-    SAVED_VIEW: 300,              // User's saved views/filters
-    ORGANIZATION: 300,
+    // ── ENTITY DOCUMENTS (change on explicit update only → invalidated on save) ──
+    WORKSPACE: 900,               // 15 min
+    PROJECT: 900,                 // 15 min
+    SPACE: 900,                   // 15 min
+    SPRINT: 300,                  // 5 min
+    WORKFLOW: 1800,               // Workflows change very rarely (30 min)
+    WORKFLOW_STATUSES: 1800,      // Status definitions change very rarely (30 min)
+    WORKFLOW_TRANSITIONS: 1800,   // Transition rules change very rarely (30 min)
+    CUSTOM_FIELDS: 1800,          // Custom field definitions (30 min)
+    CUSTOM_COLUMNS: 1800,         // Custom column definitions (30 min)
+    SAVED_VIEW: 600,              // User's saved views/filters (10 min)
+    ORGANIZATION: 900,            // 15 min
 
-    // ── LISTS (change on item CRUD) ──
-    TASK_LIST: 15,                // Board/list views — short TTL, high frequency
-    WORK_ITEM_LIST: 15,           // Sprint board — short TTL, high frequency
-    SPRINT_LIST: 30,              // Sprint planning — moderate changes
-    PROJECT_LIST: 60,             // Workspace project list — changes on project CRUD
-    SPACE_LIST: 60,               // Space overview — changes on space CRUD
-    MEMBER_LIST: 60,              // Workspace/project member list
-    COMMENT_LIST: 15,             // Task comments — changes on comment CRUD
-    MY_SPACE_ITEMS: 20,           // Cross-workspace work items for user
-    NOTIFICATION_LIST: 10,        // Notification feed
-    EPIC_LIST: 60,                // Epics per project — moderate changes
+    // ── LISTS (change on item CRUD → invalidated on write) ──
+    TASK_LIST: 180,               // Board/list views — invalidated on task CRUD (3 min)
+    WORK_ITEM_LIST: 180,          // Sprint board — invalidated on item CRUD (3 min)
+    SPRINT_LIST: 300,             // Sprint planning — invalidated on sprint CRUD (5 min)
+    PROJECT_LIST: 600,            // Workspace project list — invalidated on project CRUD (10 min)
+    SPACE_LIST: 600,              // Space overview — invalidated on space CRUD (10 min)
+    MEMBER_LIST: 600,             // Workspace/project member list (10 min)
+    COMMENT_LIST: 180,            // Task comments — invalidated on comment CRUD (3 min)
+    MY_SPACE_ITEMS: 300,          // Cross-workspace work items for user (5 min)
+    NOTIFICATION_LIST: 60,        // Notification feed — needs freshness (1 min)
+    EPIC_LIST: 600,               // Epics per project (10 min)
 
-    // ── COUNTERS (change on related CRUD) ──
-    NOTIFICATION_UNREAD: 10,      // Polled every ~10s per user
-    COMMENT_COUNT: 30,            // Per-task comment count
-    WORK_ITEM_COUNT: 30,          // Per-sprint work item count
-    SPACE_PROJECT_COUNT: 60,      // Per-space project count
-    SPACE_MEMBER_COUNT: 60,       // Per-space member count
+    // ── COUNTERS (change on related CRUD → invalidated via increment/decrement) ──
+    NOTIFICATION_UNREAD: 60,      // Polled frequently — invalidated on new notif (1 min)
+    COMMENT_COUNT: 300,           // Per-task comment count (5 min)
+    WORK_ITEM_COUNT: 300,         // Per-sprint work item count (5 min)
+    SPACE_PROJECT_COUNT: 600,     // Per-space project count (10 min)
+    SPACE_MEMBER_COUNT: 600,      // Per-space member count (10 min)
 
     // ── ANALYTICS (inherently aggregated, expensive to compute) ──
-    PROJECT_ANALYTICS: 60,        // 10 count queries → 1 cached result
-    WORKSPACE_ANALYTICS: 60,      // Similar aggregation
-    SPRINT_BURNDOWN: 30,          // Sprint progress tracking
+    PROJECT_ANALYTICS: 600,       // 10 count queries → 1 cached result (10 min)
+    WORKSPACE_ANALYTICS: 600,     // Similar aggregation (10 min)
+    SPRINT_BURNDOWN: 300,         // Sprint progress tracking (5 min)
 
     // ── USER/MEMBER RESOLUTION (almost never changes) ──
     MEMBER_TO_USER: 3600,         // Member doc ID → user profile (1 hour)
     USER_PROFILE: 3600,           // User name/email/avatar (1 hour)
-    WORKSPACE_ADMINS: 300,        // List of admin users in workspace
+    WORKSPACE_ADMINS: 900,        // List of admin users in workspace (15 min)
 
     // ── WRITE-PATH (operational, not content caching) ──
     IDEMPOTENCY: 3600,            // Usage write dedup (1 hour)
     RATE_LIMIT: 60,               // Sliding window
-    WORK_ITEM_KEY_SEQ: 60,        // Next key number for work item generation
+    WORK_ITEM_KEY_SEQ: 120,       // Next key number for work item generation (2 min)
 } as const;
 
 // =============================================================
