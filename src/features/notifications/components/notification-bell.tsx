@@ -1,14 +1,15 @@
 "use client";
 
+import { useState, useCallback } from "react";
 import { Bell, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
@@ -23,12 +24,14 @@ import { NotificationItem } from "./notification-item";
 export const NotificationBell = () => {
   const workspaceId = useWorkspaceId();
   const { data: currentUser } = useCurrent();
+  const [showAll, setShowAll] = useState(false);
+  const [open, setOpen] = useState(false);
 
   const hasWorkspace = Boolean(workspaceId);
 
   const { data: notifications, isLoading } = useGetNotifications({
     workspaceId: workspaceId || "",
-    limit: 20,
+    limit: showAll ? 100 : 20,
     enabled: hasWorkspace,
   });
 
@@ -63,13 +66,24 @@ export const NotificationBell = () => {
     markAllAsRead({ json: { workspaceId } });
   };
 
+  const handleViewAll = useCallback(() => {
+    setShowAll(true);
+  }, []);
+
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) {
+      setShowAll(false);
+    }
+  }, []);
+
   const hasUnread = hasWorkspace && (unreadCount?.count ?? 0) > 0;
   const unreadCountValue = unreadCount?.count ?? 0;
   const notificationsList = notifications?.documents ?? [];
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <PopoverTrigger asChild>
         <Button
           variant="ghost"
           size="icon"
@@ -83,9 +97,9 @@ export const NotificationBell = () => {
             </span>
           )}
         </Button>
-      </DropdownMenuTrigger>
+      </PopoverTrigger>
 
-      <DropdownMenuContent
+      <PopoverContent
         align="end"
         className="w-[380px] p-0 rounded-xl shadow-lg border"
         sideOffset={8}
@@ -120,7 +134,7 @@ export const NotificationBell = () => {
         </div>
 
         {/* Notifications List */}
-        <ScrollArea className="max-h-[420px]">
+        <ScrollArea className={showAll ? "max-h-[70vh]" : "max-h-[420px]"}>
           {!hasWorkspace ? (
             <div className="flex flex-col items-center justify-center h-40 text-center px-4">
               <div className="size-10 rounded-full bg-muted flex items-center justify-center mb-3">
@@ -159,22 +173,20 @@ export const NotificationBell = () => {
         </ScrollArea>
 
         {/* Footer */}
-        {hasWorkspace && notificationsList.length > 0 && (
+        {hasWorkspace && notificationsList.length > 0 && !showAll && (
           <div className="border-t px-4 py-2">
             <Button
               variant="ghost"
               className="w-full text-xs text-muted-foreground hover:text-foreground h-8"
               size="sm"
-              asChild
+              onClick={handleViewAll}
             >
-              <a href={`/workspaces/${workspaceId}/notifications`}>
-                View all notifications
-              </a>
+              View all notifications
             </Button>
           </div>
         )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </PopoverContent>
+    </Popover>
   );
 };
 
