@@ -161,6 +161,12 @@ export const NotificationItem = ({
     }
   };
 
+  const handleClick = () => {
+    if (!notification.read) {
+      markAsRead({ param: { notificationId: notification.$id }, workspaceId });
+    }
+  };
+
   const taskLink = notification.type === NotificationType.REWARD_CREDITED
     ? `/workspaces/${workspaceId}/rewards`
     : (notification.taskId && notification.taskId !== "reward-event")
@@ -184,7 +190,7 @@ export const NotificationItem = ({
     : null;
 
   return (
-    <Link href={taskLink} className="block">
+    <Link href={taskLink} className="block" onClick={handleClick}>
       <div
         className={cn(
           "relative flex items-start gap-3 px-4 py-3 transition-colors group",
