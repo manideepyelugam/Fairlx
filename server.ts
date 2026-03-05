@@ -98,8 +98,10 @@ app.prepare().then(() => {
         handle(req, res);
     });
 
-    // Initialize Socket.IO
-    initSocketServer(httpServer);
+    // Initialize Socket.IO (async — Redis adapter attached if available)
+    initSocketServer(httpServer).catch((err) => {
+        console.warn("[Server] Socket.IO init failed:", err);
+    });
 
     httpServer.listen(port, () => {
         console.log(`> Ready on http://${hostname}:${port}`);
