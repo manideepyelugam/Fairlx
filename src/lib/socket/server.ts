@@ -42,7 +42,7 @@ const connectedUsers = new Map<string, Set<string>>(); // userId -> Set of socke
  * 
  * @param httpServer - The HTTP server to attach Socket.IO to
  */
-export function initSocketServer(httpServer: HTTPServer): SocketIOServer {
+export async function initSocketServer(httpServer: HTTPServer): Promise<SocketIOServer> {
     if (io) {
         return io;
     }
@@ -62,10 +62,16 @@ export function initSocketServer(httpServer: HTTPServer): SocketIOServer {
     try {
         const pubClient = getRedisClient();
         const subClient = getRedisSubscriber();
-        io.adapter(createAdapter(pubClient, subClient));
-        console.log("[SocketServer] Redis adapter attached for pub/sub");
+        if (pubClient && subClient) {
+            // Wait for both clients to actually connect before attaching adapter
+            await Promise.all([pubClient.connect(), subClient.connect()]);
+            io.adapter(createAdapter(pubClient, subClient));
+            console.log("[SocketServer] Redis adapter attached for pub/sub");
+        } else {
+            console.log("[SocketServer] Redis not configured, using in-memory adapter");
+        }
     } catch (err) {
-        console.warn("[SocketServer] Redis adapter failed, falling back to in-memory:", err);
+        console.warn("[SocketServer] Redis adapter failed, falling back to in-memory:", (err as Error).message);
         // Socket.IO will use default in-memory adapter — still works for single-process
     }
 

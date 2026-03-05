@@ -28,6 +28,9 @@ export async function cached<T>(
 ): Promise<T> {
     const redis = getRedisClient();
 
+    // No Redis → just call fetcher directly
+    if (!redis) return fetcher();
+
     // 1. Try Redis cache
     try {
         const hit = await redis.get(key);
@@ -72,6 +75,7 @@ export async function cachedCounter(
     ttlSeconds: number = 30
 ): Promise<number> {
     const redis = getRedisClient();
+    if (!redis) return fetcher();
     try {
         const val = await redis.get(key);
         if (val !== null) return parseInt(val, 10);
@@ -94,6 +98,7 @@ export async function cachedCounter(
  */
 export async function incrementCounter(key: string, by: number = 1): Promise<number> {
     const redis = getRedisClient();
+    if (!redis) return -1;
     try {
         const exists = await redis.exists(key);
         if (exists) {
@@ -109,6 +114,7 @@ export async function incrementCounter(key: string, by: number = 1): Promise<num
  */
 export async function decrementCounter(key: string, by: number = 1): Promise<number> {
     const redis = getRedisClient();
+    if (!redis) return -1;
     try {
         const exists = await redis.exists(key);
         if (exists) {
@@ -124,6 +130,7 @@ export async function decrementCounter(key: string, by: number = 1): Promise<num
 export async function invalidateCache(...keys: string[]): Promise<void> {
     if (keys.length === 0) return;
     const redis = getRedisClient();
+    if (!redis) return;
     try {
         await redis.del(...keys);
     } catch { /* Redis down — TTL will handle it */ }
@@ -135,6 +142,7 @@ export async function invalidateCache(...keys: string[]): Promise<void> {
  */
 export async function invalidateCachePattern(pattern: string): Promise<void> {
     const redis = getRedisClient();
+    if (!redis) return;
     try {
         let cursor = "0";
         do {
@@ -153,6 +161,7 @@ export async function invalidateCachePattern(pattern: string): Promise<void> {
  */
 export async function setIfNotExists(key: string, value: string, ttlSeconds: number): Promise<boolean> {
     const redis = getRedisClient();
+    if (!redis) return false;
     try {
         const result = await redis.set(key, value, "EX", ttlSeconds, "NX");
         return result === "OK";
@@ -171,6 +180,9 @@ export async function getCacheStats(): Promise<{
     uptimeSeconds: number;
 }> {
     const redis = getRedisClient();
+    if (!redis) {
+        return { hitRate: "N/A (Redis not configured)", totalKeys: 0, memoryUsed: "N/A", uptimeSeconds: 0 };
+    }
     try {
         const [stats, memory, keyCount, server] = await Promise.all([
             redis.info("stats"),
