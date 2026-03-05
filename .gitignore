@@ -93,7 +93,6 @@ pids
 
 # PM2
 .pm2
-ecosystem.config.js
 
 # Temporary files
 *.tmp

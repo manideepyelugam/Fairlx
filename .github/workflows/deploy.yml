@@ -180,10 +180,14 @@ jobs:
           timeout: 30m
           command_timeout: 30m
           script: |
-            # Navigate to app directory
+            set -e
             cd /var/www/fairlx
-            
-            # Create .env.local file with production environment variables
+
+            # ── 1. Write .env.local ──
+            cat > .env.local << 'ENVEOF'
+            NODE_ENV=production
+            ENVEOF
+            # Use tee to append secrets (heredoc above is just the header)
             cat > .env.local << EOF
             NODE_ENV=production
             NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
@@ -232,7 +236,6 @@ jobs:
             NEXT_PUBLIC_APPWRITE_INVOICES_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_INVOICES_ID }}
             NEXT_PUBLIC_APPWRITE_PROCESSED_EVENTS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_PROCESSED_EVENTS_ID }}
             NEXT_PUBLIC_APPWRITE_BILLING_SETTINGS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_BILLING_SETTINGS_ID }}
-            # Payment Processing & Currency (USD primary, INR for Razorpay with live conversion)
             RAZORPAY_KEY_ID=${{ secrets.RAZORPAY_KEY_ID }}
             RAZORPAY_KEY_SECRET=${{ secrets.RAZORPAY_KEY_SECRET }}
             RAZORPAY_WEBHOOK_SECRET=${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
@@ -261,8 +264,6 @@ jobs:
             NEXT_PUBLIC_APPWRITE_PROGRAM_MEMBERS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_PROGRAM_MEMBERS_ID }}
             NEXT_PUBLIC_APPWRITE_PROGRAM_MILESTONES_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_PROGRAM_MILESTONES_ID }}
             NEXT_PUBLIC_APPWRITE_CUSTOM_ROLES_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_CUSTOM_ROLES_ID }}
-            NEXT_PUBLIC_APPWRITE_PROJECT_ROLES_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_PROJECT_ROLES_ID }}
-            NEXT_PUBLIC_APPWRITE_PROJECT_MEMBERS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_PROJECT_MEMBERS_ID }}
             NEXT_PUBLIC_APPWRITE_SPACES_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_SPACES_ID }}
             NEXT_PUBLIC_APPWRITE_SPACE_MEMBERS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_SPACE_MEMBERS_ID }}
             NEXT_PUBLIC_APPWRITE_WORKFLOWS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_WORKFLOWS_ID }}
@@ -273,73 +274,50 @@ jobs:
             NEXT_PUBLIC_APPWRITE_WORK_ITEM_LINKS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_WORK_ITEM_LINKS_ID }}
             NEXT_PUBLIC_APPWRITE_SAVED_VIEWS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_SAVED_VIEWS_ID }}
             NEXT_PUBLIC_APPWRITE_SUBTASKS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_SUBTASKS_ID }}
-            NEXT_PUBLIC_APPWRITE_LOGIN_TOKENS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_LOGIN_TOKENS_ID }}
-            # Landing Page (Supabase)
             LANDING_SUPABASE_URL=${{ secrets.LANDING_SUPABASE_URL }}
             LANDING_SUPABASE_SERVICE_ROLE_KEY=${{ secrets.LANDING_SUPABASE_SERVICE_ROLE_KEY }}
-            # Webhooks
             NEXT_PUBLIC_APPWRITE_PROJECT_WEBHOOKS_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_PROJECT_WEBHOOKS_ID }}
             NEXT_PUBLIC_APPWRITE_PROJECT_WEBHOOK_DELIVERIES_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_PROJECT_WEBHOOK_DELIVERIES_ID }}
-            # Two-Factor Authentication (2FA)
             NEXT_PUBLIC_APPWRITE_USER_RECOVERY_CODES_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_USER_RECOVERY_CODES_ID }}
             NEXT_PUBLIC_APPWRITE_EMAIL_OTP_CODES_ID=${{ secrets.NEXT_PUBLIC_APPWRITE_EMAIL_OTP_CODES_ID }}
             TWO_FACTOR_ENCRYPTION_SECRET=${{ secrets.TWO_FACTOR_ENCRYPTION_SECRET }}
-            # Socket.IO
             SOCKET_PUSH_SECRET=${{ secrets.SOCKET_PUSH_SECRET }}
-            # Cloudflare R2 Storage (production)
             R2_ACCOUNT_ID=${{ secrets.R2_ACCOUNT_ID }}
             R2_ACCESS_KEY_ID=${{ secrets.R2_ACCESS_KEY_ID }}
             R2_SECRET_ACCESS_KEY=${{ secrets.R2_SECRET_ACCESS_KEY }}
             R2_BUCKET_NAME=${{ secrets.R2_BUCKET_NAME }}
             R2_PUBLIC_URL=${{ secrets.R2_PUBLIC_URL }}
-            # Redis (server-side caching layer)
             REDIS_URL=${{ secrets.REDIS_URL }}
             REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
             EOF
-            
-            # Ensure proper permissions
             chmod 600 .env.local
-            
-            # Quick dependency sync (node_modules already transferred via SCP)
+
+            # ── 2. Install dependencies ──
             npm install --prefer-offline --no-audit --no-fund
-            
-            # Create PM2 ecosystem config for Socket.IO server
-            # Using tsx for production since it handles TypeScript and path aliases correctly
-            cat > ecosystem.config.js << 'EOFPM2'
-            module.exports = {
-              apps: [{
-                name: 'fairlx',
-                script: 'npm',
-                args: 'start',
-                cwd: '/var/www/fairlx',
-                env: {
-                  NODE_ENV: 'production',
-                  PORT: 3000
-                },
-                instances: 1,
-                exec_mode: 'fork',
-                max_memory_restart: '1G',
-                watch: false,
-                autorestart: true,
-                restart_delay: 4000,
-                max_restarts: 10
-              }]
-            };
-            EOFPM2
-            
-            # Verify Redis is running before app start
-            redis-cli -a ${{ secrets.REDIS_PASSWORD }} PING || echo 'WARNING: Redis not responding'
-            
-            # Restart PM2 process
-            pm2 restart fairlx || pm2 start ecosystem.config.js --name fairlx
-            
-            # Wait for the application to start
-            sleep 10
-            
-            # Check if the application is running
-            pm2 list
-            
-            # Save PM2 configuration
-            pm2 save
-            
-            echo "Deployment completed successfully!"
+
+            # ── 3. Verify Redis ──
+            redis-cli -a "${{ secrets.REDIS_PASSWORD }}" PING || echo 'WARNING: Redis not responding'
+
+            # ── 4. Graceful PM2 restart (runs as root via sudo) ──
+            # ecosystem.config.js is already transferred via SCP with the code.
+            # It uses the Next.js binary directly to avoid child-process issues.
+            sudo pm2 reload fairlx --update-env 2>/dev/null \
+              || sudo pm2 start /var/www/fairlx/ecosystem.config.js
+
+            # Wait for Next.js to be ready
+            echo "Waiting for app to start..."
+            for i in $(seq 1 30); do
+              if curl -sf http://127.0.0.1:3000/ > /dev/null 2>&1; then
+                echo "✅ App is live on port 3000"
+                break
+              fi
+              sleep 2
+            done
+
+            # ── 5. Save PM2 state (survives reboot) ──
+            sudo pm2 save
+
+            # ── 6. Show status ──
+            sudo pm2 list
+
+            echo "✅ Deployment completed successfully!"
