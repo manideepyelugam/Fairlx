@@ -11,6 +11,7 @@ interface TimelineWorkTreeProps {
   selectedItemId: string | null;
   onItemClick: (itemId: string) => void;
   onToggleExpanded: (itemId: string) => void;
+  width?: number;
 }
 
 export function TimelineWorkTree({
@@ -18,9 +19,13 @@ export function TimelineWorkTree({
   selectedItemId,
   onItemClick,
   onToggleExpanded,
+  width = 400,
 }: TimelineWorkTreeProps) {
   return (
-    <div className="w-[400px] border-r bg-card overflow-y-auto flex-shrink-0">
+    <div
+      className="border-r bg-card overflow-y-auto flex-shrink-0"
+      style={{ width: `${width}px` }}
+    >
       {/* Header */}
       <div className="sticky top-0 bg-card border-b px-4 py-3 font-semibold text-sm z-10">
         <div className="flex items-center gap-2">
