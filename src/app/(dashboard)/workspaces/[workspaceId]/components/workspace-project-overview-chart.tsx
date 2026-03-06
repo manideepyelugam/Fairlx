@@ -33,7 +33,7 @@ export const WorkspaceProjectOverviewChart = ({ data }: WorkspaceProjectOverview
                 data={data}
                 margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
             >
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" className="dark:stroke-slate-700" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                 <XAxis
                     dataKey="name"
                     tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
@@ -52,7 +52,8 @@ export const WorkspaceProjectOverviewChart = ({ data }: WorkspaceProjectOverview
                         border: '1px solid hsl(var(--border))',
                         borderRadius: '8px',
                         fontSize: '12px',
-                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                        color: 'hsl(var(--foreground))'
                     }}
                     labelStyle={{ color: 'hsl(var(--foreground))' }}
                 />

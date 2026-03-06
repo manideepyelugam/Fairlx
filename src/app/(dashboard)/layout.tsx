@@ -1,24 +1,42 @@
 'use client';
 import { usePathname } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, Component, type ReactNode, type ErrorInfo } from "react";
 import dynamic from "next/dynamic";
 
+// Error boundary to catch chunk loading failures gracefully
+class ModalErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: Error, _info: ErrorInfo) {
+    console.warn("Modal chunk loading error (safe to ignore):", error.message);
+  }
+  render() {
+    return this.state.hasError ? null : this.props.children;
+  }
+}
+
 // Dynamically import all modals to keep the main bundle light
-const CreateProjectModal = dynamic(() => import("@/features/projects/components/create-project-modal").then(mod => mod.CreateProjectModal), { ssr: false });
-const CreateWorkspaceModal = dynamic(() => import("@/features/workspaces/components/create-workspace-modal").then(mod => mod.CreateWorkspaceModal), { ssr: false });
-const CreateWorkItemModal = dynamic(() => import("@/features/sprints/components/create-work-item-modal").then(mod => mod.CreateWorkItemModal), { ssr: false });
-const CreateCustomColumnModalWrapper = dynamic(() => import("@/features/custom-columns/components/create-custom-column-modal-wrapper").then(mod => mod.CreateCustomColumnModalWrapper), { ssr: false });
-const ManageColumnsModalWrapper = dynamic(() => import("@/features/custom-columns/components/manage-columns-modal-wrapper").then(mod => mod.ManageColumnsModalWrapper), { ssr: false });
-const CreateProgramModal = dynamic(() => import("@/features/programs/components/create-program-modal").then(mod => mod.CreateProgramModal), { ssr: false });
-const EditProgramModal = dynamic(() => import("@/features/programs/components/edit-program-modal").then(mod => mod.EditProgramModal), { ssr: false });
-const ProjectAIChatWrapper = dynamic(() => import("@/features/project-docs/components").then(mod => mod.ProjectAIChatWrapper), { ssr: false });
-const CreateSpaceModal = dynamic(() => import("@/features/spaces/components").then(mod => mod.CreateSpaceModal), { ssr: false });
-const CreateWorkflowModal = dynamic(() => import("@/features/workflows/components/create-workflow-modal").then(mod => mod.CreateWorkflowModal), { ssr: false });
-const CreateLinkModal = dynamic(() => import("@/features/work-item-links/components/create-link-modal").then(mod => mod.CreateLinkModal), { ssr: false });
-const CreateTaskModal = dynamic(() => import("@/features/tasks/components/create-task-modal").then(mod => mod.CreateTaskModal), { ssr: false });
-const EditTaskModal = dynamic(() => import("@/features/tasks/components/edit-task-modal").then(mod => mod.EditTaskModal), { ssr: false });
-const TaskDetailsModalWrapper = dynamic(() => import("@/features/tasks/components/task-details-modal-wrapper").then(mod => mod.TaskDetailsModalWrapper), { ssr: false });
-const TaskPreviewModalWrapper = dynamic(() => import("@/features/tasks/components/task-preview-modal").then(mod => mod.TaskPreviewModalWrapper), { ssr: false });
+// Safe dynamic imports with .catch() to handle intermittent chunk loading failures
+const CreateProjectModal = dynamic(() => import("@/features/projects/components/create-project-modal").then(mod => mod.CreateProjectModal).catch(() => (() => null) as React.FC), { ssr: false });
+const CreateWorkspaceModal = dynamic(() => import("@/features/workspaces/components/create-workspace-modal").then(mod => mod.CreateWorkspaceModal).catch(() => (() => null) as React.FC), { ssr: false });
+const CreateWorkItemModal = dynamic(() => import("@/features/sprints/components/create-work-item-modal").then(mod => mod.CreateWorkItemModal).catch(() => (() => null) as React.FC), { ssr: false });
+const CreateCustomColumnModalWrapper = dynamic(() => import("@/features/custom-columns/components/create-custom-column-modal-wrapper").then(mod => mod.CreateCustomColumnModalWrapper).catch(() => (() => null) as React.FC), { ssr: false });
+const ManageColumnsModalWrapper = dynamic(() => import("@/features/custom-columns/components/manage-columns-modal-wrapper").then(mod => mod.ManageColumnsModalWrapper).catch(() => (() => null) as React.FC), { ssr: false });
+const CreateProgramModal = dynamic(() => import("@/features/programs/components/create-program-modal").then(mod => mod.CreateProgramModal).catch(() => (() => null) as React.FC), { ssr: false });
+const EditProgramModal = dynamic(() => import("@/features/programs/components/edit-program-modal").then(mod => mod.EditProgramModal).catch(() => (() => null) as React.FC), { ssr: false });
+const ProjectAIChatWrapper = dynamic(() => import("@/features/project-docs/components").then(mod => mod.ProjectAIChatWrapper).catch(() => (() => null) as React.FC), { ssr: false });
+const CreateSpaceModal = dynamic(() => import("@/features/spaces/components").then(mod => mod.CreateSpaceModal).catch(() => (() => null) as React.FC), { ssr: false });
+const CreateWorkflowModal = dynamic(() => import("@/features/workflows/components/create-workflow-modal").then(mod => mod.CreateWorkflowModal).catch(() => ((_props: { workspaceId?: string }) => null) as React.FC<{ workspaceId?: string }>), { ssr: false });
+const CreateLinkModal = dynamic(() => import("@/features/work-item-links/components/create-link-modal").then(mod => mod.CreateLinkModal).catch(() => ((_props: { workspaceId: string }) => null) as React.FC<{ workspaceId: string }>), { ssr: false });
+const CreateTaskModal = dynamic(() => import("@/features/tasks/components/create-task-modal").then(mod => mod.CreateTaskModal).catch(() => (() => null) as React.FC), { ssr: false });
+const EditTaskModal = dynamic(() => import("@/features/tasks/components/edit-task-modal").then(mod => mod.EditTaskModal).catch(() => (() => null) as React.FC), { ssr: false });
+const TaskDetailsModalWrapper = dynamic(() => import("@/features/tasks/components/task-details-modal-wrapper").then(mod => mod.TaskDetailsModalWrapper).catch(() => (() => null) as React.FC), { ssr: false });
+const TaskPreviewModalWrapper = dynamic(() => import("@/features/tasks/components/task-preview-modal").then(mod => mod.TaskPreviewModalWrapper).catch(() => (() => null) as React.FC), { ssr: false });
 import { useWorkspaceId } from "@/features/workspaces/hooks/use-workspace-id";
 
 import { Navbar } from "@/components/navbar";
@@ -45,26 +63,28 @@ const DashboardContent = ({ children }: DashboardLayoutProps) => {
 
   return (
     <div className={`min-h-screen ${isMainDashboard ? 'bg-background' : ''}`}>
-      <Suspense fallback={null}>
-        <CreateWorkspaceModal />
-        <CreateProjectModal />
-        <CreateWorkItemModal />
-        <CreateTaskModal />
-        <EditTaskModal />
-        <TaskDetailsModalWrapper />
-        <TaskPreviewModalWrapper />
-        <CreateCustomColumnModalWrapper />
-        <ManageColumnsModalWrapper />
-        <CreateProgramModal />
-        <EditProgramModal />
-        {workspaceId && (
-          <>
-            <CreateSpaceModal />
-            <CreateWorkflowModal workspaceId={workspaceId} />
-            <CreateLinkModal workspaceId={workspaceId} />
-          </>
-        )}
-      </Suspense>
+      <ModalErrorBoundary>
+        <Suspense fallback={null}>
+          <CreateWorkspaceModal />
+          <CreateProjectModal />
+          <CreateWorkItemModal />
+          <CreateTaskModal />
+          <EditTaskModal />
+          <TaskDetailsModalWrapper />
+          <TaskPreviewModalWrapper />
+          <CreateCustomColumnModalWrapper />
+          <ManageColumnsModalWrapper />
+          <CreateProgramModal />
+          <EditProgramModal />
+          {workspaceId && (
+            <>
+              <CreateSpaceModal />
+              <CreateWorkflowModal workspaceId={workspaceId} />
+              <CreateLinkModal workspaceId={workspaceId} />
+            </>
+          )}
+        </Suspense>
+      </ModalErrorBoundary>
 
       <div className="flex w-full h-screen">
         <div className="fixed left-0 top-0 hidden lg:block lg:w-[264px] h-full overflow-y-auto">

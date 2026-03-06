@@ -263,15 +263,6 @@ export const WorkflowSimpleView = ({
 
   return (
     <div className="space-y-4">
-      {/* Quick Info Header */}
-      <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-primary/8 via-primary/4 to-transparent p-3 border border-primary/15">
-        <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
-        <div className="relative">
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            <span className="font-medium text-foreground">Tip:</span> Drag statuses to the canvas. Connect by dragging between nodes.
-          </p>
-        </div>
-      </div>
 
       {/* Statuses Section */}
       <div className="space-y-4">

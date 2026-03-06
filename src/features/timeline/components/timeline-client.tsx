@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useRef, useCallback, useTransition, useState } from "react";
+import { GripVertical } from "lucide-react";
 import { useTimelineState } from "@/features/timeline/hooks/use-timeline-store";
 import { useUpdateTimelineItem } from "@/features/timeline/api/use-update-timeline-item";
 import { TimelineHeader } from "@/features/timeline/components/timeline-header";
@@ -55,6 +56,37 @@ export function TimelineClient({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isPending, startTransition] = useTransition();
   const [isCreateEpicDialogOpen, setIsCreateEpicDialogOpen] = useState(false);
+  const [workTreeWidth, setWorkTreeWidth] = useState(400);
+  const isResizingRef = useRef(false);
+  const startXRef = useRef(0);
+  const startWidthRef = useRef(0);
+
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isResizingRef.current = true;
+    startXRef.current = e.clientX;
+    startWidthRef.current = workTreeWidth;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizingRef.current) return;
+      const delta = e.clientX - startXRef.current;
+      const newWidth = Math.min(Math.max(startWidthRef.current + delta, 200), 700);
+      setWorkTreeWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      isResizingRef.current = false;
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, [workTreeWidth]);
 
   // State management
   const timelineState = useTimelineState();
@@ -214,7 +246,16 @@ export function TimelineClient({
           selectedItemId={selectedItemId}
           onItemClick={setSelectedItemId}
           onToggleExpanded={toggleExpanded}
+          width={workTreeWidth}
         />
+
+        {/* Resize Handle */}
+        <div
+          onMouseDown={handleResizeStart}
+          className="w-1.5 bg-border hover:bg-primary/50 active:bg-primary/50 transition-colors cursor-col-resize flex items-center justify-center group shrink-0"
+        >
+          <GripVertical className="size-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
 
         {/* Timeline Grid */}
         <div
