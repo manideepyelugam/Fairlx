@@ -8,7 +8,7 @@ import {
   GitBranch,
   Trash2,
   Plus,
-  PanelLeftClose,
+  GripVertical,
   PanelLeft,
   BookOpen,
   AlertTriangle,
@@ -298,7 +298,11 @@ const WorkflowEditor = () => {
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [transitionDialogOpen, setTransitionDialogOpen] = useState(false);
   const [connectProjectOpen, setConnectProjectOpen] = useState(false);
-  const [showInfoPanel, setShowInfoPanel] = useState(true);
+  const [infoPanelWidth, setInfoPanelWidth] = useState(380);
+  const isResizingRef = useRef(false);
+  const startXRef = useRef(0);
+  const startWidthRef = useRef(0);
+  const [showCanvasTip, setShowCanvasTip] = useState(true);
   const [editingStatus, setEditingStatus] = useState<WorkflowStatus | null>(null);
   const [editingTransition, setEditingTransition] = useState<WorkflowTransition | null>(null);
   const [zoomLevel, setZoomLevel] = useState(100);
@@ -308,6 +312,38 @@ const WorkflowEditor = () => {
 
   // React Flow instance for coordinate conversion
   const reactFlowInstance = useReactFlow();
+
+  const handlePanelResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isResizingRef.current = true;
+    startXRef.current = e.clientX;
+    startWidthRef.current = infoPanelWidth;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizingRef.current) return;
+      const delta = e.clientX - startXRef.current;
+      const rawWidth = startWidthRef.current + delta;
+      // Snap closed if dragged below 80px, otherwise clamp 200-700
+      if (rawWidth < 80) {
+        setInfoPanelWidth(0);
+      } else {
+        setInfoPanelWidth(Math.min(Math.max(rawWidth, 200), 700));
+      }
+    };
+
+    const handleMouseUp = () => {
+      isResizingRef.current = false;
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, [infoPanelWidth]);
 
   // Use refs to avoid dependency issues in callbacks
   const workflowRef = useRef(workflow);
@@ -778,8 +814,10 @@ const WorkflowEditor = () => {
       {/* Main Content with Info Panel */}
       <div className="flex-1 flex overflow-hidden">
         {/* Info Panel with Tabs */}
-        {showInfoPanel && (
-          <div className="w-[380px] border-r bg-background shrink-0 overflow-hidden flex flex-col">
+        <div
+          className="border-r bg-background shrink-0 overflow-hidden flex flex-col"
+          style={{ width: `${infoPanelWidth}px` }}
+        >
             <Tabs defaultValue="builder" className="flex flex-col h-full">
               {/* Tab Headers */}
               <div className="border-b px-3 pt-3 pb-0 shrink-0">
@@ -855,24 +893,22 @@ const WorkflowEditor = () => {
               </TabsContent>
             </Tabs>
           </div>
-        )}
 
-        {/* Collapsible Divider / Expand Button */}
-        {showInfoPanel ? (
-          <div className="w-1 bg-border hover:bg-primary/30 transition-colors relative group cursor-pointer flex items-center justify-center">
-            <button
-              onClick={() => setShowInfoPanel(false)}
-              className="absolute opacity-0 group-hover:opacity-100 transition-opacity bg-background border border-border rounded-md p-1 shadow-md"
-            >
-              <PanelLeftClose className="size-4 text-muted-foreground hover:text-foreground" />
-            </button>
+        {/* Resize Handle */}
+        {infoPanelWidth > 0 ? (
+          <div
+            onMouseDown={handlePanelResizeStart}
+            className="w-1.5 bg-border hover:bg-primary/50 active:bg-primary/50 transition-colors cursor-col-resize flex items-center justify-center group shrink-0"
+          >
+            <GripVertical className="size-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
         ) : (
-          <div className="border-r bg-background flex flex-col items-center py-3">
+          <div className="border-r bg-background flex flex-col items-center py-3 shrink-0">
             <button
-              onClick={() => setShowInfoPanel(true)}
+              onMouseDown={handlePanelResizeStart}
+              onClick={() => setInfoPanelWidth(380)}
               className="p-1.5 rounded-md hover:bg-muted transition-colors"
-              title="Show Info Panel"
+              title="Show panel (or drag right)"
             >
               <PanelLeft className="size-4 text-muted-foreground hover:text-foreground" />
             </button>
@@ -947,13 +983,22 @@ const WorkflowEditor = () => {
             </Panel>
 
             {/* Help Tip - moved and restyled */}
-            <Panel position="top-right" className="!top-20 !right-2 !z-40">
-              <Card className="p-2 max-w-[220px] !bg-primary/6 !border !border-primary/10 shadow-md">
-                <p className="text-[12px] text-primary leading-snug">
-                  💡 <strong>Tip:</strong> Drag from one status to another to create transitions. Click the transition label then the Edit icon to set approval rules.
-                </p>
-              </Card>
-            </Panel>
+            {showCanvasTip && (
+              <Panel position="top-right" className="!top-20 !right-2 !z-40">
+                <Card className="relative p-2 max-w-[220px] !bg-primary/6 !border !border-primary/10 shadow-md">
+                  <button
+                    onClick={() => setShowCanvasTip(false)}
+                    aria-label="Dismiss canvas tip"
+                    className="absolute top-1 right-1 p-1 rounded hover:bg-primary/10 transition-colors"
+                  >
+                    <X className="size-4 text-primary" />
+                  </button>
+                  <p className="text-[12px] text-primary leading-snug">
+                    💡 <strong>Tip:</strong> Drag from one status to another to create transitions. Click the transition label then the Edit icon to set approval rules.
+                  </p>
+                </Card>
+              </Panel>
+            )}
 
             {statuses.length === 0 && (
               <Panel position="top-center" className="!top-1/2 !-translate-y-1/2">
