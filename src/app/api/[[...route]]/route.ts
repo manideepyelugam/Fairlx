@@ -56,6 +56,8 @@ import twoFactorAuth from "@/features/twoFactorAuth/server/route";
 import githubRewards from "@/features/github-rewards/server/route";
 // My Space — cross-workspace personal dashboard
 import mySpace from "@/features/my-space/server/route";
+// BYOB (Bring Your Own Backend)
+import byob from "@/features/byob/server/route";
 // Global Traffic Metering - NOW WITH BATCHING
 // Events are collected in memory and flushed every 60s (1 write instead of ~3600/hr)
 import { batchedTrafficMeteringMiddleware } from "@/lib/traffic-metering-batched";
@@ -121,7 +123,9 @@ const routes = app
   // GitHub Star Rewards
   .route("/github-rewards", githubRewards)
   // My Space — cross-workspace personal dashboard
-  .route("/my-space", mySpace);
+  .route("/my-space", mySpace)
+  // BYOB (Bring Your Own Backend)
+  .route("/byob", byob);
 
 export const GET = handle(app);
 export const POST = handle(app);

@@ -22,8 +22,8 @@ export async function setupEmailOtpCodes(databases: Databases, databaseId: strin
 
     // Attributes
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'userId', 256, true);
-    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'email', 256, true);
-    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'otpHash', 512, true);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'email', 256, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'codeHash', 512, true);
     await ensureDatetimeAttribute(databases, databaseId, COLLECTION_ID, 'expiresAt', true);
     await ensureBooleanAttribute(databases, databaseId, COLLECTION_ID, 'isUsed', false, false);
     await ensureIntegerAttribute(databases, databaseId, COLLECTION_ID, 'attempts', false, 0);

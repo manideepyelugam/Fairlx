@@ -14,3 +14,10 @@ import "server-only";
 // Only use in trusted server-side code
 export const LANDING_SUPABASE_URL = process.env.LANDING_SUPABASE_URL!;
 export const LANDING_SUPABASE_SERVICE_ROLE_KEY = process.env.LANDING_SUPABASE_SERVICE_ROLE_KEY!;
+
+// ===============================
+// BYOB (Bring Your Own Backend)
+// ===============================
+// SECURITY: Encryption key for BYOB tenant env blobs
+// Only used server-side for encrypt/decrypt operations
+export const BYOB_ENCRYPTION_SECRET = process.env.BYOB_ENCRYPTION_SECRET!;

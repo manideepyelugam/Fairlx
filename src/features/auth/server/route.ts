@@ -39,12 +39,21 @@ const app = new Hono()
   })
   .get("/lifecycle", sessionMiddleware, async (c) => {
     const user = c.get("user");
+    const isByob = c.get("isByob");
 
     // Cache lifecycle state (polled on every page navigation, ~6 DB reads)
     const result = await cached(
       CK.authLifecycle(user.$id),
       async () => {
-        // Dynamic import to avoid circular dependency
+        // ─── BYOB users: resolve against customer Appwrite ─────────────
+        if (isByob) {
+          const databases = c.get("databases");
+          const databaseId = c.get("databaseId");
+          const { getBYOBLifecycleState } = await import("./byob-lifecycle");
+          const { legacyState, lifecycle } = await getBYOBLifecycleState(databases, user, databaseId);
+          return { legacyState, lifecycle };
+        }
+        // ─── Cloud users: existing path (unchanged) ───────────────────
         const { getLifecycleStateWithLegacy } = await import("./actions");
         const { legacyState, lifecycle } = await getLifecycleStateWithLegacy();
         return { legacyState, lifecycle };
@@ -762,6 +771,10 @@ const app = new Hono()
         sameSite: "lax",
         maxAge: 60 * 60 * 24 * 30, // 30 days
       });
+
+      // CRITICAL: Invalidate lifecycle cache
+      const { CK, invalidateCache } = await import("@/lib/redis");
+      await invalidateCache(CK.authLifecycle(userId));
 
       return c.json({
         success: true,

@@ -49,7 +49,7 @@ const app = new Hono()
       ];
 
       if (unreadOnly) {
-        query.push(Query.equal("read", false));
+        query.push(Query.equal("isRead", false));
       }
 
       const notifications = await databases.listDocuments<Notification>(
@@ -146,7 +146,7 @@ const app = new Hono()
           [
             Query.equal("workspaceId", workspaceId),
             Query.equal("userId", user.$id),
-            Query.equal("read", false),
+            Query.equal("isRead", false),
             Query.limit(1),
           ]
         );
@@ -221,7 +221,7 @@ const app = new Hono()
         [
           Query.equal("workspaceId", workspaceId),
           Query.equal("userId", user.$id),
-          Query.equal("read", false),
+          Query.equal("isRead", false),
           Query.limit(100),
         ]
       );
@@ -297,7 +297,7 @@ const app = new Hono()
           workspaceId,
           triggeredBy,
           metadata: metadata ? JSON.stringify(metadata) : undefined,
-          read: false,
+          isRead: false,
         }
       );
 

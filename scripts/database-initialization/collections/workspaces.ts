@@ -2,6 +2,7 @@ import { Databases, IndexType, Permission, Role } from 'node-appwrite';
 import {
     ensureCollection,
     ensureStringAttribute,
+    ensureBooleanAttribute,
     ensureEnumAttribute,
     ensureIndex,
     sleep,
@@ -28,6 +29,8 @@ export async function setupWorkspaces(databases: Databases, databaseId: string):
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'billingAccountId', 256, false);
     await ensureEnumAttribute(databases, databaseId, COLLECTION_ID, 'uiMode', ['simple', 'advanced'], false, 'simple');
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'features', 4096, false);
+    await ensureBooleanAttribute(databases, databaseId, COLLECTION_ID, 'isDefault', false, false);
+    await ensureEnumAttribute(databases, databaseId, COLLECTION_ID, 'billingScope', ['user', 'organization'], false, 'user');
 
     // Wait for attributes to register
     await sleep(2000);

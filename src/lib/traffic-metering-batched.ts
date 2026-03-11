@@ -36,12 +36,16 @@ interface TrafficEvent {
     timestamp: string;
     billingEntityId?: string;
     billingEntityType?: string;
+    /** True when request originates from a BYOB tenant (skip storage/compute billing) */
+    isByob?: boolean;
+    /** BYOB org slug for billing attribution */
+    byobOrgSlug?: string;
 }
 
 type MeteringContext = {
     Variables: {
         databases?: Databases;
-        user?: { $id: string };
+        user?: { $id: string; prefs?: Record<string, string | number | boolean | null> };
     };
 };
 
@@ -69,7 +73,7 @@ function estimatePayloadSize(obj: unknown): number {
 /**
  * Extract workspace ID from request (URL or body)
  */
-function extractWorkspaceId(url: string, body?: Record<string, unknown>): string | null {
+function extractWorkspaceId(url: string): string | null {
     try {
         const urlObj = new URL(url, 'http://localhost');
         const pathname = urlObj.pathname;
@@ -85,10 +89,6 @@ function extractWorkspaceId(url: string, body?: Record<string, unknown>): string
 
         const queryWorkspaceId = urlObj.searchParams.get('workspaceId');
         if (queryWorkspaceId) return queryWorkspaceId;
-
-        if (body && typeof body.workspaceId === 'string') {
-            return body.workspaceId;
-        }
     } catch {
         const pathMatch = url.match(/\/workspaces\/([a-zA-Z0-9_-]+)/);
         if (pathMatch) return pathMatch[1];
@@ -100,16 +100,16 @@ function extractWorkspaceId(url: string, body?: Record<string, unknown>): string
 /**
  * Extract project ID from request
  */
-function extractProjectId(url: string, body?: Record<string, unknown>): string | null {
+function extractProjectId(url: string): string | null {
     const pathMatch = url.match(/\/projects\/([a-zA-Z0-9]+)/);
     if (pathMatch) return pathMatch[1];
 
-    const urlObj = new URL(url, 'http://localhost');
-    const queryProjectId = urlObj.searchParams.get('projectId');
-    if (queryProjectId) return queryProjectId;
-
-    if (body && typeof body.projectId === 'string') {
-        return body.projectId;
+    try {
+        const urlObj = new URL(url, 'http://localhost');
+        const queryProjectId = urlObj.searchParams.get('projectId');
+        if (queryProjectId) return queryProjectId;
+    } catch {
+        // ignore
     }
 
     return null;
@@ -146,6 +146,7 @@ async function flushEvents() {
                         userId: event.userId,
                         billingEntityId: event.billingEntityId,
                         billingEntityType: event.billingEntityType,
+                        isByob: event.isByob || false,
                     }),
                     timestamp: event.timestamp,
                     source: UsageSource.API,
@@ -205,39 +206,38 @@ export const batchedTrafficMeteringMiddleware = createMiddleware<MeteringContext
         const requestUrl = c.req.url;
         const requestMethod = c.req.method;
 
-        // Calculate request size
-        let requestBody: Record<string, unknown> | null = null;
-        let requestSize = 0;
-
-        try {
-            const contentType = c.req.header('content-type') || '';
-            if (contentType.includes('application/json')) {
-                requestBody = await c.req.json().catch(() => null);
-                requestSize = estimatePayloadSize(requestBody);
-            } else {
-                const contentLength = c.req.header('content-length');
-                requestSize = contentLength ? parseInt(contentLength, 10) : 0;
-            }
-        } catch {
-            requestSize = 0;
-        }
+        // Estimate request size from Content-Length header ONLY
+        // CRITICAL: Never read c.req.json() here — it drains the ReadableStream
+        // body, causing every downstream zValidator("json") to receive empty input.
+        const contentLength = c.req.header('content-length');
+        const requestSize = contentLength ? parseInt(contentLength, 10) : 0;
 
         // Execute route handler
         await next();
 
         // Calculate response size
+        // CRITICAL: Skip body consumption for SSE/streaming responses — reading
+        // the body with .text() blocks until the stream finishes, which prevents
+        // incremental delivery of events to the client.
         let responseSize = 0;
-        try {
-            const responseBody = c.res.clone();
-            const text = await responseBody.text();
-            responseSize = estimatePayloadSize(text);
-        } catch {
-            responseSize = 0;
+        const contentType = c.res.headers.get("content-type") || "";
+        const isStreaming = contentType.includes("text/event-stream") ||
+            contentType.includes("text/plain") ||
+            contentType.includes("application/octet-stream");
+
+        if (!isStreaming) {
+            try {
+                const responseBody = c.res.clone();
+                const text = await responseBody.text();
+                responseSize = estimatePayloadSize(text);
+            } catch {
+                responseSize = 0;
+            }
         }
 
         const duration = Date.now() - startTime;
-        const workspaceId = extractWorkspaceId(requestUrl, requestBody || undefined);
-        const projectId = extractProjectId(requestUrl, requestBody || undefined);
+        const workspaceId = extractWorkspaceId(requestUrl);
+        const projectId = extractProjectId(requestUrl);
         const databases = c.get('databases');
         const user = c.get('user');
 
@@ -254,6 +254,7 @@ export const batchedTrafficMeteringMiddleware = createMiddleware<MeteringContext
 
         // Add to buffer (non-blocking)
         const endpoint = new URL(requestUrl, 'http://localhost').pathname;
+        const byobOrgSlug = user?.prefs?.byobOrgSlug as string | undefined;
         const event: TrafficEvent = {
             workspaceId,
             projectId: projectId || undefined,
@@ -265,6 +266,8 @@ export const batchedTrafficMeteringMiddleware = createMiddleware<MeteringContext
             statusCode: c.res.status,
             userId: user?.$id || 'anonymous',
             timestamp: new Date(startTime).toISOString(),
+            isByob: !!byobOrgSlug,
+            byobOrgSlug: byobOrgSlug || undefined,
         };
 
         eventBuffer.push(event);

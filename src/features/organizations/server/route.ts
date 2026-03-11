@@ -27,6 +27,8 @@ import {
     bulkRemoveMembersSchema,
 } from "../schemas";
 
+import { invalidateCache, CK } from "@/lib/redis";
+
 // NEW SECURITY IMPORTS
 import { resolveUserOrgAccess, hasOrgPermissionFromAccess } from "@/lib/permissions/resolveUserOrgAccess";
 import { OrgPermissionKey } from "@/features/org-permissions/types";
@@ -143,6 +145,7 @@ const app = new Hono()
                 {
                     name,
                     imageUrl: uploadedImageUrl,
+                    ownerId: user.$id,
                     createdBy: user.$id,
                     billingStartAt: new Date().toISOString(),
                 }
@@ -184,6 +187,9 @@ const app = new Hono()
                     organizationName: name,
                 },
             });
+
+            // CRITICAL: Invalidate lifecycle cache
+            await invalidateCache(CK.authLifecycle(user.$id));
 
             return c.json({ data: organization });
         }
@@ -1273,6 +1279,7 @@ const app = new Hono()
                     ID.unique(),
                     {
                         name: organizationName,
+                        ownerId: user.$id,
                         createdBy: user.$id,
                         // CRITICAL (Item 3): billingStartAt = accountConversionCompletedAt
                         // usage.createdAt < billingStartAt → bill PERSONAL
@@ -1352,6 +1359,9 @@ const app = new Hono()
                         conversionTimestamp: new Date().toISOString(),
                     },
                 });
+
+                // CRITICAL: Invalidate lifecycle cache
+                await invalidateCache(CK.authLifecycle(user.$id));
 
                 return c.json({
                     data: organization,

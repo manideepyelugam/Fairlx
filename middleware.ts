@@ -32,7 +32,11 @@ const PUBLIC_PATHS = [
   "/reset-password",
   "/oauth",
   "/auth/callback",
+  "/setup",         // BYOB setup stepper (all sub-paths)
 ];
+
+// Matches /<orgSlug>/sign-in — BYOB org sign-in pages
+const BYOB_SIGNIN_PATTERN = /^\/[a-z0-9][a-z0-9-]{1,46}[a-z0-9]\/sign-in$/;
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -51,6 +55,11 @@ export function middleware(request: NextRequest) {
   // 2. Allow public paths
   const isPublicPath = PUBLIC_PATHS.some(path => pathname.startsWith(path));
   if (isPublicPath) {
+    return NextResponse.next();
+  }
+
+  // 2b. Allow BYOB org sign-in pages (/<slug>/sign-in)
+  if (BYOB_SIGNIN_PATTERN.test(pathname)) {
     return NextResponse.next();
   }
 

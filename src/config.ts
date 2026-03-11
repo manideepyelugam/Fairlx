@@ -144,6 +144,11 @@ export const EMAIL_OTP_CODES_ID = process.env.NEXT_PUBLIC_APPWRITE_EMAIL_OTP_COD
 export const TWO_FACTOR_ENCRYPTION_SECRET = process.env.TWO_FACTOR_ENCRYPTION_SECRET!;
 
 // ===============================
+// BYOB (Bring Your Own Backend)
+// ===============================
+export const BYOB_TENANTS_ID = process.env.NEXT_PUBLIC_APPWRITE_BYOB_TENANTS_ID || "byob_tenants";
+
+// ===============================
 // Landing Page Supabase (GitHub Star Rewards)
 // MOVED TO config.server.ts for security
 // ===============================

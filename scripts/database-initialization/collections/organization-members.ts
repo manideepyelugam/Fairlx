@@ -3,6 +3,7 @@ import {
     ensureCollection,
     ensureStringAttribute,
     ensureEnumAttribute,
+    ensureBooleanAttribute,
     ensureDatetimeAttribute,
     ensureIndex,
     sleep,
@@ -20,14 +21,16 @@ export async function setupOrganizationMembers(databases: Databases, databaseId:
     ]);
 
     // Attributes
-    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'organizationId', 256, true);
-    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'userId', 256, true);
-    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'email', 256, false);
-    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'name', 256, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'organizationId', 36, true);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'userId', 36, true);
+    await ensureEnumAttribute(databases, databaseId, COLLECTION_ID, 'role', ['OWNER', 'ADMIN', 'MODERATOR', 'MEMBER'], true);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'name', 128, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'email', 320, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'profileImageUrl', 1024, false);
+    await ensureEnumAttribute(databases, databaseId, COLLECTION_ID, 'status', ['ACTIVE', 'INVITED', 'SUSPENDED'], false, 'ACTIVE');
+    await ensureBooleanAttribute(databases, databaseId, COLLECTION_ID, 'mustResetPassword', false, false);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'imageUrl', 1024, false);
-    await ensureEnumAttribute(databases, databaseId, COLLECTION_ID, 'role', ['owner', 'admin', 'moderator', 'member'], true);
-    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'departmentIds', 4096, false);
-    await ensureEnumAttribute(databases, databaseId, COLLECTION_ID, 'status', ['active', 'invited', 'suspended'], false, 'active');
+    // departmentIds NOT stored here — tracked via org_member_departments junction table
     await ensureDatetimeAttribute(databases, databaseId, COLLECTION_ID, 'invitedAt', false);
     await ensureDatetimeAttribute(databases, databaseId, COLLECTION_ID, 'joinedAt', false);
 
@@ -36,6 +39,7 @@ export async function setupOrganizationMembers(databases: Databases, databaseId:
     // Indexes
     await ensureIndex(databases, databaseId, COLLECTION_ID, 'organizationId_idx', IndexType.Key, ['organizationId']);
     await ensureIndex(databases, databaseId, COLLECTION_ID, 'userId_idx', IndexType.Key, ['userId']);
-    await ensureIndex(databases, databaseId, COLLECTION_ID, 'organizationId_userId_idx', IndexType.Key, ['organizationId', 'userId']);
+    await ensureIndex(databases, databaseId, COLLECTION_ID, 'organizationId_userId_idx', IndexType.Unique, ['organizationId', 'userId']);
+    await ensureIndex(databases, databaseId, COLLECTION_ID, 'orgRole_idx', IndexType.Key, ['organizationId', 'role']);
     await ensureIndex(databases, databaseId, COLLECTION_ID, 'email_idx', IndexType.Key, ['email']);
 }

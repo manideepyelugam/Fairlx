@@ -21,6 +21,7 @@ export const PUBLIC_ROUTES = [
     "/reset-password",
     "/auth/callback",
     "/auth/first-login", // Magic link for ORG member first login
+    "/setup",            // BYOB setup stepper
 ];
 
 /**

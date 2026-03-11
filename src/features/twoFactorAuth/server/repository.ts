@@ -10,8 +10,7 @@ export class TwoFactorRepository {
             this.databases.createDocument(DATABASE_ID, USER_RECOVERY_CODES_ID, ID.unique(), {
                 userId,
                 codeHash: hash,
-                used: false,
-                createdAt: new Date().toISOString(),
+                isUsed: false,
             })
         );
         await Promise.all(promises);
@@ -21,7 +20,7 @@ export class TwoFactorRepository {
         const result = await this.databases.listDocuments(DATABASE_ID, USER_RECOVERY_CODES_ID, [
             Query.equal("userId", userId),
             Query.equal("codeHash", codeHash),
-            Query.equal("used", false),
+            Query.equal("isUsed", false),
         ]);
 
         if (result.total === 0) return null;
@@ -30,7 +29,7 @@ export class TwoFactorRepository {
 
     async markRecoveryCodeUsed(codeId: string): Promise<void> {
         await this.databases.updateDocument(DATABASE_ID, USER_RECOVERY_CODES_ID, codeId, {
-            used: true,
+            isUsed: true,
             usedAt: new Date().toISOString(),
         });
     }
@@ -51,7 +50,6 @@ export class TwoFactorRepository {
             codeHash,
             expiresAt: expiresAt.toISOString(),
             attempts: 0,
-            createdAt: new Date().toISOString(),
         });
     }
 

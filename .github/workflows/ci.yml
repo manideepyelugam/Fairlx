@@ -29,6 +29,8 @@ jobs:
     - name: Set environment variables for tests
       run: |
         echo "BILLING_CURRENCY=USD" >> $GITHUB_ENV
+        echo "BYOB_ENCRYPTION_SECRET=test_secret_32_characters_long_123" >> $GITHUB_ENV
+        echo "NEXT_PUBLIC_APPWRITE_BYOB_TENANTS_ID=byob_tenants" >> $GITHUB_ENV
 
     - name: Type check
       run: npx tsc --noEmit

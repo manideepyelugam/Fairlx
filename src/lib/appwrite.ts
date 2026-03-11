@@ -4,11 +4,18 @@ import { Client, Account, Users, Databases, Storage, Messaging } from "node-appw
 import { cookies } from "next/headers";
 
 import { AUTH_COOKIE } from "@/features/auth/constants";
+import type { AppwriteConfig } from "@/lib/byob-resolver";
 
-export async function createSessionClient() {
+/**
+ * Create an Appwrite session client for the current user.
+ *
+ * @param config Optional BYOB config — when provided, uses config.endpoint/project
+ *               instead of process.env. All existing callers omit this param (Cloud flow).
+ */
+export async function createSessionClient(config?: AppwriteConfig) {
   const client = new Client()
-    .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
-    .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT!);
+    .setEndpoint(config?.endpoint ?? process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
+    .setProject(config?.project ?? process.env.NEXT_PUBLIC_APPWRITE_PROJECT!);
 
   const session = (await cookies()).get(AUTH_COOKIE);
 
@@ -31,11 +38,17 @@ export async function createSessionClient() {
   };
 }
 
-export async function createAdminClient() {
+/**
+ * Create an Appwrite admin client with full API key access.
+ *
+ * @param config Optional BYOB config — when provided, uses config.endpoint/project/key
+ *               instead of process.env. All existing callers omit this param (Cloud flow).
+ */
+export async function createAdminClient(config?: AppwriteConfig) {
   const client = new Client()
-    .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
-    .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT!)
-    .setKey(process.env.NEXT_APPWRITE_KEY!);
+    .setEndpoint(config?.endpoint ?? process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
+    .setProject(config?.project ?? process.env.NEXT_PUBLIC_APPWRITE_PROJECT!)
+    .setKey(config?.key ?? process.env.NEXT_APPWRITE_KEY!);
 
   return {
     get account() {
