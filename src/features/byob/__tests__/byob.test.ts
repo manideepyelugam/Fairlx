@@ -154,9 +154,9 @@ describe("BYOB Schemas", () => {
 });
 
 describe("BYOB Constants", () => {
-    it("should have 4 setup steps", async () => {
+    it("should have 5 setup steps", async () => {
         const { SETUP_STEPS } = await import("@/features/byob/constants");
-        expect(SETUP_STEPS).toHaveLength(4);
+        expect(SETUP_STEPS).toHaveLength(5);
     });
 
     it("should validate slug regex", async () => {
