@@ -392,6 +392,23 @@ const app = new Hono()
                 }
               );
 
+              // 2b. Invalidate Lifecycle Cache for ALL org members (IMPORTANT)
+              // They might be blocked by the legal screen; this unblocks them immediately.
+              try {
+                const membersDocs = await databases.listDocuments(
+                  DATABASE_ID,
+                  ORGANIZATION_MEMBERS_ID,
+                  [Query.equal("organizationId", orgId), Query.limit(100)]
+                );
+                const memberUserIds = membersDocs.documents.map(m => m.userId as string);
+                if (memberUserIds.length > 0) {
+                  await invalidateCache(...memberUserIds.map(uid => CK.authLifecycle(uid)));
+                }
+              } catch (cacheError) {
+                console.error("Failed to invalidate org member caches:", cacheError);
+                // Non-blocking: individual users will eventually expire or Admin will be unblocked at end
+              }
+
               // Update preference to reflect org-level acceptance if applicable
               // This is redundant but helps with quick checks
               legalHistory.push({
@@ -407,6 +424,11 @@ const app = new Hono()
             }
           }
         }
+
+        // 3. Invalidate Lifecycle Cache (IMPORTANT)
+        // Without this, the user stays "stuck" on the legal screen for up to 5 mins
+        // as the lifecycle state is cached in Redis.
+        await invalidateCache(CK.authLifecycle(user.$id));
 
         return c.json({ success: true });
       } catch (error) {
@@ -553,6 +575,9 @@ const app = new Hono()
         toolsAndTechnologies: toolsAndTechnologies ?? currentPrefs.toolsAndTechnologies ?? null,
       });
 
+      // Invalidate Lifecycle Cache
+      await invalidateCache(CK.authLifecycle(user.$id));
+
       return c.json({ data: updatedUser });
     }
   )
@@ -613,6 +638,9 @@ const app = new Hono()
         profileImageMimeType: file.type || "image/png",
         profileImageUpdatedAt: new Date().toISOString(),
       });
+
+      // Invalidate Lifecycle Cache
+      await invalidateCache(CK.authLifecycle(user.$id));
 
       return c.json({ data: { url: fileUrl } });
     } catch (error) {

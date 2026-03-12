@@ -235,6 +235,21 @@ const app = new Hono()
                 updateData
             );
 
+            // Invalidate Lifecycle Cache for ALL org members (to reflect name/image change)
+            try {
+                const membersDocs = await databases.listDocuments(
+                    DATABASE_ID,
+                    ORGANIZATION_MEMBERS_ID,
+                    [Query.equal("organizationId", orgId), Query.limit(100)]
+                );
+                const memberUserIds = membersDocs.documents.map(m => m.userId as string);
+                if (memberUserIds.length > 0) {
+                    await invalidateCache(...memberUserIds.map(uid => CK.authLifecycle(uid)));
+                }
+            } catch (cacheError) {
+                console.error("Failed to invalidate org member caches:", cacheError);
+            }
+
             return c.json({ data: organization });
         }
     )
@@ -422,6 +437,9 @@ const app = new Hono()
                 }
             );
 
+            // Invalidate Lifecycle Cache for the added member
+            await invalidateCache(CK.authLifecycle(userId));
+
             return c.json({ data: member });
         }
     )
@@ -500,6 +518,9 @@ const app = new Hono()
                 targetMember.$id,
                 { role }
             );
+
+            // Invalidate Lifecycle Cache for the updated member
+            await invalidateCache(CK.authLifecycle(userId));
 
             return c.json({ data: updatedMember });
         }
@@ -607,6 +628,9 @@ const app = new Hono()
             // But we should clean up if possible. 
             // Skipping strictly for now as not required by immediate task scope (focus is permission check), but worth noting.
 
+            // Invalidate Lifecycle Cache for the removed member
+            await invalidateCache(CK.authLifecycle(userId));
+
             return c.json({
                 data: {
                     $id: userId,
@@ -694,6 +718,11 @@ const app = new Hono()
                 } catch {
                     results.failed.push(userId);
                 }
+            }
+
+            // Invalidate Lifecycle Cache for all updated members
+            if (results.updated.length > 0) {
+                await invalidateCache(...results.updated.map(uid => CK.authLifecycle(uid)));
             }
 
             return c.json({ data: results });
@@ -818,6 +847,11 @@ const app = new Hono()
                 });
             } catch {
                 // Don't fail the operation if audit logging fails
+            }
+
+            // Invalidate Lifecycle Cache for all deleted members
+            if (results.deleted.length > 0) {
+                await invalidateCache(...results.deleted.map(uid => CK.authLifecycle(uid)));
             }
 
             return c.json({ data: results });
