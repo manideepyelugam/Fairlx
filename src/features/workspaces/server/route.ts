@@ -19,6 +19,7 @@ import {
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { uploadImageAndGetUrl } from "@/lib/storage/helpers";
 import { generateInviteCode } from "@/lib/utils";
+import { CK, invalidateCache } from "@/lib/redis";
 
 import { MemberRole, WorkspaceMemberRole } from "@/features/members/types";
 import { getMember } from "@/features/members/utils";
@@ -189,6 +190,7 @@ const app = new Hono()
           userId: user.$id,
           imageUrl: uploadedImageUrl,
           inviteCode: generateInviteCode(6),
+          accountType: accountType === "ORG" ? "organization" : "personal",
           // Link organization
           organizationId: accountType === "ORG" ? primaryOrganizationId : null,
           isDefault: isFirstWorkspace,
@@ -196,12 +198,14 @@ const app = new Hono()
         }
       );
 
-      // Grant initial role
       await databases.createDocument(DATABASE_ID, MEMBERS_ID, ID.unique(), {
         userId: user.$id,
         workspaceId: workspace.$id,
         role: isFirstWorkspace ? MemberRole.OWNER : MemberRole.ADMIN,
       });
+
+      // CRITICAL: Invalidate lifecycle cache to reflect transition out of onboarding
+      await invalidateCache(CK.authLifecycle(user.$id));
 
       return c.json({ data: workspace });
     }

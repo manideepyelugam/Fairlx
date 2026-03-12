@@ -4,6 +4,7 @@ import {
     ensureStringAttribute,
     ensureEnumAttribute,
     ensureIntegerAttribute,
+    ensureDatetimeAttribute,
     ensureIndex,
     sleep,
 } from '../lib/db-helpers';
@@ -22,16 +23,23 @@ export async function setupOrganizations(databases: Databases, databaseId: strin
     // Attributes
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'name', 256, true);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'ownerId', 256, true);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'createdBy', 256, false);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'imageUrl', 1024, false);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'domain', 256, false);
     await ensureEnumAttribute(databases, databaseId, COLLECTION_ID, 'plan', ['free', 'starter', 'pro', 'enterprise'], false, 'free');
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'billingAccountId', 256, false);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'settings', 4096, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'billingSettings', 4096, false);
     await ensureIntegerAttribute(databases, databaseId, COLLECTION_ID, 'memberCount', false, 1);
+    await ensureDatetimeAttribute(databases, databaseId, COLLECTION_ID, 'billingStartAt', false);
+    await ensureDatetimeAttribute(databases, databaseId, COLLECTION_ID, 'deletedAt', false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'deletedBy', 256, false);
+    await ensureDatetimeAttribute(databases, databaseId, COLLECTION_ID, 'billingFrozenAt', false);
 
     await sleep(2000);
 
     // Indexes
     await ensureIndex(databases, databaseId, COLLECTION_ID, 'ownerId_idx', IndexType.Key, ['ownerId']);
     await ensureIndex(databases, databaseId, COLLECTION_ID, 'domain_idx', IndexType.Key, ['domain']);
+    await ensureIndex(databases, databaseId, COLLECTION_ID, 'createdBy_idx', IndexType.Key, ['createdBy']);
 }

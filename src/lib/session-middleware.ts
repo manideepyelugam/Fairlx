@@ -19,6 +19,7 @@ import { createMiddleware } from "hono/factory";
 import type { Context } from "hono";
 
 import { AUTH_COOKIE } from "@/features/auth/constants";
+import { resolveAppwriteConfig } from "@/lib/byob-resolver";
 
 type AdditionalContext = {
   Variables: {
@@ -28,13 +29,16 @@ type AdditionalContext = {
     users: UsersType;
     messaging: MessagingType;
     user: Models.User<Models.Preferences>;
+    isByob: boolean;
+    databaseId: string;
   };
 };
 
 export const sessionMiddleware = createMiddleware<AdditionalContext>(
   async (c, next) => {
     try {
-      const client = new Client()
+      // Always authenticate against Fairlx (centralized identity)
+      const authClient = new Client()
         .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
         .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT!);
 
@@ -44,17 +48,43 @@ export const sessionMiddleware = createMiddleware<AdditionalContext>(
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      client.setSession(session);
+      authClient.setSession(session);
 
-      const account = new Account(client);
-      const databases = new Databases(client);
-      const storage = new Storage(client);
-      const messaging = new Messaging(client);
-
+      const account = new Account(authClient);
       const user = await account.get();
 
-      c.set("account", account);
-      c.set("databases", databases);
+      // Detect BYOB user via prefs (set during BYOB setup completion)
+      const byobOrgSlug = user.prefs?.byobOrgSlug as string | undefined;
+
+      let dataClient: Client;
+
+      if (byobOrgSlug) {
+        // BYOB user — resolve their Appwrite config for data operations
+        const byobConfig = await resolveAppwriteConfig(byobOrgSlug);
+        dataClient = new Client()
+          .setEndpoint(byobConfig.endpoint)
+          .setProject(byobConfig.project)
+          .setKey(byobConfig.key); // Admin key for server-side data ops
+
+        c.set("isByob", true);
+        c.set("databaseId", byobConfig.databaseId);
+      } else {
+        // Cloud user — data client uses admin key (collections only grant read to Role.any())
+        dataClient = new Client()
+          .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
+          .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT!)
+          .setKey(process.env.NEXT_APPWRITE_KEY!);
+
+        c.set("isByob", false);
+        c.set("databaseId", process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!);
+      }
+
+      const databases = new Databases(dataClient);
+      const storage = new Storage(dataClient);
+      const messaging = new Messaging(dataClient);
+
+      c.set("account", account);    // Always Fairlx account (auth)
+      c.set("databases", databases); // Cloud: Fairlx DB | BYOB: customer DB
       c.set("storage", storage);
       c.set("messaging", messaging);
       c.set("user", user);
@@ -62,13 +92,12 @@ export const sessionMiddleware = createMiddleware<AdditionalContext>(
       await next();
     } catch (error: unknown) {
       // Only return 401 for authentication errors
-      // Check error code only - avoid false positives from message text matching
       const isAuthError = (error as { code?: number })?.code === 401;
       if (isAuthError) {
         return c.json({ error: "Session expired or invalid" }, 401);
       }
 
-      // Re-throw other errors (like database or Razorpay errors) so they can be handled by the route or global error handler
+      // Re-throw other errors so they can be handled by the route or global error handler
       throw error;
     }
   }

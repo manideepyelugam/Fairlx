@@ -39,6 +39,8 @@ interface UserState {
     orgSetupComplete: boolean;
     needsOnboarding: boolean;
     emailVerified: boolean;
+    isByob: boolean;
+    byobOrgSlug?: string;
 }
 
 async function fetchUserState(): Promise<UserState | null> {
@@ -57,6 +59,7 @@ async function fetchUserState(): Promise<UserState | null> {
         const emailVerified = user.emailVerification === true;
         const accountType = prefs.accountType as "PERSONAL" | "ORG" | null ?? null;
         const orgSetupComplete = prefs.orgSetupComplete === true;
+        const byobOrgSlug = prefs.byobOrgSlug as string | undefined;
         
         // Get stored default workspace preference
         const storedDefaultWorkspaceId = prefs.defaultWorkspaceId as string | null ?? null;
@@ -64,6 +67,44 @@ async function fetchUserState(): Promise<UserState | null> {
         // Check if user needs onboarding (new user without account type)
         const needsOnboarding = !accountType && !prefs.signupCompletedAt;
 
+        // ─── BYOB Users: Special routing path ─────────────────────────────
+        // BYOB users have their org/workspace on customer Appwrite, not Cloud.
+        // The lifecycle endpoint cannot determine their state correctly (it queries
+        // Cloud Appwrite which has no record of the BYOB org or workspaces).
+        // We skip the lifecycle call entirely and route based on workspace existence.
+        if (byobOrgSlug) {
+            let defaultWorkspaceId: string | null = storedDefaultWorkspaceId;
+
+            try {
+                const workspacesResponse = await client.api.workspaces.$get();
+                if (workspacesResponse.ok) {
+                    const { data: workspaces } = await workspacesResponse.json();
+                    if (workspaces?.documents?.length > 0) {
+                        if (!defaultWorkspaceId) {
+                            defaultWorkspaceId = workspaces.documents[0].$id;
+                        } else if (!workspaces.documents.some((w: { $id: string }) => w.$id === defaultWorkspaceId)) {
+                            defaultWorkspaceId = workspaces.documents[0].$id;
+                        }
+                    }
+                }
+            } catch {
+                // Non-fatal — fallback to onboarding
+            }
+
+            return {
+                accountType: "ORG",
+                orgRole: "OWNER",     // BYOB users are always their org's owner (for routing purposes)
+                defaultWorkspaceId,
+                orgSetupComplete,
+                needsOnboarding: false, // BYOB never goes through Cloud onboarding
+                emailVerified,
+                isByob: true,
+                byobOrgSlug,
+            };
+        }
+        // ─── End BYOB path ─────────────────────────────────────────────────
+
+        // ─── Cloud Users: Standard routing path (unchanged) ────────────────
         // For ORG accounts, fetch org membership to get role
         let orgRole: "OWNER" | "ADMIN" | "MODERATOR" | "MEMBER" | null = null;
 
@@ -110,6 +151,8 @@ async function fetchUserState(): Promise<UserState | null> {
             orgSetupComplete,
             needsOnboarding,
             emailVerified,
+            isByob: false,
+            byobOrgSlug: undefined,
         };
     } catch {
         return null;
@@ -142,6 +185,21 @@ export default function AuthCallbackPage() {
                 // ============================================================
                 // ROUTING DECISION TREE (Role-Aware)
                 // ============================================================
+
+                // ─── BYOB routing (takes priority) ─────────────────────────
+                if (state.isByob && state.byobOrgSlug) {
+                    const orgSlug = state.byobOrgSlug;
+
+                    if (state.defaultWorkspaceId) {
+                        // Has workspace → go to it under the orgSlug namespace
+                        router.replace(`/${orgSlug}/workspaces/${state.defaultWorkspaceId}`);
+                    } else {
+                        // No workspace yet → BYOB onboarding
+                        router.replace(`/${orgSlug}/onboarding`);
+                    }
+                    return;
+                }
+                // ─── End BYOB routing ──────────────────────────────────────
 
                 // 1. No account type → onboarding (new user)
                 if (state.needsOnboarding) {

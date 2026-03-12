@@ -33,6 +33,23 @@ export enum BillingAccountType {
 }
 
 // ===============================
+// Deployment Tier Enum
+// ===============================
+
+/**
+ * DeploymentTier - determines billing scope for an account
+ * 
+ * FAIRLX_CLOUD: Full billing (traffic + storage + compute) — default
+ * BYOB: Frontend-only billing (traffic only, no storage/compute)
+ * SELF_HOSTED: No billing (future tier)
+ */
+export enum DeploymentTier {
+    FAIRLX_CLOUD = "FAIRLX_CLOUD",
+    BYOB = "BYOB",
+    SELF_HOSTED = "SELF_HOSTED",
+}
+
+// ===============================
 // Billing Audit Event Types
 // ===============================
 
@@ -153,6 +170,13 @@ export type BillingAccount = Models.Document & {
 
     /** When the cycle was locked */
     billingCycleLockedAt?: string;
+
+    // ============================================================================
+    // BYOB DEPLOYMENT TIER
+    // ============================================================================
+
+    /** Deployment tier — determines billing scope (defaults to FAIRLX_CLOUD) */
+    deploymentTier?: DeploymentTier;
 };
 
 /**

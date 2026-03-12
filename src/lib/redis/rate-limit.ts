@@ -65,4 +65,8 @@ export const RATE_LIMITS = {
     FILE_UPLOAD: { maxRequests: 30, windowSeconds: 60 },
     /** Write operations: 60/min */
     WRITE: { maxRequests: 60, windowSeconds: 60 },
+    /** BYOB registration: 5/hour per IP (anti-slug-squatting) */
+    BYOB_REGISTER: { maxRequests: 5, windowSeconds: 3600 },
+    /** BYOB resolve: 20/min per IP (anti-enumeration) */
+    BYOB_RESOLVE: { maxRequests: 20, windowSeconds: 60 },
 } as const;

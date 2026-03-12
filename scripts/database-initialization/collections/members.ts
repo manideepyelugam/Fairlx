@@ -20,16 +20,24 @@ export async function setupMembers(databases: Databases, databaseId: string): Pr
 
     // Attributes
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'workspaceId', 256, true);
-    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'userId', 256, true);
-    await ensureEnumAttribute(databases, databaseId, COLLECTION_ID, 'role', ['admin', 'member'], true);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'userId', 256, false); // Legacy link
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'orgMemberId', 256, false); // New identity link
+    await ensureEnumAttribute(databases, databaseId, COLLECTION_ID, 'role', ['OWNER', 'ADMIN', 'MEMBER', 'WS_ADMIN', 'WS_EDITOR', 'WS_VIEWER'], true);
+    await ensureEnumAttribute(databases, databaseId, COLLECTION_ID, 'status', ['ACTIVE', 'INVITED', 'INACTIVE', 'DELETED'], false, 'ACTIVE');
+
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'name', 256, false);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'email', 256, false);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'imageUrl', 1024, false);
+
+    // Audit Trail
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'deletedAt', 128, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'deletedBy', 256, false);
 
     await sleep(2000);
 
     // Indexes
     await ensureIndex(databases, databaseId, COLLECTION_ID, 'workspaceId_idx', IndexType.Key, ['workspaceId']);
     await ensureIndex(databases, databaseId, COLLECTION_ID, 'userId_idx', IndexType.Key, ['userId']);
+    await ensureIndex(databases, databaseId, COLLECTION_ID, 'orgMemberId_idx', IndexType.Key, ['orgMemberId']);
     await ensureIndex(databases, databaseId, COLLECTION_ID, 'workspaceId_userId_idx', IndexType.Key, ['workspaceId', 'userId']);
 }

@@ -73,6 +73,9 @@ export const TTL = {
     IDEMPOTENCY: 3600,            // Usage write dedup (1 hour)
     RATE_LIMIT: 60,               // Sliding window
     WORK_ITEM_KEY_SEQ: 120,       // Next key number for work item generation (2 min)
+
+    // ── BYOB (Bring Your Own Backend) ──
+    BYOB_CONFIG: 300,              // BYOB tenant config resolution (5 min)
 } as const;
 
 // =============================================================
@@ -177,6 +180,10 @@ export const CK = {
         `rate:${endpoint}:${userId}`,
     workItemKeySeq: (projectId: string) =>
         `seq:wikey:${projectId}`,
+
+    // ── BYOB ──
+    byobConfig: (orgSlug: string) =>
+        `byob:config:${orgSlug}`,
 } as const;
 
 // =============================================================
@@ -204,6 +211,8 @@ export const CKPattern = {
     workflowData: (workflowId: string) => `doc:wf*:${workflowId}`,
     /** All permissions for a user (across all contexts) */
     allUserPerms: (userId: string) => `perm:*:*:${userId}`,
+    /** When BYOB tenant config changes */
+    byobTenant: (orgSlug: string) => `byob:*:${orgSlug}`,
 } as const;
 
 // =============================================================

@@ -6,6 +6,9 @@ import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa6";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { Building2, Loader2, CheckCircle2, XCircle, Sparkles } from "lucide-react";
 
 import { DottedSeparator } from "@/components/dotted-separator";
 import { Button } from "@/components/ui/button";
@@ -30,6 +33,9 @@ import { signUpWithGithub, signUpWithGoogle } from "@/lib/oauth";
 import { registerSchema } from "../schemas";
 import { useRegister } from "../api/use-register";
 import { LegalAcceptance } from "./legal-acceptance";
+import { useBYOBTenant } from "@/features/byob/api/use-byob-tenant";
+import { generateSlugSuggestions } from "@/features/byob/utils/slug-suggestions";
+
 
 interface SignUpCardProps {
   returnUrl?: string;
@@ -174,6 +180,12 @@ export const SignUpCard = ({ returnUrl }: SignUpCardProps) => {
       <div className="px-7">
         <DottedSeparator />
       </div>
+      <CardContent className="p-7">
+        <BYOBSetupSection />
+      </CardContent>
+      <div className="px-7">
+        <DottedSeparator />
+      </div>
       <CardContent className="p-7 flex items-center justify-center">
         <p>
           Already have an account?{" "}
@@ -185,3 +197,121 @@ export const SignUpCard = ({ returnUrl }: SignUpCardProps) => {
     </Card>
   );
 };
+
+/**
+ * Inline sub-component for "Bring Your Own Backend" setup option
+ * with live slug availability checking and suggestions.
+ */
+const BYOBSetupSection = () => {
+  const router = useRouter();
+  const [orgSlug, setOrgSlug] = useState("");
+  const [showInput, setShowInput] = useState(false);
+
+  const { data: existingTenant, isLoading: isChecking } = useBYOBTenant(orgSlug);
+  const slugTaken = existingTenant && "success" in existingTenant && existingTenant.success;
+  const isAvailable = !isChecking && orgSlug.length >= 3 && !slugTaken;
+
+  const suggestions = useMemo(() => {
+    if (!slugTaken || orgSlug.length < 3) return [];
+    return generateSlugSuggestions(orgSlug, 5);
+  }, [slugTaken, orgSlug]);
+
+  if (!showInput) {
+    return (
+      <Button
+        variant="outline"
+        size="lg"
+        className="w-full"
+        onClick={() => setShowInput(true)}
+      >
+        <Building2 className="mr-2 size-4" />
+        Bring Your Own Backend
+      </Button>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">
+        Choose your organisation slug to get started:
+      </p>
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Input
+            placeholder="my-company"
+            value={orgSlug}
+            onChange={(e) =>
+              setOrgSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))
+            }
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && isAvailable) {
+                router.push(`/setup/${orgSlug}`);
+              }
+            }}
+          />
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            {isChecking && orgSlug.length >= 3 && (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            )}
+            {!isChecking && orgSlug.length >= 3 && slugTaken && (
+              <XCircle className="h-4 w-4 text-destructive" />
+            )}
+            {isAvailable && (
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+            )}
+          </div>
+        </div>
+        <Button
+          disabled={!isAvailable}
+          onClick={() => router.push(`/setup/${orgSlug}`)}
+        >
+          Go
+        </Button>
+      </div>
+
+      {/* Available */}
+      {isAvailable && (
+        <p className="text-xs text-green-600 flex items-center gap-1">
+          <CheckCircle2 className="h-3 w-3" />
+          <span className="font-mono">{orgSlug}</span> is available!
+        </p>
+      )}
+
+      {/* Taken + suggestions */}
+      {slugTaken && (
+        <div className="space-y-2">
+          <p className="text-xs text-destructive">This slug is already taken</p>
+          {suggestions.length > 0 && (
+            <div className="bg-muted/50 rounded-lg p-2.5 space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Sparkles className="h-3 w-3" />
+                Try one of these:
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {suggestions.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setOrgSlug(s)}
+                    className="text-xs px-2 py-0.5 rounded-full bg-background border border-border hover:border-primary hover:text-primary transition-colors cursor-pointer"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <button
+        type="button"
+        className="text-xs text-muted-foreground hover:underline"
+        onClick={() => setShowInput(false)}
+      >
+        Cancel
+      </button>
+    </div>
+  );
+};
+

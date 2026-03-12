@@ -21,7 +21,7 @@ export type Notification = Models.Document & {
   type: NotificationType;
   title: string;
   message: string;
-  read: boolean;
+  isRead: boolean;
   taskId: string;
   workspaceId: string;
   triggeredBy: string;
