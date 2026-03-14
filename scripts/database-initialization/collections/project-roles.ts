@@ -22,11 +22,16 @@ export async function setupProjectRoles(databases: Databases, databaseId: string
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'projectId', 256, true);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'workspaceId', 256, true);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'name', 256, true);
-    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'permissions', 4096, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'description', 1024, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'permissions', 4096, false, undefined, true);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'color', 16, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'createdBy', 256, true);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'lastModifiedBy', 256, false);
     await ensureBooleanAttribute(databases, databaseId, COLLECTION_ID, 'isDefault', false, false);
 
     await sleep(2000);
 
     // Indexes
     await ensureIndex(databases, databaseId, COLLECTION_ID, 'projectId_idx', IndexType.Key, ['projectId']);
+    await ensureIndex(databases, databaseId, COLLECTION_ID, 'name_idx', IndexType.Key, ['name']);
 }

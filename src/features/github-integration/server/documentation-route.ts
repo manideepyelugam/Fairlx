@@ -149,6 +149,7 @@ const app = new Hono()
               ID.unique(),
               {
                 projectId,
+                workspaceId: project.workspaceId,
                 content: documentation,
                 fileStructure,
                 mermaidDiagram,
@@ -172,7 +173,8 @@ const app = new Hono()
 
           throw error;
         }
-      } catch (error: unknown) {
+      } catch (error) {
+        console.error("[GitHub Doc Gen Error]:", error);
         return c.json(
           {
             error: "Failed to generate documentation",

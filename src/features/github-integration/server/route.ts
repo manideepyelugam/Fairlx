@@ -13,7 +13,7 @@ import { getMember } from "@/features/members/utils";
 
 import { connectGitHubRepoSchema } from "../schemas";
 import { GitHubRepository } from "../types";
-import { githubAPI } from "../lib/github-api";
+import { githubAPI, GitHubAPI } from "../lib/github-api";
 
 const app = new Hono()
   // Link GitHub repository to a project
@@ -53,8 +53,10 @@ const app = new Hono()
         const { owner, repo } = githubAPI.parseGitHubUrl(githubUrl);
 
         // Verify repository exists and is accessible
+        const api = githubToken ? new GitHubAPI(githubToken) : githubAPI;
+
         try {
-          await githubAPI.getRepository(owner, repo);
+          await api.getRepository(owner, repo);
         } catch (error: unknown) {
           return c.json(
             {
@@ -106,6 +108,7 @@ const app = new Hono()
               status: "connected",
               lastSyncedAt: new Date().toISOString(),
               error: null,
+              lastModifiedBy: user.$id,
             }
           );
         } else {
@@ -116,6 +119,7 @@ const app = new Hono()
             ID.unique(),
             {
               projectId,
+              workspaceId: project.workspaceId,
               githubUrl: githubUrl.toLowerCase(),
               repositoryName: repo,
               owner,
@@ -123,6 +127,8 @@ const app = new Hono()
               accessToken: githubToken || undefined,
               status: "connected",
               lastSyncedAt: new Date().toISOString(),
+              createdBy: user.$id,
+              lastModifiedBy: user.$id,
             }
           );
         }

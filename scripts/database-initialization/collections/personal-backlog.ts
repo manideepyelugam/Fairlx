@@ -33,6 +33,8 @@ export async function setupPersonalBacklog(databases: Databases, databaseId: str
     await ensureBooleanAttribute(databases, databaseId, COLLECTION_ID, 'isPromoted', false, false);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'promotedToId', 256, false);
     await ensureIntegerAttribute(databases, databaseId, COLLECTION_ID, 'position', false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'createdBy', 256, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'lastModifiedBy', 256, false);
 
     await sleep(2000);
 

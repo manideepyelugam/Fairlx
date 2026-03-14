@@ -41,25 +41,23 @@ export function isR2Enabled(): boolean {
 let _r2Provider: StorageProvider | null = null;
 
 // Lazy imports to avoid loading S3 SDK when not needed, while satisfying no-require-imports rule
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let _r2Module: any = null;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let _appwriteModule: any = null;
+let _r2Module: { R2StorageProvider: new () => StorageProvider } | null = null;
+let _appwriteModule: { AppwriteStorageProvider: new (storage: AppwriteStorage) => StorageProvider } | null = null;
 
-function await_r2Import() {
+function await_r2Import(): { R2StorageProvider: new () => StorageProvider } {
   if (!_r2Module) {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     _r2Module = require("./r2-provider");
   }
-  return _r2Module;
+  return _r2Module!;
 }
 
-function await_appwriteImport() {
+function await_appwriteImport(): { AppwriteStorageProvider: new (storage: AppwriteStorage) => StorageProvider } {
   if (!_appwriteModule) {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     _appwriteModule = require("./appwrite-provider");
   }
-  return _appwriteModule;
+  return _appwriteModule!;
 }
 
 /**

@@ -155,8 +155,7 @@ export const CodebaseQA = ({ projectId, commitsCount = 0 }: CodebaseQAProps) => 
             <div className="prose prose-sm dark:prose-invert max-w-none">
               <ReactMarkdown
                 components={{
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  code({ inline, className, children, ...props }: any) {
+                  code({ inline, className, children, ...props }: { inline?: boolean; className?: string; children?: React.ReactNode }) {
                     const match = /language-(\w+)/.exec(className || "");
                     const codeString = String(children).replace(/\n$/, "");
                     const codeId = `code-${Math.random().toString(36).substr(2, 9)}`;

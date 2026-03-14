@@ -27,6 +27,7 @@ export async function setupProjectTeams(databases: Databases, databaseId: string
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'icon', 256, false);
     await ensureIntegerAttribute(databases, databaseId, COLLECTION_ID, 'memberCount', false, 0);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'permissions', 65535, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'createdBy', 256, false);
 
     await sleep(2000);
 

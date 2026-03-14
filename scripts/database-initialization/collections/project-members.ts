@@ -2,7 +2,6 @@ import { Databases, IndexType, Permission, Role } from 'node-appwrite';
 import {
     ensureCollection,
     ensureStringAttribute,
-    ensureEnumAttribute,
     ensureIndex,
     sleep,
 } from '../lib/db-helpers';
@@ -22,11 +21,18 @@ export async function setupProjectMembers(databases: Databases, databaseId: stri
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'projectId', 256, true);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'workspaceId', 256, true);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'userId', 256, true);
-    await ensureEnumAttribute(databases, databaseId, COLLECTION_ID, 'role', ['admin', 'member', 'viewer'], true);
-    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'customRoleId', 256, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'teamId', 256, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'status', 256, false, 'ACTIVE');
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'role', 256, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'roleId', 256, true);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'roleName', 256, false);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'name', 256, false);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'email', 256, false);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'imageUrl', 1024, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'joinedAt', 256, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'addedBy', 256, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'createdBy', 256, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'lastModifiedBy', 256, false);
 
     await sleep(2000);
 

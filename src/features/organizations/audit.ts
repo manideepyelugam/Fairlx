@@ -1,4 +1,4 @@
-import { ID } from "node-appwrite";
+import { ID, Databases, Models } from "node-appwrite";
 import { DATABASE_ID, ORGANIZATION_AUDIT_LOGS_ID } from "@/config";
 
 let hasWarnedConfig = false;
@@ -81,8 +81,7 @@ export enum OrgAuditAction {
  * - Every critical org action must have an audit log
  * - metadata should contain all context needed to reconstruct the action
  */
-export interface OrgAuditLog {
-    $id?: string;
+export interface OrgAuditLog extends Models.Document {
     organizationId: string;
     actorUserId: string;
     actionType: OrgAuditAction;
@@ -107,8 +106,7 @@ export interface OrgAuditLog {
 }
 
 interface LogOrgAuditProps {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    databases: any;
+    databases: Databases;
     organizationId: string;
     actorUserId: string;
     actionType: OrgAuditAction;
@@ -165,7 +163,7 @@ export async function logOrgAudit({
                 userAgent: userAgent || null,
             }
         );
-        return log as OrgAuditLog;
+        return log as unknown as OrgAuditLog;
     } catch {
         // CRITICAL: Never throw from audit logging
         return null;
@@ -186,8 +184,7 @@ export async function getOrgAuditLogs({
     limit = 50,
     offset = 0,
 }: {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    databases: any;
+    databases: Databases;
     organizationId: string;
     actionType?: OrgAuditAction;
     startDate?: string;

@@ -24,8 +24,7 @@ export const useSetupBilling = () => {
                     if (typeof errorData === 'object' && errorData !== null) {
                         // Handle Zod validation errors
                         if ('error' in errorData) {
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            const err = (errorData as any).error;
+                            const err = (errorData as Record<string, unknown>).error;
                             if (typeof err === 'string') errorMessage = err;
                             else if (typeof err === 'object') errorMessage = JSON.stringify(err);
                         }
@@ -53,12 +52,9 @@ export const useSetupBilling = () => {
             queryClient.invalidateQueries({ queryKey: ["billing-account"] });
             queryClient.invalidateQueries({ queryKey: ["billing-status"] });
         },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        onError: (error: any) => {
+        onError: (error) => {
             // Don't show generic error if we have a specific one
-            const message = error instanceof Error ?
-                (error.message.startsWith("{") ? "Validation failed" : error.message) :
-                "Unknown error";
+            const message = (error as Error).message.startsWith("{") ? "Validation failed" : (error as Error).message;
             toast.error(message || "Failed to setup billing");
         },
     });

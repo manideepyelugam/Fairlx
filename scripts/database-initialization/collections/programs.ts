@@ -30,6 +30,8 @@ export async function setupPrograms(databases: Databases, databaseId: string): P
     await ensureDatetimeAttribute(databases, databaseId, COLLECTION_ID, 'startDate', false);
     await ensureDatetimeAttribute(databases, databaseId, COLLECTION_ID, 'endDate', false);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'objectives', 4096, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'createdBy', 256, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'lastModifiedBy', 256, false);
 
     await sleep(2000);
 

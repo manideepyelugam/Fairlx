@@ -2,6 +2,7 @@ import { Models } from "node-appwrite";
 
 export type GitHubRepository = Models.Document & {
   projectId: string;
+  workspaceId: string;
   githubUrl: string;
   repositoryName: string;
   owner: string;
@@ -10,6 +11,8 @@ export type GitHubRepository = Models.Document & {
   lastSyncedAt: string;
   status: "connected" | "syncing" | "error" | "disconnected";
   error?: string;
+  createdBy?: string;
+  lastModifiedBy?: string;
 };
 
 export type CodeDocumentation = Models.Document & {

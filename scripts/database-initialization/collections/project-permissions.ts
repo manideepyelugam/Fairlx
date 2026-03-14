@@ -2,7 +2,6 @@ import { Databases, IndexType, Permission, Role } from 'node-appwrite';
 import {
     ensureCollection,
     ensureStringAttribute,
-    ensureEnumAttribute,
     ensureIndex,
     sleep,
 } from '../lib/db-helpers';
@@ -20,15 +19,17 @@ export async function setupProjectPermissions(databases: Databases, databaseId: 
 
     // Attributes
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'projectId', 256, true);
-    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'workspaceId', 256, true);
-    await ensureEnumAttribute(databases, databaseId, COLLECTION_ID, 'subjectType', ['user', 'team', 'role'], true);
-    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'subjectId', 256, true);
-    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'permissions', 65535, true);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'workspaceId', 256, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'permissionKey', 256, true);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'assignedToTeamId', 256, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'assignedToUserId', 256, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'grantedBy', 256, true);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'grantedAt', 256, false);
 
     await sleep(2000);
 
     // Indexes
     await ensureIndex(databases, databaseId, COLLECTION_ID, 'projectId_idx', IndexType.Key, ['projectId']);
-    await ensureIndex(databases, databaseId, COLLECTION_ID, 'subjectId_idx', IndexType.Key, ['subjectId']);
-    await ensureIndex(databases, databaseId, COLLECTION_ID, 'projectId_subjectId_idx', IndexType.Key, ['projectId', 'subjectId']);
+    await ensureIndex(databases, databaseId, COLLECTION_ID, 'assignedToUserId_idx', IndexType.Key, ['assignedToUserId']);
+    await ensureIndex(databases, databaseId, COLLECTION_ID, 'assignedToTeamId_idx', IndexType.Key, ['assignedToTeamId']);
 }

@@ -1,53 +1,48 @@
-/**
- * Project-Scoped Permission Constants
- * 
- * These flat permission strings are used for project-level RBAC.
- * NO hardcoded role names - only permission strings.
- */
+import { ProjectPermissionKey } from "./permissions/types";
 
 export const PROJECT_PERMISSIONS = {
     // Project Management
-    PROJECT_VIEW: "project.view",
-    PROJECT_SETTINGS_MANAGE: "project.settings.manage",
+    PROJECT_VIEW: ProjectPermissionKey.VIEW_PROJECT,
+    PROJECT_SETTINGS_MANAGE: ProjectPermissionKey.MANAGE_SETTINGS,
 
     // Team Management
-    TEAM_CREATE: "team.create",
-    TEAM_MANAGE: "team.manage",
+    TEAM_CREATE: ProjectPermissionKey.CREATE_TEAMS,
+    TEAM_MANAGE: ProjectPermissionKey.MANAGE_TEAMS,
 
     // Member Management
-    MEMBER_INVITE: "member.invite",
-    MEMBER_REMOVE: "member.remove",
+    MEMBER_INVITE: ProjectPermissionKey.INVITE_MEMBERS,
+    MEMBER_REMOVE: ProjectPermissionKey.REMOVE_MEMBERS,
 
     // Task/Work Item Management
-    TASK_CREATE: "task.create",
-    TASK_UPDATE: "task.update",
-    TASK_DELETE: "task.delete",
-    TASK_ASSIGN: "task.assign",
+    TASK_CREATE: ProjectPermissionKey.CREATE_TASKS,
+    TASK_UPDATE: ProjectPermissionKey.EDIT_TASKS,
+    TASK_DELETE: ProjectPermissionKey.DELETE_TASKS,
+    TASK_ASSIGN: ProjectPermissionKey.ASSIGN_TASKS,
 
     // Sprint Management
-    SPRINT_VIEW: "sprint.view",
-    SPRINT_CREATE: "sprint.create",
-    SPRINT_UPDATE: "sprint.update",
-    SPRINT_START: "sprint.start",
-    SPRINT_COMPLETE: "sprint.complete",
-    SPRINT_DELETE: "sprint.delete",
+    SPRINT_VIEW: ProjectPermissionKey.VIEW_SPRINTS,
+    SPRINT_CREATE: ProjectPermissionKey.CREATE_SPRINTS,
+    SPRINT_UPDATE: ProjectPermissionKey.EDIT_SPRINTS,
+    SPRINT_START: ProjectPermissionKey.START_SPRINT,
+    SPRINT_COMPLETE: ProjectPermissionKey.COMPLETE_SPRINT,
+    SPRINT_DELETE: ProjectPermissionKey.DELETE_SPRINTS,
 
     // Board Management
-    BOARD_VIEW: "board.view",
-    BOARD_MANAGE: "board.manage",
+    BOARD_VIEW: ProjectPermissionKey.VIEW_BOARD,
+    BOARD_MANAGE: ProjectPermissionKey.UPDATE_BOARD,
 
     // Comments
-    COMMENT_CREATE: "comment.create",
-    COMMENT_DELETE: "comment.delete",
+    COMMENT_CREATE: ProjectPermissionKey.CREATE_COMMENTS,
+    COMMENT_DELETE: ProjectPermissionKey.DELETE_COMMENTS,
 
     // Role Management (within project)
-    ROLE_CREATE: "role.create",
-    ROLE_UPDATE: "role.update",
-    ROLE_DELETE: "role.delete",
+    ROLE_CREATE: ProjectPermissionKey.CREATE_ROLES,
+    ROLE_UPDATE: ProjectPermissionKey.MANAGE_PERMISSIONS,
+    ROLE_DELETE: ProjectPermissionKey.DELETE_ROLES,
 
     // Reports & Analytics
-    REPORTS_VIEW: "reports.view",
-    REPORTS_EXPORT: "reports.export",
+    REPORTS_VIEW: ProjectPermissionKey.VIEW_REPORTS,
+    REPORTS_EXPORT: ProjectPermissionKey.VIEW_REPORTS, // Fallback
 } as const;
 
 export type ProjectPermission = typeof PROJECT_PERMISSIONS[keyof typeof PROJECT_PERMISSIONS];
@@ -130,36 +125,35 @@ export const PROJECT_PERMISSION_CATEGORIES = {
 
 /**
  * Default Role Templates
- * Used during migration and when creating default roles for new projects
  */
 export const DEFAULT_PROJECT_ROLES = {
     PROJECT_ADMIN: {
         name: "Project Admin",
         description: "Full access to all project features",
-        permissions: Object.values(PROJECT_PERMISSIONS),
+        permissions: Object.values(ProjectPermissionKey),
     },
     PROJECT_MEMBER: {
         name: "Project Member",
         description: "Can work on tasks, view sprints, and collaborate",
         permissions: [
-            PROJECT_PERMISSIONS.PROJECT_VIEW,
-            PROJECT_PERMISSIONS.TASK_CREATE,
-            PROJECT_PERMISSIONS.TASK_UPDATE,
-            PROJECT_PERMISSIONS.TASK_ASSIGN,
-            PROJECT_PERMISSIONS.SPRINT_VIEW,
-            PROJECT_PERMISSIONS.BOARD_VIEW,
-            PROJECT_PERMISSIONS.COMMENT_CREATE,
-            PROJECT_PERMISSIONS.REPORTS_VIEW,
+            ProjectPermissionKey.VIEW_PROJECT,
+            ProjectPermissionKey.CREATE_TASKS,
+            ProjectPermissionKey.EDIT_TASKS,
+            ProjectPermissionKey.ASSIGN_TASKS,
+            ProjectPermissionKey.VIEW_SPRINTS,
+            ProjectPermissionKey.VIEW_BOARD,
+            ProjectPermissionKey.CREATE_COMMENTS,
+            ProjectPermissionKey.VIEW_REPORTS,
         ],
     },
     VIEWER: {
         name: "Viewer",
         description: "Read-only access to project content",
         permissions: [
-            PROJECT_PERMISSIONS.PROJECT_VIEW,
-            PROJECT_PERMISSIONS.SPRINT_VIEW,
-            PROJECT_PERMISSIONS.BOARD_VIEW,
-            PROJECT_PERMISSIONS.REPORTS_VIEW,
+            ProjectPermissionKey.VIEW_PROJECT,
+            ProjectPermissionKey.VIEW_SPRINTS,
+            ProjectPermissionKey.VIEW_BOARD,
+            ProjectPermissionKey.VIEW_REPORTS,
         ],
     },
 } as const;

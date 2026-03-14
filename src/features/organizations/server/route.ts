@@ -1,6 +1,6 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
-import { ID, Query } from "node-appwrite";
+import { ID, Query, Databases } from "node-appwrite";
 
 import {
     DATABASE_ID,
@@ -1495,12 +1495,11 @@ const app = new Hono()
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function getOrganizationMember(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    databases: any,
+    databases: Databases,
     organizationId: string,
     userId: string
 ): Promise<OrganizationMember | null> {
-    const members = await databases.listDocuments(
+    const members = await databases.listDocuments<OrganizationMember>(
         DATABASE_ID,
         ORGANIZATION_MEMBERS_ID,
         [

@@ -52,6 +52,7 @@ export class GitHubAPI {
   private getHeaders() {
     const headers: Record<string, string> = {
       Accept: "application/vnd.github.v3+json",
+      "User-Agent": "Fairlx-App",
     };
     
     if (this.token) {
@@ -59,6 +60,29 @@ export class GitHubAPI {
     }
     
     return headers;
+  }
+
+  private async fetchWithRetry(url: string, options: RequestInit, retries = 3): Promise<Response> {
+    try {
+      const response = await fetch(url, options);
+      
+      // Retry on 429 (Rate Limit) or 5xx
+      if ((response.status === 429 || response.status >= 500) && retries > 0) {
+        const retryAfter = response.headers.get("Retry-After");
+        const delay = retryAfter ? parseInt(retryAfter) * 1000 : 1000 * (4 - retries);
+        await new Promise(r => setTimeout(r, delay));
+        return this.fetchWithRetry(url, options, retries - 1);
+      }
+      
+      return response;
+    } catch (error) {
+      if (retries > 0) {
+        // Retry on connection errors
+        await new Promise(r => setTimeout(r, 1000 * (4 - retries)));
+        return this.fetchWithRetry(url, options, retries - 1);
+      }
+      throw error;
+    }
   }
 
   /**
@@ -86,7 +110,7 @@ export class GitHubAPI {
    * Get repository information
    */
   async getRepository(owner: string, repo: string) {
-    const response = await fetch(
+    const response = await this.fetchWithRetry(
       `${GITHUB_API_BASE}/repos/${owner}/${repo}`,
       { headers: this.getHeaders() }
     );
@@ -166,7 +190,7 @@ export class GitHubAPI {
   ): Promise<GitHubFileContent[]> {
     const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
     
-    const response = await fetch(url, { headers: this.getHeaders() });
+    const response = await this.fetchWithRetry(url, { headers: this.getHeaders() });
 
     if (!response.ok) {
       if (response.status === 404) {
@@ -195,11 +219,25 @@ export class GitHubAPI {
     const contents = await this.getContents(owner, repo, path, branch);
     const file = contents[0];
 
-    if (!file || file.type !== "file" || !file.content) {
-      throw new Error("Invalid file or content not available");
+    if (!file || file.type !== "file") {
+      throw new Error(`Invalid file type for ${path}`);
     }
 
-    return Buffer.from(file.content, "base64").toString("utf-8");
+    // If content is present, use it
+    if (file.content) {
+      return Buffer.from(file.content, "base64").toString("utf-8");
+    }
+
+    // If content is missing (e.g. for files > 1MB), use download_url
+    if (file.download_url) {
+      const response = await this.fetchWithRetry(file.download_url, {});
+      if (!response.ok) {
+        throw new Error(`Failed to download file from ${file.download_url}`);
+      }
+      return await response.text();
+    }
+
+    throw new Error(`Content not available for ${path}`);
   }
 
   /**
@@ -217,76 +255,76 @@ export class GitHubAPI {
     try {
       const contents = await this.getContents(owner, repo, path, branch);
 
-      for (const item of contents) {
-        if (files.length >= maxFiles) break;
+      // Parallelize file content fetching with a concurrency limit
+      const CONCURRENCY_LIMIT = 5;
 
+      const processItem = async (item: GitHubFileContent) => {
         // Skip common directories that don't need analysis
         if (
           item.type === "dir" &&
           (item.name.startsWith(".") ||
-            ["node_modules", "dist", "build", "vendor", "__pycache__"].includes(
+            ["node_modules", "dist", "build", "vendor", "__pycache__", ".git", ".next"].includes(
               item.name
             ))
         ) {
-          continue;
+          return;
         }
 
         if (item.type === "file") {
+          if (files.length >= maxFiles) return;
+
           // Only process code files
           const codeExtensions = [
-            ".ts",
-            ".tsx",
-            ".js",
-            ".jsx",
-            ".py",
-            ".java",
-            ".go",
-            ".rs",
-            ".cpp",
-            ".c",
-            ".h",
-            ".cs",
-            ".rb",
-            ".php",
-            ".swift",
-            ".kt",
-            ".md",
-            ".json",
-            ".yaml",
-            ".yml",
+            ".ts", ".tsx", ".js", ".jsx", ".py", ".java", ".go", ".rs", ".cpp", ".c", ".h", ".cs", ".rb", ".php", ".swift", ".kt", ".md", ".json", ".yaml", ".yml",
           ];
 
           if (codeExtensions.some((ext) => item.name.endsWith(ext))) {
             try {
-              const content = await this.getFileContent(
-                owner,
-                repo,
-                item.path,
-                branch
-              );
-              
+              const content = await this.getFileContent(owner, repo, item.path, branch);
               files.push({
                 path: item.path,
                 content: content.slice(0, 10000), // Limit content size
                 type: item.name.split(".").pop() || "unknown",
               });
-            } catch {
-              // Silent fail for individual file fetch
+            } catch (e) {
+              console.warn(`[GitHub API] Failed to fetch file ${item.path}:`, e);
             }
           }
         } else if (item.type === "dir") {
-          const subFiles = await this.getAllFiles(
-            owner,
-            repo,
-            branch,
-            item.path,
-            maxFiles - files.length
-          );
-          files.push(...subFiles);
+          try {
+            const subFiles = await this.getAllFiles(
+              owner,
+              repo,
+              branch,
+              item.path,
+              maxFiles
+            );
+            // Deduplicate and limit
+            for (const f of subFiles) {
+              if (files.length < maxFiles && !files.find(existing => existing.path === f.path)) {
+                files.push(f);
+              }
+            }
+          } catch (e) {
+             console.warn(`[GitHub API] Failed to fetch dir ${item.path}:`, e);
+          }
         }
-      }
-    } catch {
-      // Silent fail for directory fetch
+      };
+
+      // Concurrency worker implementation
+      const pool = [...contents];
+      const workers = Array(Math.min(CONCURRENCY_LIMIT, pool.length)).fill(null).map(async () => {
+        while (pool.length > 0 && files.length < maxFiles) {
+          const item = pool.shift();
+          if (item) {
+            await processItem(item);
+          }
+        }
+      });
+
+      await Promise.all(workers);
+    } catch (e) {
+      console.error("[GitHub API] Error in getAllFiles:", e);
     }
 
     return files;
@@ -314,7 +352,7 @@ export class GitHubAPI {
         // Fetch commits with basic info (1 API call per page)
         const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/commits?sha=${branch}&per_page=${pageSize}&page=${page}`;
         
-        const response = await fetch(url, { headers: this.getHeaders() });
+        const response = await this.fetchWithRetry(url, { headers: this.getHeaders() });
 
         if (!response.ok) {
           if (response.status === 404 && branch === "main" && page === 1) {
@@ -340,7 +378,7 @@ export class GitHubAPI {
             batch.map(async (commit: GitHubCommit) => {
               try {
                 const detailUrl = `${GITHUB_API_BASE}/repos/${owner}/${repo}/commits/${commit.sha}`;
-                const detailResponse = await fetch(detailUrl, { headers: this.getHeaders() });
+                const detailResponse = await this.fetchWithRetry(detailUrl, { headers: this.getHeaders() });
                 
                 if (!detailResponse.ok) {
                   return commit; // Return basic commit if details fail
@@ -390,7 +428,7 @@ export class GitHubAPI {
   ): Promise<GitHubCommit> {
     const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/commits/${sha}`;
     
-    const response = await fetch(url, { headers: this.getHeaders() });
+    const response = await this.fetchWithRetry(url, { headers: this.getHeaders() });
 
     if (!response.ok) {
       throw new Error(`Failed to fetch commit: ${response.statusText}`);
@@ -405,7 +443,7 @@ export class GitHubAPI {
   async getCommitDiff(owner: string, repo: string, sha: string): Promise<string> {
     const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/commits/${sha}`;
     
-    const response = await fetch(url, {
+    const response = await this.fetchWithRetry(url, {
       headers: {
         ...this.getHeaders(),
         Accept: "application/vnd.github.v3.diff",

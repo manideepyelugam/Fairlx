@@ -88,7 +88,7 @@ export const CK = {
 
     // ── PERMISSIONS ──
     projectAccess: (userId: string, projectId: string) =>
-        `perm:proj:${projectId}:${userId}`,
+        `perm:proj:v2:${projectId}:${userId}`,
     orgAccess: (userId: string, orgId: string) =>
         `perm:org:${orgId}:${userId}`,
     workspaceRbac: (userId: string, workspaceId: string) =>

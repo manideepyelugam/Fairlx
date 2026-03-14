@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { handle } from "hono/vercel";
 
 import auth from "@/features/auth/server/route";
+import { emailDebugApp } from "@/features/auth/server/email-debug-route";
 import members from "@/features/members/server/route";
 import workspaces from "@/features/workspaces/server/route";
 import projects from "@/features/projects/server/route";
@@ -68,6 +69,7 @@ const app = new Hono()
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const routes = app
+  .route("/auth/email-debug", emailDebugApp)
   .route("/auth", auth)
   .route("/workspaces", workspaces)
   .route("/members", members)

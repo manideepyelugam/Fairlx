@@ -143,32 +143,65 @@ async function extractDocumentText(
   mimeType: string
 ): Promise<string> {
   try {
-    // For now, we'll fetch the raw file content
-    // In production, you'd want to use a PDF parsing library like pdf-parse
     const fileBuffer = await storage.getFileDownload(bucketId, fileId);
 
     // If it's a text-based file, convert to string
     if (
       mimeType.includes("text/") ||
       mimeType.includes("application/json") ||
-      mimeType.includes("application/xml")
+      mimeType.includes("application/xml") ||
+      mimeType.includes("javascript") ||
+      mimeType.includes("typescript")
     ) {
       const decoder = new TextDecoder("utf-8");
       return decoder.decode(fileBuffer);
     }
 
-    // For PDFs and other binary formats, we'd need specialized parsing
-    // For now, return a placeholder indicating the document exists
+    // PDF extraction using pdf-parse
     if (mimeType.includes("pdf")) {
-      return "[PDF Document - Content available for AI analysis]";
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const pdfModule = await import("pdf-parse") as any;
+        
+        // Handle different export structures between versions (classic vs modern)
+        const PdfParser = pdfModule.default || pdfModule.PDFParse || pdfModule;
+        
+        let text = "";
+        try {
+          // Attempt classic/simpler usage first
+          if (typeof PdfParser === "function") {
+             const data = await PdfParser(Buffer.from(fileBuffer));
+             text = data.text;
+          } else {
+             throw new Error("PdfParser is not a function");
+          }
+        } catch {
+          // Try modern class-based usage (v2.4.x+)
+          try {
+            const parser = new PdfParser();
+            await parser.load(Buffer.from(fileBuffer));
+            const result = await parser.getText();
+            text = result.text || "";
+          } catch (e) {
+            console.error("[AI Context] All PDF extraction attempts failed:", e);
+            throw e;
+          }
+        }
+        
+        return text || "[Empty PDF Document]";
+      } catch (pdfError) {
+        console.warn(`[AI Context] PDF extraction failed for ${fileId}:`, pdfError);
+        return "[PDF Document - Extraction failed]";
+      }
     }
 
     if (mimeType.includes("word") || mimeType.includes("document")) {
-      return "[Word Document - Content available for AI analysis]";
+      return "[Word Document - Content extraction not yet implemented]";
     }
 
     return "[Document content not extractable]";
-  } catch {
+  } catch (error) {
+    console.error(`[AI Context] Failed to extract text for file ${fileId}:`, error);
     return "[Failed to extract document content]";
   }
 }
@@ -337,8 +370,12 @@ const app = new Hono()
         };
 
         return c.json({ data: context });
-      } catch {
-        return c.json({ error: "Failed to fetch AI context" }, 500);
+      } catch (error) {
+        console.error("[AI Context Error]:", error);
+        return c.json({ 
+          error: "Failed to fetch AI context",
+          details: error instanceof Error ? error.message : "Unknown error"
+        }, 500);
       }
     }
   )

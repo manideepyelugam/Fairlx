@@ -27,8 +27,8 @@ export async function setupProjectWebhooks(databases: Databases, databaseId: str
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'url', 1024, true);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'secret', 512, false);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'events', 4096, true);
-    await ensureBooleanAttribute(databases, databaseId, COLLECTION_ID, 'isActive', false, true);
-    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'createdBy', 256, true);
+    await ensureBooleanAttribute(databases, databaseId, COLLECTION_ID, 'enabled', false, true);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'createdByUserId', 256, true);
     await ensureDatetimeAttribute(databases, databaseId, COLLECTION_ID, 'lastTriggeredAt', false);
     await ensureIntegerAttribute(databases, databaseId, COLLECTION_ID, 'failureCount', false, 0);
 
