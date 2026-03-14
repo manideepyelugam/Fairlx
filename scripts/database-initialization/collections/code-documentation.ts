@@ -22,11 +22,16 @@ export async function setupCodeDocumentation(databases: Databases, databaseId: s
     // Attributes
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'projectId', 256, true);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'workspaceId', 256, true);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'content', 65535, true); // Main documentation text
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'generatedAt', 128, true);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'fileStructure', 65535, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'mermaidDiagram', 65535, false);
+    
+    // Legacy support (optional, from previous individual file approach)
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'repoId', 256, false);
-    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'filePath', 1024, true);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'filePath', 1024, false); // No longer required
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'language', 64, false);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'summary', 65535, false);
-    await ensureDatetimeAttribute(databases, databaseId, COLLECTION_ID, 'generatedAt', false);
     await ensureIntegerAttribute(databases, databaseId, COLLECTION_ID, 'tokenCount', false);
 
     await sleep(2000);

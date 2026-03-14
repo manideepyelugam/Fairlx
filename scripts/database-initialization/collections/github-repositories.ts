@@ -22,13 +22,16 @@ export async function setupGithubRepositories(databases: Databases, databaseId: 
     // Attributes
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'projectId', 256, true);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'workspaceId', 256, true);
-    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'repoOwner', 256, true);
-    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'repoName', 256, true);
-    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'repoUrl', 1024, false);
-    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'defaultBranch', 256, false, 'main');
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'githubUrl', 1024, true);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'repositoryName', 256, true);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'owner', 256, true);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'branch', 256, false, 'main');
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'accessToken', 1024, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'status', 128, false, 'connected');
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'error', 1024, false);
     await ensureDatetimeAttribute(databases, databaseId, COLLECTION_ID, 'lastSyncedAt', false);
-    await ensureBooleanAttribute(databases, databaseId, COLLECTION_ID, 'isActive', false, true);
-    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'encryptedToken', 1024, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'createdBy', 256, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'lastModifiedBy', 256, false);
 
     await sleep(2000);
 

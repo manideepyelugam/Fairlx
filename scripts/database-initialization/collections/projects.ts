@@ -50,6 +50,7 @@ export async function setupProjects(databases: Databases, databaseId: string): P
     // UI & Audit
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'color', 64, false);
     await ensureIntegerAttribute(databases, databaseId, COLLECTION_ID, 'position', false, 0);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'createdBy', 256, false);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'lastModifiedBy', 256, false);
 
     // Custom Definitions (Stored as JSON strings)

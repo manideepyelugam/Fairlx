@@ -335,7 +335,7 @@ async function _resolveUserProjectAccessUncached(
                 PROJECT_PERMISSIONS_ID,
                 [
                     Query.equal("projectId", projectId),
-                    Query.contains("assignedToTeamId", teamIds),
+                    Query.equal("assignedToTeamId", teamIds),
                 ]
             );
             teamPermissions = permissions.documents.map((p) => p.permissionKey);
@@ -408,7 +408,8 @@ async function _resolveUserProjectAccessUncached(
             allowedRouteKeys: getRouteKeysForPermissions(allPermissions),
         };
 
-    } catch {
+    } catch (error) {
+        console.error("resolveUserProjectAccess ERROR:", error);
         return noAccess;
     }
 }

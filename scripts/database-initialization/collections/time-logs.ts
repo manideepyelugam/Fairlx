@@ -29,6 +29,8 @@ export async function setupTimeLogs(databases: Databases, databaseId: string): P
     await ensureDatetimeAttribute(databases, databaseId, COLLECTION_ID, 'logDate', true);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'description', 2048, false);
     await ensureBooleanAttribute(databases, databaseId, COLLECTION_ID, 'isBillable', false, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'createdBy', 256, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'lastModifiedBy', 256, false);
 
     await sleep(2000);
 

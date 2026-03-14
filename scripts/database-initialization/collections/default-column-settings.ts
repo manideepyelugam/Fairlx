@@ -2,6 +2,8 @@ import { Databases, IndexType, Permission, Role } from 'node-appwrite';
 import {
     ensureCollection,
     ensureStringAttribute,
+    ensureBooleanAttribute,
+    ensureIntegerAttribute,
     ensureIndex,
     sleep,
 } from '../lib/db-helpers';
@@ -20,11 +22,14 @@ export async function setupDefaultColumnSettings(databases: Databases, databaseI
     // Attributes
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'projectId', 256, true);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'workspaceId', 256, true);
-    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'columnOrder', 4096, false);
-    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'hiddenColumns', 4096, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'columnId', 256, true);
+    await ensureBooleanAttribute(databases, databaseId, COLLECTION_ID, 'isEnabled', false, true);
+    await ensureIntegerAttribute(databases, databaseId, COLLECTION_ID, 'position', false, 1000);
 
     await sleep(2000);
 
     // Indexes
-    await ensureIndex(databases, databaseId, COLLECTION_ID, 'projectId_idx', IndexType.Unique, ['projectId']);
+    await ensureIndex(databases, databaseId, COLLECTION_ID, 'projectId_idx', IndexType.Key, ['projectId']);
+    await ensureIndex(databases, databaseId, COLLECTION_ID, 'workspaceId_idx', IndexType.Key, ['workspaceId']);
+    await ensureIndex(databases, databaseId, COLLECTION_ID, 'projectId_columnId_idx', IndexType.Unique, ['projectId', 'columnId']);
 }

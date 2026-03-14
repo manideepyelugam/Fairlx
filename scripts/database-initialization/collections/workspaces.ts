@@ -31,6 +31,8 @@ export async function setupWorkspaces(databases: Databases, databaseId: string):
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'features', 4096, false);
     await ensureBooleanAttribute(databases, databaseId, COLLECTION_ID, 'isDefault', false, false);
     await ensureEnumAttribute(databases, databaseId, COLLECTION_ID, 'billingScope', ['user', 'organization'], false, 'user');
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'createdBy', 256, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'lastModifiedBy', 256, false);
 
     // Wait for attributes to register
     await sleep(2000);

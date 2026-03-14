@@ -13,6 +13,7 @@ import "server-only";
  */
 
 import { MemberRole } from "@/features/members/types";
+import { Databases } from "node-appwrite";
 
 /**
  * Check if user has access to a workspace
@@ -163,8 +164,7 @@ export function validateOwnership(
  * @returns Membership document if found, null otherwise
  */
 export async function validateUserOrgMembershipAsync(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    databases: any,
+    databases: Databases,
     userId: string,
     orgId: string
 ): Promise<{ isMember: boolean; role: string | null; membershipId: string | null }> {
@@ -203,8 +203,7 @@ export async function validateUserOrgMembershipAsync(
  * CRITICAL: Used to prevent orphaning organizations
  */
 export async function isLastOrgOwner(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    databases: any,
+    databases: Databases,
     userId: string,
     orgId: string
 ): Promise<boolean> {

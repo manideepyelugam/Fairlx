@@ -18,7 +18,7 @@ import {
     canProject,
 } from "@/lib/project-rbac";
 import { PROJECT_PERMISSIONS } from "@/lib/project-permissions";
-import { ProjectMember, ProjectRole, PopulatedProjectMember } from "../types";
+import { ProjectMember, ProjectRole, PopulatedProjectMember, ProjectMemberStatus } from "../types";
 import { Project } from "@/features/projects/types";
 import {
     createProjectMemberSchema,
@@ -378,6 +378,7 @@ const app = new Hono()
                     userId: data.userId,
                     roleId: data.roleId,
                     roleName: role.name,
+                    status: ProjectMemberStatus.ACTIVE,
                     joinedAt: new Date().toISOString(),
                     addedBy: user.$id,
                 }

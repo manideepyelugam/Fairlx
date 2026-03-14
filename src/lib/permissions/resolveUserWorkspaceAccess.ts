@@ -155,8 +155,7 @@ async function _resolveUserWorkspaceAccessUncached(
 
         // CASE 1: Org Owner (Full Access Override)
         if (isOrgOwner) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const syntheticMember: any = directMember || {
+            const syntheticMember = (directMember || {
                 $id: "synthetic-org-owner",
                 userId,
                 workspaceId,
@@ -164,7 +163,7 @@ async function _resolveUserWorkspaceAccessUncached(
                 organizationId,
                 isOrgMember: true,
                 orgMemberId,
-            };
+            }) as unknown as Models.Document;
 
             return {
                 workspaceId,
@@ -217,8 +216,7 @@ async function _resolveUserWorkspaceAccessUncached(
         const canDelete = !!directMember && ["OWNER", "ADMIN"].includes(directRole || "");
 
         // Construct synthetic member for listing purposes only (if not direct)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const memberDoc: any = directMember || (canList ? {
+        const memberDoc = (directMember || (canList ? {
             $id: "synthetic-org-member",
             userId,
             workspaceId,
@@ -226,7 +224,7 @@ async function _resolveUserWorkspaceAccessUncached(
             organizationId,
             isOrgMember: true,
             orgMemberId,
-        } : undefined);
+        } : undefined)) as Models.Document | undefined;
 
         return {
             workspaceId,

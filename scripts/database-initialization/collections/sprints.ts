@@ -30,6 +30,8 @@ export async function setupSprints(databases: Databases, databaseId: string): Pr
     await ensureDatetimeAttribute(databases, databaseId, COLLECTION_ID, 'endDate', false);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'goal', 2048, false);
     await ensureIntegerAttribute(databases, databaseId, COLLECTION_ID, 'position', false, 0);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'lastModifiedBy', 256, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'createdBy', 256, false);
 
     // Metrics (computed on completion)
     await ensureIntegerAttribute(databases, databaseId, COLLECTION_ID, 'completedPoints', false, 0);

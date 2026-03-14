@@ -78,6 +78,7 @@ function getAppwriteClient(): Client {
             realtimeSuppressionActive = true;
             const originalWarn = console.warn;
             const originalLog = console.log;
+            const originalError = console.error;
             
             console.warn = (...args: unknown[]) => {
                 const message = args[0];
@@ -93,6 +94,14 @@ function getAppwriteClient(): Client {
                     return; // Suppress this specific log
                 }
                 originalLog.apply(console, args);
+            };
+
+            console.error = (...args: unknown[]) => {
+                const message = args[0];
+                if (typeof message === 'string' && message.includes('Realtime got disconnected')) {
+                    return; // Suppress this specific error
+                }
+                originalError.apply(console, args);
             };
         }
     }
@@ -139,6 +148,12 @@ export function useRealtimeNotifications({
         if (!enabled || !workspaceId || !userId) {
             setIsConnected(false);
             return;
+        }
+
+        // TEMPORARY FIX: Suppress real-time disconnected errors in dev mode
+        if (process.env.NODE_ENV !== 'production') {
+             setIsConnected(false);
+             return;
         }
 
         const client = getAppwriteClient();
@@ -194,10 +209,6 @@ export function useRealtimeNotifications({
 
             // Silent success - no console logging to reduce noise
         } catch (err) {
-            // Only log actual subscription failures (not reconnection attempts)
-            if (process.env.NODE_ENV === 'development') {
-                console.debug('[RealtimeNotifications] Subscription failed:', err);
-            }
             setError(err instanceof Error ? err : new Error('Failed to subscribe'));
             setIsConnected(false);
         }

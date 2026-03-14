@@ -157,18 +157,20 @@ export async function createCustomer(options: CreateCustomerOptions) {
         });
     } catch (error: unknown) {
         // Check if customer already exists error
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const apiError = error as any; // Razorpay error structure is custom
+        const apiError = error as { 
+            error?: { 
+                description?: string; 
+                code?: string;
+            } 
+        };
         if (apiError.error?.description === "Customer already exists for the merchant" ||
             apiError.error?.code === "BAD_REQUEST_ERROR") {
 
             // Customer exists, fetch by email
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const customers: any = await razorpay.customers.all({
+            const customers = (await razorpay.customers.all({
                 email: options.email,
                 count: 1,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            } as any);
+            } as unknown as Record<string, unknown>)) as unknown as { items: Array<{ id: string } & Record<string, unknown>> };
 
             if (customers.items && customers.items.length > 0) {
                 return customers.items[0];
@@ -194,8 +196,7 @@ export async function updateCustomer(
     updates: { contact?: string; name?: string; email?: string }
 ) {
     const razorpay = getRazorpay();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (razorpay.customers as any).edit(customerId, updates);
+    return (razorpay.customers as unknown as { edit: (id: string, updates: Record<string, unknown>) => Promise<unknown> }).edit(customerId, updates as Record<string, unknown>);
 }
 
 // ===============================
