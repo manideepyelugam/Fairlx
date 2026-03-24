@@ -27,6 +27,7 @@ export const createAttachment = async (data: {
   mimeType: string;
   fileId: string;
   taskId: string;
+  projectId: string;
   workspaceId: string;
   uploadedBy: string;
   uploaderName?: string;
@@ -43,6 +44,7 @@ export const createAttachment = async (data: {
       mimeType: data.mimeType,
       fileId: data.fileId,
       taskId: data.taskId,
+      projectId: data.projectId,
       workspaceId: data.workspaceId,
       uploadedBy: data.uploadedBy,
       uploadedAt: new Date().toISOString(),

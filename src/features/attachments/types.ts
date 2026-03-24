@@ -6,6 +6,7 @@ export type Attachment = Models.Document & {
   mimeType: string;
   fileId: string;
   taskId: string;
+  projectId: string;
   workspaceId: string;
   uploadedBy: string;
   uploadedAt: string;

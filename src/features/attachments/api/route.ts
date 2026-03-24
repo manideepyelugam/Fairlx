@@ -3,7 +3,7 @@ import { zValidator } from "@hono/zod-validator";
 import { ID } from "node-appwrite";
 
 import { sessionMiddleware } from "@/lib/session-middleware";
-import { ATTACHMENTS_BUCKET_ID, DATABASE_ID, ATTACHMENTS_ID } from "@/config";
+import { ATTACHMENTS_BUCKET_ID, DATABASE_ID, ATTACHMENTS_ID, WORK_ITEMS_ID } from "@/config";
 import { getMember } from "@/features/members/utils";
 // Storage metering for billing - every file operation must be metered
 import { logStorageUsage } from "@/lib/usage-metering";
@@ -93,6 +93,19 @@ const app = new Hono()
           return c.json({ error: "File type not allowed" }, 400);
         }
 
+        // Fetch the work item to get the projectId
+        let projectId: string;
+        try {
+          const workItem = await databases.getDocument(
+            DATABASE_ID,
+            WORK_ITEMS_ID,
+            taskId
+          );
+          projectId = workItem.projectId as string;
+        } catch {
+          return c.json({ error: "Work item not found" }, 404);
+        }
+
         // Upload file to storage (R2 or Appwrite)
         const fileId = ID.unique();
         const uploadedFile = await storageProvider.uploadFile(
@@ -108,6 +121,7 @@ const app = new Hono()
           mimeType: file.type,
           fileId: uploadedFile.id,
           taskId,
+          projectId,
           workspaceId,
           uploadedBy: user.$id,
         });
