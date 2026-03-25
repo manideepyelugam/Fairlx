@@ -7,7 +7,7 @@ import { Models } from "node-appwrite";
 /**
  * WalletTransactionType - tracks type of wallet transaction
  * 
- * TOPUP: Funds added to wallet (via Razorpay payment)
+ * TOPUP: Funds added to wallet (via Cashfree payment)
  * USAGE: Funds deducted for billing usage
  * REFUND: Funds returned (e.g., service credit)
  * ADJUSTMENT: Manual adjustment by admin
@@ -163,9 +163,10 @@ export type UsageDeduction = Models.Document & {
 
 export type TopupWalletDto = {
     amount: number;
-    razorpayOrderId: string;
-    razorpayPaymentId: string;
-    razorpaySignature: string;
+    cashfreeOrderId: string;
+    cfPaymentId: string;
+    orderAmount: number;
+    signature: string;
 };
 
 export type DeductWalletDto = {

@@ -608,7 +608,7 @@ export async function setupOrganizationBilling(
     organizationId: string,
     options: {
         billingEmail?: string;
-        razorpayCustomerId?: string;
+        cashfreeCustomerId?: string;
     } = {}
 ): Promise<BillingAccount> {
     const { databases } = await createAdminClient();
@@ -642,7 +642,7 @@ export async function setupOrganizationBilling(
             type: BillingAccountType.ORG,
             organizationId,
             userId: null,
-            razorpayCustomerId: options.razorpayCustomerId || null,
+            cashfreeCustomerId: options.cashfreeCustomerId || null,
             billingStatus: BillingStatus.ACTIVE,
             billingCycleStart: cycleStart.toISOString(),
             billingCycleEnd: cycleEnd.toISOString(),
@@ -675,7 +675,7 @@ export async function setupPersonalBilling(
     userId: string,
     options: {
         billingEmail?: string;
-        razorpayCustomerId?: string;
+        cashfreeCustomerId?: string;
     } = {}
 ): Promise<BillingAccount> {
     const { databases } = await createAdminClient();
@@ -709,7 +709,7 @@ export async function setupPersonalBilling(
             type: BillingAccountType.PERSONAL,
             userId,
             organizationId: null,
-            razorpayCustomerId: options.razorpayCustomerId || null,
+            cashfreeCustomerId: options.cashfreeCustomerId || null,
             billingStatus: BillingStatus.ACTIVE,
             billingCycleStart: cycleStart.toISOString(),
             billingCycleEnd: cycleEnd.toISOString(),

@@ -11,7 +11,7 @@ import {
 } from "@/config";
 import { sessionMiddleware } from "@/lib/session-middleware";
 import { createAdminClient } from "@/lib/appwrite";
-import { createOrder, getPublicKey, verifyPaymentSignature } from "@/lib/razorpay";
+import { createOrder, getPublicKey, verifyPaymentSignature, getOrderPayments, createCustomer, getCashfreeMode } from "@/lib/cashfree";
 
 import {
     createTopupOrderSchema,
@@ -38,8 +38,8 @@ import { BillingAccount, BillingAccountType } from "@/features/billing/types";
  * 
  * Routes:
  * - GET    /wallet/balance          - Get wallet balance
- * - POST   /wallet/create-order     - Create Razorpay order for wallet top-up
- * - POST   /wallet/verify-topup     - Verify Razorpay payment and credit wallet
+ * - POST   /wallet/create-order     - Create Cashfree order for wallet top-up
+ * - POST   /wallet/verify-topup     - Verify Cashfree payment and credit wallet
  * - GET    /wallet/transactions     - List wallet transactions
  * - POST   /wallet/deduct           - Deduct usage from wallet (internal API)
  * 
@@ -84,11 +84,11 @@ const app = new Hono()
 
     /**
      * POST /wallet/create-order
-     * Create a Razorpay order for wallet top-up
+     * Create a Cashfree order for wallet top-up
      * 
      * This is step 1 of the top-up flow:
-     * 1. Frontend calls this to get a Razorpay order
-     * 2. Frontend opens Razorpay Checkout with the order
+     * 1. Frontend calls this to get a Cashfree order
+     * 2. Frontend opens Cashfree Checkout with the paymentSessionId
      * 3. After payment, frontend calls /verify-topup with payment details
      */
     .post(
@@ -115,7 +115,7 @@ const app = new Hono()
                 }, 400);
             }
 
-            // Get billing account for Razorpay customer ID
+            // Get billing account for customer ID
             let billingAccountId: string | undefined;
             try {
                 const billingQuery = organizationId
@@ -136,18 +136,28 @@ const app = new Hono()
             }
 
             // ── USD → INR Conversion ──
-            // Frontend sends amount in USD cents. Razorpay charges in INR paise.
+            // Frontend sends amount in USD cents. Cashfree charges in INR (major units).
             // We convert using the live exchange rate and store metadata for reverse conversion.
             const { getUsdToInrRate } = await import("@/lib/currency");
             const exchangeRate = await getUsdToInrRate();
             const amountInrPaise = Math.round(amount * exchangeRate); // USD cents × rate = INR paise
 
-            // Create Razorpay order in INR
-            const receipt = `topup_${wallet.$id}_${Date.now()}`;
-            const order = await createOrder({
+            // Generate order ID upfront (Cashfree requires it)
+            const orderId = `topup_${wallet.$id}_${Date.now()}`;
+
+            // Create stable customer ID from email hash
+            const customer = await createCustomer({
+                name: user.name || "Fairlx User",
+                email: user.email,
+            });
+
+            // Create Cashfree order in INR (amount in paise, createOrder converts to rupees)
+            const orderResponse = await createOrder({
                 amount: amountInrPaise,
                 currency: "INR",
-                receipt,
+                orderId,
+                customerId: customer.id,
+                customerEmail: user.email,
                 notes: {
                     fairlx_wallet_id: wallet.$id,
                     fairlx_billing_account_id: billingAccountId || "",
@@ -158,20 +168,20 @@ const app = new Hono()
                 },
             });
 
+            const orderData = orderResponse.data;
+
             return c.json({
                 data: {
-                    orderId: order.id,
-                    amount: order.amount,
-                    currency: order.currency,
+                    orderId: orderData?.order_id || orderId,
+                    amount: amountInrPaise,
+                    currency: "INR",
+                    paymentSessionId: orderData?.payment_session_id || "",
                     key: getPublicKey(),
+                    environment: getCashfreeMode(),
                     walletId: wallet.$id,
                     // Send conversion info to frontend for display
                     originalUsdCents: amount,
                     exchangeRate,
-                    prefill: {
-                        name: user.name || "",
-                        email: user.email,
-                    },
                 },
             });
         }
@@ -179,11 +189,11 @@ const app = new Hono()
 
     /**
      * POST /wallet/verify-topup
-     * Verify Razorpay payment and credit wallet
+     * Verify Cashfree payment and credit wallet
      * 
      * This is step 3 of the top-up flow:
      * 1. Frontend called /create-order to get an order
-     * 2. Frontend completed Razorpay Checkout
+     * 2. Frontend completed Cashfree Checkout
      * 3. Frontend calls this with payment details for verification
      */
     .post(
@@ -192,42 +202,52 @@ const app = new Hono()
         zValidator("json", verifyTopupSchema),
         async (c) => {
             try {
-                const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = c.req.valid("json");
+                const { cashfreeOrderId, cfPaymentId, orderAmount, signature } = c.req.valid("json");
 
                 // Step 1: Verify payment signature
                 const isValid = verifyPaymentSignature(
-                    razorpayOrderId,
-                    razorpayPaymentId,
-                    razorpaySignature
+                    cashfreeOrderId,
+                    String(orderAmount),
+                    cfPaymentId,
+                    signature
                 );
 
                 if (!isValid) {
                     return c.json({ error: "Invalid payment signature" }, 400);
                 }
 
-                // Step 2: Get payment details from Razorpay
-                const { getPayment, capturePayment } = await import("@/lib/razorpay");
-                const payment = await getPayment(razorpayPaymentId);
+                // Step 2: Get payment details from Cashfree server-side
+                const paymentsResponse = await getOrderPayments(cashfreeOrderId);
+                const payments = paymentsResponse.data;
 
-                // Accept both "captured" (auto-capture) and "authorized" (manual capture) states
-                if (payment.status === "authorized") {
-                    // Auto-capture is async; capture explicitly if still authorized
-                    try {
-                        await capturePayment(razorpayPaymentId, Number(payment.amount), payment.currency);
-                    } catch (captureError) {
-                        // If capture fails with "already captured", that's fine — it was auto-captured
-                        const errMsg = String(captureError);
-                        if (!errMsg.includes("already been captured") && !errMsg.includes("already captured")) {
-                            console.error("[verify-topup] Capture failed:", captureError);
-                            return c.json({ error: "Payment capture failed" }, 400);
-                        }
-                    }
-                } else if (payment.status !== "captured") {
-                    return c.json({ error: `Payment not in valid state: ${payment.status}` }, 400);
+                if (!payments || payments.length === 0) {
+                    return c.json({ error: "No payments found for this order" }, 400);
                 }
 
-                // Step 3: Get wallet from payment notes
-                const walletId = (payment.notes as Record<string, string>)?.fairlx_wallet_id;
+                // Find the successful payment
+                const payment = payments.find(
+                    (p) => p.cf_payment_id?.toString() === cfPaymentId && p.payment_status === "SUCCESS"
+                ) || payments.find((p) => p.payment_status === "SUCCESS");
+
+                if (!payment || payment.payment_status !== "SUCCESS") {
+                    return c.json({
+                        error: `Payment not in valid state: ${payment?.payment_status || "NOT_FOUND"}`,
+                    }, 400);
+                }
+
+                // Step 3: Get wallet from order tags
+                const orderTags = (payment as Record<string, unknown>).order_tags as Record<string, string> | undefined;
+                // Also try fetching from the order directly
+                let walletId = orderTags?.fairlx_wallet_id;
+
+                if (!walletId) {
+                    // Parse from orderId: topup_{walletId}_{timestamp}
+                    const parts = cashfreeOrderId.split("_");
+                    if (parts.length >= 2 && parts[0] === "topup") {
+                        walletId = parts[1];
+                    }
+                }
+
                 if (!walletId) {
                     return c.json({ error: "Payment not linked to a wallet" }, 400);
                 }
@@ -236,25 +256,26 @@ const app = new Hono()
 
                 // Step 4: Determine USD amount to credit
                 // The payment was charged in INR. The original USD amount was
-                // stored in the order notes during create-order.
-                const notes = payment.notes as Record<string, string>;
+                // stored in the order tags during create-order.
                 let usdCentsToCredit: number;
 
-                if (notes?.fairlx_usd_amount) {
+                if (orderTags?.fairlx_usd_amount) {
                     // Use the exact USD amount from order creation
-                    usdCentsToCredit = Number(notes.fairlx_usd_amount);
+                    usdCentsToCredit = Number(orderTags.fairlx_usd_amount);
                 } else {
-                    // Fallback: convert INR paise back to USD cents using live rate
+                    // Fallback: convert INR (major units) back to USD cents using live rate
                     const { getUsdToInrRate } = await import("@/lib/currency");
                     const rate = await getUsdToInrRate();
-                    usdCentsToCredit = Math.round(Number(payment.amount) / rate);
+                    // Cashfree payment_amount is in rupees, rate converts USD cents to INR paise
+                    const paymentAmountPaise = (payment.payment_amount || 0) * 100;
+                    usdCentsToCredit = Math.round(paymentAmountPaise / rate);
                 }
 
                 // Step 5: Credit wallet with USD cents (idempotent via payment ID)
                 const result = await topUpWallet(databases, walletId, usdCentsToCredit, {
-                    idempotencyKey: `razorpay_${razorpayPaymentId}`,
-                    paymentId: razorpayPaymentId,
-                    description: `Wallet top-up via Razorpay (${payment.method}) — $${(usdCentsToCredit / 100).toFixed(2)} USD`,
+                    idempotencyKey: `cashfree_${cfPaymentId}`,
+                    paymentId: cfPaymentId,
+                    description: `Wallet top-up via Cashfree — $${(usdCentsToCredit / 100).toFixed(2)} USD`,
                 });
 
                 if (!result.success && result.error !== "already_processed") {

@@ -181,7 +181,7 @@ export function OrganizationBillingSettings({
                 }
             }
 
-            // Create a Razorpay order for wallet top-up
+            // Create a Cashfree order for wallet top-up
             const orderResponse = await client.api.wallet["create-order"].$post({
                 json: {
                     amount: amount * 100, // Convert dollars to cents
@@ -197,66 +197,58 @@ export function OrganizationBillingSettings({
             const orderResult = await orderResponse.json() as {
                 data: {
                     orderId: string;
+                    paymentSessionId: string;
                     key: string;
                     amount: number;
                     currency: string;
+                    environment: "sandbox" | "production";
+                    walletId: string;
                     originalUsdCents: number;
                     exchangeRate: number;
                 }
             };
             const orderData = orderResult.data;
-            const inrAmount = (orderData.amount / 100).toFixed(2);
 
-            // Open Razorpay checkout for one-time payment (charges in INR)
-            const razorpayOptions: RazorpayCheckoutConfig = {
-                key: orderData.key,
-                order_id: orderData.orderId,
-                amount: orderData.amount,
-                currency: orderData.currency, // INR from backend
-                name: "Fairlx",
-                description: `Add $${amount} to Wallet (~₹${inrAmount})`,
-                prefill: {
-                    email: billingEmailValue || organization?.email || ownerEmail || "",
-                },
-                theme: {
-                    color: "#3B82F6",
-                },
-                handler: async (response: RazorpayResponse) => {
-                    // Verify the payment and credit the wallet
-                    try {
-                        const verifyResponse = await client.api.wallet["verify-topup"].$post({
-                            json: {
-                                razorpayOrderId: response.razorpay_order_id || "",
-                                razorpayPaymentId: response.razorpay_payment_id,
-                                razorpaySignature: response.razorpay_signature,
-                            },
-                        });
+            // Open Cashfree Checkout for one-time payment
+            const cashfree = window.Cashfree({ 
+                mode: (orderData.environment || "sandbox") as "sandbox" | "production" 
+            });
 
-                        if (!verifyResponse.ok) {
-                            const errorData = await verifyResponse.json().catch(() => ({}));
-                            throw new Error((errorData as { error?: string }).error || "Verification failed");
-                        }
+            const checkoutResult = await cashfree.checkout({
+                paymentSessionId: orderData.paymentSessionId,
+                redirectTarget: "_modal",
+            });
 
-                        toast.success(`$${amount} added to your wallet successfully!`);
-                        // Refresh billing data to get updated balance (without full page reload)
-                        queryClient.invalidateQueries({ queryKey: ["billing-account"] });
-                        queryClient.invalidateQueries({ queryKey: ["billing-status"] });
-                        setTopupAmount("");
-                    } catch (verifyError) {
-                        const msg = verifyError instanceof Error ? verifyError.message : "Verification failed";
-                        toast.error(`Payment issue: ${msg}. Please contact support if credits were not added.`);
+            if (checkoutResult.orderStatus === "PAID" && checkoutResult.transaction) {
+                // Verify the payment and credit the wallet
+                try {
+                    const verifyResponse = await client.api.wallet["verify-topup"].$post({
+                        json: {
+                            cashfreeOrderId: checkoutResult.order_id || orderData.orderId,
+                            cfPaymentId: checkoutResult.transaction.referenceId,
+                            orderAmount: checkoutResult.order_amount,
+                            signature: checkoutResult.transaction.signature,
+                        },
+                    });
+
+                    if (!verifyResponse.ok) {
+                        const errorData = await verifyResponse.json().catch(() => ({}));
+                        throw new Error((errorData as { error?: string }).error || "Verification failed");
                     }
-                    setIsAddingCredits(false);
-                },
-                modal: {
-                    ondismiss: () => {
-                        setIsAddingCredits(false);
-                    },
-                },
-            };
 
-            const razorpay = new window.Razorpay(razorpayOptions);
-            razorpay.open();
+                    toast.success(`$${amount} added to your wallet successfully!`);
+                    // Refresh billing data to get updated balance (without full page reload)
+                    queryClient.invalidateQueries({ queryKey: ["billing-account"] });
+                    queryClient.invalidateQueries({ queryKey: ["billing-status"] });
+                    setTopupAmount("");
+                } catch (verifyError) {
+                    const msg = verifyError instanceof Error ? verifyError.message : "Verification failed";
+                    toast.error(`Payment issue: ${msg}. Please contact support if credits were not added.`);
+                }
+            } else if (checkoutResult.orderStatus !== "ACTIVE") {
+                toast.error("Payment was not completed. Please try again.");
+            }
+            setIsAddingCredits(false);
         } catch {
             toast.error("Failed to initialize payment. Please try again.");
             setIsAddingCredits(false);
@@ -274,12 +266,12 @@ export function OrganizationBillingSettings({
 
     return (
         <>
-            {/* Load Razorpay Script */}
+            {/* Load Cashfree SDK Script */}
             <Script
-                src="https://checkout.razorpay.com/v1/checkout.js"
+                src="https://sdk.cashfree.com/js/v3/cashfree.js"
                 onLoad={() => setIsScriptLoaded(true)}
                 onError={() => {
-                    // Failed to load Razorpay script
+                    // Failed to load Cashfree script
                 }}
             />
 
@@ -594,7 +586,7 @@ export function OrganizationBillingSettings({
                                 </Button>
 
                                 <p className="text-xs text-muted-foreground text-center">
-                                    Payments processed securely by Razorpay. Minimum $1.
+                                    Payments processed securely by Cashfree. Minimum $1.
                                 </p>
                             </div>
                         </div>
