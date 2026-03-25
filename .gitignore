@@ -10,6 +10,8 @@ yarn.lock
 pnpm-lock.yaml
 /docs
 
+/.github
+
 # testing
 /test-results
 /tests
