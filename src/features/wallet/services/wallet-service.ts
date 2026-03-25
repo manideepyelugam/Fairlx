@@ -7,6 +7,7 @@ import {
     DATABASE_ID,
     WALLETS_ID,
     WALLET_TRANSACTIONS_ID,
+    BILLING_ACCOUNTS_ID,
     WALLET_DAILY_TOPUP_LIMIT,
 } from "@/config";
 import { createAdminClient } from "@/lib/appwrite";
@@ -183,6 +184,7 @@ export async function getOrCreateWallet(
     options: {
         userId?: string;
         organizationId?: string;
+        billingAccountId?: string;
         currency?: string;
     }
 ): Promise<Wallet> {
@@ -207,6 +209,29 @@ export async function getOrCreateWallet(
         return existing.documents[0];
     }
 
+    // Find billing account ID if not provided
+    let billingAccountId = options.billingAccountId;
+    if (!billingAccountId) {
+        try {
+            const baQueries = options.organizationId
+                ? [Query.equal("organizationId", options.organizationId)]
+                : [Query.equal("userId", options.userId!)];
+
+            const accounts = await databases.listDocuments(
+                DATABASE_ID,
+                BILLING_ACCOUNTS_ID,
+                [...baQueries, Query.limit(1)]
+            );
+
+            if (accounts.total > 0) {
+                billingAccountId = accounts.documents[0].$id;
+            }
+        } catch {
+            // Ignore error - if we can't find billing account, we create without ID
+            // (The DB will error if it's strictly required, but we tried our best)
+        }
+    }
+
     // Create new wallet with zero balance
     const wallet = await databases.createDocument<Wallet>(
         DATABASE_ID,
@@ -215,6 +240,7 @@ export async function getOrCreateWallet(
         {
             userId: options.userId || null,
             organizationId: options.organizationId || null,
+            billingAccountId: billingAccountId || null,
             balance: 0,
             currency,
             lockedBalance: 0,

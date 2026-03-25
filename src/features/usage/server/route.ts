@@ -1295,7 +1295,7 @@ const app = new Hono()
 
             // Build base query
             const queries = [
-                Query.orderDesc("createdAt"),
+                Query.orderDesc("$createdAt"),
                 Query.limit(limit),
                 Query.offset(offset),
             ];

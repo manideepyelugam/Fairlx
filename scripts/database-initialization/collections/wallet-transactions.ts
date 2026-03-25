@@ -26,7 +26,7 @@ export async function setupWalletTransactions(databases: Databases, databaseId: 
     await ensureFloatAttribute(databases, databaseId, COLLECTION_ID, 'amount', true);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'currency', 8, false, 'INR');
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'description', 1024, false);
-    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'razorpayPaymentId', 256, false);
+    await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'cashfreePaymentId', 256, false);
     await ensureFloatAttribute(databases, databaseId, COLLECTION_ID, 'balanceAfter', false);
     await ensureStringAttribute(databases, databaseId, COLLECTION_ID, 'metadata', 4096, false);
 

@@ -6,8 +6,8 @@ import { WalletTransactionType } from "./types";
 // ===============================
 
 /**
- * Schema for creating a Razorpay top-up order
- * This creates the order server-side; frontend opens Razorpay Checkout with it
+ * Schema for creating a Cashfree top-up order
+ * This creates the order server-side; frontend opens Cashfree Checkout with it
  */
 export const createTopupOrderSchema = z.object({
     /** Amount in smallest currency unit (paise). Min ₹1, Max ₹1,00,000 */
@@ -23,16 +23,18 @@ export const createTopupOrderSchema = z.object({
 export type CreateTopupOrderInput = z.infer<typeof createTopupOrderSchema>;
 
 /**
- * Schema for verifying a Razorpay top-up payment after checkout
- * Requires Razorpay payment details + signature for verification
+ * Schema for verifying a Cashfree top-up payment after checkout
+ * Requires Cashfree payment details + signature for verification
  */
 export const verifyTopupSchema = z.object({
-    /** Razorpay Order ID */
-    razorpayOrderId: z.string().min(1),
-    /** Razorpay Payment ID */
-    razorpayPaymentId: z.string().min(1),
-    /** Razorpay Signature for verification */
-    razorpaySignature: z.string().min(1),
+    /** Cashfree Order ID */
+    cashfreeOrderId: z.string().min(1),
+    /** Cashfree Payment ID (cfPaymentId) */
+    cfPaymentId: z.string().min(1),
+    /** Order amount for signature verification */
+    orderAmount: z.number().positive(),
+    /** Cashfree Signature for verification */
+    signature: z.string().min(1),
 });
 
 export type VerifyTopupInput = z.infer<typeof verifyTopupSchema>;
