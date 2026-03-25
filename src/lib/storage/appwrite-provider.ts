@@ -1,6 +1,6 @@
 /**
  * Appwrite Storage Provider (Adapter)
- * 
+ *
  * Wraps the existing Appwrite Storage SDK to conform to the StorageProvider interface.
  * This is the default / contributor-friendly provider that requires no extra setup.
  */
