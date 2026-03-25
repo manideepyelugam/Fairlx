@@ -247,7 +247,7 @@ export async function createOrder(options: CreateOrderOptions) {
     try {
         const response = await cashfree.PGCreateOrder(request);
         return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
         throw error;
     }
 }
