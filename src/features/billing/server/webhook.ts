@@ -57,6 +57,13 @@ import { topUpWallet, refundToWallet } from "@/features/wallet/services/wallet-s
 
 const app = new Hono()
     /**
+     * GET /webhooks/cashfree
+     * Health check endpoint for Cashfree dashboard test ping
+     */
+    .get("/cashfree", (c) => {
+        return c.json({ status: "ok" });
+    })
+    /**
      * POST /webhooks/cashfree
      * Main webhook endpoint for Cashfree events
      */
