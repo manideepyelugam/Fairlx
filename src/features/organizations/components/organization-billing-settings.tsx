@@ -170,7 +170,7 @@ export function OrganizationBillingSettings({
                         json: {
                             type: BillingAccountType.ORG,
                             organizationId,
-                            billingEmail: billingEmailValue || organization?.email || ownerEmail || "",
+                            billingEmail: billingEmailValue || organization?.email || ownerEmail || undefined,
                             contactName: organization?.name || "Organization Admin",
                         }
                     });

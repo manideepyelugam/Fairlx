@@ -198,7 +198,14 @@ const app = new Hono()
         zValidator("json", setupBillingSchema),
         async (c) => {
             const user = c.get("user");
-            const { type, userId, organizationId, billingEmail, contactName, contactPhone } = c.req.valid("json");
+            const { type, userId, organizationId, billingEmail: providedEmail, contactName, contactPhone } = c.req.valid("json");
+
+            // Use provided email, or fall back to logged-in user's email (org owner / workspace owner)
+            const billingEmail = providedEmail || user.email;
+
+            if (!billingEmail) {
+                return c.json({ error: "Billing email is required" }, 400);
+            }
 
             // Verify authorization
             if (type === BillingAccountType.PERSONAL && userId !== user.$id) {
