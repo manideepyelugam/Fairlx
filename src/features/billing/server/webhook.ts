@@ -74,7 +74,9 @@ const app = new Hono()
         const timestamp = c.req.header("x-webhook-timestamp");
 
         if (!signature || !timestamp) {
-            return c.json({ error: "Missing signature or timestamp" }, 400);
+            // Cashfree dashboard test ping sends POST without signature headers.
+            // Return 200 so the test passes; real events always include signatures.
+            return c.json({ status: "ok" });
         }
 
         // Verify signature

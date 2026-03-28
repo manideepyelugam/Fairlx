@@ -20,7 +20,7 @@ export const setupBillingSchema = z.object({
     type: billingAccountTypeSchema,
     userId: z.string().optional(),
     organizationId: z.string().optional(),
-    billingEmail: z.string().email(),
+    billingEmail: z.string().email().optional(),
     contactName: z.string().min(1).max(255),
     contactPhone: z.string().optional(),
 }).refine(
