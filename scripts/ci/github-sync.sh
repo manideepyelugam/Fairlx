@@ -3,7 +3,8 @@
 # ==============================================================================
 # Fairlx GitHub Config Synchronizer
 # 
-# Usage: ./scripts/ci/github-sync.sh [.env.file]
+# Usage: ../scripts/ci/github-sync.sh .env.local --repo={UserName}/Fairlx
+
 #
 # Prerequisites:
 # 1. Install GitHub CLI: brew install gh
@@ -40,6 +41,25 @@ SECRETS_LIST=(
     "DO_SSH_PRIVATE_KEY"
 )
 
+# Fetch target repo from git or argument
+TARGET_REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null)
+
+# Override with --repo flag if provided
+for i in "$@"; do
+  case $i in
+    --repo=*)
+      TARGET_REPO="${i#*=}"
+      shift
+      ;;
+  esac
+done
+
+if [ -z "$TARGET_REPO" ]; then
+    echo "❌ Error: Could not detect GitHub repository. Please run inside a git repo or use --repo=owner/repo"
+    exit 1
+fi
+
+echo "📦 Target Repository: $TARGET_REPO"
 echo "🚀 Starting GitHub Sync from $ENV_FILE..."
 
 # Read file line by line
@@ -69,10 +89,10 @@ while IFS='=' read -r key value || [ -n "$key" ]; do
 
     if [ "$IS_SECRET" = true ]; then
         echo "🔒 Setting Secret: $key"
-        gh secret set "$key" --body "$value"
+        gh secret set "$key" --body "$value" --repo "$TARGET_REPO"
     else
         echo "📝 Setting Variable: $key"
-        gh variable set "$key" --body "$value"
+        gh variable set "$key" --body "$value" --repo "$TARGET_REPO"
     fi
 
 done < "$ENV_FILE"
