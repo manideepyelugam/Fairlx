@@ -101,7 +101,7 @@ export function verifyWebhookSignature(
     timestamp: string,
     secret?: string
 ): boolean {
-    const webhookSecret = secret || process.env.CASHFREE_WEBHOOK_SECRET;
+    const webhookSecret = secret || process.env.CASHFREE_SECRET_KEY;
 
     if (!webhookSecret || !timestamp) {
         return false;
