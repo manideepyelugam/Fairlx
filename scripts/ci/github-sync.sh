@@ -59,26 +59,32 @@ if [ -z "$TARGET_REPO" ]; then
     exit 1
 fi
 
+# Robust multi-line parsing using a temporary environment source
+# We use a subshell to source the file and then iterate over the keys
+# This avoids the "line-by-line" limitation of 'read'
 echo "📦 Target Repository: $TARGET_REPO"
 echo "🚀 Starting GitHub Sync from $ENV_FILE..."
 
-# Read file line by line
-while IFS='=' read -r key value || [ -n "$key" ]; do
-    # Skip comments and empty lines
-    [[ "$key" =~ ^#.*$ ]] && continue
-    [[ -z "$key" ]] && continue
-    
-    # Strip whitespace
-    key=$(echo "$key" | xargs)
-    value=$(echo "$value" | xargs)
+# Extract all keys first
+KEYS=$(grep -E '^[A-Z0-9_]+=' "$ENV_FILE" | cut -d'=' -f1)
 
-    # Check if value is empty (optional check)
+for key in $KEYS; do
+    # Skip Razorpay vars as per user preference if needed, or just sync all
+    
+    # Extract value correctly even if multi-line
+    # We use 'sed' to get the value between KEY= and the next KEY= or EOF
+    # But a safer way in bash for .env files is to source it in a controlled way:
+    value=$(grep -v '^#' "$ENV_FILE" | sed -n "s/^$key=//p" | sed 's/^"//;s/"$//;s/^'\''//;s/'\''$//')
+    
+    # If the value is still multi-line (like a key), we need to be careful
+    # Realistically, the best way to get the full value for multiline is:
+    # (using a perl one-liner for reliable multiline extraction)
+    value=$(perl -ne "BEGIN { $/ = undef; } print \$1 if /^$key=(.*?)^\w+=/ms || /^$key=(.*)\z/ms" "$ENV_FILE" | sed 's/^"//;s/"$//;s/^'\''//;s/'\''$//')
+
     if [ -z "$value" ]; then
-        echo "⚠️ Skipping $key: Value is empty."
         continue
     fi
 
-    # Determine if it's a secret or variable
     IS_SECRET=false
     for s in "${SECRETS_LIST[@]}"; do
         if [ "$s" == "$key" ]; then
@@ -89,12 +95,11 @@ while IFS='=' read -r key value || [ -n "$key" ]; do
 
     if [ "$IS_SECRET" = true ]; then
         echo "🔒 Setting Secret: $key"
-        gh secret set "$key" --body "$value" --repo "$TARGET_REPO"
+        echo "$value" | gh secret set "$key" --repo "$TARGET_REPO"
     else
         echo "📝 Setting Variable: $key"
         gh variable set "$key" --body "$value" --repo "$TARGET_REPO"
     fi
-
-done < "$ENV_FILE"
+done
 
 echo "✅ Sync complete! Your GitHub Actions environment is now ready."
