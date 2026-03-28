@@ -59,28 +59,38 @@ if [ -z "$TARGET_REPO" ]; then
     exit 1
 fi
 
-# Robust multi-line parsing using a temporary environment source
-# We use a subshell to source the file and then iterate over the keys
-# This avoids the "line-by-line" limitation of 'read'
+# Robust parsing using a temporary script to source and print
+# This is the most reliable way to handle .env files with quotes and multi-lines
 echo "📦 Target Repository: $TARGET_REPO"
 echo "🚀 Starting GitHub Sync from $ENV_FILE..."
+
+# Create a small python script to parse .env correctly (Python's dotenv logic is very standard)
+# If python isn't available, we'll fallback to a better perl script.
+# Actually, let's use Perl but with a better logic: split by lines and look for "KEY="
+cat << 'EOF' > /tmp/env_parser.pl
+use strict;
+use warnings;
+
+my $env_file = $ARGV[0];
+my $target_key = $ARGV[1];
+open(my $fh, '<', $env_file) or die "Could not open file: $!";
+my $content = do { local $/; <$fh> };
+close($fh);
+
+# Regex to match KEY=VALUE where VALUE can be quoted or multi-line
+# This looks for the key at the start of a line or after a newline
+if ($content =~ /^$target_key=(['"]?)(.*?)\1(?=^\w+=|\z)/ms) {
+    print $2;
+}
+EOF
 
 # Extract all keys first
 KEYS=$(grep -E '^[A-Z0-9_]+=' "$ENV_FILE" | cut -d'=' -f1)
 
 for key in $KEYS; do
-    # Skip Razorpay vars as per user preference if needed, or just sync all
+    # Extract value correctly even if multi-line using our robust perl parser
+    value=$(perl /tmp/env_parser.pl "$ENV_FILE" "$key")
     
-    # Extract value correctly even if multi-line
-    # We use 'sed' to get the value between KEY= and the next KEY= or EOF
-    # But a safer way in bash for .env files is to source it in a controlled way:
-    value=$(grep -v '^#' "$ENV_FILE" | sed -n "s/^$key=//p" | sed 's/^"//;s/"$//;s/^'\''//;s/'\''$//')
-    
-    # If the value is still multi-line (like a key), we need to be careful
-    # Realistically, the best way to get the full value for multiline is:
-    # (using a perl one-liner for reliable multiline extraction)
-    value=$(perl -ne "BEGIN { $/ = undef; } print \$1 if /^$key=(.*?)^\w+=/ms || /^$key=(.*)\z/ms" "$ENV_FILE" | sed 's/^"//;s/"$//;s/^'\''//;s/'\''$//')
-
     if [ -z "$value" ]; then
         continue
     fi
@@ -102,4 +112,5 @@ for key in $KEYS; do
     fi
 done
 
+rm /tmp/env_parser.pl
 echo "✅ Sync complete! Your GitHub Actions environment is now ready."
