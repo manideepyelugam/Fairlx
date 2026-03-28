@@ -59,26 +59,42 @@ if [ -z "$TARGET_REPO" ]; then
     exit 1
 fi
 
+# Robust parsing using a temporary script to source and print
+# This is the most reliable way to handle .env files with quotes and multi-lines
 echo "📦 Target Repository: $TARGET_REPO"
 echo "🚀 Starting GitHub Sync from $ENV_FILE..."
 
-# Read file line by line
-while IFS='=' read -r key value || [ -n "$key" ]; do
-    # Skip comments and empty lines
-    [[ "$key" =~ ^#.*$ ]] && continue
-    [[ -z "$key" ]] && continue
-    
-    # Strip whitespace
-    key=$(echo "$key" | xargs)
-    value=$(echo "$value" | xargs)
+# Create a small python script to parse .env correctly (Python's dotenv logic is very standard)
+# If python isn't available, we'll fallback to a better perl script.
+# Actually, let's use Perl but with a better logic: split by lines and look for "KEY="
+cat << 'EOF' > /tmp/env_parser.pl
+use strict;
+use warnings;
 
-    # Check if value is empty (optional check)
+my $env_file = $ARGV[0];
+my $target_key = $ARGV[1];
+open(my $fh, '<', $env_file) or die "Could not open file: $!";
+my $content = do { local $/; <$fh> };
+close($fh);
+
+# Regex to match KEY=VALUE where VALUE can be quoted or multi-line
+# This looks for the key at the start of a line or after a newline
+if ($content =~ /^$target_key=(['"]?)(.*?)\1(?=^\w+=|\z)/ms) {
+    print $2;
+}
+EOF
+
+# Extract all keys first
+KEYS=$(grep -E '^[A-Z0-9_]+=' "$ENV_FILE" | cut -d'=' -f1)
+
+for key in $KEYS; do
+    # Extract value correctly even if multi-line using our robust perl parser
+    value=$(perl /tmp/env_parser.pl "$ENV_FILE" "$key")
+    
     if [ -z "$value" ]; then
-        echo "⚠️ Skipping $key: Value is empty."
         continue
     fi
 
-    # Determine if it's a secret or variable
     IS_SECRET=false
     for s in "${SECRETS_LIST[@]}"; do
         if [ "$s" == "$key" ]; then
@@ -89,12 +105,12 @@ while IFS='=' read -r key value || [ -n "$key" ]; do
 
     if [ "$IS_SECRET" = true ]; then
         echo "🔒 Setting Secret: $key"
-        gh secret set "$key" --body "$value" --repo "$TARGET_REPO"
+        echo "$value" | gh secret set "$key" --repo "$TARGET_REPO"
     else
         echo "📝 Setting Variable: $key"
         gh variable set "$key" --body "$value" --repo "$TARGET_REPO"
     fi
+done
 
-done < "$ENV_FILE"
-
+rm /tmp/env_parser.pl
 echo "✅ Sync complete! Your GitHub Actions environment is now ready."
